@@ -51,7 +51,7 @@ void extractPNG(const std::string_view& filename, bool raw)
     std::ifstream vdxFile(filename.data(), std::ios::binary | std::ios::ate);
     if (!vdxFile)
     {
-        std::cerr << "Failed to open the VDX file: " << filename << std::endl;
+        std::cerr << "ERROR: Failed to open the VDX file: " << filename << std::endl;
         return;
     }
 
@@ -63,9 +63,13 @@ void extractPNG(const std::string_view& filename, bool raw)
 
     VDXFile parsedVDXFile = parseVDXFile(filename.data(), vdxData);
 
-    std::string dirName(filename.data());
-    std::replace(dirName.begin(), dirName.end(), '.', '_');
-    std::filesystem::create_directory(dirName);
+    std::filesystem::path filePath(filename.data());
+    std::string baseName = filePath.filename().string();
+
+    std::replace(baseName.begin(), baseName.end(), '.', '_');
+
+    std::filesystem::path dirPath = filePath.parent_path() / baseName;
+    std::filesystem::create_directory(dirPath);
 
     std::vector<processedVDXChunk> parsedChunks = parseVDXChunks(parsedVDXFile);
 
@@ -77,17 +81,19 @@ void extractPNG(const std::string_view& filename, bool raw)
             std::ostringstream frameString;
             frameString << std::setfill('0') << std::setw(4) << frame;
 
+            std::filesystem::path outputFilePath = dirPath;
+
             if (raw)
             {
-                // Write the raw bitmap data to a file in the dirName directory, with an index number as well
-                std::ofstream rawBitmapFile(dirName + "/" + parsedVDXFile.filename + "_" + frameString.str() + ".raw", std::ios::binary);
+                outputFilePath /= (parsedVDXFile.filename + "_" + frameString.str() + ".raw");
+                std::ofstream rawBitmapFile(outputFilePath, std::ios::binary);
                 rawBitmapFile.write(reinterpret_cast<const char*>(parsedChunk.data.data()), parsedChunk.data.size());
                 rawBitmapFile.close();
             }
             else
             {
-                // Call savePNG to convert the raw bitmap data to a PNG file and save it in the dirName directory
-                savePNG(dirName + "/" + parsedVDXFile.filename + "_" + frameString.str() + ".png", parsedChunk.data, 640, 320);
+                outputFilePath /= (parsedVDXFile.filename + "_" + frameString.str() + ".png");
+                savePNG(outputFilePath.string(), parsedChunk.data, 640, 320);
             }
         }
 
