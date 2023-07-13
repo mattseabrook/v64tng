@@ -10,3 +10,30 @@
 # Ignore the program
 v64tng.exe
 v64tng.pdb
+
+# Ignore 7th Guest commercial assets
+*.RL
+*.GJD
+*.vdx
+*.xmi
+/AT/
+/B/
+/CH/
+/D/
+/DR/
+/FH/
+/GA/
+/GAMWAV/
+/HDISK/
+/HTBD/
+/INTRO/
+/JHEK/
+/K/
+/LA/
+/LI/
+/MB/
+/MC/
+/MU/
+/N/
+/P/
+/XMI/

@@ -118,11 +118,6 @@ std::vector<processedVDXChunk> parseVDXChunks(VDXFile& vdxFile)
             processedChunk.data = chunk.data;
 
             break;
-        default:
-            // Handle unknown chunk types
-            processedChunk.data = std::vector<uint8_t>();
-
-            break;
         }
 
         processedChunks.push_back(processedChunk);
