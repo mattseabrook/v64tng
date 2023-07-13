@@ -48,8 +48,6 @@ void extractVDX(const std::string_view& filename)
 // as a full 640x320 bitmap
 void extractPNG(const std::string_view& filename, bool raw)
 {
-	std::cout << filename.data() << std::endl;
-
 	std::ifstream vdxFile(filename.data(), std::ios::binary | std::ios::ate);
 
 	if (!vdxFile)
@@ -88,12 +86,14 @@ void extractPNG(const std::string_view& filename, bool raw)
 			{
 				outputFilePath /= (parsedVDXFile.filename + "_" + frameString.str() + ".raw");
 				std::ofstream rawBitmapFile(outputFilePath, std::ios::binary);
+				std::cout << "Writing: " << outputFilePath.string() << std::endl;
 				rawBitmapFile.write(reinterpret_cast<const char*>(parsedChunk.data.data()), parsedChunk.data.size());
 				rawBitmapFile.close();
 			}
 			else
 			{
 				outputFilePath /= (parsedVDXFile.filename + "_" + frameString.str() + ".png");
+				std::cout << "Writing: " << outputFilePath.string() << std::endl;
 				savePNG(outputFilePath.string(), parsedChunk.data, 640, 320);
 			}
 		}

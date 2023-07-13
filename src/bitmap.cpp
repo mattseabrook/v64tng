@@ -31,7 +31,7 @@ Return:
     - TBD
 
 Notes:
-    - imageData will be som.
+    - x
 ===============================================================================
 */
 void savePNG(const std::string& filename, const std::vector<uint8_t>& imageData, int width, int height)
