@@ -3,6 +3,7 @@
 #include <vector>
 #include <tuple>
 #include <fstream>
+#include <filesystem>
 #include <iostream>
 
 #include "vdx.h"
@@ -31,7 +32,7 @@ Notes:
 VDXFile parseVDXFile(const std::string& filename, const std::vector<uint8_t>& buffer)
 {
     VDXFile vdxFile;
-    vdxFile.filename = filename;
+    vdxFile.filename = std::filesystem::path(filename).filename().string();
 
     vdxFile.identifier = buffer[0] | (buffer[1] << 8);
     std::copy(buffer.begin() + 2, buffer.begin() + 8, vdxFile.unknown.begin());

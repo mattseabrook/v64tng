@@ -17,86 +17,87 @@
 // Output the information for a GJD file
 void GJDInfo(const std::string_view& filename)
 {
-    auto vdxFiles = parseRLFile(filename.data());
+	auto vdxFiles = parseRLFile(filename.data());
 
-    for (const auto& vdxFile : vdxFiles)
-    {
-        std::cout << vdxFile.filename << " | " << vdxFile.offset << " | " << vdxFile.length << std::endl;
-    }
+	for (const auto& vdxFile : vdxFiles)
+	{
+		std::cout << vdxFile.filename << " | " << vdxFile.offset << " | " << vdxFile.length << std::endl;
+	}
 
-    std::cout << "Number of VDX Files: " << vdxFiles.size() << std::endl;
+	std::cout << "Number of VDX Files: " << vdxFiles.size() << std::endl;
 }
 
 // Extracts all of the *.VDX files from the user-specifed *.GJD file
 void extractVDX(const std::string_view& filename)
 {
-    std::string dirName(filename.data());
-    dirName.erase(dirName.find_last_of('.'));
-    std::filesystem::create_directory(dirName);
+	std::string dirName(filename.data());
+	dirName.erase(dirName.find_last_of('.'));
+	std::filesystem::create_directory(dirName);
 
-    std::cout << "Extracting GJD..." << std::endl;
+	std::cout << "Extracting GJD..." << std::endl;
 
-    std::vector<VDXFile> VDXFiles = parseGJDFile(filename.data());
+	std::vector<VDXFile> VDXFiles = parseGJDFile(filename.data());
 
-    for (const auto& vdxFile : VDXFiles)
-    {
-        writeVDXFile(vdxFile, dirName);
-    }
+	for (const auto& vdxFile : VDXFiles)
+	{
+		writeVDXFile(vdxFile, dirName);
+	}
 }
 
 // Writes out a *.PNG or *.RAW of every 0x20 and 0x25 chunk in the user-specified *.VDX file
 // as a full 640x320 bitmap
 void extractPNG(const std::string_view& filename, bool raw)
 {
-    std::ifstream vdxFile(filename.data(), std::ios::binary | std::ios::ate);
-    if (!vdxFile)
-    {
-        std::cerr << "ERROR: Failed to open the VDX file: " << filename << std::endl;
-        return;
-    }
+	std::cout << filename.data() << std::endl;
 
-    auto fileSize = static_cast<std::size_t>(vdxFile.tellg());
-    vdxFile.seekg(0, std::ios::beg);
+	std::ifstream vdxFile(filename.data(), std::ios::binary | std::ios::ate);
 
-    std::vector<uint8_t> vdxData(fileSize);
-    vdxFile.read(reinterpret_cast<char*>(vdxData.data()), fileSize);
+	if (!vdxFile)
+	{
+		std::cerr << "ERROR: Failed to open the VDX file: " << filename << std::endl;
+		return;
+	}
 
-    VDXFile parsedVDXFile = parseVDXFile(filename.data(), vdxData);
+	auto fileSize = static_cast<std::size_t>(vdxFile.tellg());
+	vdxFile.seekg(0, std::ios::beg);
 
-    std::filesystem::path filePath(filename.data());
-    std::string baseName = filePath.filename().string();
+	std::vector<uint8_t> vdxData(fileSize);
+	vdxFile.read(reinterpret_cast<char*>(vdxData.data()), fileSize);
 
-    std::replace(baseName.begin(), baseName.end(), '.', '_');
+	VDXFile parsedVDXFile = parseVDXFile(filename.data(), vdxData);
 
-    std::filesystem::path dirPath = filePath.parent_path() / baseName;
-    std::filesystem::create_directory(dirPath);
+	std::filesystem::path dirPath = (std::filesystem::path(filename.data()).parent_path() /
+		[](std::string s) { std::replace(s.begin(), s.end(), '.', '_'); return s; }
+	(std::filesystem::path(filename.data()).filename().string()));
 
-    std::vector<processedVDXChunk> parsedChunks = parseVDXChunks(parsedVDXFile);
+	std::filesystem::create_directory(dirPath);
 
-    int frame = 1;
-    for (const auto& parsedChunk : parsedChunks)
-    {
-        if (parsedChunk.chunkType != 0x80)
-        {
-            std::ostringstream frameString;
-            frameString << std::setfill('0') << std::setw(4) << frame;
+	std::vector<processedVDXChunk> parsedChunks = parseVDXChunks(parsedVDXFile);
 
-            std::filesystem::path outputFilePath = dirPath;
+	int frame = 1;
+	for (const auto& parsedChunk : parsedChunks)
+	{
+		if (parsedChunk.chunkType != 0x80)
+		{
+			std::ostringstream frameString;
+			frameString << std::setfill('0') << std::setw(4) << frame;
 
-            if (raw)
-            {
-                outputFilePath /= (parsedVDXFile.filename + "_" + frameString.str() + ".raw");
-                std::ofstream rawBitmapFile(outputFilePath, std::ios::binary);
-                rawBitmapFile.write(reinterpret_cast<const char*>(parsedChunk.data.data()), parsedChunk.data.size());
-                rawBitmapFile.close();
-            }
-            else
-            {
-                outputFilePath /= (parsedVDXFile.filename + "_" + frameString.str() + ".png");
-                savePNG(outputFilePath.string(), parsedChunk.data, 640, 320);
-            }
-        }
+			std::filesystem::path outputFilePath = dirPath;
 
-        frame++;
-    }
+			if (raw)
+			{
+				outputFilePath /= (parsedVDXFile.filename + "_" + frameString.str() + ".raw");
+				std::ofstream rawBitmapFile(outputFilePath, std::ios::binary);
+				rawBitmapFile.write(reinterpret_cast<const char*>(parsedChunk.data.data()), parsedChunk.data.size());
+				rawBitmapFile.close();
+			}
+			else
+			{
+				outputFilePath /= (parsedVDXFile.filename + "_" + frameString.str() + ".png");
+				savePNG(outputFilePath.string(), parsedChunk.data, 640, 320);
+			}
+		}
+
+		frame++;
+	}
 }
