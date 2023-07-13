@@ -34,6 +34,7 @@
  */
 
 #include <iostream>
+#include <vector>
 #include <string>
 
 #include "game.h"
@@ -48,43 +49,58 @@
 
 int main(int argc, char* argv[])
 {
-    std::string_view option = argv[1];
-    std::string_view filename;
-    if (argc > 2)
+    std::vector<std::string_view> args(argv, argv + argc);
+
+    if (args.size() <= 1)
     {
-        filename = argv[2];
+        std::cout << "calling init()..." << std::endl;
+        // gameLoop();
+        return 0;
     }
 
-    if (option == "-g")
+    if (args[1] == "-g")
     {
-        //... Test Direct2D window
-        // Test gameloop
-        gameLoop();
+        // Testing Direct2D window (remove later)
+        //InitWindow();
+        //InitDevice();
     }
-    else if (option == "-i")
+    else if (args[1] == "-i")
     {
-        GJDInfo(filename);
-    }
-    else if (option == "-p")
-    {
-        bool raw = false;
-        if (argc == 4 && argv[3] == "raw")
+        if (args.size() < 3)
         {
-            extractPNG(filename, raw = true);
+            std::cerr << "ERROR: a *.RL file was not specified.\n" << std::endl;
+            std::cerr << "Example: v64tng.exe -i DR.RL" << std::endl;
+
+            return 1;
         }
-        else
-        {
-            extractPNG(filename, raw);
-        }
+        GJDInfo(args[2]);
     }
-    else if (option == "-x")
+    else if (args[1] == "-p")
     {
-        extractVDX(filename);
+        if (args.size() < 3)
+        {
+            std::cerr << "ERROR: a *.VDX file was not specified.\n" << std::endl;
+            std::cerr << "Example: v64tng.exe -p dr_00f.vdx {raw}" << std::endl;
+
+            return 1;
+        }
+        bool raw = (args.size() > 3 && args[3] == "raw");
+        extractPNG(args[2], raw);
+    }
+    else if (args[1] == "-x")
+    {
+        if (args.size() < 3)
+        {
+            std::cerr << "ERROR: a *.GJD file was not specified.\n" << std::endl;
+            std::cerr << "Example: v64tng.exe -x DR.GJD" << std::endl;
+            return 1;
+        }
+        extractVDX(args[2]);
     }
     else
     {
-        std::cerr << "Invalid option: " << option << std::endl;
-        std::cerr << "Usage: " << argv[0] << " [-i|-p|-x] file" << std::endl;
+        std::cerr << "ERROR: Invalid option: " << args[1] << std::endl;
+        std::cerr << "\nUsage: " << args[0] << " [-i|-p|-x] file" << std::endl;
         return 1;
     }
 

@@ -6,3 +6,7 @@
 
 # Ignore .vs dir
 /.vs/
+
+# Ignore the program
+v64tng.exe
+v64tng.pdb
