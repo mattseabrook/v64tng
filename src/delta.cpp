@@ -36,7 +36,6 @@ std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getDeltaBitmapData(std::
 {
     int i, j, k;
     uint16_t Map, LocPalSz, x, y, width, height;
-    //uint8_t c0, c1;
 
     // Check for local palette adaptations
     LocPalSz = buffer[0] | (buffer[1] << 8);
