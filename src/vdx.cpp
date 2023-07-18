@@ -83,48 +83,58 @@ std::vector<processedVDXChunk> parseVDXChunks(VDXFile& vdxFile)
 
 	for (VDXChunk& chunk : vdxFile.chunks)
 	{
-		processedVDXChunk processedChunk;
-		processedChunk.chunkType = chunk.chunkType;
+		std::vector<uint8_t> data;
 
 		switch (chunk.chunkType)
 		{
 		case 0x00:
 			// Handle chunk type 0x00
-			processedChunk.data = std::vector<uint8_t>();
+			data = std::vector<uint8_t>();
 
 			break;
 		case 0x20:
 		{
 			// Handle chunk type 0x20
-			std::vector<uint8_t> decompressedData = lzssDecompress(chunk.data, chunk.lengthMask, chunk.lengthBits);
-			std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> result = getBitmapData(decompressedData);
-			palette = std::get<0>(result);
-			processedChunk.data = std::get<1>(result);
-			prevBitmapIndex = processedChunks.size();
+			if (chunk.lengthBits != 0)
+			{
+				std::vector<uint8_t> decompressedData = lzssDecompress(chunk.data, chunk.lengthMask, chunk.lengthBits);
+				std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> result = getBitmapData(decompressedData);
+				palette = std::get<0>(result);
+				data = std::get<1>(result);
+				prevBitmapIndex = processedChunks.size();
+			}
+			else {
+				data = chunk.data;
+			}
 
 			break;
 		}
 		case 0x25:
 		{
 			// Handle chunk type 0x25
-			std::vector<uint8_t> decompressedData = lzssDecompress(chunk.data, chunk.lengthMask, chunk.lengthBits);
-			std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> result = getDeltaBitmapData(decompressedData,
-				palette,
-				processedChunks[prevBitmapIndex].data);
-			palette = std::get<0>(result);
-			processedChunk.data = std::get<1>(result);
-			prevBitmapIndex = processedChunks.size();
-
+			if (chunk.lengthBits != 0)
+			{
+				std::vector<uint8_t> decompressedData = lzssDecompress(chunk.data, chunk.lengthMask, chunk.lengthBits);
+				std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> result = getDeltaBitmapData(decompressedData,
+					palette,
+					processedChunks[prevBitmapIndex].data);
+				palette = std::get<0>(result);
+				data = std::get<1>(result);
+				prevBitmapIndex = processedChunks.size();
+			}
+			else {
+				data = chunk.data;
+			}
 			break;
 		}
 		case 0x80:
 			// Handle chunk type 0x80
-			processedChunk.data = chunk.data;
+			data = chunk.data;
 
 			break;
 		}
 
-		processedChunks.push_back(processedChunk);
+		processedChunks.push_back({ chunk.chunkType, data });
 	}
 
 	return processedChunks;
