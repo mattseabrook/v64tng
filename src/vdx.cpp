@@ -91,14 +91,13 @@ std::vector<processedVDXChunk> parseVDXChunks(VDXFile& vdxFile)
 		{
 		case 0x20:
 		case 0x25:
-			std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> bitmapData = chunk.chunkType == 0x20
+			auto [palData, bitmapData] = chunk.chunkType == 0x20
 				? getBitmapData(chunk.data)
 				: getDeltaBitmapData(chunk.data, palette, processedChunks[prevBitmapIndex].data);
 
-			palette = std::get<0>(bitmapData);
-			chunk.data = std::get<1>(bitmapData);
+			palette = palData;
+			chunk.data = bitmapData;
 			prevBitmapIndex = processedChunks.size();
-
 			break;
 		}
 
