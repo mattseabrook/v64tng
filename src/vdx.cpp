@@ -77,64 +77,32 @@ Notes:
 std::vector<processedVDXChunk> parseVDXChunks(VDXFile& vdxFile)
 {
 	std::vector<processedVDXChunk> processedChunks;
-
 	std::vector<RGBColor> palette;
 	size_t prevBitmapIndex{};
 
 	for (VDXChunk& chunk : vdxFile.chunks)
 	{
-		std::vector<uint8_t> data;
+		if (chunk.lengthBits != 0)
+		{
+			chunk.data = lzssDecompress(chunk.data, chunk.lengthMask, chunk.lengthBits);
+		}
 
 		switch (chunk.chunkType)
 		{
-		case 0x00:
-			// Handle chunk type 0x00
-			data = std::vector<uint8_t>();
-
-			break;
 		case 0x20:
-		{
-			// Handle chunk type 0x20
-			if (chunk.lengthBits != 0)
-			{
-				std::vector<uint8_t> decompressedData = lzssDecompress(chunk.data, chunk.lengthMask, chunk.lengthBits);
-				std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> result = getBitmapData(decompressedData);
-				palette = std::get<0>(result);
-				data = std::get<1>(result);
-				prevBitmapIndex = processedChunks.size();
-			}
-			else {
-				data = chunk.data;
-			}
-
-			break;
-		}
 		case 0x25:
-		{
-			// Handle chunk type 0x25
-			if (chunk.lengthBits != 0)
-			{
-				std::vector<uint8_t> decompressedData = lzssDecompress(chunk.data, chunk.lengthMask, chunk.lengthBits);
-				std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> result = getDeltaBitmapData(decompressedData,
-					palette,
-					processedChunks[prevBitmapIndex].data);
-				palette = std::get<0>(result);
-				data = std::get<1>(result);
-				prevBitmapIndex = processedChunks.size();
-			}
-			else {
-				data = chunk.data;
-			}
-			break;
-		}
-		case 0x80:
-			// Handle chunk type 0x80
-			data = chunk.data;
+			std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> bitmapData = chunk.chunkType == 0x20
+				? getBitmapData(chunk.data)
+				: getDeltaBitmapData(chunk.data, palette, processedChunks[prevBitmapIndex].data);
+
+			palette = std::get<0>(bitmapData);
+			chunk.data = std::get<1>(bitmapData);
+			prevBitmapIndex = processedChunks.size();
 
 			break;
 		}
 
-		processedChunks.push_back({ chunk.chunkType, data });
+		processedChunks.push_back({ chunk.chunkType, chunk.data });
 	}
 
 	return processedChunks;
