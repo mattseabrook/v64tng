@@ -10,6 +10,9 @@
 #include "lzss.h"
 #include "bitmap.h"
 #include "delta.h"
+#include "config.h"
+
+extern bool devMode;
 
 /*
 ===============================================================================
@@ -79,6 +82,7 @@ std::vector<processedVDXChunk> parseVDXChunks(VDXFile& vdxFile)
 	std::vector<processedVDXChunk> processedChunks;
 	std::vector<RGBColor> palette;
 	size_t prevBitmapIndex{};
+	RGBColor fuscia = { 255, 0, 255 };
 
 	for (VDXChunk& chunk : vdxFile.chunks)
 	{
@@ -91,6 +95,16 @@ std::vector<processedVDXChunk> parseVDXChunks(VDXFile& vdxFile)
 		{
 		case 0x20:
 		case 0x25:
+			if (devMode && chunk.chunkType == 0x25)
+			{
+				for (size_t i = 0; i < processedChunks[prevBitmapIndex].data.size(); i += 3)
+				{
+					processedChunks[prevBitmapIndex].data[i] = fuscia.r;
+					processedChunks[prevBitmapIndex].data[i + 1] = fuscia.g;
+					processedChunks[prevBitmapIndex].data[i + 2] = fuscia.b;
+				}
+			}
+
 			auto [palData, bitmapData] = chunk.chunkType == 0x20
 				? getBitmapData(chunk.data)
 				: getDeltaBitmapData(chunk.data, palette, processedChunks[prevBitmapIndex].data);
@@ -98,6 +112,7 @@ std::vector<processedVDXChunk> parseVDXChunks(VDXFile& vdxFile)
 			palette = palData;
 			chunk.data = bitmapData;
 			prevBitmapIndex = processedChunks.size();
+
 			break;
 		}
 

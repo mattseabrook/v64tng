@@ -41,68 +41,82 @@
 #include "window.h"
 #include "extract.h"
 
- /*
- ====================
-     MAIN ENTRY POINT
- ====================
- */
+bool devMode = false;
+
+/*
+====================
+	MAIN ENTRY POINT
+====================
+*/
 
 int main(int argc, char* argv[])
 {
-    std::vector<std::string_view> args(argv, argv + argc);
+	std::vector<std::string_view> args(argv, argv + argc);
 
-    if (args.size() <= 1)
-    {
-        std::cout << "calling init()..." << std::endl;
-        // gameLoop();
-        return 0;
-    }
+	if (args.size() <= 1)
+	{
+		std::cout << "calling init()..." << std::endl;
+		// gameLoop();
+		return 0;
+	}
 
-    if (args[1] == "-g")
-    {
-        // Testing Direct2D window (remove later)
-        //InitWindow();
-        //InitDevice();
-    }
-    else if (args[1] == "-i")
-    {
-        if (args.size() < 3)
-        {
-            std::cerr << "ERROR: a *.RL file was not specified.\n" << std::endl;
-            std::cerr << "Example: v64tng.exe -i DR.RL" << std::endl;
+	if (args[1] == "-g")
+	{
+		// Testing Direct2D window (remove later)
+		//InitWindow();
+		//InitDevice();
+	}
+	else if (args[1] == "-i")
+	{
+		if (args.size() < 3)
+		{
+			std::cerr << "ERROR: a *.RL file was not specified.\n" << std::endl;
+			std::cerr << "Example: v64tng.exe -i DR.RL" << std::endl;
 
-            return 1;
-        }
-        GJDInfo(args[2]);
-    }
-    else if (args[1] == "-p")
-    {
-        if (args.size() < 3)
-        {
-            std::cerr << "ERROR: a *.VDX file was not specified.\n" << std::endl;
-            std::cerr << "Example: v64tng.exe -p dr_00f.vdx {raw}" << std::endl;
+			return 1;
+		}
+		GJDInfo(args[2]);
+	}
+	else if (args[1] == "-p")
+	{
+		if (args.size() < 3)
+		{
+			std::cerr << "ERROR: a *.VDX file was not specified.\n" << std::endl;
+			std::cerr << "Example: v64tng.exe -p dr_00f.vdx {raw} {alpha}" << std::endl;
+			return 1;
+		}
+		
+		bool raw = false;
+		
+		for (auto arg = args.begin() + 3; arg != args.end(); ++arg)
+		{
+			if (*arg == "raw")
+			{
+				raw = true;
+			}
+			else if (*arg == "alpha")
+			{
+				devMode = true;
+			}
+		}
+		extractPNG(args[2], raw);
+	}
+	else if (args[1] == "-x")
+	{
+		if (args.size() < 3)
+		{
+			std::cerr << "ERROR: a *.GJD file was not specified.\n" << std::endl;
+			std::cerr << "Example: v64tng.exe -x DR.GJD" << std::endl;
+			return 1;
+		}
+		extractVDX(args[2]);
+	}
+	else
+	{
+		std::cerr << "ERROR: Invalid option: " << args[1] << std::endl;
+		std::cerr << "\nUsage: " << args[0] << " [-i|-p|-x] file" << std::endl;
+		return 1;
+	}
 
-            return 1;
-        }
-        bool raw = (args.size() > 3 && args[3] == "raw");
-        extractPNG(args[2], raw);
-    }
-    else if (args[1] == "-x")
-    {
-        if (args.size() < 3)
-        {
-            std::cerr << "ERROR: a *.GJD file was not specified.\n" << std::endl;
-            std::cerr << "Example: v64tng.exe -x DR.GJD" << std::endl;
-            return 1;
-        }
-        extractVDX(args[2]);
-    }
-    else
-    {
-        std::cerr << "ERROR: Invalid option: " << args[1] << std::endl;
-        std::cerr << "\nUsage: " << args[0] << " [-i|-p|-x] file" << std::endl;
-        return 1;
-    }
-
-    return 0;
+	return 0;
 }
