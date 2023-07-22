@@ -21,6 +21,9 @@
 ===============================================================================
 */
 
+// God Mode
+extern bool devMode;
+
 // VDXChunk struct
 struct VDXChunk
 {
@@ -29,13 +32,6 @@ struct VDXChunk
     uint32_t dataSize;
     uint8_t lengthMask;
     uint8_t lengthBits;
-    std::vector<uint8_t> data;
-};
-
-// Processed VDXChunk struct
-struct processedVDXChunk
-{
-    uint8_t chunkType;
     std::vector<uint8_t> data;
 };
 
@@ -49,7 +45,7 @@ struct VDXFile
 };
 
 VDXFile parseVDXFile(const std::string& filename, const std::vector<uint8_t>& buffer);
-std::vector<processedVDXChunk> parseVDXChunks(VDXFile& vdxFile);
+void parseVDXChunks(VDXFile& vdxFile);
 void writeVDXFile(const VDXFile& vdxFile, const std::string& outputDir);
 
 #endif // VDX_H

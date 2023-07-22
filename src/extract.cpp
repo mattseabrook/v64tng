@@ -63,41 +63,52 @@ void extractPNG(const std::string_view& filename, bool raw)
 	vdxFile.read(reinterpret_cast<char*>(vdxData.data()), fileSize);
 
 	VDXFile parsedVDXFile = parseVDXFile(filename.data(), vdxData);
+	parseVDXChunks(parsedVDXFile);
 
 	std::filesystem::path dirPath = (std::filesystem::path(filename.data()).parent_path() /
 		[](std::string s) { std::replace(s.begin(), s.end(), '.', '_'); return s; }
 	(std::filesystem::path(filename.data()).filename().string()));
 
-	std::filesystem::create_directory(dirPath);
-
-	std::vector<processedVDXChunk> parsedChunks = parseVDXChunks(parsedVDXFile);
-
-	int frame = 1;
-	for (const auto& parsedChunk : parsedChunks)
+	if (!std::filesystem::create_directory(dirPath))
 	{
-		if (parsedChunk.chunkType != 0x80)
+		std::cerr << "ERROR: Failed to create the directory: " << dirPath << std::endl;
+		return;
+	}
+
+	for (std::size_t i = 0; i < parsedVDXFile.chunks.size(); i++)
+	{
+		// debug
+		std::cout << "Type: 0x" << std::hex << static_cast<int>(parsedVDXFile.chunks[i].chunkType) <<
+			" , LZSS size (bytes): " << std::dec << parsedVDXFile.chunks[i].dataSize <<
+			" , Size (bytes): " << parsedVDXFile.chunks[i].data.size() << std::endl;
+
+		if (parsedVDXFile.chunks[i].chunkType == 0x80)
 		{
-			std::ostringstream frameString;
-			frameString << std::setfill('0') << std::setw(4) << frame;
-
-			std::filesystem::path outputFilePath = dirPath;
-
-			if (raw)
-			{
-				outputFilePath /= (parsedVDXFile.filename + "_" + frameString.str() + ".raw");
-				std::ofstream rawBitmapFile(outputFilePath, std::ios::binary);
-				std::cout << "Writing: " << outputFilePath.string() << std::endl;
-				rawBitmapFile.write(reinterpret_cast<const char*>(parsedChunk.data.data()), parsedChunk.data.size());
-				rawBitmapFile.close();
-			}
-			else
-			{
-				outputFilePath /= (parsedVDXFile.filename + "_" + frameString.str() + ".png");
-				std::cout << "Writing: " << outputFilePath.string() << std::endl;
-				savePNG(outputFilePath.string(), parsedChunk.data, 640, 320);
-			}
+			continue;
+		}
+		else if (parsedVDXFile.chunks[i].chunkType == 0x00)
+		{
+			continue;
 		}
 
-		frame++;
+		std::ostringstream frameString;
+		frameString << std::setfill('0') << std::setw(4) << i + 1;
+
+		std::filesystem::path outputFilePath = dirPath;
+
+		if (raw)
+		{
+			outputFilePath /= (parsedVDXFile.filename + "_" + frameString.str() + ".raw");
+			std::ofstream rawBitmapFile(outputFilePath, std::ios::binary);
+			std::cout << "Writing: " << outputFilePath.string() << std::endl;
+			rawBitmapFile.write(reinterpret_cast<const char*>(parsedVDXFile.chunks[i].data.data()), parsedVDXFile.chunks[i].data.size());
+			rawBitmapFile.close();
+		}
+		else
+		{
+			outputFilePath /= (parsedVDXFile.filename + "_" + frameString.str() + ".png");
+			std::cout << "Writing: " << outputFilePath.string() << std::endl;
+			savePNG(outputFilePath.string(), parsedVDXFile.chunks[i].data, 640, 320);
+		}
 	}
 }

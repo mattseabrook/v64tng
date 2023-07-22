@@ -12,8 +12,6 @@
 #include "delta.h"
 #include "config.h"
 
-extern bool devMode;
-
 /*
 ===============================================================================
 Function Name: parseVDXFile
@@ -77,15 +75,17 @@ Notes:
 	- None.
 ===============================================================================
 */
-std::vector<processedVDXChunk> parseVDXChunks(VDXFile& vdxFile)
+void parseVDXChunks(VDXFile& vdxFile)
 {
-	std::vector<processedVDXChunk> processedChunks;
+std::vector<uint8_t> alphaChannel;
 	std::vector<RGBColor> palette;
 	size_t prevBitmapIndex{};
-	RGBColor fuscia = { 255, 0, 255 };
+	RGBColor colorKey = { 255, 0, 255 }; // Fuscia
 
-	for (VDXChunk& chunk : vdxFile.chunks)
+	for (size_t i = 0; i < vdxFile.chunks.size(); i++)
 	{
+		VDXChunk& chunk = vdxFile.chunks[i];
+
 		if (chunk.lengthBits != 0)
 		{
 			chunk.data = lzssDecompress(chunk.data, chunk.lengthMask, chunk.lengthBits);
@@ -95,31 +95,32 @@ std::vector<processedVDXChunk> parseVDXChunks(VDXFile& vdxFile)
 		{
 		case 0x20:
 		case 0x25:
-			if (devMode && chunk.chunkType == 0x25)
+			if (chunk.chunkType == 0x25 && devMode && alphaChannel.empty())
 			{
-				for (size_t i = 0; i < processedChunks[prevBitmapIndex].data.size(); i += 3)
+				alphaChannel.resize(vdxFile.chunks[0].data.size());
+				for (size_t j = 0; j < alphaChannel.size(); j += 3)
 				{
-					processedChunks[prevBitmapIndex].data[i] = fuscia.r;
-					processedChunks[prevBitmapIndex].data[i + 1] = fuscia.g;
-					processedChunks[prevBitmapIndex].data[i + 2] = fuscia.b;
+					alphaChannel[j] = colorKey.r;
+					alphaChannel[j + 1] = colorKey.g;
+					alphaChannel[j + 2] = colorKey.b;
 				}
 			}
 
 			auto [palData, bitmapData] = chunk.chunkType == 0x20
 				? getBitmapData(chunk.data)
-				: getDeltaBitmapData(chunk.data, palette, processedChunks[prevBitmapIndex].data);
+				: getDeltaBitmapData(chunk.data, palette, devMode ? alphaChannel : vdxFile.chunks[prevBitmapIndex].data);
 
 			palette = palData;
 			chunk.data = bitmapData;
-			prevBitmapIndex = processedChunks.size();
+
+			if (chunk.chunkType == 0x20 || chunk.chunkType == 0x25)
+			{
+				prevBitmapIndex = i;
+			}
 
 			break;
 		}
-
-		processedChunks.push_back({ chunk.chunkType, chunk.data });
 	}
-
-	return processedChunks;
 }
 
 /*

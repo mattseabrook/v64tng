@@ -39,11 +39,6 @@ std::vector<uint8_t> lzssDecompress(const std::vector<uint8_t>& compressedData, 
                 int32_t length = (ofs_len & lengthMask) + threshold;
                 int32_t offset = (his_buf_pos - (ofs_len >> lengthBits)) & (N - 1);
 
-                if (length < 0 || offset < 0) {
-                    std::cout << "Error: Negative length or offset calculated.\n";
-                    return {}; // Return an empty vector to indicate the error
-                }
-
                 decompressedData.reserve(decompressedData.size() + length);
                 for (uint16_t j = 0; j < length; ++j)
                 {
