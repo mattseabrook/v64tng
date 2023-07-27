@@ -89,6 +89,37 @@ void savePNG(const std::string& filename, const std::vector<uint8_t>& imageData,
 
 /*
 ===============================================================================
+Function Name: convertRGBtoBGRA
+
+Description:
+    - Converts the 8-bit RGB raw 7th Guest bitmap data structure to a BGRA
+    format for Direct2D rendering.
+
+Parameters:
+    - rgbData: 8-bit RGB raw bitmap data structure
+
+Return:
+    - std::vector<uint8_t>: 8-bit BGRA raw bitmap data structure
+===============================================================================
+*/
+std::vector<uint8_t> convertRGBtoBGRA(const std::vector<uint8_t>& rgbData)
+{
+    std::vector<uint8_t> bgraData;
+    bgraData.reserve(rgbData.size() / 3 * 4);
+
+    for (size_t i = 0; i < rgbData.size(); i += 3)
+    {
+        bgraData.push_back(rgbData[i + 2]);    // B
+        bgraData.push_back(rgbData[i + 1]);    // G
+        bgraData.push_back(rgbData[i]);        // R
+        bgraData.push_back(255);               // A
+    }
+
+    return bgraData;
+}
+
+/*
+===============================================================================
 Function Name: getBitmapData
 
 Description:

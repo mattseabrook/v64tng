@@ -33,15 +33,17 @@
  * SOFTWARE.
  */
 
+#include <windows.h>
 #include <iostream>
 #include <vector>
+#include <thread>
 #include <string>
 
 #include "game.h"
 #include "window.h"
 #include "extract.h"
 
-bool devMode = false;
+bool devMode = false;	// God Mode :)
 
 /*
 ====================
@@ -55,16 +57,67 @@ int main(int argc, char* argv[])
 
 	if (args.size() <= 1)
 	{
-		std::cout << "calling init()..." << std::endl;
 		// gameLoop();
 		return 0;
 	}
 
-	if (args[1] == "-g")
+	//
+	// Start the Game Engine normally
+	//
+	if (args[1] == "@")
 	{
-		// Testing Direct2D window (remove later)
-		//InitWindow();
-		//InitDevice();
+		wchar_t selfPath[MAX_PATH];
+		if (!GetModuleFileNameW(NULL, selfPath, MAX_PATH)) {
+			std::cerr << "Failed to get module file name, error: " << GetLastError() << std::endl;
+			return 1;
+		}
+
+		wchar_t params[] = L"e8e801e69cd548fab61b999a344b48d6\0";
+
+		STARTUPINFO si = { sizeof(STARTUPINFO) };
+		PROCESS_INFORMATION pi;
+
+		if (!CreateProcessW(selfPath, params, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
+		{
+			std::cerr << "CreateProcess failed with error: " << GetLastError() << std::endl;
+			return 1;
+		}
+
+		CloseHandle(pi.hProcess);
+		CloseHandle(pi.hThread);
+		exit(0);
+	}
+	else if (args[1] == "e8e801e69cd548fab61b999a344b48d6")
+	{
+		/*
+		HINSTANCE hInstance = GetModuleHandle(NULL);
+		if (FAILED(InitWindow(hInstance, SW_SHOWDEFAULT)))
+		{
+			std::cerr << "Window initialization failed." << std::endl;
+			return 1;
+		}
+
+		if (FAILED(InitDevice()))
+		{
+			std::cerr << "Device initialization failed." << std::endl;
+			return 1;
+		}
+
+		// Windows message loop.
+		MSG msg = {};
+		while (GetMessage(&msg, NULL, 0, 0))
+		{
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+
+		// Don't forget to release Direct2D resources before exiting.
+		DiscardDeviceResources();
+
+		return 0;
+		*/
+		std::cout << "GAME STARTING BRO!" << std::endl;
+		return 0;
 	}
 	else if (args[1] == "-i")
 	{
@@ -72,7 +125,6 @@ int main(int argc, char* argv[])
 		{
 			std::cerr << "ERROR: a *.RL file was not specified.\n" << std::endl;
 			std::cerr << "Example: v64tng.exe -i DR.RL" << std::endl;
-
 			return 1;
 		}
 		GJDInfo(args[2]);
@@ -85,9 +137,9 @@ int main(int argc, char* argv[])
 			std::cerr << "Example: v64tng.exe -p dr_00f.vdx {raw} {alpha}" << std::endl;
 			return 1;
 		}
-		
+
 		bool raw = false;
-		
+
 		for (auto arg = args.begin() + 3; arg != args.end(); ++arg)
 		{
 			if (*arg == "raw")
@@ -114,7 +166,7 @@ int main(int argc, char* argv[])
 	else
 	{
 		std::cerr << "ERROR: Invalid option: " << args[1] << std::endl;
-		std::cerr << "\nUsage: " << args[0] << " [-i|-p|-x] file" << std::endl;
+		std::cerr << "\nUsage: " << args[0] << " [@|-i|-p|-x] file" << std::endl;
 		return 1;
 	}
 
