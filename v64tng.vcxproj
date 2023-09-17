@@ -175,6 +175,7 @@
     <ClCompile Include="src\rl.cpp" />
     <ClCompile Include="src\vdx.cpp" />
     <ClCompile Include="src\window.cpp" />
+    <ClCompile Include="src\xmi.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
