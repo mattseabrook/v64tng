@@ -28,19 +28,17 @@ This project is an academic endeavor, created as a technical study and homage to
 
 ## RL
 
-The RL (Rob Landeros) file is an index file that contains information about VDX file locations inside the corresponding GJD file. The RL file format consists of a list of records, each representing a VDX file. Each record contains the following fields:
-
-| Name     | Type               | Description                                 |
-| -------- | ------------------ | ------------------------------------------- |
-| Filename | char[12]           | Filename (null-terminated string)           |
-| Offset   | uint32_t (4 bytes) | Unsigned integer indicating GJD file offset |
-| Length   | uint32_t (4 bytes) | Unsigned integer indicating GJD file length |
-
-Each entry in the `*.RL` file is 20 bytes long:
+The RL (Rob Landeros) file is an index file that contains information about VDX file locations inside the corresponding `*.GJD` file. The RL file format consists of a list of records, each representing a VDX file. Each entry in the RL file is 20 bytes long:
 
 - The first 12 bytes correspond to the filename.
 - The next 4 bytes correspond to the offset.
 - The final 4 bytes correspond to the length.
+
+| Name     | Type               | Description                                 |
+| -------- | ------------------ | ------------------------------------------- |
+| Filename | char[12]           | Filename (null-terminated string)           |
+| Offset   | uint32_t (4 bytes) | Unsigned integer indicating VDX file offset |
+| Length   | uint32_t (4 bytes) | Unsigned integer indicating VDX file length |
 
 ## GJD
 
