@@ -391,9 +391,11 @@ v64tng.exe -p [VDX_FILE] [OPTIONAL_ARGUMENTS]
 ### Optional Arguments
 
 - `raw`: To extract in raw format.
-- `alpha`: This flag activates the developer mode.
+- `alpha`: This flag activates a visible alpha channel that is set to: `RGBColor colorKey = { 255, 0, 255 }; // Fuscia`.
 
 **Example**: `v64tng.exe -p dr_00f.vdx raw alpha`
+
+Note that these optionals do not need to be used concurrently. 
 
 ## Extracting .VDX from .GJD Files
 
