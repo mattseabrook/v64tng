@@ -2,8 +2,6 @@
 
 **Table-of-Contents**
 - [Disclaimer](#disclaimer)
-- [t7gEd](#t7ged)
-  - [Pre-requisites](#pre-requisites)
 - [Game Engine Architecture](#game-engine-architecture)
   - [RL](#rl)
   - [GJD](#gjd)
@@ -18,20 +16,6 @@
 # Disclaimer
 
 This project is an academic endeavor, created as a technical study and homage to the original software The 7th Guest. It is important to clarify that this project is not officially affiliated with, connected to, or endorsed by the original creators or any of its subsidiaries or its affiliates. This project's primary aim is to serve as an educational resource and a platform for learning and research. It seeks to explore the underlying technology, software architecture, and design principles that informed the creation of The 7th Guest. In replicating the engine, it pays tribute to the groundbreaking work of the original developers and aspires to provide a springboard for further study, innovation, and appreciation within the realms of game development and computer science. This project does not intend to compete with or infringe upon the intellectual property rights of the original software or its creators. Its use, modification, and distribution are intended strictly for non-profit, educational purposes. All trademarks and registered trademarks mentioned herein are acknowledged as the property of their respective owners.
-
-# t7gEd
-
-This is a `python` GUI application that is used to configure and set-up travel & hot-spot locations, and which `*.VDX` files match to them. Each travel location has a North, East, South, and West orientation- or basically 4 pivot points. This application writes appropriate const definitions to all of the C++ header files that are proprietary to the game. This application is not required to run the game, but it is required to be used to generate the C++ header files if you want to compile this project.
-
-## Pre-requisites
-
-| Name     | Description                                                                |
-| -------- | -------------------------------------------------------------------------- |
-| pillow   | N/A                                                                        |
-| six      | N/A                                                                        |
-| numpy    | N/A                                                                        |
-| pytz     | This is a library that is used to convert timezones.                       |
-| wxPython | This is a GUI library that is used to create the GUI for this application. |
 
 # Game Engine Architecture
 
