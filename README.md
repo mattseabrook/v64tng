@@ -82,15 +82,17 @@ The VDX file format is used to store video sequences and still images. The data 
 
 ## LZSS
 
-The VDX chunks can optionally be compressed by a common variant of the LZSS alogrithm. This is the case if and only if both of the values `lengthMask` and `lengthBits` are not equal to zero. Decompression will take place using a circular history buffer and a sliding window with the following parameters:
+VDX chunks can optionally be compressed using a common variant of the LZSS algorithm. The chunks are compressed if, and only if, both `lengthMask` and `lengthBits` are not equal to zero. Decompression will occur using a circular history buffer (`his_buf`) and a sliding window with the following parameters:
 
 ```
- bufferSize = 1 << (16 - lengthBits)
- windowSize = 1 << lengthBits
- threshold = 3
+N (buffer size) = 1 ≪ (16 − lengthBits)
+F (window size) = 1 ≪ lengthBits
+threshold = 3
 ```
 
-All references are relative to the current write position. Initially, writing starts at `bufferSize - windowSize`. The `lengthMask` value of the Chunk Header can be used to isolate the length portion of a buffer reference, though this information seems a bit redundant since the number of bits used (`lengthBits`) is also known.
+All references are relative to the current write position in the history buffer, which is tracked by `his_buf_pos`. Initially, writing begins at `N - F`. The `lengthMask` value from the Chunk Header can isolate the length portion of a buffer reference, though this seems a bit redundant since the number of bits used (`lengthBits`) is also specified.
+
+During decompression, the function `lzssDecompress` reads and processes each byte from the input `compressedData` and populates the output `decompressedData` vector. The history buffer (`his_buf`) is used to store previous data, facilitating the LZSS decompression process.
 
 # Usage
 
