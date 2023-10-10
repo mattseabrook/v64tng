@@ -12,6 +12,13 @@
     - [Type 0x20 Bitmap](#type-0x20-bitmap)
   - [LZSS Compression](#lzss-compression)
     - [Algorithm Overview](#algorithm-overview)
+- [Usage](#usage)
+  - [Starting the Game Engine](#starting-the-game-engine)
+  - [Information on .RL Files](#information-on-rl-files)
+  - [Extracting PNG from .VDX Files](#extracting-png-from-vdx-files)
+    - [Optional Arguments](#optional-arguments)
+  - [Extracting .VDX from .GJD Files](#extracting-vdx-from-gjd-files)
+- [CHANGELOG](#changelog)
 
 # Disclaimer
 
@@ -350,3 +357,54 @@ std::vector<uint8_t> lzssDecompress(const std::vector<uint8_t> &compressedData, 
     return decompressedData;
 }
 ```
+
+# Usage
+
+Below is the detailed usage guide for the command line interface.
+
+## Starting the Game Engine
+
+If you wish to start the game engine normally:
+
+```cmd
+v64tng.exe @
+```
+
+## Information on .RL Files
+
+To get information about a specific .RL file:
+
+```cmd
+v64tng.exe -i [RL_FILE]
+```
+
+**Example:** `v64tng.exe -i DR.RL`
+
+## Extracting PNG from .VDX Files
+
+To extract PNG images from a specific .VDX file, use the following command:
+
+```cmd
+v64tng.exe -p [VDX_FILE] [OPTIONAL_ARGUMENTS]
+```
+
+### Optional Arguments
+
+- `raw`: To extract in raw format.
+- `alpha`: This flag activates the developer mode.
+
+**Example**: `v64tng.exe -p dr_00f.vdx raw alpha`
+
+## Extracting .VDX from .GJD Files
+
+To extract .VDX files from a specific .GJD file:
+
+```cmd
+v64tng.exe -x [GJD_FILE]
+```
+
+**Example**: `v64tng.exe -x DR.GJD`
+
+# CHANGELOG
+
+x
