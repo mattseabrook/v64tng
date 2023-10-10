@@ -10,6 +10,8 @@
     - [Chunk Header](#chunk-header)
     - [Chunk Types](#chunk-types)
       - [0x20 Bitmap](#0x20-bitmap)
+      - [Notes](#notes)
+  - [LZSS](#lzss)
 - [Usage](#usage)
   - [Starting the Game Engine](#starting-the-game-engine)
   - [Information on .RL Files](#information-on-rl-files)
@@ -74,7 +76,21 @@ The VDX file format is used to store video sequences and still images. The data 
 
 #### 0x20 Bitmap
 
+#### Notes
+
 - Video sequences within a VDX file are intended to be played at 15 frames per second.
+
+## LZSS
+
+The VDX chunks can optionally be compressed by a common variant of the LZSS alogrithm. This is the case if and only if both of the values `lengthMask` and `lengthBits` are not equal to zero. Decompression will take place using a circular history buffer and a sliding window with the following parameters:
+
+```
+ bufferSize = 1 << (16 - lengthBits)
+ windowSize = 1 << lengthBits
+ threshold = 3
+```
+
+All references are relative to the current write position. Initially, writing starts at `bufferSize - windowSize`. The `lengthMask` value of the Chunk Header can be used to isolate the length portion of a buffer reference, though this information seems a bit redundant since the number of bits used (`lengthBits`) is also known.
 
 # Usage
 
