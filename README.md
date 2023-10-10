@@ -30,94 +30,27 @@ This project is an academic endeavor, created as a technical study and homage to
 
 The RL (Rob Landeros) file is an index file that contains information about VDX file locations inside the corresponding GJD file. The RL file format consists of a list of records, each representing a VDX file. Each record contains the following fields:
 
-| Name        | Type     | Description                                     |
-| ----------- | -------- | ----------------------------------------------- |
-| Filename    | char[12] | The name of the VDX file                        |
-| File Offset | uint32   | The offset of the VDX file data in the GJD file |
-| File Size   | uint32   | The size of the VDX file data                   |
+| Name     | Type               | Description                                 |
+| -------- | ------------------ | ------------------------------------------- |
+| Filename | char[12]           | Filename (null-terminated string)           |
+| Offset   | uint32_t (4 bytes) | Unsigned integer indicating GJD file offset |
+| Length   | uint32_t (4 bytes) | Unsigned integer indicating GJD file length |
 
-The following C++ code demonstrates how to parse RL and GJD files to extract the VDX file data:
+Each entry in the `*.RL` file is 20 bytes long:
 
-```cpp
-// Parse RL file to get the VDX file locations
-std::vector<std::pair<size_t, size_t>> parseRLFile(const std::string &rlFilename)
-{
-    std::vector<std::pair<size_t, size_t>> vdxLocations;
-
-    // Open the RL file for reading in binary mode
-    std::ifstream rlFile(rlFilename, std::ios::binary);
-
-    // Check if the file was opened successfully
-    if (!rlFile)
-    {
-        std::cerr << "Error opening RL file: " << rlFilename << std::endl;
-        return vdxLocations;
-    }
-
-    // Read the number of VDX entries
-    uint32_t numVDXEntries;
-    rlFile.read(reinterpret_cast<char *>(&numVDXEntries), sizeof(numVDXEntries));
-
-    // Read the VDX file locations
-    for (uint32_t i = 0; i < numVDXEntries; ++i)
-    {
-        uint32_t offset, length;
-        rlFile.read(reinterpret_cast<char *>(&offset), sizeof(offset));
-        rlFile.read(reinterpret_cast<char *>(&length), sizeof(length));
-
-        // Store the VDX file offset and length in the vector
-        vdxLocations.push_back(std::make_pair(offset, length));
-    }
-
-    // Return the VDX file locations
-    return vdxLocations;
-}
-```
+- The first 12 bytes correspond to the filename.
+- The next 4 bytes correspond to the offset.
+- The final 4 bytes correspond to the length.
 
 ## GJD
 
-The GJD (Graeme J Devine) file is an archive file that contains the VDX files' data. The format of the GJD file is as follows:
+The GJD (Graeme J Devine) file is an archive file format that is essentially a collection of VDX data blobs, with their structure and location determined by the corresponding `*.RL` file.
 
-| Name          | Type    | Description                              |
-| ------------- | ------- | ---------------------------------------- |
-| VDX File Data | uint8[] | The data of a specific VDX file          |
-| null Padding  | uint8   | A null byte that separates each VDX file |
+It doesn't have a fixed header structure but rather uses the `*.RL` file as an index. Using the `offset` and `length` from the `*.RL` file, the VDX data is read from the GJD file.
 
-The following C++ code demonstrates how to grab a VDX file out of a GJD file, and send parse RL and GJD files to extract the VDX file data:
-
-```cpp
-// Parse GJD file to get the VDX file data
-void parseGJDFile(const std::string &gjdFilename, const std::string &rlFilename)
-{
-    // Get the VDX file locations from the RL file
-    std::vector<std::pair<size_t, size_t>> vdxLocations = parseRLFile(rlFilename);
-
-    // Open the GJD file for reading in binary mode
-    std::ifstream gjdFile(gjdFilename, std::ios::binary);
-
-    // Check if the file was opened successfully
-    if (!gjdFile)
-    {
-        std::cerr << "Error opening GJD file: " << gjdFilename << std::endl;
-        return;
-    }
-
-    // Iterate through the VDX file locations
-    for (const auto &location : vdxLocations)
-    {
-        size_t offset = location.first;
-        size_t length = location.second;
-
-        // Read the VDX data from the GJD file
-        std::vector<uint8_t> vdxData(length);
-        gjdFile.seekg(offset, std::ios::beg);
-        gjdFile.read(reinterpret_cast<char *>(vdxData.data()), length);
-
-        // Process the decompressed VDX data (This function should be implemented based on the VDX file format)
-        processVDXChunks(vdxData);
-    }
-}
-```
+| Name     | Type            | Description                                                                |
+| -------- | --------------- | -------------------------------------------------------------------------- |
+| VDX Data | uint8_t[length] | VDX data blob, length and offset determined by corresponding RL file entry |
 
 ## VDX
 
