@@ -63,12 +63,12 @@ The VDX file format is used to store video sequences and still images. The data 
 
 | Name       | Type   | Description                                                |
 | ---------- | ------ | ---------------------------------------------------------- |
-| ChunkType  | byte   | Determines the type of data                                |
-| Unknown    | byte   | Probably related to replay or synchronization commands     |
-| DataSize   | dword  | Size of the chunk without the header information           |
-| LengthMask | byte   | Compression information (not zero when data is compressed) |
-| LengthBits | byte   | Compression information (not zero when data is compressed) |
-| Data       | byte[] | Pure chunk data with length determined by `DataSize`       |
+| ChunkType  | uint8  | Determines the type of data                                |
+| Unknown    | uint8  | Probably related to replay or synchronization commands     |
+| DataSize   | uint32 | Size of the chunk without the header information           |
+| LengthMask | uint8  | Compression information (not zero when data is compressed) |
+| LengthBits | uint8  | Compression information (not zero when data is compressed) |
+| Data       | uint[] | Pure chunk data with length determined by `DataSize`       |
 
 ### Chunk Types
 
