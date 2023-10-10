@@ -76,6 +76,38 @@ The VDX file format is used to store video sequences and still images. The data 
 
 #### 0x20 Bitmap
 
+This chunk, as processed by the function `getBitmapData`, contains a compressed bitmap image following a header:
+
+| Name        | Type          | Description                                               |
+| ----------- | ------------- | --------------------------------------------------------- |
+| numXTiles   | uint16_t      | Number of tiles in the horizontal direction.              |
+| numYTiles   | uint16_t      | Number of tiles in the vertical direction.                |
+| colourDepth | uint16_t      | Colour depth in bits. (In the code, only 8 is observed).  |
+| palette     | RGBColor[768] | RGB values required for a palette implied by colourDepth. |
+| image       | uint8_t[]     | Sequence of structures describing the image.              |
+
+The image is split into tiles, each measuring 4x4 pixels. Each tile structure within the image data is as follows:
+
+| Name      | Type     | Description                                                                                                                                               |
+| --------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| colour1   | uint8_t  | Palette index used when the respective bit in the colourMap is set to 1.                                                                                  |
+| colour0   | uint8_t  | Palette index used when the respective bit in the colourMap is set to 0.                                                                                  |
+| colourMap | uint16_t | Field of 16 bits determining the colors of the pixels within the 4x4 tile. The colourMap is processed in the function to extract individual pixel colors. |
+
+The colourMap is a 16-bit field determining the colors of the pixels within the 4x4 tile. A pixel will be colored as indicated by the palette index colour1 if and only if the respective bit is set to 1. Otherwise, colour0 is used:
+
+```
+                                +----+----+----+----+
+                                | 15 | 14 | 13 | 12 |
+ LSB (0)        MSB (15)        +----+----+----+----+
+   |              |             | 11 | 10 |  9 |  8 |
+   XXXXXXXXXXXXXXXX      -->    +----+----+----+----+
+                                |  7 |  6 |  5 |  4 |
+                                +----+----+----+----+
+                                |  3 |  2 |  1 |  0 |
+                                +----+----+----+----+
+```
+
 #### Notes
 
 - Video sequences within a VDX file are intended to be played at 15 frames per second.
