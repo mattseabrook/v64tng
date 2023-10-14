@@ -17,6 +17,8 @@
           - [Line Skip and Tile Reset (0x61)](#line-skip-and-tile-reset-0x61)
           - [Tile Skipping within a Line (0x62 - 0x6B)](#tile-skipping-within-a-line-0x62---0x6b)
           - [Solid Tile Filling with a Single Color (0x6C - 0x75)](#solid-tile-filling-with-a-single-color-0x6c---0x75)
+          - [Multiple Tile Filling with Different Colors (0x76 - 0x7F)](#multiple-tile-filling-with-different-colors-0x76---0x7f)
+          - [Variable Palette Tile Coloring (0x80 - 0xFF)](#variable-palette-tile-coloring-0x80---0xff)
       - [Notes](#notes)
   - [LZSS](#lzss)
 - [Usage](#usage)
@@ -205,7 +207,28 @@ Opcodes within the range `0x6C` to `0x75` are used to fill consecutive tiles wit
 | ---------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | colorIndex | A single byte representing the palette entry index. This index is used to fetch the RGB color from the palette to fill the tiles. |
 
+###### Multiple Tile Filling with Different Colors (0x76 - 0x7F)
 
+Opcodes within the range `0x76` to `0x7F` are designed to fill multiple tiles with distinct colors. This allows for the efficient coloring of consecutive tiles, each with its own solid color, without the need to provide separate opcodes for each tile. A sequence of bytes, with the length determined by (`Opcode - 0x75`) represents a palette entry index that is used to fetch an RGB color from the palette to fill its respective tile.
+
+- The opcode determines the number of consecutive tiles to be filled, each with a distinct color. Specifically, the number of tiles (and palette entry parameters) is given by (Opcode - 0x75).
+- Each tile consists of 16 pixels (arranged in a 4x4 grid). Each tile will be filled with the color specified by its respective palette entry parameter.
+
+###### Variable Palette Tile Coloring (0x80 - 0xFF)
+
+For opcodes in the range `0x80` to `0xFF` within the VDX file's delta frame processing, the sequence allows for flexible and detailed coloring of individual tiles. Using a combination of a color map and two selected palette entries, tiles can have intricate patterns and combinations.
+
+- The 16-bit color map, formed by the opcode and the next byte, dictates the coloring pattern of the 16 pixels in the tile.
+- For each bit in the color map, starting from the most significant bit:
+  - If the bit is set, the pixel is colored with colour1.
+  - If the bit is unset, the pixel is colored with colour0.
+- This mechanism allows for a variety of pixel combinations within a single tile, based on the color map and the two selected colors.
+
+| Parameters | Description                                                           |
+| ---------- | --------------------------------------------------------------------- |
+| Map        | opcode byte and the subsequent byte together form a 16-bit color map. |
+| colour1    | opcode + 2 palette entry index                                        |
+| colour0    | opcode + 3 palette entry index                                        |
 
 #### Notes
 
