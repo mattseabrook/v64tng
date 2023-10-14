@@ -16,6 +16,7 @@
           - [Tile Fill Using Individual Palette Entries (0x60)](#tile-fill-using-individual-palette-entries-0x60)
           - [Line Skip and Tile Reset (0x61)](#line-skip-and-tile-reset-0x61)
           - [Tile Skipping within a Line (0x62 - 0x6B)](#tile-skipping-within-a-line-0x62---0x6b)
+          - [Solid Tile Filling with a Single Color (0x6C - 0x75)](#solid-tile-filling-with-a-single-color-0x6c---0x75)
       - [Notes](#notes)
   - [LZSS](#lzss)
 - [Usage](#usage)
@@ -192,6 +193,19 @@ opcodes ranging from `0x62` to `0x6B` are used to skip a specific number of tile
 
 - Based on the opcode's value, a certain number of tiles (each tile being 4 pixels wide) on the current line are skipped. The x-coordinate (representing the horizontal position in the frame) is incremented accordingly.
 - Specifically, the number of tiles to skip is determined by the formula (Opcode - 0x62). Notably, when the opcode is 0x62, no tiles are skipped, effectively serving as a no-operation (NOP) instruction in this context.
+
+###### Solid Tile Filling with a Single Color (0x6C - 0x75)
+
+Opcodes within the range `0x6C` to `0x75` are used to fill consecutive tiles with a solid color. This feature provides an efficient method to apply a uniform color to multiple tiles without the need to specify the color for each pixel separately.
+
+- The opcode determines the number of tiles to be filled with the specified color. Specifically, the number of tiles is given by (Opcode - 0x6B).
+- Each tile consists of 16 pixels (arranged in a 4x4 grid). All the pixels in these tiles will be filled with the same color.
+
+| Parameter  | Description                                                                                                                       |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| colorIndex | A single byte representing the palette entry index. This index is used to fetch the RGB color from the palette to fill the tiles. |
+
+
 
 #### Notes
 
