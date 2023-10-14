@@ -13,8 +13,8 @@
       - [0x25 Delta Bitmap](#0x25-delta-bitmap)
         - [Opcodes](#opcodes)
           - [Tile Alteration Using Predefined Map (0x00 - 0x5F)](#tile-alteration-using-predefined-map-0x00---0x5f)
-- [](#)
-    - [Notes](#notes)
+          - [Tile Fill Using Individual Palette Entries (0x60)](#tile-fill-using-individual-palette-entries-0x60)
+      - [Notes](#notes)
   - [LZSS](#lzss)
 - [Usage](#usage)
   - [Starting the Game Engine](#starting-the-game-engine)
@@ -166,8 +166,18 @@ When an opcode within this range is encountered, the process uses a predefined m
  0xcf, 0x44, 0xd9, 0x4c, 0x99, 0x4c, 0x55, 0x55, 0x3f, 0x60, 0x77, 0x60, 0x37, 0x62, 0xc9, 0x64,
  0xcd, 0x64, 0xd9, 0x6c, 0xef, 0x70, 0x00, 0x0f, 0xf0, 0x00, 0x00, 0x00, 0x44, 0x44, 0x22, 0x22
  ```
-#
-### Notes
+
+###### Tile Fill Using Individual Palette Entries (0x60)
+
+The opcode `0x60` is dedicated to fill the current 4x4 pixel tile using individual palette entries. Each pixel in the tile gets its color from a distinct palette entry, ensuring maximum flexibility in defining the tile's appearance. The 16 subsequent bytes to the opcode each represent a palette entry index, and they collectively decide the colors for the entire 4x4 tile.
+
+- Each of the 16 palette entry indices correspond to a pixel in the 4x4 tile.
+- The palette entry index is used to fetch the RGB values from the palette.
+- The RGB values are then used to update the delta frame at the position corresponding to the current pixel.
+- This process is repeated for all 16 pixels in the tile.
+Once the 4x4 tile is processed, the x-coordinate is incremented by 4, transitioning the operation to the next tile on the same line.
+
+#### Notes
 
 - Video sequences within a VDX file are intended to be played at 15 frames per second.
 
