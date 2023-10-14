@@ -10,6 +10,9 @@
     - [Chunk Header](#chunk-header)
     - [Chunk Types](#chunk-types)
       - [0x20 Bitmap](#0x20-bitmap)
+      - [0x25 Delta Bitmap](#0x25-delta-bitmap)
+        - [Opcodes](#opcodes)
+          - [0x??](#0x)
       - [Notes](#notes)
   - [LZSS](#lzss)
 - [Usage](#usage)
@@ -94,7 +97,7 @@ The image is split into tiles, each measuring 4x4 pixels. Each tile structure wi
 | colour0   | uint8_t  | Palette index used when the respective bit in the colourMap is set to 0.                                                                                  |
 | colourMap | uint16_t | Field of 16 bits determining the colors of the pixels within the 4x4 tile. The colourMap is processed in the function to extract individual pixel colors. |
 
-The colourMap is a 16-bit field determining the colors of the pixels within the 4x4 tile. A pixel will be colored as indicated by the palette index colour1 if and only if the respective bit is set to 1. Otherwise, colour0 is used:
+The `colourMap` is a 16-bit field determining the colors of the pixels within the 4x4 tile. A pixel will be colored as indicated by the palette index `colour1` if and only if the respective bit is set to 1. Otherwise, `colour0` is used:
 
 ```
                                 +----+----+----+----+
@@ -107,6 +110,33 @@ The colourMap is a 16-bit field determining the colors of the pixels within the 
                                 |  3 |  2 |  1 |  0 |
                                 +----+----+----+----+
 ```
+
+#### 0x25 Delta Bitmap
+
+These blocks contain animated (i.e., video) sequences. LZSS Decompressed data is transformed into an 8-bit RGB raw bitmap data structure. A fresh image/frame is meticulously constructed using the delta bitmap data. In the context of a VDX file that contains a video sequence, the initial frame is always represented by the picture contained in the `0x20` chunk. All subsequent frames leverage the 0x25 chunk type, outlining the modifications to be applied to the prior frame and its associated palette. Each `0x25` chunk has the following header:
+
+| Name           | Type                    | Description                                                                                                               |
+| -------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `localPalSize` | `uint16_t`              | Determines the number of palette entries that need alteration for this frame. If set to zero, the header concludes here.  |
+| `palBitField`  | `uint16_t[16]`          | A 256-bit field that specifies which palette entries are subject to change.                                               |
+| `localColours` | `std::vector<RGBColor>` | An array of RGB values, equivalent in size to the number of bits set in `palBitField`. Designates the new palette colors. |
+| `image`        | `std::vector<uint8_t>`  | A series of byte opcodes, each followed by a variable count of byte parameters, encapsulating the delta information.      |
+
+The first value, localPalSize, always exists. The next two fields (palBitField and localColours) only appear when the localPalSize is greater than zero.
+
+The current palette is altered according to the palBitField. Each position in this 256-bit wide field represents one palette entry. If a bit is set, the new colors for the referenced palette entry can be found in the localColours, which is a sequence of RGB colors following the bit field. Note that there are exactly as many bits set as there are RGB values following the bit field.
+
+After adapting the palette, the previous frame can be modified according to the image data. This data consists of a sequence of byte opcodes and a varying number of parameters following each opcode. Similar to the still image in the chunk of type 0x20, changes are performed on a picture divided into 4x4 pixel blocks. The changes start at the top-left block.
+
+##### Opcodes
+
+Opcodes are byte-sized instructions dictating how the image should be adapted. The initial documentation provides a comprehensive breakdown of these opcodes, from 0x00 to 0xff, and their associated behaviors.
+
+In the function `getDeltaBitmapData`, the buffer is parsed, and each opcode is processed according to its defined behavior.
+
+###### 0x??
+
+x
 
 #### Notes
 
