@@ -14,6 +14,8 @@
         - [Opcodes](#opcodes)
           - [Tile Alteration Using Predefined Map (0x00 - 0x5F)](#tile-alteration-using-predefined-map-0x00---0x5f)
           - [Tile Fill Using Individual Palette Entries (0x60)](#tile-fill-using-individual-palette-entries-0x60)
+          - [Line Skip and Tile Reset (0x61)](#line-skip-and-tile-reset-0x61)
+          - [Tile Skipping within a Line (0x62 - 0x6B)](#tile-skipping-within-a-line-0x62---0x6b)
       - [Notes](#notes)
   - [LZSS](#lzss)
 - [Usage](#usage)
@@ -176,6 +178,20 @@ The opcode `0x60` is dedicated to fill the current 4x4 pixel tile using individu
 - The RGB values are then used to update the delta frame at the position corresponding to the current pixel.
 - This process is repeated for all 16 pixels in the tile.
 Once the 4x4 tile is processed, the x-coordinate is incremented by 4, transitioning the operation to the next tile on the same line.
+
+###### Line Skip and Tile Reset (0x61)
+
+The opcode `0x61` is employed to transition to the start of the next line. It acts as a marker to indicate that the subsequent tiles should be filled starting from the beginning of the new line, aligning with the left border of the frame. This opcode stands alone and doesn't need any additional parameters to function.
+
+- The y-coordinate (representing the vertical position in the frame) is incremented by 4 pixels, equating to the height of one tile. This moves the processing to the next line.
+- The x-coordinate (representing the horizontal position) is reset to 0, placing the focus at the left-most position on the new line.
+
+###### Tile Skipping within a Line (0x62 - 0x6B)
+
+opcodes ranging from `0x62` to `0x6B` are used to skip a specific number of tiles within the current line. This provides a way to efficiently move horizontally across a frame without altering the pixels. These opcodes are self-contained and don't require additional parameters.
+
+- Based on the opcode's value, a certain number of tiles (each tile being 4 pixels wide) on the current line are skipped. The x-coordinate (representing the horizontal position in the frame) is incremented accordingly.
+- Specifically, the number of tiles to skip is determined by the formula (Opcode - 0x62). Notably, when the opcode is 0x62, no tiles are skipped, effectively serving as a no-operation (NOP) instruction in this context.
 
 #### Notes
 
