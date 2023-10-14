@@ -19,6 +19,7 @@
           - [Solid Tile Filling with a Single Color (0x6C - 0x75)](#solid-tile-filling-with-a-single-color-0x6c---0x75)
           - [Multiple Tile Filling with Different Colors (0x76 - 0x7F)](#multiple-tile-filling-with-different-colors-0x76---0x7f)
           - [Variable Palette Tile Coloring (0x80 - 0xFF)](#variable-palette-tile-coloring-0x80---0xff)
+      - [0x80 Raw WAV data](#0x80-raw-wav-data)
       - [Notes](#notes)
   - [LZSS](#lzss)
 - [Usage](#usage)
@@ -229,6 +230,32 @@ For opcodes in the range `0x80` to `0xFF` within the VDX file's delta frame proc
 | Map        | opcode byte and the subsequent byte together form a 16-bit color map. |
 | colour1    | opcode + 2 palette entry index                                        |
 | colour0    | opcode + 3 palette entry index                                        |
+
+#### 0x80 Raw WAV data
+
+These VDX chunks are just a stream of raw *.WAV file data that is 8-bit, mono, 22050 Hz in specification.
+
+In the new game engine, the WAV Header is statically defined, the `chunkSize` and `subchunk2Size` are calculated dynamically, and the entire structure is prepended to the appropriate `std::vector<uint8_t> wavData`.
+
+```cpp
+struct WAVHeader {
+    char     chunkID[4] = "RIFF";
+    uint32_t chunkSize;  // This value will be set later
+    char     format[4] = "WAVE";
+
+    char     subchunk1ID[4] = "fmt ";
+    uint32_t subchunk1Size = 16;
+    uint16_t audioFormat = 1;
+    uint16_t numChannels = 1;
+    uint32_t sampleRate = 22050;
+    uint32_t byteRate = 22050;
+    uint16_t blockAlign = 1;
+    uint16_t bitsPerSample = 8;
+
+    char     subchunk2ID[4] = "data";
+    uint32_t subchunk2Size;  // This value will be set later
+};
+```
 
 #### Notes
 
