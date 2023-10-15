@@ -63,7 +63,7 @@ int main(int argc, char* argv[])
 	//
 	// Start the Game Engine normally
 	//
-	if (args[1] == "@")
+	if (args[1] == "vulkan")
 	{
 		std::cout << "Starting the Game Engine..." << std::endl;
 	}
