@@ -112,19 +112,19 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\libs\zlib-1.2.13;C:\libs\zlib-1.2.13\build;C:\libs\lpng1639;C:\libs\lpng1639\build;$(SolutionDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\libs;C:\libs\zlib-1.2.13\build\Release;C:\libs\lpng1639\build\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>zlibstaticd.lib;libpng16_staticd.lib;user32.lib;gdi32.lib;d2d1.lib;dwrite.lib;windowscodecs.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>zlibstaticd.lib;libpng16_staticd.lib;user32.lib;gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <IgnoreSpecificDefaultLibraries>MSVCRTD.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -172,7 +172,6 @@
     <ClInclude Include="include\nlohmann\json.hpp" />
     <ClInclude Include="include\rl.h" />
     <ClInclude Include="include\vdx.h" />
-    <ClInclude Include="include\window.h" />
     <ClInclude Include="include\xmi.h" />
   </ItemGroup>
   <ItemGroup>
@@ -186,7 +185,6 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\rl.cpp" />
     <ClCompile Include="src\vdx.cpp" />
-    <ClCompile Include="src\window.cpp" />
     <ClCompile Include="src\xmi.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -40,7 +40,6 @@
 #include <string>
 
 #include "game.h"
-#include "window.h"
 #include "extract.h"
 
 bool devMode = false;	// God Mode :)
@@ -66,58 +65,7 @@ int main(int argc, char* argv[])
 	//
 	if (args[1] == "@")
 	{
-		wchar_t selfPath[MAX_PATH];
-		if (!GetModuleFileNameW(NULL, selfPath, MAX_PATH)) {
-			std::cerr << "Failed to get module file name, error: " << GetLastError() << std::endl;
-			return 1;
-		}
-
-		wchar_t params[] = L"e8e801e69cd548fab61b999a344b48d6\0";
-
-		STARTUPINFO si = { sizeof(STARTUPINFO) };
-		PROCESS_INFORMATION pi;
-
-		if (!CreateProcessW(selfPath, params, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
-		{
-			std::cerr << "CreateProcess failed with error: " << GetLastError() << std::endl;
-			return 1;
-		}
-
-		CloseHandle(pi.hProcess);
-		CloseHandle(pi.hThread);
-		exit(0);
-	}
-	else if (args[1] == "e8e801e69cd548fab61b999a344b48d6")
-	{
-		/*
-		HINSTANCE hInstance = GetModuleHandle(NULL);
-		if (FAILED(InitWindow(hInstance, SW_SHOWDEFAULT)))
-		{
-			std::cerr << "Window initialization failed." << std::endl;
-			return 1;
-		}
-
-		if (FAILED(InitDevice()))
-		{
-			std::cerr << "Device initialization failed." << std::endl;
-			return 1;
-		}
-
-		// Windows message loop.
-		MSG msg = {};
-		while (GetMessage(&msg, NULL, 0, 0))
-		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-
-		// Don't forget to release Direct2D resources before exiting.
-		DiscardDeviceResources();
-
-		return 0;
-		*/
-		std::cout << "GAME STARTING BRO!" << std::endl;
-		return 0;
+		std::cout << "Starting the Game Engine..." << std::endl;
 	}
 	else if (args[1] == "-i")
 	{

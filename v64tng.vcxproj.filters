@@ -45,9 +45,6 @@
     <ClInclude Include="include\vdx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\window.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\xmi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -81,9 +78,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\vdx.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\window.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\xmi.cpp">
