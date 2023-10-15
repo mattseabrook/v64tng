@@ -27,6 +27,25 @@ void GJDInfo(const std::string_view& filename)
 	std::cout << "Number of VDX Files: " << vdxFiles.size() << std::endl;
 }
 
+// Extract XMI files from the RL/GJD pair
+void extractXMI()
+{
+	std::vector<RLEntry> xmiFiles = parseRLFile("XMI.RL");
+
+	std::ifstream xmiData("XML.GJD", std::ios::binary | std::ios::ate);
+
+	for (const auto& xmiFile : xmiFiles)
+	{
+		std::vector<uint8_t> xmi(xmiFile.length);
+		xmiData.seekg(xmiFile.offset, std::ios::beg);
+		xmiData.read(reinterpret_cast<char*>(xmi.data()), xmiFile.length);
+
+		std::ofstream xmiFileOut(xmiFile.filename, std::ios::binary);
+		xmiFileOut.write(reinterpret_cast<const char*>(xmi.data()), xmiFile.length);
+		xmiFileOut.close();
+	}
+}
+
 // Extracts all of the *.VDX files from the user-specifed *.GJD file
 void extractVDX(const std::string_view& filename)
 {

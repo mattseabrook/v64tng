@@ -10,12 +10,13 @@
 
     7th Guest - Command-line extraction functions
 
-    Extracts *.VDX and *.PNG/*.RAW files from *.GJD files
+    Extracts *.VDX , *.XMI, and *.PNG/*.RAW files from *.GJD files
 
 ===============================================================================
 */
 
 void GJDInfo(const std::string_view& filename);
+void extractXMI();
 void extractVDX(const std::string_view& filename);
 void extractPNG(const std::string_view& filename, bool raw);
 
