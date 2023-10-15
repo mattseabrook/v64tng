@@ -12,6 +12,7 @@
 #include "rl.h"
 #include "gjd.h"
 #include "vdx.h"
+#include "xmi.h"
 #include "bitmap.h"
 
 // Output the information for a GJD file
@@ -32,7 +33,7 @@ void extractXMI()
 {
 	std::vector<RLEntry> xmiFiles = parseRLFile("XMI.RL");
 
-	std::ifstream xmiData("XML.GJD", std::ios::binary | std::ios::ate);
+	std::ifstream xmiData("XMI.GJD", std::ios::binary | std::ios::ate);
 
 	for (const auto& xmiFile : xmiFiles)
 	{

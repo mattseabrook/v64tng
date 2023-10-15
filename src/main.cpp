@@ -67,12 +67,12 @@ int main(int argc, char* argv[])
 	{
 		std::cout << "Starting the Game Engine..." << std::endl;
 	}
-	else if (args[1] == "-i")
+	else if (args[1] == "-r")
 	{
 		if (args.size() < 3)
 		{
 			std::cerr << "ERROR: a *.RL file was not specified.\n" << std::endl;
-			std::cerr << "Example: v64tng.exe -i DR.RL" << std::endl;
+			std::cerr << "Example: v64tng.exe -r DR.RL" << std::endl;
 			return 1;
 		}
 		GJDInfo(args[2]);
@@ -101,7 +101,7 @@ int main(int argc, char* argv[])
 		}
 		extractPNG(args[2], raw);
 	}
-	else if (args[1] == "-x")
+	else if (args[1] == "-g")
 	{
 		if (args.size() < 3)
 		{
@@ -111,10 +111,14 @@ int main(int argc, char* argv[])
 		}
 		extractVDX(args[2]);
 	}
+	else if (args[1] == "-x")
+	{
+		extractXMI();
+	}
 	else
 	{
 		std::cerr << "ERROR: Invalid option: " << args[1] << std::endl;
-		std::cerr << "\nUsage: " << args[0] << " [@|-i|-p|-x] file" << std::endl;
+		std::cerr << "\nUsage: " << args[0] << " [vulkan|-r|-p|-g|-x] file" << std::endl;
 		return 1;
 	}
 
