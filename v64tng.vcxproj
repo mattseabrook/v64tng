@@ -73,10 +73,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)\</OutDir>
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>C:\libs\libpng;C:\libs\zlib\build;C:\libs\zlib;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\libs\zlib\build\Debug;C:\libs\libpng\build\Debug;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)\</OutDir>
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>C:\libs\libpng;C:\libs\zlib\build;C:\libs\zlib;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\libs\zlib\build\Release;C:\libs\libpng\build\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -120,7 +124,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\libs;C:\libs\zlib-1.2.13\build\Release;C:\libs\lpng1639\build\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>zlibstatic.lib;libpng16_static.lib;user32.lib;gdi32.lib;d2d1.lib;dwrite.lib;windowscodecs.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>zlibstaticd.lib;libpng16_staticd.lib;user32.lib;gdi32.lib;d2d1.lib;dwrite.lib;windowscodecs.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
     </Link>
