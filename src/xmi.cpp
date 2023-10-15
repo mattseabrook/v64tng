@@ -348,7 +348,7 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
 
     unsigned char* pos = midi_decode.data();
 
-    while (pos < dcur)
+    while (pos < dcur)  
     {
         // first delta-time
         unsigned delta = 0;
@@ -361,7 +361,7 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
 
         // change delta here!!
         double factor = (double)timebase * DEFAULT_QN / ((double)qnlen * DEFAULT_TIMEBASE);
-        delta = (double)delta * factor + 0.5;
+        delta = static_cast<unsigned>((double)delta * factor + 0.5);        //delta = (double)delta * factor + 0.5;
 
         unsigned tdelta = delta & 0x7F;
         while ((delta >>= 7))
