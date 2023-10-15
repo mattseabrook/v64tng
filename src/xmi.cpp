@@ -42,23 +42,8 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
     unsigned short timebase = 960;
     unsigned long qnlen = DEFAULT_QN;
     
-    // 'fsize' should be the same size as my std::vector<uint8_t> xmiData
-
-    std::vector<unsigned char> midi_data(fsize);
- 
-    if (!file.read(reinterpret_cast<char*>(midi_data.data()), fsize))
-    {
-        std::cerr << "Error reading file\n";
-        exit(EXIT_FAILURE);
-    }
-
-
-
-
-
-
-
-
+    std::vector<unsigned char> midi_data(xmiData.size());
+    std::copy(xmiData.begin(), xmiData.end(), midi_data.begin());
 
     unsigned char* cur = midi_data.data();
 
@@ -150,7 +135,8 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
     cur += 4;
     std::cout << "whole event length: " << lEVNT << '\n';
 
-    std::vector<unsigned char> midi_decode(fsize * 2);
+    std::vector<unsigned char> midi_decode(xmiData.size() * 2);     //std::vector<unsigned char> midi_decode(fsize * 2);
+
     if (midi_decode.empty())
     {
         std::cerr << "Memory (decode buffer) allocation error\n";
@@ -351,7 +337,7 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
 
     std::cout << std::setw(7) << dlen << std::endl;
 
-    std::vector<unsigned char> midi_write(fsize * 2);
+    std::vector<unsigned char> midi_write(xmiData.size() * 2);      //std::vector<unsigned char> midi_write(fsize * 2);
     if (midi_write.empty())
     {
         std::cerr << "Memory (write buffer) allocation error\n";
