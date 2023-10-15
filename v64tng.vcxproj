@@ -162,6 +162,7 @@
     <ClInclude Include="include\rl.h" />
     <ClInclude Include="include\vdx.h" />
     <ClInclude Include="include\window.h" />
+    <ClInclude Include="include\xmi.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\bitmap.cpp" />

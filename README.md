@@ -120,24 +120,24 @@ The `colourMap` is a 16-bit field determining the colors of the pixels within th
 
 #### 0x25 Delta Bitmap
 
-These blocks contain animated (i.e., video) sequences. LZSS Decompressed data is transformed into an 8-bit RGB raw bitmap data structure. A fresh image/frame is meticulously constructed using the delta bitmap data. In the context of a VDX file that contains a video sequence, the initial frame is always represented by the picture contained in the `0x20` chunk. All subsequent frames leverage the 0x25 chunk type, outlining the modifications to be applied to the prior frame and its associated palette. Each `0x25` chunk has the following header:
+These blocks contain animated (i.e., video) sequences. LZSS decompressed data is transformed into an 8-bit RGB raw bitmap data structure. A fresh image/frame is meticulously constructed using the delta bitmap data. In the context of a VDX file that contains a video sequence, the initial frame is always represented by the picture contained in the `0x20` chunk. All subsequent frames leverage the `0x25` chunk type, outlining the modifications to be applied to the prior frame and its associated palette. Each `0x25` chunk has the following header:
 
-| Name           | Type                    | Description                                                                                                               |
-| -------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `localPalSize` | `uint16_t`              | Determines the number of palette entries that need alteration for this frame. If set to zero, the header concludes here.  |
-| `palBitField`  | `uint16_t[16]`          | A 256-bit field that specifies which palette entries are subject to change.                                               |
-| `localColours` | `std::vector<RGBColor>` | An array of RGB values, equivalent in size to the number of bits set in `palBitField`. Designates the new palette colors. |
-| `image`        | `std::vector<uint8_t>`  | A series of byte opcodes, each followed by a variable count of byte parameters, encapsulating the delta information.      |
+| Name         | Type                    | Description                                                                                                               |
+| ------------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| localPalSize | `uint16_t`              | Determines the number of palette entries that need alteration for this frame. If set to zero, the header concludes here.  |
+| palBitField  | `uint16_t[16]`          | A 256-bit field that specifies which palette entries are subject to change.                                               |
+| localColours | `std::vector<RGBColor>` | An array of RGB values, equivalent in size to the number of bits set in `palBitField`. Designates the new palette colors. |
+| image        | `std::vector<uint8_t>`  | A series of byte opcodes, each followed by a variable count of byte parameters, encapsulating the delta information.      |
 
-The first value, localPalSize, always exists. The next two fields (palBitField and localColours) only appear when the localPalSize is greater than zero.
+The first value, `localPalSize`, always exists. The next two fields (`palBitField` and `localColours`) only appear when the `localPalSize` is greater than zero.
 
-The current palette is altered according to the palBitField. Each position in this 256-bit wide field represents one palette entry. If a bit is set, the new colors for the referenced palette entry can be found in the localColours, which is a sequence of RGB colors following the bit field. Note that there are exactly as many bits set as there are RGB values following the bit field.
+The current palette is altered according to the `palBitField`. Each position in this 256-bit wide field represents one palette entry. If a bit is set, the new colors for the referenced palette entry can be found in the `localColours`, which is a sequence of RGB colors following the bit field. Note that there are exactly as many bits set as there are RGB values following the bit field.
 
-After adapting the palette, the previous frame can be modified according to the image data. This data consists of a sequence of byte opcodes and a varying number of parameters following each opcode. Similar to the still image in the chunk of type 0x20, changes are performed on a picture divided into 4x4 pixel blocks. The changes start at the top-left block.
+After adapting the palette, the previous frame can be modified according to the image data. This data consists of a sequence of byte opcodes and a varying number of parameters following each opcode. Similar to the still image in the chunk of type `0x20`, changes are performed on a picture divided into 4x4 pixel blocks. The changes start at the top-left block.
 
 ##### Opcodes
 
-Opcodes are byte-sized instructions dictating how the image should be adapted. The initial documentation provides a comprehensive breakdown of these opcodes, from 0x00 to 0xff, and their associated behaviors.
+Opcodes are byte-sized instructions dictating how the image should be adapted. The initial documentation provides a comprehensive breakdown of these opcodes, from `0x00` to `0xff`, and their associated behaviors.
 
 In the function `getDeltaBitmapData`, the buffer is parsed, and each opcode is processed according to its defined behavior.
 
@@ -146,9 +146,9 @@ In the function `getDeltaBitmapData`, the buffer is parsed, and each opcode is p
 When an opcode within this range is encountered, the process uses a predefined mapping to determine how the current 4x4 pixel tile will be altered.
 
 - Iterating over the 16 pixels of the 4x4 tile, the bit value from the Map (starting from the most significant bit) determines the color of each pixel.
-  - If the current bit is 0, the pixel is colored with colour0.
-  - If the current bit is 1, the pixel is colored with colour1.
-- The RGB values of the chosen color are fetched from the palette using the color index (colour1 or colour0) and are used to update the delta frame at the corresponding position.
+  - If the current bit is 0, the pixel is colored with `colour0`.
+  - If the current bit is 1, the pixel is colored with `colour1`.
+- The RGB values of the chosen color are fetched from the palette using the color index (`colour1` or `colour0`) and are used to update the delta frame at the corresponding position.
 - After processing each bit, the Map undergoes a left shift operation, moving to the next bit for the subsequent pixel.
 - Post processing the 4x4 tile, the x-coordinate is incremented by 4, moving the processing to the next tile on the same line.
 
@@ -195,13 +195,13 @@ The opcode `0x61` is employed to transition to the start of the next line. It ac
 opcodes ranging from `0x62` to `0x6B` are used to skip a specific number of tiles within the current line. This provides a way to efficiently move horizontally across a frame without altering the pixels. These opcodes are self-contained and don't require additional parameters.
 
 - Based on the opcode's value, a certain number of tiles (each tile being 4 pixels wide) on the current line are skipped. The x-coordinate (representing the horizontal position in the frame) is incremented accordingly.
-- Specifically, the number of tiles to skip is determined by the formula (Opcode - 0x62). Notably, when the opcode is 0x62, no tiles are skipped, effectively serving as a no-operation (NOP) instruction in this context.
+- Specifically, the number of tiles to skip is determined by the formula (`Opcode - 0x62`). Notably, when the opcode is `0x62`, no tiles are skipped, effectively serving as a no-operation (NOP) instruction in this context.
 
 ###### Solid Tile Filling with a Single Color (0x6C - 0x75)
 
 Opcodes within the range `0x6C` to `0x75` are used to fill consecutive tiles with a solid color. This feature provides an efficient method to apply a uniform color to multiple tiles without the need to specify the color for each pixel separately.
 
-- The opcode determines the number of tiles to be filled with the specified color. Specifically, the number of tiles is given by (Opcode - 0x6B).
+- The opcode determines the number of tiles to be filled with the specified color. Specifically, the number of tiles is given by (`Opcode - 0x6B`).
 - Each tile consists of 16 pixels (arranged in a 4x4 grid). All the pixels in these tiles will be filled with the same color.
 
 | Parameter  | Description                                                                                                                       |
@@ -212,7 +212,7 @@ Opcodes within the range `0x6C` to `0x75` are used to fill consecutive tiles wit
 
 Opcodes within the range `0x76` to `0x7F` are designed to fill multiple tiles with distinct colors. This allows for the efficient coloring of consecutive tiles, each with its own solid color, without the need to provide separate opcodes for each tile. A sequence of bytes, with the length determined by (`Opcode - 0x75`) represents a palette entry index that is used to fetch an RGB color from the palette to fill its respective tile.
 
-- The opcode determines the number of consecutive tiles to be filled, each with a distinct color. Specifically, the number of tiles (and palette entry parameters) is given by (Opcode - 0x75).
+- The opcode determines the number of consecutive tiles to be filled, each with a distinct color. Specifically, the number of tiles (and palette entry parameters) is given by (`Opcode - 0x75`).
 - Each tile consists of 16 pixels (arranged in a 4x4 grid). Each tile will be filled with the color specified by its respective palette entry parameter.
 
 ###### Variable Palette Tile Coloring (0x80 - 0xFF)
@@ -221,8 +221,8 @@ For opcodes in the range `0x80` to `0xFF` within the VDX file's delta frame proc
 
 - The 16-bit color map, formed by the opcode and the next byte, dictates the coloring pattern of the 16 pixels in the tile.
 - For each bit in the color map, starting from the most significant bit:
-  - If the bit is set, the pixel is colored with colour1.
-  - If the bit is unset, the pixel is colored with colour0.
+  - If the bit is set, the pixel is colored with `colour1`.
+  - If the bit is unset, the pixel is colored with `colour0`.
 - This mechanism allows for a variety of pixel combinations within a single tile, based on the color map and the two selected colors.
 
 | Parameters | Description                                                           |

@@ -13,6 +13,8 @@
 #include <iomanip>
 #include <cstdint>
 
+#include "xmi.h"
+
 struct NOEVENTS
 {
     unsigned delta;
@@ -40,7 +42,6 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
     unsigned short timebase = 960;
     unsigned long qnlen = DEFAULT_QN;
     
-   // fix here...
     // 'fsize' should be the same size as my std::vector<uint8_t> xmiData
 
     std::vector<unsigned char> midi_data(fsize);

@@ -48,6 +48,9 @@
     <ClInclude Include="include\window.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\xmi.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\bitmap.cpp">
