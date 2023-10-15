@@ -73,13 +73,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)\</OutDir>
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\libs\libpng;C:\libs\zlib\build;C:\libs\zlib;$(IncludePath)</IncludePath>
+    <IncludePath>C:\libs\libpng\build;C:\libs\libpng;C:\libs\zlib\build;C:\libs\zlib;$(IncludePath)</IncludePath>
     <LibraryPath>C:\libs\zlib\build\Debug;C:\libs\libpng\build\Debug;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)\</OutDir>
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\libs\libpng;C:\libs\zlib\build;C:\libs\zlib;$(IncludePath)</IncludePath>
+    <IncludePath>C:\libs\libpng\build;C:\libs\libpng;C:\libs\zlib\build;C:\libs\zlib;$(IncludePath)</IncludePath>
     <LibraryPath>C:\libs\zlib\build\Release;C:\libs\libpng\build\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -127,6 +127,7 @@
       <AdditionalDependencies>zlibstaticd.lib;libpng16_staticd.lib;user32.lib;gdi32.lib;d2d1.lib;dwrite.lib;windowscodecs.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <IgnoreSpecificDefaultLibraries>MSVCRTD.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /y "$(OutDir)$(TargetName)$(TargetExt)" "D:\T7G\"</Command>
@@ -136,7 +137,8 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <FunctionLevelLinking>
+      </FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -152,6 +154,7 @@
       <AdditionalDependencies>zlibstatic.lib;libpng16_static.lib;user32.lib;gdi32.lib;d2d1.lib;dwrite.lib;windowscodecs.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <IgnoreSpecificDefaultLibraries>MSVCRTD.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /y "$(OutDir)$(TargetName)$(TargetExt)" "D:\T7G\"</Command>
