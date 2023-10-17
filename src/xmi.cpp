@@ -47,6 +47,7 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
 
     unsigned char* cur = midi_data.data();
 
+    /*
     cur += 4;
     cur += 4;
     cur += 4;
@@ -60,7 +61,9 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
     cur += 4;
     cur += 4;
     cur += 4;
+    */
 
+    cur += 4 * 12 + 2;
     unsigned lTIMB = _byteswap_ulong(*reinterpret_cast<unsigned*>(cur));
     cur += 4;
 
@@ -71,16 +74,13 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
 
     if (!std::memcmp(cur, "RBRN", 4))
     {
-        cur += 4;
-        cur += 4;
-
+        cur += 8;
         unsigned short nBranch = *reinterpret_cast<unsigned short*>(cur);
         cur += 2;
 
         for (unsigned i = 0; i < nBranch; i++)
         {
-            cur += 2;
-            cur += 4;
+            cur += 6;
         }
     }
 
