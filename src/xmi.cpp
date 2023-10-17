@@ -47,55 +47,18 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
 
     unsigned char* cur = midi_data.data();
 
-    if (!std::equal(cur, cur + 4, "FORM"))
-    {
-        std::cerr << "Not XMIDI file (FORM)\n";
-    }
     cur += 4;
-
-    unsigned lFORM = _byteswap_ulong(*reinterpret_cast<unsigned*>(cur));
     cur += 4;
-
-    if (!std::equal(cur, cur + 4, "XDIR"))
-        std::cerr << "Not XMIDI file (XDIR)\n";
     cur += 4;
-
-    if (!std::equal(cur, cur + 4, "INFO"))
-        std::cerr << "Not XMIDI file (INFO)\n";
     cur += 4;
-
-    unsigned lINFO = _byteswap_ulong(*reinterpret_cast<unsigned*>(cur));
     cur += 4;
-
-    unsigned short seqCount = *reinterpret_cast<unsigned short*>(cur);
     cur += 2;
-
-    std::cout << "seqCount: " << seqCount << '\n';
-
-    if (!std::equal(cur, cur + 4, "CAT "))
-        std::cerr << "Not XMIDI file (CAT )\n";
     cur += 4;
-
-    unsigned lCAT = _byteswap_ulong(*reinterpret_cast<unsigned*>(cur));
     cur += 4;
-
-    if (!std::equal(cur, cur + 4, "XMID"))
-        std::cerr << "Not XMIDI file (XMID)\n";
     cur += 4;
-
-    if (!std::equal(cur, cur + 4, "FORM"))
-        std::cerr << "Not XMIDI file (FORM)\n";
     cur += 4;
-
-    unsigned lFORM2 = _byteswap_ulong(*reinterpret_cast<unsigned*>(cur));
     cur += 4;
-
-    if (!std::equal(cur, cur + 4, "XMID"))
-        std::cerr << "Not XMIDI file (XMID)\n";
     cur += 4;
-
-    if (!std::equal(cur, cur + 4, "TIMB"))
-        std::cerr << "Not XMIDI file (TIMB)\n";
     cur += 4;
 
     unsigned lTIMB = _byteswap_ulong(*reinterpret_cast<unsigned*>(cur));
@@ -103,15 +66,12 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
 
     for (unsigned i = 0; i < lTIMB; i += 2)
     {
-        std::cout << "patch@bank: " << std::setw(3) << static_cast<int>(*cur) << "@" << static_cast<int>(*(cur + 1)) << "\n";
         cur += 2;
     }
 
     if (!std::memcmp(cur, "RBRN", 4))
     {
         cur += 4;
-        std::cout << "(RBRN)\n";
-        unsigned lRBRN = _byteswap_ulong(*reinterpret_cast<unsigned*>(cur));
         cur += 4;
 
         unsigned short nBranch = *reinterpret_cast<unsigned short*>(cur);
@@ -119,29 +79,16 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
 
         for (unsigned i = 0; i < nBranch; i++)
         {
-            unsigned short id = *reinterpret_cast<unsigned short*>(cur);
             cur += 2;
-            unsigned dest = *reinterpret_cast<unsigned*>(cur);
             cur += 4;
-            std::cout << "id/dest: " << std::setfill('0') << std::setw(4) << std::hex << id << "@" << std::setw(8) << dest << "\n";
         }
     }
 
-    if (!std::equal(cur, cur + 4, "EVNT"))
-        std::cerr << "Not XMIDI file (EVNT)\n";
     cur += 4;
-
     unsigned lEVNT = _byteswap_ulong(*reinterpret_cast<unsigned*>(cur));
     cur += 4;
-    std::cout << "whole event length: " << lEVNT << '\n';
 
-    std::vector<unsigned char> midi_decode(xmiData.size() * 2);     //std::vector<unsigned char> midi_decode(fsize * 2);
-
-    if (midi_decode.empty())
-    {
-        std::cerr << "Memory (decode buffer) allocation error\n";
-        std::exit(EXIT_FAILURE);
-    }
+    std::vector<unsigned char> midi_decode(xmiData.size() * 2);
 
     unsigned char* dcur = midi_decode.data();
 
@@ -240,8 +187,6 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
             {
                 if (*(cur + 1) == 0x2F)
                 {
-                    std::cout << "flush " << std::setw(3) << oevents << " note offs\n";
-
                     for (unsigned i = 0; i < oevents; i++)
                     {
                         *dcur++ = off_events[i].off[0] & 0x8F;
@@ -252,8 +197,6 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
                     *dcur++ = *cur++;
                     *dcur++ = *cur++;
                     *dcur++ = 0;
-
-                    std::cout << "Track Ends\n";
 
                     break;
                 }
@@ -327,22 +270,12 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
             }
             else
             {
-                std::cout << "wrong event\n";
                 cur++;
             }
         }
     }
 
-    ptrdiff_t dlen = dcur - midi_decode.data();
-
-    std::cout << std::setw(7) << dlen << std::endl;
-
-    std::vector<unsigned char> midi_write(xmiData.size() * 2);      //std::vector<unsigned char> midi_write(fsize * 2);
-    if (midi_write.empty())
-    {
-        std::cerr << "Memory (write buffer) allocation error\n";
-        std::exit(EXIT_FAILURE);
-    }
+    std::vector<unsigned char> midi_write(xmiData.size() * 2);
 
     unsigned char* tcur = midi_write.data();
 
@@ -361,7 +294,7 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
 
         // change delta here!!
         double factor = (double)timebase * DEFAULT_QN / ((double)qnlen * DEFAULT_TIMEBASE);
-        delta = static_cast<unsigned>((double)delta * factor + 0.5);        //delta = (double)delta * factor + 0.5;
+        delta = static_cast<unsigned>((double)delta * factor + 0.5);
 
         unsigned tdelta = delta & 0x7F;
         while ((delta >>= 7))
@@ -487,15 +420,9 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
                 }
             }
         }
-        else
-        {
-            std::cout << "Bad event " << std::hex << (int)*pos << " at " << std::dec << (pos - midi_decode.data()) << std::endl;
-        }
     }
 
     ptrdiff_t tlen = tcur - midi_write.data();
-
-    std::cout << std::setw(7) << tlen << std::endl;
 
     //
     // Output
@@ -508,7 +435,7 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
 
     midiData.insert(midiData.end(), midiheader.begin(), midiheader.end());
     
-    unsigned long bs_tlen = _byteswap_ulong(static_cast<unsigned long>(tlen));      //unsigned bs_tlen = _byteswap_ulong(tlen);
+    unsigned long bs_tlen = _byteswap_ulong(static_cast<unsigned long>(tlen));
     midiData.insert(midiData.end(), reinterpret_cast<const char*>(&bs_tlen), reinterpret_cast<const char*>(&bs_tlen) + sizeof(unsigned));
 
     midiData.insert(midiData.end(), midi_write.begin(), midi_write.end());
