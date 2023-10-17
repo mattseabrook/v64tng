@@ -1,23 +1,28 @@
 // xmi.cpp
 
-#include <cstdio>
-#include <cstdlib>
-#include <cerrno>
 #include <cstring>
 #include <algorithm>
 #include <vector>
 #include <array>
-#include <fstream>
-#include <filesystem>
-#include <iostream>
-#include <iomanip>
 #include <cstdint>
 
 #include "xmi.h"
 
-//
-// xmi2mid
-//
+/*
+===============================================================================
+Function Name: xmiConverter
+
+Description:
+	- Converts XMI files to standard MIDI files, in memory as a 
+	vector of uint8_t
+
+Parameters:
+	- xmiData: XMI file data as a vector of uint8_t
+
+Return:
+	- std::vector<uint8_t>: Standard MIDI file data as a vector of uint8_t
+===============================================================================
+*/
 std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
 {
 	struct NOEVENTS
@@ -43,10 +48,7 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
 	unsigned short timebase = 960;
 	unsigned long qnlen = DEFAULT_QN;
 
-	std::vector<unsigned char> midi_data(xmiData.size());
-	std::copy(xmiData.begin(), xmiData.end(), midi_data.begin());
-
-	unsigned char* cur = midi_data.data();
+	unsigned char* cur = xmiData.data();
 
 	cur += 4 * 12 + 2;
 	unsigned lTIMB = _byteswap_ulong(*reinterpret_cast<unsigned*>(cur));
