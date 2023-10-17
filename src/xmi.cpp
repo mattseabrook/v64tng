@@ -47,22 +47,6 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
 
     unsigned char* cur = midi_data.data();
 
-    /*
-    cur += 4;
-    cur += 4;
-    cur += 4;
-    cur += 4;
-    cur += 4;
-    cur += 2;
-    cur += 4;
-    cur += 4;
-    cur += 4;
-    cur += 4;
-    cur += 4;
-    cur += 4;
-    cur += 4;
-    */
-
     cur += 4 * 12 + 2;
     unsigned lTIMB = _byteswap_ulong(*reinterpret_cast<unsigned*>(cur));
     cur += 4;
