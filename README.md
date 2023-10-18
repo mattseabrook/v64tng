@@ -21,6 +21,7 @@
           - [Variable Palette Tile Coloring (0x80 - 0xFF)](#variable-palette-tile-coloring-0x80---0xff)
       - [0x80 Raw WAV data](#0x80-raw-wav-data)
       - [Notes](#notes)
+  - [XMI](#xmi)
   - [LZSS](#lzss)
 - [Usage](#usage)
   - [Starting the Game Engine](#starting-the-game-engine)
@@ -28,7 +29,16 @@
   - [Extracting PNG from .VDX Files](#extracting-png-from-vdx-files)
     - [Optional Arguments](#optional-arguments)
   - [Extracting .VDX from .GJD Files](#extracting-vdx-from-gjd-files)
+- [Developers](#developers)
+  - [Pre-requisites](#pre-requisites)
 - [CHANGELOG](#changelog)
+- [NOTES](#notes-1)
+  - [Vulkan](#vulkan)
+    - [GLFW](#glfw)
+    - [GLM](#glm)
+    - [VkPhysicalDeviceFeatures](#vkphysicaldevicefeatures)
+    - [VkQueueSubmit](#vkqueuesubmit)
+    - [VkResult](#vkresult)
 
 # Disclaimer
 
@@ -261,6 +271,10 @@ struct WAVHeader {
 
 - Video sequences within a VDX file are intended to be played at 15 frames per second.
 
+## XMI
+
+x
+
 ## LZSS
 
 VDX chunks can optionally be compressed using a common variant of the LZSS algorithm. The chunks are compressed if, and only if, both `lengthMask` and `lengthBits` are not equal to zero. Decompression will occur using a circular history buffer (`his_buf`) and a sliding window with the following parameters:
@@ -324,6 +338,46 @@ v64tng.exe -x [GJD_FILE]
 
 **Example**: `v64tng.exe -x DR.GJD`
 
+# Developers
+
+## Pre-requisites
+
+| Name       | Description                                                                    |
+| ---------- | ------------------------------------------------------------------------------ |
+| zlib       | Compression required by `libpng`.                                              |
+| libpng     | Used to save the `0x20` and `0x25` bitmap frames to `*.PNG` format (lossless). |
+| Vulkan SDK | Graphics rendering.                                                            |
+| GLFW       | Required by `Vulkan` for Window Management.                                    |
+| GLM        | Linear Algebra library required by `Vulkan`                                    |
+
 # CHANGELOG
 
 x
+
+# NOTES
+
+## Vulkan
+
+- The shader code defining a shader module must be in the SPIR-V format
+- SDK path: `C:\VulkanSDK\1.3.261.1`
+- `glslangValidator.exe` and `glslc.exe` programs will be used to compile shaders from the human-readable `GLSL` to bytecode
+
+### GLFW
+
+- It also abstracts away some of the other platform-specific things in Vulkan besides just window creation.
+
+### GLM
+
+`Vulkan`` does not include a library for linear algebra operations. GLM is a header-only library, so just download the latest version and store it in a convenient location.
+
+### VkPhysicalDeviceFeatures
+
+https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceFeatures.html
+
+### VkQueueSubmit
+
+https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkQueueSubmit.html
+
+### VkResult
+
+https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkResult.html
