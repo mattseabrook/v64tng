@@ -39,6 +39,7 @@
     - [VkPhysicalDeviceFeatures](#vkphysicaldevicefeatures)
     - [VkQueueSubmit](#vkqueuesubmit)
     - [VkResult](#vkresult)
+- [TODO](#todo)
 
 # Disclaimer
 
@@ -381,3 +382,8 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkQueueSubmit.
 ### VkResult
 
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkResult.html
+
+# TODO
+
+- Finish setting up Library Linkage for `GLFW` and `Vulkan`
+- Additional Linker Directories
