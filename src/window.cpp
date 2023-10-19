@@ -1,5 +1,7 @@
 // window.cpp
 
+#include <iostream>
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -8,13 +10,16 @@
 #include <glm/vec4.hpp>
 #include <glm/mat4x4.hpp>
 
-#include <iostream>
+#include "window.h"
 
+//
+// Start the Game Engine normally
+//
 void window() {
     glfwInit();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    GLFWwindow* window = glfwCreateWindow(640, 480, "v64tng", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(1280, 640, "v64tng", nullptr, nullptr);
 
     uint32_t extensionCount = 0;
     vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);

@@ -39,6 +39,7 @@
 #include <thread>
 #include <string>
 
+#include "window.h"
 #include "game.h"
 #include "extract.h"
 
@@ -66,6 +67,7 @@ int main(int argc, char* argv[])
 	if (args[1] == "vulkan")
 	{
 		std::cout << "Starting the Game Engine..." << std::endl;
+		window();
 	}
 	else if (args[1] == "-r")
 	{
