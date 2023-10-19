@@ -1,7 +1,7 @@
 // main.cpp
 
 /*
- * GROOVIE 2023
+ * v64tng.exe - GROOVIE 2023
  *
  * Game Engine Re-creation, including tooling designed for the extraction and
  * processing of resource files related to the 7th Guest game.
@@ -50,24 +50,43 @@ bool devMode = false;	// God Mode :)
 	MAIN ENTRY POINT
 ====================
 */
+int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
+	if (!AttachConsole(ATTACH_PARENT_PROCESS)) {
+		AllocConsole();
+	}
 
-int main(int argc, char* argv[])
-{
-	std::vector<std::string_view> args(argv, argv + argc);
+	freopen_s(reinterpret_cast<FILE**>(stdout), "CONOUT$", "w", stdout);
+	freopen_s(reinterpret_cast<FILE**>(stderr), "CONOUT$", "w", stderr);
+	freopen_s(reinterpret_cast<FILE**>(stdin), "CONIN$", "r", stdin);
 
-	if (args.size() <= 1)
+	std::cout.clear();
+	std::clog.clear();
+	std::cerr.clear();
+	std::cin.clear();
+
+	std::ios::sync_with_stdio(false);	// Synchronize C++ standard streams with standard C streams
+
+	int argc;
+	LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+	if (!argv) {
+		return 1;  // Error handling here; decide what you want to do if this fails
+	}
+
+	std::vector<std::string> args;
+	for (int i = 0; i < argc; ++i)
 	{
-		// gameLoop();
-		return 0;
+		int length = WideCharToMultiByte(CP_UTF8, 0, argv[i], -1, NULL, 0, NULL, NULL);
+		std::vector<char> buffer(length);
+		WideCharToMultiByte(CP_UTF8, 0, argv[i], -1, &buffer[0], length, NULL, NULL);
+		args.push_back(std::string(buffer.begin(), buffer.end() - 1));
 	}
 
 	//
-	// Start the Game Engine normally
+	// Start the Game Engine
 	//
-	if (args[1] == "vulkan")
+	if (args.size() <= 1)
 	{
-		std::cout << "Starting the Game Engine..." << std::endl;
-		window();
+		run();
 	}
 	else if (args[1] == "-r")
 	{
@@ -123,6 +142,8 @@ int main(int argc, char* argv[])
 		std::cerr << "\nUsage: " << args[0] << " [vulkan|-r|-p|-g|-x] file" << std::endl;
 		return 1;
 	}
+
+	LocalFree(argv);
 
 	return 0;
 }

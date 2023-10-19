@@ -14,6 +14,11 @@
 ===============================================================================
 */
 
-void window();
+void run();
+
+void initWindow();
+void initVulkan();
+void mainLoop();
+void cleanup();
 
 #endif // WINDOW_H
