@@ -5,25 +5,29 @@
 #include <vector>
 #include <array>
 #include <cstdint>
+#include <fstream>
+#include <windows.h>
+#include <mmsystem.h>
 
 #include "xmi.h"
+#include "rl.h"
 
 /*
 ===============================================================================
 Function Name: xmiConverter
 
 Description:
-	- Converts XMI files to standard MIDI files, in memory as a 
+	- Converts XMI files to standard MIDI files, in memory as a
 	vector of uint8_t
 
 Parameters:
-	- xmiData: XMI file data as a vector of uint8_t
+	- playList song: Enumerated value of the song to convert
 
 Return:
 	- std::vector<uint8_t>: Standard MIDI file data as a vector of uint8_t
 ===============================================================================
 */
-std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
+std::vector<uint8_t> xmiConverter(playList song)
 {
 	struct NOEVENTS
 	{
@@ -34,9 +38,9 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
 	std::array<NOEVENTS, 1000> off_events{ {{0xFFFFFFFFL, { 0, 0, 0 }}} };
 
 	auto comp_events = [](const NOEVENTS& a, const NOEVENTS& b)
-	{
-		return a.delta < b.delta;
-	};
+		{
+			return a.delta < b.delta;
+		};
 
 	std::array<unsigned char, 18> midiheader = { 'M', 'T', 'h', 'd', 0, 0, 0, 6, 0, 0, 0, 1, 0, 60, 'M', 'T', 'r', 'k' };
 
@@ -48,8 +52,18 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
 	unsigned short timebase = 960;
 	unsigned long qnlen = DEFAULT_QN;
 
-	unsigned char* cur = xmiData.data();
+	// New logic
+	int index = static_cast<int>(song);
+	std::vector<RLEntry> xmiFiles = parseRLFile("XMI.RL");
+	std::ifstream xmiData("XMI.GJD", std::ios::binary | std::ios::ate);
 
+
+
+
+
+
+	unsigned char* cur = xmiData.data();
+	
 	cur += 4 * 12 + 2;
 	unsigned lTIMB = _byteswap_ulong(*reinterpret_cast<unsigned*>(cur));
 	cur += 4;
@@ -428,4 +442,41 @@ std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData)
 	midiData.insert(midiData.end(), midi_write.begin(), midi_write.end());
 
 	return midiData;
+}
+
+
+//
+//
+void PlayMIDI(const std::vector<uint8_t>& midiData) {
+	// Open the MIDI stream
+	HMIDISTRM hMidiStream;
+	if (midiStreamOpen(&hMidiStream, NULL, 1, 0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR) {
+		return;
+	}
+
+	// Use RAII to ensure proper resource management
+	auto midiStreamGuard = [hMidiStream]() { midiStreamClose(hMidiStream); };
+
+	// Prepare MIDIHDR structure
+	MIDIHDR midiHdr;
+	ZeroMemory(&midiHdr, sizeof(MIDIHDR));
+	midiHdr.lpData = reinterpret_cast<LPSTR>(const_cast<uint8_t*>(midiData.data()));
+	midiHdr.dwBufferLength = midiHdr.dwBytesRecorded = static_cast<DWORD>(midiData.size());
+	midiHdr.dwFlags = 0;
+
+	if (midiOutPrepareHeader(reinterpret_cast<HMIDIOUT>(hMidiStream), &midiHdr, sizeof(MIDIHDR)) != MMSYSERR_NOERROR) {
+		return;
+	}
+
+	auto midiHeaderGuard = [&]() { midiOutUnprepareHeader(reinterpret_cast<HMIDIOUT>(hMidiStream), &midiHdr, sizeof(MIDIHDR)); };
+
+	if (midiStreamOut(hMidiStream, &midiHdr, sizeof(MIDIHDR)) != MMSYSERR_NOERROR) {
+		return;
+	}
+
+	// Wait for completion or handle as needed
+	// ...
+
+	midiHeaderGuard();
+	midiStreamGuard();
 }

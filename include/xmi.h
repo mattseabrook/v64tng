@@ -8,7 +8,7 @@
 //===========================================================================
 
 enum playList {
-	agu16 = 1,
+	agu16,
 	agu32,
 	agu38,
 	agu50,
@@ -83,6 +83,7 @@ enum playList {
 
 //===========================================================================
 
-std::vector<uint8_t> xmiConverter(std::vector<uint8_t>& xmiData);
+std::vector<uint8_t> xmiConverter(playList song);
+void PlayMIDI(const std::vector<uint8_t>& midiData);
 
 #endif

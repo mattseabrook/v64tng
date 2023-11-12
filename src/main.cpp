@@ -42,6 +42,7 @@
 #include "window.h"
 #include "game.h"
 #include "extract.h"
+#include "xmi.h"
 
 bool devMode = false;	// God Mode :)
 
@@ -88,6 +89,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	{
 		run();
 	}
+	//
+	// Print out RL/GJD information
+	//
 	else if (args[1] == "-r")
 	{
 		if (args.size() < 3)
@@ -98,6 +102,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		}
 		GJDInfo(args[2]);
 	}
+	//
+	// Extract bitmaps from VDX files
+	//
 	else if (args[1] == "-p")
 	{
 		if (args.size() < 3)
@@ -122,6 +129,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		}
 		extractPNG(args[2], raw);
 	}
+	//
+	// Extract VDX files from GJD files
+	//
 	else if (args[1] == "-g")
 	{
 		if (args.size() < 3)
@@ -132,9 +142,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		}
 		extractVDX(args[2]);
 	}
+	//
+	// Play or Extract XMI files from XMI.GJD
+	//
 	else if (args[1] == "-x")
 	{
-		extractXMI();
+		if (args.size() < 3)
+		{
+			std::cerr << "ERROR: an action was not specified.\n" << std::endl;
+			std::cerr << "Example: v64tng.exe -x agu16 {play|extract}" << std::endl;
+			return 1;
+		}
+
+		if (args[3] == "play")
+		{
+			PlayMIDI(xmiConverter(args[2]));
+		} else
+		{
+			extractXMI(args[2]);
+		}
 	}
 	else
 	{
