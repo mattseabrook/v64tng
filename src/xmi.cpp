@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdint>
 #include <fstream>
+#include <filesystem>
 #include <windows.h>
 #include <mmsystem.h>
 
@@ -52,18 +53,18 @@ std::vector<uint8_t> xmiConverter(playList song)
 	unsigned short timebase = 960;
 	unsigned long qnlen = DEFAULT_QN;
 
-	// New logic
 	int index = static_cast<int>(song);
 	std::vector<RLEntry> xmiFiles = parseRLFile("XMI.RL");
 	std::ifstream xmiData("XMI.GJD", std::ios::binary | std::ios::ate);
-
-
-	// construct xmlFile vector
-
-
-
-	unsigned char* cur = xmiData.data();
+	xmiData.seekg(xmiFiles[index].offset, std::ios::beg);
 	
+	std::vector<uint8_t> xmiFile(xmiFiles[index].length);
+	xmiData.read(reinterpret_cast<char*>(xmiFile.data()), xmiFiles[index].length);
+
+	xmiData.close();
+
+	unsigned char* cur = xmiFile.data();
+
 	cur += 4 * 12 + 2;
 	unsigned lTIMB = _byteswap_ulong(*reinterpret_cast<unsigned*>(cur));
 	cur += 4;
@@ -89,7 +90,7 @@ std::vector<uint8_t> xmiConverter(playList song)
 	unsigned lEVNT = _byteswap_ulong(*reinterpret_cast<unsigned*>(cur));
 	cur += 4;
 
-	std::vector<unsigned char> midi_decode(xmiData.size() * 2);
+	std::vector<unsigned char> midi_decode(xmiFile.size() * 2);
 
 	unsigned char* dcur = midi_decode.data();
 
@@ -276,7 +277,7 @@ std::vector<uint8_t> xmiConverter(playList song)
 		}
 	}
 
-	std::vector<unsigned char> midi_write(xmiData.size() * 2);
+	std::vector<unsigned char> midi_write(xmiFile.size() * 2);
 
 	unsigned char* tcur = midi_write.data();
 
