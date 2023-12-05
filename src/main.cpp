@@ -43,6 +43,7 @@
 #include "game.h"
 #include "extract.h"
 #include "xmi.h"
+#include "rl.h"
 
 bool devMode = false;	// God Mode :)
 
@@ -154,12 +155,24 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			return 1;
 		}
 
-		if (args[3] == "play")
-		{
-			PlayMIDI(xmiConverter(args[2]));
-		} else
-		{
-			extractXMI(args[2]);
+		std::vector<RLEntry> xmiFiles = parseRLFile("XMI.RL");
+
+		auto it = std::find_if(xmiFiles.begin(), xmiFiles.end(),
+			[&](const RLEntry& entry) { return entry.filename == args[2]; });
+
+		if (it != xmiFiles.end()) {
+			if (args[3] == "play")
+			{
+				PlayMIDI(xmiConverter(args[2]));
+			}
+			else
+			{
+				extractXMI(args[2]);
+			}
+		}
+		else {
+			std::cout << "ERROR: XMI file not found." << std::endl;
+			return 1;
 		}
 	}
 	else

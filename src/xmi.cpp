@@ -22,13 +22,13 @@ Description:
 	vector of uint8_t
 
 Parameters:
-	- playList song: Enumerated value of the song to convert
+	- const std::string_view song: The name of the song to convert
 
 Return:
 	- std::vector<uint8_t>: Standard MIDI file data as a vector of uint8_t
 ===============================================================================
 */
-std::vector<uint8_t> xmiConverter(playList song)
+std::vector<uint8_t> xmiConverter(const std::string_view& song)
 {
 	struct NOEVENTS
 	{
@@ -53,16 +53,9 @@ std::vector<uint8_t> xmiConverter(playList song)
 	unsigned short timebase = 960;
 	unsigned long qnlen = DEFAULT_QN;
 
-	int index = static_cast<int>(song);
-	std::vector<RLEntry> xmiFiles = parseRLFile("XMI.RL");
 	std::ifstream xmiData("XMI.GJD", std::ios::binary | std::ios::ate);
-	xmiData.seekg(xmiFiles[index].offset, std::ios::beg);
-	
-	std::vector<uint8_t> xmiFile(xmiFiles[index].length);
-	xmiData.read(reinterpret_cast<char*>(xmiFile.data()), xmiFiles[index].length);
 
-	xmiData.close();
-
+	//...
 	unsigned char* cur = xmiFile.data();
 
 	cur += 4 * 12 + 2;
