@@ -29,31 +29,12 @@ void GJDInfo(const std::string_view& filename)
 }
 
 // Extract XMI files from the RL/GJD pair
-void extractXMI()
+void extractXMI(const std::string_view& song)
 {
 	std::vector<RLEntry> xmiFiles = parseRLFile("XMI.RL");
-
 	std::ifstream xmiData("XMI.GJD", std::ios::binary | std::ios::ate);
 
-	std::filesystem::create_directory("XMI");
-
-	for (const auto& xmiFile : xmiFiles)
-	{
-		std::vector<uint8_t> xmi(xmiFile.length);
-
-		xmiData.seekg(xmiFile.offset, std::ios::beg);
-		xmiData.read(reinterpret_cast<char*>(xmi.data()), xmiFile.length);
-
-		std::ofstream xmiFileOut("XMI/" + xmiFile.filename, std::ios::binary);
-		xmiFileOut.write(reinterpret_cast<const char*>(xmi.data()), xmiFile.length);
-		xmiFileOut.close();
-
-		std::vector<uint8_t> standardMidi = xmiConverter(xmi);
-		
-		std::ofstream standardMidiFileOut("XMI/" + xmiFile.filename.substr(0, xmiFile.filename.find_last_of('.')) + ".mid", std::ios::binary);
-		standardMidiFileOut.write(reinterpret_cast<const char*>(standardMidi.data()), standardMidi.size());
-		standardMidiFileOut.close();
-	}
+	//...
 }
 
 // Extracts all of the *.VDX files from the user-specifed *.GJD file
@@ -141,3 +122,39 @@ void extractPNG(const std::string_view& filename, bool raw)
 		}
 	}
 }
+
+
+
+/*
+
+
+// Extract XMI files from the RL/GJD pair
+void extractXMI()
+{
+	std::vector<RLEntry> xmiFiles = parseRLFile("XMI.RL");
+
+	std::ifstream xmiData("XMI.GJD", std::ios::binary | std::ios::ate);
+
+	std::filesystem::create_directory("XMI");
+
+	for (const auto& xmiFile : xmiFiles)
+	{
+		std::vector<uint8_t> xmi(xmiFile.length);
+
+		xmiData.seekg(xmiFile.offset, std::ios::beg);
+		xmiData.read(reinterpret_cast<char*>(xmi.data()), xmiFile.length);
+
+		std::ofstream xmiFileOut("XMI/" + xmiFile.filename, std::ios::binary);
+		xmiFileOut.write(reinterpret_cast<const char*>(xmi.data()), xmiFile.length);
+		xmiFileOut.close();
+
+		std::vector<uint8_t> standardMidi = xmiConverter(xmi);
+
+		std::ofstream standardMidiFileOut("XMI/" + xmiFile.filename.substr(0, xmiFile.filename.find_last_of('.')) + ".mid", std::ios::binary);
+		standardMidiFileOut.write(reinterpret_cast<const char*>(standardMidi.data()), standardMidi.size());
+		standardMidiFileOut.close();
+	}
+}
+
+
+*/

@@ -5,6 +5,8 @@
 
 #include <string>
 
+#include "xmi.h"
+
 /*
 ===============================================================================
 
@@ -16,7 +18,7 @@
 */
 
 void GJDInfo(const std::string_view& filename);
-void extractXMI();
+void extractXMI(const std::string_view& song);
 void extractVDX(const std::string_view& filename);
 void extractPNG(const std::string_view& filename, bool raw);
 
