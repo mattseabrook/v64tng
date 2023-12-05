@@ -161,14 +161,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			[&](const RLEntry& entry) { return entry.filename == args[2]; });
 
 		if (it != xmiFiles.end()) {
-			if (args[3] == "play")
-			{
-				PlayMIDI(xmiConverter(args[2]));
-			}
-			else
-			{
-				extractXMI(args[2]);
-			}
+			args[3] == "play" ? PlayMIDI(xmiConverter(args[2])) : extractXMI(args[2]);
 		}
 		else {
 			std::cout << "ERROR: XMI file not found." << std::endl;
