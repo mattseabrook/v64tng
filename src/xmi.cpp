@@ -58,7 +58,7 @@ std::vector<uint8_t> xmiConverter(playList song)
 	std::ifstream xmiData("XMI.GJD", std::ios::binary | std::ios::ate);
 
 
-
+	// construct xmlFile vector
 
 
 

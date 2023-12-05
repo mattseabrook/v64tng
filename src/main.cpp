@@ -165,7 +165,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	else
 	{
 		std::cerr << "ERROR: Invalid option: " << args[1] << std::endl;
-		std::cerr << "\nUsage: " << args[0] << " [vulkan|-r|-p|-g|-x] file" << std::endl;
+		std::cerr << "\nUsage: " << args[0] << " [-r|-p|-g|-x] file" << std::endl;
 		return 1;
 	}
 
