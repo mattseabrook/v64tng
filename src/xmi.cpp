@@ -28,7 +28,7 @@ Return:
 	- std::vector<uint8_t>: Standard MIDI file data as a vector of uint8_t
 ===============================================================================
 */
-std::vector<uint8_t> xmiConverter(const std::string_view& song)
+std::vector<uint8_t> xmiConverter(const RLEntry& song)
 {
 	struct NOEVENTS
 	{
@@ -54,8 +54,10 @@ std::vector<uint8_t> xmiConverter(const std::string_view& song)
 	unsigned long qnlen = DEFAULT_QN;
 
 	std::ifstream xmiData("XMI.GJD", std::ios::binary | std::ios::ate);
+	std::vector<uint8_t> xmiFile(song.length);
+	xmiData.seekg(song.offset);
+	xmiData.read(reinterpret_cast<char*>(xmiFile.data()), song.length);
 
-	//...
 	unsigned char* cur = xmiFile.data();
 
 	cur += 4 * 12 + 2;

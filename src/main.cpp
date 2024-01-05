@@ -157,11 +157,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		std::vector<RLEntry> xmiFiles = parseRLFile("XMI.RL");
 
-		auto it = std::find_if(xmiFiles.begin(), xmiFiles.end(),
+		auto song = std::find_if(xmiFiles.begin(), xmiFiles.end(),
 			[&](const RLEntry& entry) { return entry.filename == args[2]; });
 
-		if (it != xmiFiles.end()) {
-			args[3] == "play" ? PlayMIDI(xmiConverter(args[2])) : extractXMI(args[2]);
+		if (song != xmiFiles.end()) {
+			args[3] == "play" ? PlayMIDI(xmiConverter(song)) : extractXMI(xmiConverter(song));
 		}
 		else {
 			std::cout << "ERROR: XMI file not found." << std::endl;

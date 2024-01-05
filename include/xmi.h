@@ -5,6 +5,8 @@
 
 #include <string>
 
+#include "rl.h"
+
 /*
 ===============================================================================
 
@@ -15,7 +17,7 @@
 ===============================================================================
 */
 
-std::vector<uint8_t> xmiConverter(const std::string_view& song);
+std::vector<uint8_t> xmiConverter(const RLEntry& song);
 void PlayMIDI(const std::vector<uint8_t>& midiData);
 
 #endif
