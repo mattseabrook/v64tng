@@ -72,7 +72,6 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)\</OutDir>
-    <LinkIncremental>false</LinkIncremental>
     <IncludePath>C:\lib\zlib-1.3;C:\lib\lpng1640;C:\lib\glfw-3.3.8\include;C:\VulkanSDK\1.3.268.0\Include;$(IncludePath)</IncludePath>
     <LibraryPath>C:\lib\zlib-1.3;C:\lib\lpng1640;C:\lib\glfw-3.3.8\build\src;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
@@ -123,8 +122,8 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.261.1\Lib;C:\libs\glfw-3.3.8\build\src\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;zlibstaticd.lib;libpng16_staticd.lib;user32.lib;gdi32.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.268.0\Lib;C:\lib\glfw-3.3.8\build\src;C:\lib\zlib-1.3;C:\lib\lpng1640;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;zlibstaticd.lib;libpng16_staticd.lib;user32.lib;gdi32.lib;shell32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <IgnoreSpecificDefaultLibraries>MSVCRTD.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>

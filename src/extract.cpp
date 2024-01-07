@@ -29,12 +29,11 @@ void GJDInfo(const std::string_view& filename)
 }
 
 // Extract XMI files from the RL/GJD pair
-void extractXMI(const std::string_view& song)
+void extractXMI(const std::vector<uint8_t>& midiData, std::string name)
 {
-	std::vector<RLEntry> xmiFiles = parseRLFile("XMI.RL");
-	std::ifstream xmiData("XMI.GJD", std::ios::binary | std::ios::ate);
-
-	//...
+	std::ofstream midiFileOut(name + ".mid", std::ios::binary);
+	midiFileOut.write(reinterpret_cast<const char*>(midiData.data()), midiData.size());
+	midiFileOut.close();
 }
 
 // Extracts all of the *.VDX files from the user-specifed *.GJD file

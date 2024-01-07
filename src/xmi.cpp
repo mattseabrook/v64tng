@@ -53,6 +53,9 @@ std::vector<uint8_t> xmiConverter(const RLEntry& song)
 	unsigned short timebase = 960;
 	unsigned long qnlen = DEFAULT_QN;
 
+	//
+	// Find the XMI file in XMI.GJD
+	//
 	std::ifstream xmiData("XMI.GJD", std::ios::binary | std::ios::ate);
 	std::vector<uint8_t> xmiFile(song.length);
 	xmiData.seekg(song.offset);

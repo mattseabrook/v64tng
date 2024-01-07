@@ -18,7 +18,7 @@
 */
 
 void GJDInfo(const std::string_view& filename);
-void extractXMI(const std::string_view& song);
+void extractXMI(const std::vector<uint8_t>& midiData, std::string name);
 void extractVDX(const std::string_view& filename);
 void extractPNG(const std::string_view& filename, bool raw);
 

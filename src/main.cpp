@@ -151,7 +151,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		if (args.size() < 3)
 		{
 			std::cerr << "ERROR: an action was not specified.\n" << std::endl;
-			std::cerr << "Example: v64tng.exe -x agu16 {play|extract}" << std::endl;
+			std::cerr << "Example: v64tng.exe -x agu16 {play|extract (xmi)}" << std::endl;
 			return 1;
 		}
 
@@ -161,7 +161,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			[&](const RLEntry& entry) { return entry.filename == args[2]; });
 
 		if (song != xmiFiles.end()) {
-			args[3] == "play" ? PlayMIDI(xmiConverter(song)) : extractXMI(xmiConverter(song));
+			args[3] == "play" ? PlayMIDI(xmiConverter(*song)) : extractXMI(xmiConverter(*song),
+				song->filename);
 		}
 		else {
 			std::cout << "ERROR: XMI file not found." << std::endl;
