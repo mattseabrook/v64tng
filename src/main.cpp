@@ -12,7 +12,7 @@
  *
  * MIT License
  *
- * Copyright (c) 2023 Matt Seabrook
+ * Copyright (c) 2024 Matt Seabrook
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -138,7 +138,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		if (args.size() < 3)
 		{
 			std::cerr << "ERROR: a *.GJD file was not specified.\n" << std::endl;
-			std::cerr << "Example: v64tng.exe -x DR.GJD" << std::endl;
+			std::cerr << "Example: v64tng.exe -g DR.GJD" << std::endl;
 			return 1;
 		}
 		extractVDX(args[2]);
@@ -156,6 +156,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		}
 
 		std::vector<RLEntry> xmiFiles = parseRLFile("XMI.RL");
+		for (auto& entry : xmiFiles)
+		{
+			entry.filename.erase(entry.filename.find_last_of('.'));
+		}
 
 		auto song = std::find_if(xmiFiles.begin(), xmiFiles.end(),
 			[&](const RLEntry& entry) { return entry.filename == args[2]; });
