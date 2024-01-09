@@ -180,6 +180,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		return 1;
 	}
 
+	// Clean Up
 	LocalFree(argv);
 
 	return 0;
