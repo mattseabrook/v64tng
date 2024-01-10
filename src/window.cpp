@@ -45,6 +45,8 @@ void initVulkan() {
 void mainLoop() {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        VkClearValue clearColor = { {0.0f, 0.0f, 0.0f, 1.0f} };     // Set the clear color to black
     }
 }
 
