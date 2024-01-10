@@ -53,25 +53,10 @@ bool devMode = false;	// God Mode :)
 ====================
 */
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
-	if (!AttachConsole(ATTACH_PARENT_PROCESS)) {
-		AllocConsole();
-	}
-
-	freopen_s(reinterpret_cast<FILE**>(stdout), "CONOUT$", "w", stdout);
-	freopen_s(reinterpret_cast<FILE**>(stderr), "CONOUT$", "w", stderr);
-	freopen_s(reinterpret_cast<FILE**>(stdin), "CONIN$", "r", stdin);
-
-	std::cout.clear();
-	std::clog.clear();
-	std::cerr.clear();
-	std::cin.clear();
-
-	std::ios::sync_with_stdio(false);	// Synchronize C++ standard streams with standard C streams
-
 	int argc;
 	LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 	if (!argv) {
-		return 1;  // Error handling here; decide what you want to do if this fails
+		return 1;
 	}
 
 	std::vector<std::string> args;
@@ -90,97 +75,109 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	{
 		run();
 	}
-	//
-	// Print out RL/GJD information
-	//
-	else if (args[1] == "-r")
-	{
-		if (args.size() < 3)
-		{
-			std::cerr << "ERROR: a *.RL file was not specified.\n" << std::endl;
-			std::cerr << "Example: v64tng.exe -r DR.RL" << std::endl;
-			return 1;
-		}
-		GJDInfo(args[2]);
-	}
-	//
-	// Extract bitmaps from VDX files
-	//
-	else if (args[1] == "-p")
-	{
-		if (args.size() < 3)
-		{
-			std::cerr << "ERROR: a *.VDX file was not specified.\n" << std::endl;
-			std::cerr << "Example: v64tng.exe -p dr_00f.vdx {raw} {alpha}" << std::endl;
-			return 1;
-		}
+	else {
+		AllocConsole();
 
-		bool raw = false;
+		freopen_s(reinterpret_cast<FILE**>(stdout), "CONOUT$", "w", stdout);
+		freopen_s(reinterpret_cast<FILE**>(stderr), "CONOUT$", "w", stderr);
+		freopen_s(reinterpret_cast<FILE**>(stdin), "CONIN$", "r", stdin);
 
-		for (auto arg = args.begin() + 3; arg != args.end(); ++arg)
+		//
+		// Print out RL/GJD information
+		//
+		if (args[1] == "-r")
 		{
-			if (*arg == "raw")
+			if (args.size() < 3)
 			{
-				raw = true;
+				std::cerr << "ERROR: a *.RL file was not specified.\n" << std::endl;
+				std::cerr << "Example: v64tng.exe -r DR.RL" << std::endl;
+				return 1;
 			}
-			else if (*arg == "alpha")
+			GJDInfo(args[2]);
+		}
+		//
+		// Extract bitmaps from VDX files
+		//
+		else if (args[1] == "-p")
+		{
+			if (args.size() < 3)
 			{
-				devMode = true;
+				std::cerr << "ERROR: a *.VDX file was not specified.\n" << std::endl;
+				std::cerr << "Example: v64tng.exe -p dr_00f.vdx {raw} {alpha}" << std::endl;
+				return 1;
+			}
+
+			bool raw = false;
+
+			for (auto arg = args.begin() + 3; arg != args.end(); ++arg)
+			{
+				if (*arg == "raw")
+				{
+					raw = true;
+				}
+				else if (*arg == "alpha")
+				{
+					devMode = true;
+				}
+			}
+			extractPNG(args[2], raw);
+		}
+		//
+		// Extract VDX files from GJD files
+		//
+		else if (args[1] == "-g")
+		{
+			if (args.size() < 3)
+			{
+				std::cerr << "ERROR: a *.RL file was not specified.\n" << std::endl;
+				std::cerr << "Example: v64tng.exe -g DR.RL" << std::endl;
+				return 1;
+			}
+			extractVDX(args[2]);
+		}
+		//
+		// Play or Extract XMI files from XMI.GJD
+		//
+		else if (args[1] == "-x")
+		{
+			if (args.size() < 3)
+			{
+				std::cerr << "ERROR: an action was not specified.\n" << std::endl;
+				std::cerr << "Example: v64tng.exe -x agu16 {play|extract (xmi)}" << std::endl;
+				return 1;
+			}
+
+			std::vector<RLEntry> xmiFiles = parseRLFile("XMI.RL");
+			for (auto& entry : xmiFiles)
+			{
+				entry.filename.erase(entry.filename.find_last_of('.'));
+			}
+
+			auto song = std::find_if(xmiFiles.begin(), xmiFiles.end(),
+				[&](const RLEntry& entry) { return entry.filename == args[2]; });
+
+			if (song != xmiFiles.end()) {
+				args[3] == "play" ? PlayMIDI(xmiConverter(*song)) : extractXMI(xmiConverter(*song),
+					song->filename);
+			}
+			else {
+				std::cout << "ERROR: XMI file not found." << std::endl;
+				return 1;
 			}
 		}
-		extractPNG(args[2], raw);
-	}
-	//
-	// Extract VDX files from GJD files
-	//
-	else if (args[1] == "-g")
-	{
-		if (args.size() < 3)
+		else
 		{
-			std::cerr << "ERROR: a *.GJD file was not specified.\n" << std::endl;
-			std::cerr << "Example: v64tng.exe -g DR.GJD" << std::endl;
-			return 1;
-		}
-		extractVDX(args[2]);
-	}
-	//
-	// Play or Extract XMI files from XMI.GJD
-	//
-	else if (args[1] == "-x")
-	{
-		if (args.size() < 3)
-		{
-			std::cerr << "ERROR: an action was not specified.\n" << std::endl;
-			std::cerr << "Example: v64tng.exe -x agu16 {play|extract (xmi)}" << std::endl;
+			std::cerr << "ERROR: Invalid option: " << args[1] << std::endl;
+			std::cerr << "\nUsage: " << args[0] << " [-r|-p|-g|-x] file" << std::endl;
 			return 1;
 		}
 
-		std::vector<RLEntry> xmiFiles = parseRLFile("XMI.RL");
-		for (auto& entry : xmiFiles)
-		{
-			entry.filename.erase(entry.filename.find_last_of('.'));
-		}
+		std::cout << "\nPress any key to continue...";
+		std::cin.get();
 
-		auto song = std::find_if(xmiFiles.begin(), xmiFiles.end(),
-			[&](const RLEntry& entry) { return entry.filename == args[2]; });
-
-		if (song != xmiFiles.end()) {
-			args[3] == "play" ? PlayMIDI(xmiConverter(*song)) : extractXMI(xmiConverter(*song),
-				song->filename);
-		}
-		else {
-			std::cout << "ERROR: XMI file not found." << std::endl;
-			return 1;
-		}
-	}
-	else
-	{
-		std::cerr << "ERROR: Invalid option: " << args[1] << std::endl;
-		std::cerr << "\nUsage: " << args[0] << " [-r|-p|-g|-x] file" << std::endl;
-		return 1;
+		FreeConsole();
 	}
 
-	// Clean Up
 	LocalFree(argv);
 
 	return 0;
