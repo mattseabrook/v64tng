@@ -103,24 +103,48 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			if (args.size() < 3)
 			{
 				std::cerr << "ERROR: a *.VDX file was not specified.\n" << std::endl;
-				std::cerr << "Example: v64tng.exe -p dr_00f.vdx {raw} {alpha}" << std::endl;
 				return 1;
 			}
 
 			bool raw = false;
+			bool video = false;
 
 			for (auto arg = args.begin() + 3; arg != args.end(); ++arg)
 			{
-				if (*arg == "raw")
-				{
+				if (*arg == "raw") {
 					raw = true;
 				}
-				else if (*arg == "alpha")
-				{
+				else if (*arg == "alpha") {
 					devMode = true;
+				}
+				else if (*arg == "video") {
+					video = true;
 				}
 			}
 			extractPNG(args[2], raw);
+
+			// Extracting directory and filename from args[2]
+			std::string fullPath = args[2];
+			std::string directory;
+			std::string filename;
+			size_t lastSlashPos = fullPath.find_last_of("\\/");
+
+			if (lastSlashPos != std::string::npos) {
+				directory = fullPath.substr(0, lastSlashPos);
+				filename = fullPath.substr(lastSlashPos + 1);
+			}
+			else {
+				filename = fullPath; // No directory in path, filename only
+			}
+
+			size_t lastDotPos = filename.find_last_of('.');
+			if (lastDotPos != std::string::npos) {
+				filename.erase(lastDotPos);
+			}
+
+			if (video && !raw) {
+				createVideoFromImages(directory.empty() ? filename : directory + "\\" + filename);
+			}
 		}
 		//
 		// Extract VDX files from GJD files
