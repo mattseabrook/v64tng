@@ -103,6 +103,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			if (args.size() < 3)
 			{
 				std::cerr << "ERROR: a *.VDX file was not specified.\n" << std::endl;
+				std::cerr << "Example: v64tng.exe -p f_1bb.vdx {raw} {alpha} {video}" << std::endl;
 				return 1;
 			}
 
@@ -139,7 +140,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			size_t lastDotPos = filename.find_last_of('.');
 			if (lastDotPos != std::string::npos) {
-				filename.erase(lastDotPos);
+				filename[lastDotPos] = '_';
 			}
 
 			if (video && !raw) {

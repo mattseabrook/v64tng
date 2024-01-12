@@ -123,18 +123,25 @@ void extractPNG(const std::string_view& filename, bool raw)
 }
 
 // Invokes FFMPEG to create a video from a directory of *.PNG files
-void createVideoFromImages(const std::string& filename) {
-	if (std::system("ffmpeg --version") != 0) {
+void createVideoFromImages(const std::string& filenameParam) {
+	if (std::system("ffmpeg -version") != 0) {
 		std::cerr << "FFMPEG is not installed or is not in the system %PATH% variable." << std::endl;
 		return;
 	}
 
 	std::string directory = std::filesystem::current_path().string();
+	std::string filename = filenameParam;
+
+	if (filename.size() >= 2 && filename[0] == '.' && (filename[1] == '\\' || filename[1] == '/')) {
+		filename = filename.substr(2);
+	}
 
 	std::string command = "ffmpeg -framerate 15 -i \"" +
 		directory + "\\" + filename +
 		"\\*.vdx_%04d.png\" -c:v libx264 -crf 0 -pix_fmt rgb24 " +
 		filename + ".mkv";
+
+	std::cout << command << std::endl;
 
 	int result = std::system(command.c_str());
 
