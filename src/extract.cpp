@@ -122,30 +122,48 @@ void extractPNG(const std::string_view& filename, bool raw)
 	}
 }
 
-// Invokes FFMPEG to create a video from a directory of *.PNG files
+//
+// Invokes FFmpeg to create a video from a directory of *.PNG files
+//
 void createVideoFromImages(const std::string& filenameParam) {
 	if (std::system("ffmpeg -version") != 0) {
 		std::cerr << "FFMPEG is not installed or is not in the system %PATH% variable." << std::endl;
 		return;
 	}
 
-	std::string directory = std::filesystem::current_path().string();
-	std::string filename = filenameParam;
+	std::string workingDirectory = std::filesystem::current_path().string();
 
-	if (filename.size() >= 2 && filename[0] == '.' && (filename[1] == '\\' || filename[1] == '/')) {
-		filename = filename.substr(2);
+	std::filesystem::path filepath(filenameParam);
+	std::string baseDirectory = filepath.parent_path().string();
+	std::string filenameWithoutExtension = filepath.stem().string();
+
+	if (!baseDirectory.empty() && baseDirectory[0] == '.' && (baseDirectory[1] == '\\' || baseDirectory[1] == '/')) {
+		baseDirectory = baseDirectory.substr(2);
 	}
 
-	std::string command = "ffmpeg -framerate 15 -i \"" +
-		directory + "\\" + filename +
-		"\\*.vdx_%04d.png\" -c:v libx264 -crf 0 -pix_fmt rgb24 " +
-		filename + ".mkv";
+	std::replace(filenameWithoutExtension.begin(), filenameWithoutExtension.end(), '.', '_');
 
-	std::cout << command << std::endl;
+	// Windows only
+	std::string pngDirectory = workingDirectory + "\\" + baseDirectory + "\\" + filenameWithoutExtension;
+	std::replace(pngDirectory.begin(), pngDirectory.end(), '/', '\\');
+
+	std::string pngFilename = filenameWithoutExtension;
+	size_t lastUnderscorePos = pngFilename.find_last_of('_');
+	if (lastUnderscorePos != std::string::npos) {
+		pngFilename[lastUnderscorePos] = '.';
+	}
+
+	std::string command = "ffmpeg -framerate 15 -i \"" + pngDirectory +
+		"\\" + pngFilename + "_%04d.png\" -c:v libx264rgb -crf 0 -pix_fmt rgb24 \"" +
+		pngDirectory + "\\" + filenameWithoutExtension + ".mkv\"";
 
 	int result = std::system(command.c_str());
 
 	if (result != 0) {
 		std::cerr << "FFMPEG command execution failed." << std::endl;
+	}
+	else {
+		std::string ffplayCommand = "ffplay -loop 0 \"" + pngDirectory + "\\" + filenameWithoutExtension + ".mkv\"";
+		std::system(ffplayCommand.c_str());
 	}
 }
