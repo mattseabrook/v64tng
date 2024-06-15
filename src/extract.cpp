@@ -153,8 +153,17 @@ void createVideoFromImages(const std::string& filenameParam) {
 		pngFilename[lastUnderscorePos] = '.';
 	}
 
+	// Iterate over PNG files in the directory and resize them
+	for (const auto& entry : std::filesystem::directory_iterator(pngDirectory)) {
+		if (entry.path().extension() == ".png") {
+			std::string filePath = entry.path().string();
+			std::string magickCommand = "magick \"" + filePath + "\" -resize 200% -filter point \"" + filePath + "\"";
+			std::system(magickCommand.c_str());
+		}
+	}
+
 	std::string command = "ffmpeg -framerate 15 -i \"" + pngDirectory +
-		"\\" + pngFilename + "_%04d.png\" -c:v libx264rgb -crf 0 -pix_fmt rgb24 \"" +
+		"\\" + pngFilename + "_%04d.png\" -c:v libx265 -crf 0 -pix_fmt rgb24 \"" +
 		pngDirectory + "\\" + filenameWithoutExtension + ".mkv\"";
 
 	int result = std::system(command.c_str());
