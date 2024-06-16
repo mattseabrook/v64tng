@@ -1,9 +1,6 @@
 # Ignore 'x64' directory
 /x64/
 
-# Ignore any *.vcxproj files
-*.vcxproj
-
 # Ignore .vs dir
 /.vs/
 

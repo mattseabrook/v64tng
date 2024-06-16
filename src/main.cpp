@@ -49,7 +49,23 @@
 #include "xmi.h"
 #include "rl.h"
 
- /*
+ //
+ // Working around Microsoft Shittiness (FreeConsole() doesn't work)
+ //
+static void simulateEnterKey() {
+	INPUT ip;
+	ip.type = INPUT_KEYBOARD;
+	ip.ki.wScan = 0;
+	ip.ki.time = 0;
+	ip.ki.dwExtraInfo = 0;
+	ip.ki.wVk = VK_RETURN;
+	ip.ki.dwFlags = 0;
+	SendInput(1, &ip, sizeof(INPUT));
+	ip.ki.dwFlags = KEYEVENTF_KEYUP;
+	SendInput(1, &ip, sizeof(INPUT));
+}
+
+/*
  ====================
 	 MAIN ENTRY POINT
  ====================
@@ -77,23 +93,33 @@ int WINAPI WinMain(
 	}
 
 	bool isConsoleApp = (args.size() > 1);
+	bool consoleAllocated = false;
+	bool consoleAttached = false;
 
 	if (isConsoleApp) {
-		if (AttachConsole(ATTACH_PARENT_PROCESS) || AllocConsole()) {
+		if ((consoleAttached = AttachConsole(ATTACH_PARENT_PROCESS)) || (consoleAllocated = AllocConsole())) {
 			freopen_s(reinterpret_cast<FILE**>(stdout), "CONOUT$", "w", stdout);
 			freopen_s(reinterpret_cast<FILE**>(stderr), "CONOUT$", "w", stderr);
 			freopen_s(reinterpret_cast<FILE**>(stdin), "CONIN$", "r", stdin);
 
+			//
+			// Output information about how data is packed in the GJD resource file
+			//
 			if (args[1] == "-r") {
 				if (args.size() < 3) {
 					std::cerr << "ERROR: a *.RL file was not specified.\n\nExample: v64tng.exe -r DR.RL" << std::endl;
+					simulateEnterKey();
 					return 1;
 				}
 				GJDInfo(args[2]);
 			}
+			//
+			// Extract individual bitmap frames (RAW or PNG format,) or create an MKV movie, from a *.VDX file
+			//
 			else if (args[1] == "-p") {
 				if (args.size() < 3) {
 					std::cerr << "ERROR: a *.VDX file was not specified.\n\nExample: v64tng.exe -p f_1bb.vdx {raw} {alpha} {video}" << std::endl;
+					simulateEnterKey();
 					return 1;
 				}
 
@@ -135,16 +161,24 @@ int WINAPI WinMain(
 					createVideoFromImages(directory.empty() ? filename : directory + "\\" + filename);
 				}
 			}
+			//
+			// Extract all of the *.VDX files from the user-specified *.GJD file
+			//
 			else if (args[1] == "-g") {
 				if (args.size() < 3) {
 					std::cerr << "ERROR: a *.RL file was not specified.\n\nExample: v64tng.exe -g DR.RL" << std::endl;
+					simulateEnterKey();
 					return 1;
 				}
 				extractVDX(args[2]);
 			}
+			//
+			// Extract or Play a specific XMI file from the XMI.RL file
+			//
 			else if (args[1] == "-x") {
 				if (args.size() < 3) {
 					std::cerr << "ERROR: an action was not specified.\n\nExample: v64tng.exe -x agu16 {play|extract (xmi)}" << std::endl;
+					simulateEnterKey();
 					return 1;
 				}
 
@@ -166,16 +200,22 @@ int WINAPI WinMain(
 				}
 				else {
 					std::cerr << "ERROR: XMI file not found." << std::endl;
+					simulateEnterKey();
 					return 1;
 				}
 			}
 			else {
 				std::cerr << "ERROR: Invalid option: " << args[1] << std::endl;
 				std::cerr << "\nUsage: " << args[0] << " [-r|-p|-g|-x] file" << std::endl;
+				simulateEnterKey();
 				return 1;
 			}
 
-			if (AllocConsole()) {
+			fclose(stdout);
+			fclose(stderr);
+			fclose(stdin);
+
+			if (consoleAllocated) {
 				FreeConsole();
 			}
 		}
@@ -185,5 +225,8 @@ int WINAPI WinMain(
 	}
 
 	LocalFree(argv);
+
+	simulateEnterKey();
+
 	return 0;
 }
