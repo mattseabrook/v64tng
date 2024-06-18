@@ -8,7 +8,10 @@
 #include <fstream>
 #include <filesystem>
 #include <windows.h>
+#include <iostream>
 #include <mmsystem.h>
+
+#include <wildmidi_lib.h>
 
 #include "xmi.h"
 #include "rl.h"
@@ -445,37 +448,36 @@ std::vector<uint8_t> xmiConverter(const RLEntry& song)
 
 
 //
+// MIDI Playback
 //
 void PlayMIDI(const std::vector<uint8_t>& midiData) {
-	// Open the MIDI stream
-	HMIDISTRM hMidiStream;
-	if (midiStreamOpen(&hMidiStream, NULL, 1, 0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR) {
-		return;
-	}
+	// Create a temporary MIDI file in the user's %TEMP% directory
+	wchar_t tempPath[MAX_PATH];
+	GetTempPathW(MAX_PATH, tempPath);
 
-	// Use RAII to ensure proper resource management
-	auto midiStreamGuard = [hMidiStream]() { midiStreamClose(hMidiStream); };
+	wchar_t tempFile[MAX_PATH];
+	GetTempFileNameW(tempPath, L"MIDI", 0, tempFile);
 
-	// Prepare MIDIHDR structure
-	MIDIHDR midiHdr;
-	ZeroMemory(&midiHdr, sizeof(MIDIHDR));
-	midiHdr.lpData = reinterpret_cast<LPSTR>(const_cast<uint8_t*>(midiData.data()));
-	midiHdr.dwBufferLength = midiHdr.dwBytesRecorded = static_cast<DWORD>(midiData.size());
-	midiHdr.dwFlags = 0;
+	std::ofstream file(tempFile, std::ios::binary);
+	file.write(reinterpret_cast<const char*>(midiData.data()), midiData.size());
+	file.close();
 
-	if (midiOutPrepareHeader(reinterpret_cast<HMIDIOUT>(hMidiStream), &midiHdr, sizeof(MIDIHDR)) != MMSYSERR_NOERROR) {
-		return;
-	}
+	std::wstring tempFilePath = tempFile;
 
-	auto midiHeaderGuard = [&]() { midiOutUnprepareHeader(reinterpret_cast<HMIDIOUT>(hMidiStream), &midiHdr, sizeof(MIDIHDR)); };
+	// Open the MIDI file
+	std::wstring openCommand = L"open \"" + tempFilePath + L"\" type sequencer alias midiFile";
+	mciSendStringW(openCommand.c_str(), NULL, 0, NULL);
 
-	if (midiStreamOut(hMidiStream, &midiHdr, sizeof(MIDIHDR)) != MMSYSERR_NOERROR) {
-		return;
-	}
+	// Play the MIDI file
+	mciSendStringW(L"play midiFile from 0", NULL, 0, NULL);
 
-	// Wait for completion or handle as needed
-	// ...
+	// Wait for user input to stop playback
+	std::cout << "Press any key to stop playback..." << std::endl;
+	std::cin.get();
 
-	midiHeaderGuard();
-	midiStreamGuard();
+	// Close the MIDI device
+	mciSendStringW(L"close midiFile", NULL, 0, NULL);
+
+	// Delete the temporary file
+	DeleteFileW(tempFilePath.c_str());
 }

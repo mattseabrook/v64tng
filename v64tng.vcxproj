@@ -72,8 +72,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)\</OutDir>
-    <IncludePath>C:\lib\zlib-1.3;C:\lib\lpng1640;C:\lib\glfw-3.3.8\include;C:\VulkanSDK\1.3.268.0\Include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\lib\zlib-1.3\build\Debug;C:\lib\lpng1640\build_debug\Debug;C:\lib\glfw-3.3.8\build\src\Debug;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\lib\wildmidi-0.4.6-win64;C:\lib\zlib-1.3;C:\lib\lpng1640;C:\lib\glfw-3.3.8\include;C:\VulkanSDK\1.3.268.0\Include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\lib\zlib-1.3\build\Debug;C:\lib\lpng1640\build_debug\Debug;C:\lib\glfw-3.3.8\build\src\Debug;C:\lib\wildmidi-0.4.6-win64;$(LibraryPath)</LibraryPath>
     <IntDir>$(SolutionDir)\Intermediate\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -124,8 +124,8 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\lib\zlib-1.3\build\Debug;C:\lib\lpng1640\build_debug\Debug;C:\lib\glfw-3.3.8\build\src\Debug;C:\VulkanSDK\1.3.268.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libpng16_staticd.lib;zlibstaticd.lib;glfw3.lib;vulkan-1.lib;user32.lib;gdi32.lib;shell32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\lib\wildmidi-0.4.6-win64;C:\lib\zlib-1.3\build\Debug;C:\lib\lpng1640\build_debug\Debug;C:\lib\glfw-3.3.8\build\src\Debug;C:\VulkanSDK\1.3.268.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libpng16_staticd.lib;zlibstaticd.lib;glfw3.lib;vulkan-1.lib;user32.lib;gdi32.lib;shell32.lib;winmm.lib;libWildMidi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>MSVCRTD.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
     </Link>
     <PostBuildEvent>
