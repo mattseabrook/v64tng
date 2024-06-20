@@ -226,7 +226,7 @@ int WINAPI WinMain(
 
 	LocalFree(argv);
 
-	simulateEnterKey();
+	//simulateEnterKey();
 
 	return 0;
 }
