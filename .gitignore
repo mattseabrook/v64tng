@@ -1,5 +1,6 @@
 # Ignore 'x64' directory
 /x64/
+/Intermediate/
 
 # Ignore .vs dir
 /.vs/
