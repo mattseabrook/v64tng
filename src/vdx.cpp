@@ -77,7 +77,7 @@ Notes:
 */
 void parseVDXChunks(VDXFile& vdxFile)
 {
-std::vector<uint8_t> alphaChannel;
+	std::vector<uint8_t> alphaChannel;
 	std::vector<RGBColor> palette;
 	size_t prevBitmapIndex{};
 	RGBColor colorKey = { 255, 0, 255 }; // Fuscia
