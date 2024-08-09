@@ -1,4 +1,4 @@
-`v64tng.exe` is a Windows x86_64 executable that is an attempt at re-creating the complete 7th Guest game engine from scratch. It is written in C++ and uses *TBD* for graphics, audio, and input. The game engine is designed to work dropped into the original game directory (regardless of where you purchased it/what version you have), and it is required to be used with the original game data files.
+`v64tng.exe` is a Windows x86_64 executable that is an attempt at re-creating the complete 7th Guest game engine from scratch. It is written in C++ and uses `VULKAN` for graphics, `TBD` for audio, and `TBD` for input. The game engine is designed to work placed into the original game directory (*regardless of where you purchased it/what version you have*), and it is required to be used with the original game data files.
 
 **Table-of-Contents**
 - [Disclaimer](#disclaimer)
@@ -25,10 +25,11 @@
   - [LZSS](#lzss)
 - [Usage](#usage)
   - [Starting the Game Engine](#starting-the-game-engine)
-  - [Information on .RL Files](#information-on-rl-files)
-  - [Extracting PNG from .VDX Files](#extracting-png-from-vdx-files)
+  - [-r: Information on .RL Files](#-r-information-on-rl-files)
+  - [-p: Extracting PNG from .VDX Files](#-p-extracting-png-from-vdx-files)
     - [Optional Arguments](#optional-arguments)
-  - [Extracting .VDX from .GJD Files](#extracting-vdx-from-gjd-files)
+  - [-g: Extracting .VDX from .GJD Files](#-g-extracting-vdx-from-gjd-files)
+  - [-x: Extract or Play a specific XMI file from XML.RL/GJD](#-x-extract-or-play-a-specific-xmi-file-from-xmlrlgjd)
 - [Developers](#developers)
   - [Pre-requisites](#pre-requisites)
 - [CHANGELOG](#changelog)
@@ -373,20 +374,20 @@ Below is the detailed usage guide for the command line interface.
 If you wish to start the game engine normally:
 
 ```cmd
-v64tng.exe @
+v64tng.exe
 ```
 
-## Information on .RL Files
+## -r: Information on .RL Files
 
 To get information about a specific .RL file:
 
 ```cmd
-v64tng.exe -i [RL_FILE]
+v64tng.exe -r [RL_FILE]
 ```
 
 **Example:** `v64tng.exe -i DR.RL`
 
-## Extracting PNG from .VDX Files
+## -p: Extracting PNG from .VDX Files
 
 To extract PNG images from a specific .VDX file, use the following command:
 
@@ -403,15 +404,23 @@ v64tng.exe -p [VDX_FILE] [OPTIONAL_ARGUMENTS]
 
 Note that these optionals do not need to be used concurrently. 
 
-## Extracting .VDX from .GJD Files
+## -g: Extracting .VDX from .GJD Files
 
 To extract .VDX files from a specific .GJD file:
 
 ```cmd
-v64tng.exe -x [GJD_FILE]
+v64tng.exe -g [GJD_FILE]
 ```
 
 **Example**: `v64tng.exe -x DR.GJD`
+
+## -x: Extract or Play a specific XMI file from XML.RL/GJD
+
+To extract PNG images from a specific .VDX file, use the following command:
+
+```cmd
+v64tng.exe -x agu16 play|extract
+```
 
 # Developers
 
