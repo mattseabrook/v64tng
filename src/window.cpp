@@ -13,6 +13,12 @@
 
 #include "window.h"
 
+#ifdef NDEBUG
+const bool enableValidationLayers = false;
+#else
+const bool enableValidationLayers = true;
+
+#endif
 GLFWwindow* window;
 VkInstance instance;
 VkDebugUtilsMessengerEXT debugMessenger;
@@ -34,19 +40,32 @@ const std::vector<const char*> deviceExtensions = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
-#ifdef NDEBUG
-const bool enableValidationLayers = false;
-#else
-const bool enableValidationLayers = true;
-#endif
+
+//
+// Shader code
+//
+const uint32_t vertShaderCode[] = {
+	#include "vert.h"
+};
+const size_t vertShaderSize = sizeof(vertShaderCode);
+
+const uint32_t fragShaderCode[] = {
+	#include "frag.h"
+};
+const size_t fragShaderSize = sizeof(fragShaderCode);
+
+
+/*==============================================================================
+	SETUP
+==============================================================================*/
 
 //
 // Initialize the window
 //
 void initWindow() {
 	// Refactor this later to use our config.h implementation
-	const uint32_t WIDTH = 1280;
-	const uint32_t HEIGHT = 640;
+	const uint32_t WIDTH = 640;
+	const uint32_t HEIGHT = 320;
 
 	glfwInit();
 
@@ -111,6 +130,10 @@ void createInstance() {
 		throw std::runtime_error("failed to create instance!");
 	}
 }
+
+/*==============================================================================
+	VALIDATION LAYERS
+==============================================================================*/
 
 //
 // Setup Debug Messenger
@@ -212,6 +235,10 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 		func(instance, debugMessenger, pAllocator);
 	}
 }
+
+/*==============================================================================
+	PHYSICAL & LOGICAL DEVICES
+==============================================================================*/
 
 //
 // Pick Physical Device
@@ -333,6 +360,8 @@ void createLogicalDevice() {
 	vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
 	vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 }
+
+//==============================================================================
 
 //
 // Create Surface
@@ -530,7 +559,62 @@ void createImageViews() {
 ==============================================================================*/
 
 void createGraphicsPipeline() {
-	// Function content will be added as we progress through the tutorial
+	VkShaderModule vertShaderModule;
+	VkShaderModule fragShaderModule;
+
+	// Vertex Shader Module Creation
+	VkShaderModuleCreateInfo vertCreateInfo{};
+	vertCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	vertCreateInfo.codeSize = sizeof(vertShaderCode);
+	vertCreateInfo.pCode = vertShaderCode;
+
+	if (vkCreateShaderModule(device, &vertCreateInfo, nullptr, &vertShaderModule) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create vertex shader module!");
+	}
+
+	// Fragment Shader Module Creation
+	VkShaderModuleCreateInfo fragCreateInfo{};
+	fragCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	fragCreateInfo.codeSize = sizeof(fragShaderCode);
+	fragCreateInfo.pCode = fragShaderCode;
+
+	if (vkCreateShaderModule(device, &fragCreateInfo, nullptr, &fragShaderModule) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create fragment shader module!");
+	}
+
+	// Shader Stage Info
+	VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
+	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertShaderStageInfo.module = vertShaderModule;
+	vertShaderStageInfo.pName = "main";
+
+	VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
+	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragShaderStageInfo.module = fragShaderModule;
+	fragShaderStageInfo.pName = "main";
+
+	VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+
+	// Placeholder for the remaining pipeline creation code
+
+	// Create pipeline layout
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = 0; // Optional
+	pipelineLayoutInfo.pSetLayouts = nullptr; // Optional
+	pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
+	pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
+
+	VkPipelineLayout pipelineLayout;
+	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create pipeline layout!");
+	}
+
+	// Cleanup shader modules
+	vkDestroyShaderModule(device, fragShaderModule, nullptr);
+	vkDestroyShaderModule(device, vertShaderModule, nullptr);
 }
 
 //==============================================================================

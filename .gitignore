@@ -1,6 +1,8 @@
 # Ignore 'x64' directory
 /x64/
 /Intermediate/
+/shaders/*.h
+/shaders/*.spv
 
 # Ignore .vs dir
 /.vs/

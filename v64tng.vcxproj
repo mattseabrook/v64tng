@@ -72,7 +72,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)\</OutDir>
-    <IncludePath>C:\lib\wildmidi-0.4.6-win64;C:\lib\zlib-1.3;C:\lib\lpng1640;C:\lib\glfw-3.3.8\include;C:\VulkanSDK\1.3.268.0\Include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)shaders;C:\lib\zlib-1.3;C:\lib\lpng1640;C:\lib\glfw-3.3.8\include;C:\VulkanSDK\1.3.268.0\Include;$(IncludePath)</IncludePath>
     <LibraryPath>C:\lib\zlib-1.3\build\Debug;C:\lib\lpng1640\build_debug\Debug;C:\lib\glfw-3.3.8\build\src\Debug;C:\lib\wildmidi-0.4.6-win64;$(LibraryPath)</LibraryPath>
     <IntDir>$(SolutionDir)\Intermediate\</IntDir>
   </PropertyGroup>
@@ -132,6 +132,15 @@
       <Command>xcopy /y "$(OutDir)$(TargetName)$(TargetExt)" "C:\T7G\"</Command>
       <Message>Copies the program into my game directory for testing</Message>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>if exist shaders\vert.h del shaders\vert.h
+if exist shaders\frag.h del shaders\frag.h
+if exist shaders\vert.spv del shaders\vert.spv
+if exist shaders\frag.spv del shaders\frag.spv
+C:\VulkanSDK\1.3.268.0\Bin\glslc.exe shaders\shader.vert -o shaders\vert.spv
+C:\VulkanSDK\1.3.268.0\Bin\glslc.exe shaders\shader.frag -o shaders\frag.spv
+python generate_shader_headers.py</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>

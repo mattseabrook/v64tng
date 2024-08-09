@@ -11,8 +11,6 @@
 #include <iostream>
 #include <mmsystem.h>
 
-#include <wildmidi_lib.h>
-
 #include "xmi.h"
 #include "rl.h"
 
