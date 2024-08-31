@@ -67,7 +67,11 @@ VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>
 VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
 VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 void createImageViews();
+void createRenderPass();
 void createGraphicsPipeline();
+void createCommandPool();
+void createCommandBuffer();
+void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 void mainLoop();
 void cleanup();
 
@@ -78,5 +82,9 @@ VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMes
 void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
+
+std::vector<VkFramebuffer> swapChainFramebuffers; // See if this needs to be here later
+VkCommandPool commandPool;
+VkCommandBuffer commandBuffer;
 
 #endif // WINDOW_H

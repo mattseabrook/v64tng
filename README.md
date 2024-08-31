@@ -1,4 +1,4 @@
-`v64tng.exe` is a Windows x86_64 executable that is an attempt at re-creating the complete 7th Guest game engine from scratch. It is written in C++ and uses `VULKAN` for graphics, `TBD` for audio, and `TBD` for input. The game engine is designed to work placed into the original game directory (*regardless of where you purchased it/what version you have*), and it is required to be used with the original game data files.
+`v64tng.exe` is a Windows x86_64 executable that is an attempt at re-creating the complete 7th Guest game engine from scratch. It is written in C++ 20 and uses `VULKAN` for graphics, `TBD` for audio, and `TBD` for input. The game engine is designed to work placed into the original game directory (*regardless of where you purchased it/what version you have*), and it is required to be used with the original game data files.
 
 **Table-of-Contents**
 - [Disclaimer](#disclaimer)
@@ -34,12 +34,6 @@
   - [Pre-requisites](#pre-requisites)
 - [CHANGELOG](#changelog)
 - [NOTES](#notes-1)
-  - [Vulkan](#vulkan)
-    - [GLFW](#glfw)
-    - [GLM](#glm)
-    - [VkPhysicalDeviceFeatures](#vkphysicaldevicefeatures)
-    - [VkQueueSubmit](#vkqueuesubmit)
-    - [VkResult](#vkresult)
 - [TODO](#todo)
 - [XMI Info](#xmi-info)
 
@@ -436,40 +430,15 @@ v64tng.exe -x agu16 play|extract
 
 # CHANGELOG
 
-x
+- 
 
 # NOTES
 
-## Vulkan
-
-- The shader code defining a shader module must be in the SPIR-V format
-- SDK path: `C:\VulkanSDK\1.3.261.1`
-- `glslangValidator.exe` and `glslc.exe` programs will be used to compile shaders from the human-readable `GLSL` to bytecode
-
-### GLFW
-
-- It also abstracts away some of the other platform-specific things in Vulkan besides just window creation.
-
-### GLM
-
-`Vulkan`` does not include a library for linear algebra operations. GLM is a header-only library, so just download the latest version and store it in a convenient location.
-
-### VkPhysicalDeviceFeatures
-
-https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceFeatures.html
-
-### VkQueueSubmit
-
-https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkQueueSubmit.html
-
-### VkResult
-
-https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkResult.html
-
+- N/A
+  
 # TODO
 
-- Finish setting up Library Linkage for `GLFW` and `Vulkan`
-- Additional Linker Directories
+- Finish `VULKAN` implementation.
 
 # XMI Info
 
