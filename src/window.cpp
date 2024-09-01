@@ -1,7 +1,6 @@
-// window.cpp
-
 #include <stdexcept>
 #include <vector>
+#include <iostream>
 
 #include "window.h"
 
@@ -24,6 +23,8 @@ VkPipelineLayout pipelineLayout;
 std::vector<VkFramebuffer> swapChainFramebuffers;
 VkCommandPool commandPool;
 VkCommandBuffer commandBuffer;
+VkSemaphore imageAvailableSemaphore;
+VkSemaphore renderFinishedSemaphore;
 
 // Embedded Shader code
 const uint32_t vertShaderCode[] = {
@@ -42,7 +43,6 @@ const uint32_t fragShaderCode[] = {
 // Initialize the window
 //
 void initWindow() {
-	// Refactor this later to use our config.h implementation
 	const uint32_t WIDTH = 640;
 	const uint32_t HEIGHT = 320;
 
@@ -68,6 +68,7 @@ void initVulkan() {
 	createFramebuffers();
 	createCommandPool();
 	createCommandBuffer();
+	createSyncObjects();
 }
 
 //
@@ -93,7 +94,8 @@ void createInstance() {
 	createInfo.ppEnabledExtensionNames = glfwExtensions;
 
 	if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create instance!");
+		std::cerr << "Vulkan instance creation failed!" << std::endl;
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -102,7 +104,8 @@ void createInstance() {
 //
 void createSurface() {
 	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create window surface!");
+		std::cerr << "Vulkan window surface creation failed!" << std::endl;
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -118,7 +121,8 @@ void pickPhysicalDevice() {
 	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 
 	if (deviceCount == 0) {
-		throw std::runtime_error("failed to find GPUs with Vulkan support!");
+		std::cerr << "no GPU support for Vulkan!" << std::endl;
+		exit(EXIT_FAILURE);
 	}
 
 	std::vector<VkPhysicalDevice> devices(deviceCount);
@@ -132,7 +136,8 @@ void pickPhysicalDevice() {
 	}
 
 	if (physicalDevice == VK_NULL_HANDLE) {
-		throw std::runtime_error("failed to find a suitable GPU!");
+		std::cerr << "Failed to find GPU!" << std::endl;
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -140,7 +145,32 @@ void pickPhysicalDevice() {
 // Check if the device is suitable
 //
 bool isDeviceSuitable(VkPhysicalDevice device) {
-	return true;
+	uint32_t extensionCount;
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+	std::vector<const char*> requiredExtensions = {
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	};
+
+	for (const char* requiredExtension : requiredExtensions) {
+		bool extensionFound = false;
+
+		for (const auto& extension : availableExtensions) {
+			if (strcmp(extension.extensionName, requiredExtension) == 0) {
+				extensionFound = true;
+				break;
+			}
+		}
+
+		if (!extensionFound) {
+			return false;
+		}
+	}
+
+	return true;  // Add more checks for queue families, etc., as needed
 }
 
 //
@@ -151,20 +181,27 @@ void createLogicalDevice() {
 
 	VkDeviceQueueCreateInfo queueCreateInfo{};
 	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	queueCreateInfo.queueFamilyIndex = 0;
+	queueCreateInfo.queueFamilyIndex = 0; // This should be the index of the graphics queue family
 	queueCreateInfo.queueCount = 1;
 	queueCreateInfo.pQueuePriorities = &queuePriority;
+
+	std::vector<const char*> deviceExtensions = {
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME  // Ensure this extension is enabled
+	};
 
 	VkDeviceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	createInfo.queueCreateInfoCount = 1;
 	createInfo.pQueueCreateInfos = &queueCreateInfo;
+	createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+	createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
 	VkPhysicalDeviceFeatures deviceFeatures{};
 	createInfo.pEnabledFeatures = &deviceFeatures;
 
 	if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create logical device!");
+		std::cerr << "Vulkan logical device creation failed!" << std::endl;
+		exit(EXIT_FAILURE);
 	}
 
 	vkGetDeviceQueue(device, 0, 0, &graphicsQueue);
@@ -197,7 +234,8 @@ void createSwapChain() {
 	createInfo.clipped = VK_TRUE;
 
 	if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create swap chain!");
+		std::cerr << "Vulkan swap chain creation failed!" << std::endl;
+		exit(EXIT_FAILURE);
 	}
 
 	uint32_t imageCount;
@@ -232,7 +270,8 @@ void createImageViews() {
 		createInfo.subresourceRange.layerCount = 1;
 
 		if (vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create image views!");
+			std::cerr << "Vulkan image view creation failed!" << std::endl;
+			exit(EXIT_FAILURE);
 		}
 	}
 }
@@ -268,7 +307,8 @@ void createRenderPass() {
 	renderPassInfo.pSubpasses = &subpass;
 
 	if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create render pass!");
+		std::cerr << "Vulkan render pass failed!" << std::endl;
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -290,7 +330,8 @@ void createGraphicsPipeline() {
 	vertCreateInfo.pCode = vertShaderCode;
 
 	if (vkCreateShaderModule(device, &vertCreateInfo, nullptr, &vertShaderModule) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create vertex shader module!");
+		std::cerr << "Vulkan vertex shader module creation failed!" << std::endl;
+		exit(EXIT_FAILURE);
 	}
 
 	// Fragment Shader Module
@@ -300,7 +341,8 @@ void createGraphicsPipeline() {
 	fragCreateInfo.pCode = fragShaderCode;
 
 	if (vkCreateShaderModule(device, &fragCreateInfo, nullptr, &fragShaderModule) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create fragment shader module!");
+		std::cerr << "Vulkan fragment shader module creation failed!" << std::endl;
+		exit(EXIT_FAILURE);
 	}
 
 	VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
@@ -367,7 +409,8 @@ void createGraphicsPipeline() {
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
 	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create pipeline layout!");
+		std::cerr << "Vulkan pipeline creation failed!" << std::endl;
+		exit(EXIT_FAILURE);
 	}
 
 	VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -385,7 +428,8 @@ void createGraphicsPipeline() {
 	pipelineInfo.subpass = 0;
 
 	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create graphics pipeline!");
+		std::cerr << "Vulkan graphics pipeline creation failed!" << std::endl;
+		exit(EXIT_FAILURE);
 	}
 
 	vkDestroyShaderModule(device, fragShaderModule, nullptr);
@@ -411,7 +455,8 @@ void createFramebuffers() {
 		framebufferInfo.layers = 1;
 
 		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create framebuffer!");
+			std::cerr << "Vulkan framebuffer creation failed!" << std::endl;
+			exit(EXIT_FAILURE);
 		}
 	}
 }
@@ -425,7 +470,8 @@ void createCommandPool() {
 	poolInfo.queueFamilyIndex = 0;
 
 	if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create command pool!");
+		std::cerr << "Vulkan command pool creation failed!" << std::endl;
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -440,7 +486,119 @@ void createCommandBuffer() {
 	allocInfo.commandBufferCount = 1;
 
 	if (vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer) != VK_SUCCESS) {
-		throw std::runtime_error("failed to allocate command buffer!");
+		std::cerr << "Vulkan command buffer allocation failed!" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+}
+
+//
+// Create synchronization objects
+//
+void createSyncObjects() {
+	VkSemaphoreCreateInfo semaphoreInfo{};
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS ||
+		vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphore) != VK_SUCCESS) {
+		std::cerr << "Vulkan semaphore creation failed!" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+
+	std::cerr << ".................END" << std::endl;
+}
+
+//
+// Record the command buffer
+//
+void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+	if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+		std::cerr << "Vulkan recording command buffer failed to begin!" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+
+	VkRenderPassBeginInfo renderPassInfo{};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.renderPass = renderPass;
+	renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
+	renderPassInfo.renderArea.offset = { 0, 0 };
+	renderPassInfo.renderArea.extent = swapChainExtent;
+
+	VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
+	renderPassInfo.clearValueCount = 1;
+	renderPassInfo.pClearValues = &clearColor;
+
+	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+	vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+	vkCmdEndRenderPass(commandBuffer);
+
+	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+		std::cerr << "Vulkan failed to record command buffer!" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+}
+
+//
+// Draw a frame
+//
+void drawFrame() {
+	// 1. Wait for the previous frame to finish
+	vkDeviceWaitIdle(device);  // Replace with more efficient syncing later
+
+	// 2. Acquire an image from the swap chain
+	uint32_t imageIndex;
+	VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+	if (result != VK_SUCCESS) {
+		std::cerr << "Vulkan swap chain image acquisition failed!" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+
+	// 3. Record the command buffer (this is where you will do the actual drawing)
+	vkResetCommandBuffer(commandBuffer, 0);
+	recordCommandBuffer(commandBuffer, imageIndex);
+
+	// 4. Submit the command buffer for execution
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+	VkSemaphore waitSemaphores[] = { imageAvailableSemaphore };
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = waitSemaphores;
+	submitInfo.pWaitDstStageMask = waitStages;
+
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	VkSemaphore signalSemaphores[] = { renderFinishedSemaphore };
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = signalSemaphores;
+
+	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+		std::cerr << "Vulkan draw command failed to submit!" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+
+	// 5. Present the image (this shows the rendered image on the screen)
+	VkPresentInfoKHR presentInfo{};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = signalSemaphores;
+
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = &swapChain;
+	presentInfo.pImageIndices = &imageIndex;
+
+	result = vkQueuePresentKHR(presentQueue, &presentInfo);
+	if (result != VK_SUCCESS) {
+		std::cerr << "Vulkan swap chain image presentation failed!" << std::endl;
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -451,14 +609,20 @@ void createCommandBuffer() {
 //
 void mainLoop() {
 	while (!glfwWindowShouldClose(window)) {
-		glfwPollEvents();
+		glfwPollEvents();   // Handle window events
+		drawFrame();        // Render a frame
 	}
+
+	vkDeviceWaitIdle(device); // Ensure all operations are complete before exiting
 }
 
 //
 // Clean up Vulkan and other resources
 //
 void cleanup() {
+	vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
+	vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
+
 	vkDestroyCommandPool(device, commandPool, nullptr);
 
 	for (auto framebuffer : swapChainFramebuffers) {
@@ -484,9 +648,11 @@ void cleanup() {
 // Start the Game Engine
 //
 void run() {
-	HWND hWnd = GetConsoleWindow();
-	ShowWindow(hWnd, SW_HIDE);
-	
+	//HWND hWnd = GetConsoleWindow();
+	//ShowWindow(hWnd, SW_HIDE);
+
+	std::cerr << ".................Application started" << std::endl;
+
 	initWindow();
 	initVulkan();
 	mainLoop();

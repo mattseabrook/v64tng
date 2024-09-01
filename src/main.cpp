@@ -35,6 +35,7 @@
 
 #include <windows.h>
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <thread>
 #include <string>
@@ -221,6 +222,10 @@ int WINAPI WinMain(
 		}
 	}
 	else {
+		// Temporary
+		std::ofstream errFile("error.log");
+		std::cerr.rdbuf(errFile.rdbuf());
+
 		run();
 	}
 

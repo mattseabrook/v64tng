@@ -32,6 +32,9 @@ void createGraphicsPipeline();
 void createFramebuffers();
 void createCommandPool();
 void createCommandBuffer();
+void createSyncObjects();
+void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+void drawFrame();
 void cleanup();
 
 void mainLoop();
