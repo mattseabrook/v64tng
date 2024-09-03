@@ -23,7 +23,6 @@ void initVulkan();
 void createInstance();
 void createSurface();
 void pickPhysicalDevice();
-bool isDeviceSuitable(VkPhysicalDevice device);
 void createLogicalDevice();
 void createSwapChain();
 void createImageViews();
