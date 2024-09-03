@@ -222,10 +222,6 @@ int WINAPI WinMain(
 		}
 	}
 	else {
-		// Temporary
-		std::ofstream errFile("error.log");
-		std::cerr.rdbuf(errFile.rdbuf());
-
 		run();
 	}
 

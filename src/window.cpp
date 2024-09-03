@@ -5,6 +5,9 @@
 
 #include "window.h"
 
+#include "vert.h"
+#include "frag.h"
+
 // Global Variables
 GLFWwindow* window;
 VkInstance instance;
@@ -299,6 +302,7 @@ void createRenderPass() {
 	GRAPHICS PIPELINE
 ==============================================================================*/
 
+/*
 VkShaderModule createShaderModule(const std::string& filename) {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
@@ -326,13 +330,30 @@ VkShaderModule createShaderModule(const std::string& filename) {
 
 	return shaderModule;
 }
+*/
+VkShaderModule createShaderModule(const uint32_t* code, size_t size) {
+	VkShaderModuleCreateInfo createInfo{
+		.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+		.codeSize = size,
+		.pCode = code,
+	};
+
+	VkShaderModule shaderModule;
+	if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create shader module");
+	}
+
+	return shaderModule;
+}
 
 //
 // Create graphics pipeline
 //
 void createGraphicsPipeline() {
-	auto vertShaderModule = createShaderModule("shaders/vert.spv");
-	auto fragShaderModule = createShaderModule("shaders/frag.spv");
+	//auto vertShaderModule = createShaderModule("shaders/vert.spv");
+	//auto fragShaderModule = createShaderModule("shaders/frag.spv");
+	auto vertShaderModule = createShaderModule(vertShaderCode, sizeof(vertShaderCode));
+	auto fragShaderModule = createShaderModule(fragShaderCode, sizeof(fragShaderCode));
 
 	VkPipelineShaderStageCreateInfo vertShaderStageInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
