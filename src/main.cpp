@@ -112,6 +112,7 @@ int WINAPI WinMain(
 					return 1;
 				}
 				GJDInfo(args[2]);
+				simulateEnterKey();
 			}
 			//
 			// Extract individual bitmap frames (RAW or PNG format,) or create an MKV movie, from a *.VDX file
@@ -160,6 +161,8 @@ int WINAPI WinMain(
 				if (video && !raw) {
 					createVideoFromImages(directory.empty() ? filename : directory + "\\" + filename);
 				}
+
+				simulateEnterKey();
 			}
 			//
 			// Extract all of the *.VDX files from the user-specified *.GJD file
@@ -171,6 +174,7 @@ int WINAPI WinMain(
 					return 1;
 				}
 				extractVDX(args[2]);
+				simulateEnterKey();
 			}
 			//
 			// Extract or Play a specific XMI file from the XMI.RL file

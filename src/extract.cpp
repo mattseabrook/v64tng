@@ -86,11 +86,6 @@ void extractPNG(const std::string_view& filename, bool raw)
 
 	for (std::size_t i = 0; i < parsedVDXFile.chunks.size(); i++)
 	{
-		// debug
-		std::cout << "Type: 0x" << std::hex << static_cast<int>(parsedVDXFile.chunks[i].chunkType) <<
-			" , LZSS size (bytes): " << std::dec << parsedVDXFile.chunks[i].dataSize <<
-			" , Size (bytes): " << parsedVDXFile.chunks[i].data.size() << std::endl;
-
 		if (parsedVDXFile.chunks[i].chunkType == 0x80)
 		{
 			continue;
@@ -99,6 +94,11 @@ void extractPNG(const std::string_view& filename, bool raw)
 		{
 			continue;
 		}
+
+		// Improve this output later
+		std::cout << "Type: 0x" << std::hex << static_cast<int>(parsedVDXFile.chunks[i].chunkType) <<
+			" , LZSS size (bytes): " << std::dec << parsedVDXFile.chunks[i].dataSize <<
+			" , Size (bytes): " << parsedVDXFile.chunks[i].data.size() << std::endl;
 
 		std::ostringstream frameString;
 		frameString << std::setfill('0') << std::setw(4) << i + 1;

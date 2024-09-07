@@ -175,6 +175,7 @@ python spv_to_constexpr.py shaders/frag.spv shaders/frag.h fragShaderCode</Comma
     <ClInclude Include="include\config.h" />
     <ClInclude Include="include\delta.h" />
     <ClInclude Include="include\extract.h" />
+    <ClInclude Include="include\fh.h" />
     <ClInclude Include="include\game.h" />
     <ClInclude Include="include\gjd.h" />
     <ClInclude Include="include\lzss.h" />
@@ -189,6 +190,7 @@ python spv_to_constexpr.py shaders/frag.spv shaders/frag.h fragShaderCode</Comma
     <ClCompile Include="src\config.cpp" />
     <ClCompile Include="src\delta.cpp" />
     <ClCompile Include="src\extract.cpp" />
+    <ClCompile Include="src\fh.cpp" />
     <ClCompile Include="src\game.cpp" />
     <ClCompile Include="src\gjd.cpp" />
     <ClCompile Include="src\lzss.cpp" />
