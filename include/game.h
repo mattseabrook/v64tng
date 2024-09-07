@@ -43,6 +43,7 @@ const std::map<Room, std::string> ROOM_DATA = {
 };
 
 std::string getRoomRLFilename(Room room);
-void gameLoop();
+void updateGame(Room& current_room);
+void run();
 
 #endif // GAME_H

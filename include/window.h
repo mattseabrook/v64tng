@@ -33,10 +33,11 @@ void createCommandPool();
 void createCommandBuffer();
 void createSyncObjects();
 void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-void drawFrame();
+void initializeRenderer();
+void renderFrame();
 void cleanup();
 
-void mainLoop();
-void run();
+void pollWindowEvents();
+bool windowShouldClose();
 
 #endif // WINDOW_H

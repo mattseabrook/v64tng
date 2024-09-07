@@ -43,7 +43,6 @@
 #include <filesystem>
 #include <algorithm>
 
-#include "window.h"
 #include "config.h"
 #include "game.h"
 #include "extract.h"

@@ -573,9 +573,9 @@ void recordCommandBuffer(VkCommandBuffer cmdBuffer, uint32_t imageIndex) {
 }
 
 //
-// Draw a frame
+// Experimental draw frame function
 //
-void drawFrame() {
+void renderFrame() {
 	// 1. Wait for the previous frame to finish
 	vkDeviceWaitIdle(device);  // Replace with more efficient syncing later
 
@@ -630,15 +630,17 @@ void drawFrame() {
 //==============================================================================
 
 //
-// Main loop to keep the application running
+// Poll window events
 //
-void mainLoop() {
-	while (!glfwWindowShouldClose(window)) {
-		glfwPollEvents();   // Handle window events
-		drawFrame();        // Render a frame
-	}
+void pollWindowEvents() {
+	glfwPollEvents();
+}
 
-	vkDeviceWaitIdle(device); // Ensure all operations are complete before exiting
+//
+// Check if the window should close
+//
+bool windowShouldClose() {
+	return glfwWindowShouldClose(window);
 }
 
 //
@@ -665,18 +667,16 @@ void cleanup() {
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
 	vkDestroyInstance(instance, nullptr);
+
 	glfwDestroyWindow(window);
 	glfwTerminate();
 }
 
 //
-// Start the Game Engine
+// Initialize the renderer
 //
-void run() {
-	initWindow();
-	initVulkan();
+void initializeRenderer() {
+	initWindow();	// Sets up the window
+	initVulkan();	// Sets up Vulkan (calls all initialization Vulkan functions)
 
-	mainLoop();
-
-	cleanup();
 }
