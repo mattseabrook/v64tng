@@ -224,11 +224,19 @@ h_plmorp
 h_prmorp
 */
 
-//
-// f_1
-//
-const std::unordered_map<std::string, View> f_1 = {
+/*
+
+f_ prefix for Foyer views
+
+*/
+const std::unordered_map<std::string, View> f_ = {
+	////////////////////////////////////////////////////////////////////////
+	// f_1
+	////////////////////////////////////////////////////////////////////////
+
+	//
 	// Turning left towards front door
+	//
 	{
 		"f_1ba",
 		{
@@ -242,7 +250,9 @@ const std::unordered_map<std::string, View> f_1 = {
 			}
 		}
 	},
+	//
 	// Stairs, turning left
+	//
 	{
 		"f_1bb",
 		{
@@ -253,7 +263,9 @@ const std::unordered_map<std::string, View> f_1 = {
 			}
 		}
 	},
+	//
 	// turning left towards Stairs *first view
+	//
 	{
 		"f_1bc",
 		{
@@ -267,7 +279,9 @@ const std::unordered_map<std::string, View> f_1 = {
 			}
 		}
 	},
+	//
 	// front door, turning left
+	//
 	{
 		"f_1bd",
 		{
@@ -280,7 +294,9 @@ const std::unordered_map<std::string, View> f_1 = {
 			}
 		}
 	},
+	//
 	// front door, turning right
+	//
 	{
 		"f_1fa",
 		{
@@ -292,7 +308,9 @@ const std::unordered_map<std::string, View> f_1 = {
 			}
 		}
 	},
+	//
 	// turning right towards stairs
+	//
 	{
 		"f_1fb",
 		{
@@ -306,7 +324,9 @@ const std::unordered_map<std::string, View> f_1 = {
 			}
 		}
 	},
+	//
 	// Stairs, turning right
+	//
 	{
 		"f_1fc",
 		{
@@ -318,7 +338,9 @@ const std::unordered_map<std::string, View> f_1 = {
 			}
 		}
 	},
+	//
 	// turning right towards front door
+	//
 	{
 		"f_1fd",
 		{
@@ -331,30 +353,32 @@ const std::unordered_map<std::string, View> f_1 = {
 				{"x", {100.0f, 0.0f, 25.0f, 100.0f}}		// Right
 			}
 		}
-	}
-};
+	},
 
-/*
+	////////////////////////////////////////////////////////////////////////
+	// f_2
+	////////////////////////////////////////////////////////////////////////
 
-f_2
+	/*
+	f_2ba
+	f_2bb
+	f_2bc
+	f_2bd
+	f_2fa
+	f_2fb
+	f_2fc
+	f_2fd
+	*/
 
-f_2ba
-f_2bb
-f_2bc
-f_2bd
-f_2fa
-f_2fb
-f_2fc
-f_2fd
-
-*/
-const std::unordered_map<std::string, View> f_2 = {
-	// Example
+	//
+	// x
+	//
 	{
 		"f_2ba",
 		{
 			{},
-			{}
+			{	// Navigation
+			}
 		}
 	}
 };
