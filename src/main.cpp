@@ -46,8 +46,11 @@
 #include "config.h"
 #include "game.h"
 #include "extract.h"
-#include "xmi.h"
+#include "lzss.h"
 #include "rl.h"
+#include "gjd.h"
+#include "vdx.h"
+#include "xmi.h"
 
  //
  // Working around Microsoft Shittiness (FreeConsole() doesn't work)
@@ -103,16 +106,66 @@ int WINAPI WinMain(
 			freopen_s(reinterpret_cast<FILE**>(stdin), "CONIN$", "r", stdin);
 
 			//
-			// Output information about how data is packed in the GJD resource file
+			// Extract all of the *.VDX files from the user-specified *.RL/GJD file pair
 			//
-			if (args[1] == "-r") {
+			if (args[1] == "-g") {
 				if (args.size() < 3) {
-					std::cerr << "ERROR: a *.RL file was not specified.\n\nExample: v64tng.exe -r DR.RL" << std::endl;
+					std::cerr << "ERROR: a *.RL file was not specified.\n\nExample: v64tng.exe -g DR.RL" << std::endl;
 					simulateEnterKey();
 					return 1;
 				}
-				GJDInfo(args[2]);
+				extractVDX(args[2]);
 				simulateEnterKey();
+			}
+			//
+			// Exposed LZSS compression/decompression functions to test with the last frame of a *.VDX file
+			//
+			else if (args[1] == "-l") {
+				if (args.size() < 3) {
+					MessageBoxA(NULL, "ERROR: a *.vdx file was not specified.\n\nExample: v64tng.exe -l f_1bc.vdx", "v64tng.exe", MB_OK | MB_ICONERROR);
+					return 1;
+				}
+
+				VDXFile vdxFile;
+				std::vector<uint8_t> buffer;
+
+				std::ifstream file(args[2], std::ios::binary | std::ios::ate);
+				if (file) {
+					auto fileSize = static_cast<std::size_t>(file.tellg());
+					file.seekg(0, std::ios::beg);
+					buffer.resize(fileSize);
+					file.read(reinterpret_cast<char*>(buffer.data()), fileSize);
+					file.close();
+				}
+				else {
+					MessageBoxA(NULL, "ERROR: Unable to open the *.vdx file", "v64tng.exe", MB_OK | MB_ICONERROR);
+					return 1;
+				}
+
+				vdxFile = parseVDXFile(args[2], buffer);
+
+				// Get the last chunk
+				auto& chunk = vdxFile.chunks.back();
+
+				// Extract only the chunk data (excluding the chunk header)
+				const std::vector<uint8_t>& chunkData = chunk.data;
+
+				// Save the original compressed data (excluding the chunk header)
+				std::ofstream chunkFile(args[2].substr(0, args[2].find_last_of('.')) + "_chunk_original.bin", std::ios::binary);
+				chunkFile.write(reinterpret_cast<const char*>(chunkData.data()), chunkData.size());
+				chunkFile.close();
+
+				// Decompress the chunk data
+				auto decompressedData = lzssDecompress(chunkData, chunk.lengthMask, chunk.lengthBits);
+				std::ofstream decompFile(args[2].substr(0, args[2].find_last_of('.')) + "_chunk_decompressed.bin", std::ios::binary);
+				decompFile.write(reinterpret_cast<const char*>(decompressedData.data()), decompressedData.size());
+				decompFile.close();
+
+				// Compress the decompressed data
+				auto compressedData = lzssCompress(decompressedData, chunk.lengthMask, chunk.lengthBits);
+				std::ofstream compFile(args[2].substr(0, args[2].find_last_of('.')) + "_chunk_compressed.bin", std::ios::binary);
+				compFile.write(reinterpret_cast<const char*>(compressedData.data()), compressedData.size());
+				compFile.close();
 			}
 			//
 			// Extract individual bitmap frames (RAW or PNG format,) or create an MKV movie, from a *.VDX file
@@ -165,15 +218,15 @@ int WINAPI WinMain(
 				simulateEnterKey();
 			}
 			//
-			// Extract all of the *.VDX files from the user-specified *.GJD file
+			// Output information about how data is packed in the GJD resource file
 			//
-			else if (args[1] == "-g") {
+			else if (args[1] == "-r") {
 				if (args.size() < 3) {
-					std::cerr << "ERROR: a *.RL file was not specified.\n\nExample: v64tng.exe -g DR.RL" << std::endl;
+					std::cerr << "ERROR: a *.RL file was not specified.\n\nExample: v64tng.exe -r DR.RL" << std::endl;
 					simulateEnterKey();
 					return 1;
 				}
-				extractVDX(args[2]);
+				GJDInfo(args[2]);
 				simulateEnterKey();
 			}
 			//

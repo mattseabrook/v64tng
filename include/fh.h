@@ -8,10 +8,10 @@
 /*
 ===============================================================================
 
-    7th Guest - FOYER_HALLWAY
+	7th Guest - FOYER_HALLWAY
 
-    This header file manages the views, navigation, and hotspots within
-    the Foyer and Hallway sections of the game.
+	This header file manages the views, navigation, and hotspots within
+	the Foyer and Hallway sections of the game.
 
 ===============================================================================
 */
@@ -55,18 +55,6 @@ foy_spg
 foy_sph
 
 
-
-
-
-
-f_2ba
-f_2bb
-f_2bc
-f_2bd
-f_2fa
-f_2fb
-f_2fc
-f_2fd
 
 
 
@@ -236,34 +224,139 @@ h_plmorp
 h_prmorp
 */
 
+//
+// f_1
+//
+const std::unordered_map<std::string, View> f_1 = {
+	// Turning left towards front door
+	{
+		"f_1ba",
+		{
+			{	// Hotspots
+				{0.0f, 0.0f, 0.0f, 0.0f, []() { /* Intro Movie */ }},
+				{0.0f, 0.0f, 0.0f, 0.0f, []() { /* Spider Puzzle */ }}
+			},
+			{	// Navigation
+				{"x", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
+				{"x", {100.0f, 0.0f, 25.0f, 100.0f}}		// Right
+			}
+		}
+	},
+	// Stairs, turning left
+	{
+		"f_1bb",
+		{
+			{},
+			{   // Navigation
+				{"x", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
+				{"x", {100.0f, 0.0f, 25.0f, 100.0f}}		// Right
+			}
+		}
+	},
+	// turning left towards Stairs *first view
+	{
+		"f_1bc",
+		{
+			{},
+			{   // Navigation
+				{"x", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
+				{"x", {33.0f, 0.0f, 33.0f, 100.0f}},		// Forward
+				{"x", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+				{"x", {0.0f, 50.0f, 25.0f, 30.0f}},			// Dining Room
+				{"x", {80.0f, 50.0f, 20.0f, 30.0f}}			// Music Room
+			}
+		}
+	},
+	// front door, turning left
+	{
+		"f_1bd",
+		{
+			{},
+			{   // Navigation
+				{"x", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
+				{"x", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+				{"x", {0.0f, 70.0f, 25.0f, 30.0f}},			// Music Room
+				{"x", {33.0f, 33.0f, 5.0f, 30.0f}}			// Library
+			}
+		}
+	},
+	// front door, turning right
+	{
+		"f_1fa",
+		{
+			{},
+			{   // Navigation
+				{"f_1ba", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
+				{"f_1fb", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+				{"x", {33.0f, 33.0f, 5.0f, 30.0f}}				// Library
+			}
+		}
+	},
+	// turning right towards stairs
+	{
+		"f_1fb",
+		{
+			{},
+			{   // Navigation
+				{"x", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
+				{"x", {33.0f, 0.0f, 33.0f, 100.0f}},		// Forward
+				{"x", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+				{"x", {0.0f, 50.0f, 25.0f, 30.0f}},			// Dining Room
+				{"x", {80.0f, 50.0f, 20.0f, 30.0f}}			// Music Room
+			}
+		}
+	},
+	// Stairs, turning right
+	{
+		"f_1fc",
+		{
+			{},
+			{   // Navigation
+				{"x", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
+				{"f_1fd", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+				{"x", {33.0f, 33.0f, 5.0f, 30.0f}}				// Library
+			}
+		}
+	},
+	// turning right towards front door
+	{
+		"f_1fd",
+		{
+			{	// Hotspots
+				{0.0f, 0.0f, 0.0f, 0.0f, []() { /* Intro Movie */ }},
+				{0.0f, 0.0f, 0.0f, 0.0f, []() { /* Spider Puzzle */ }}
+			},
+			{	// Navigation
+				{"x", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
+				{"x", {100.0f, 0.0f, 25.0f, 100.0f}}		// Right
+			}
+		}
+	}
+};
 
 /*
 
-f_1ba = turning left towards front door
-f_1bb = Stairs, turning left
-f_1bc = turning left towards Stairs *first view
-f_1bd = front door, turning left
-f_1fa = front door, turn right
-f_1fb = turning right towards Stairs *could also be the first view
-f_1fc = Stairs, turning right
-f_1fd = turning right towards front door
+f_2
+
+f_2ba
+f_2bb
+f_2bc
+f_2bd
+f_2fa
+f_2fb
+f_2fc
+f_2fd
 
 */
-const std::unordered_map<std::string, View> f_1 = {
-    {"f_1ba", {
-        "f_1ba",
-        { {100, 100, 50, 50}, {200, 100, 50, 50} },  // Hotspots in this view
-        {
-            {"f_1bb", {250, 150, 60, 60}},          // Navigate to f_1bb via this hotspot
-            {"f_1fa", {350, 250, 70, 70}}           // Navigate to f_1fa via this hotspot
-        }
-    }},
-    {"f_1bb", {
-        "f_1bb",
-        { {150, 150, 60, 60} },
-        { {"f_1bc", {300, 200, 70, 70}} }
-    }},
-    // Continue for other views...
+const std::unordered_map<std::string, View> f_2 = {
+	// Example
+	{
+		"f_2ba",
+		{
+			{},
+			{}
+		}
+	}
 };
 
 //==============================================================================

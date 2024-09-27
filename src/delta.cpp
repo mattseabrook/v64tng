@@ -172,3 +172,140 @@ std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getDeltaBitmapData(std::
 
 	return std::make_tuple(palette, deltaFrame);
 }
+
+/*
+#include <vector>
+#include <tuple>
+#include <cstdint>
+#include "bitmap.h"
+#include "delta.h"
+
+std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getDeltaBitmapData(
+	const std::vector<uint8_t>& buffer,
+	std::vector<RGBColor>& palette,
+	const std::vector<uint8_t>& frameBuffer)
+{
+	auto deltaFrame = frameBuffer;
+	if (buffer.size() < 2) return { palette, deltaFrame };
+
+	uint16_t locPalSize = buffer[0] | (buffer[1] << 8);
+	size_t k = 0;
+
+	// Alter palette according to bitfield
+	if (locPalSize > 0) {
+		if (buffer.size() < 34 + k + locPalSize) return { palette, deltaFrame };
+		for (size_t i = 0; i < 16; ++i) {
+			if (i * 2 + 3 >= buffer.size()) break;
+			uint16_t map = buffer[i * 2 + 2] | (buffer[i * 2 + 3] << 8);
+			for (size_t j = 0; j < 16; ++j) {
+				if (map & 0x8000) {
+					if (34 + k + 2 >= buffer.size()) break;
+					palette[i * 16 + j] = RGBColor{
+						buffer[34 + k],
+						buffer[34 + k + 1],
+						buffer[34 + k + 2]
+					};
+					k += 3;
+				}
+				map <<= 1;
+			}
+		}
+	}
+
+	constexpr uint16_t width = 640;
+	size_t x = 0, y = 0, i = locPalSize + 2;
+
+	// Decode image
+	while (i < buffer.size()) {
+		uint8_t opcode = buffer[i];
+		if (opcode <= 0x5F) {
+			uint16_t map = MapField[opcode << 1] | (MapField[(opcode << 1) + 1] << 8);
+			uint8_t c1 = buffer[i + 1], c0 = buffer[i + 2];
+			for (size_t j = 0; j < 16; ++j) {
+				uint8_t colorIndex = (map & 0x8000) ? c1 : c0;
+				auto& color = palette[colorIndex];
+				size_t pixelIndex = (y + j / 4) * width + x + j % 4;
+				if (pixelIndex * 3 + 2 >= deltaFrame.size()) continue;
+
+				deltaFrame[pixelIndex * 3] = color.r;
+				deltaFrame[pixelIndex * 3 + 1] = color.g;
+				deltaFrame[pixelIndex * 3 + 2] = color.b;
+				map <<= 1;
+			}
+			x += 4; i += 3;
+		}
+		else if (opcode == 0x60) {
+			for (size_t j = 0; j < 16; ++j) {
+				uint8_t colorIndex = buffer[i + j + 1];
+				auto& color = palette[colorIndex];
+				size_t pixelIndex = (y + j / 4) * width + x + j % 4;
+				if (pixelIndex * 3 + 2 >= deltaFrame.size()) continue;
+
+				deltaFrame[pixelIndex * 3] = color.r;
+				deltaFrame[pixelIndex * 3 + 1] = color.g;
+				deltaFrame[pixelIndex * 3 + 2] = color.b;
+			}
+			x += 4; i += 17;
+		}
+		else if (opcode == 0x61) {
+			y += 4; x = 0; ++i;
+		}
+		else if (opcode >= 0x62 && opcode <= 0x6B) {
+			x += (opcode - 0x62 + 1) * 4; ++i;
+		}
+		else if (opcode >= 0x6C && opcode <= 0x75) {
+			uint8_t repeatCount = opcode - 0x6B;
+			auto& color = palette[buffer[i + 1]];
+			for (size_t r = 0; r < repeatCount; ++r) {
+				for (size_t j = 0; j < 16; ++j) {
+					size_t pixelIndex = (y + j / 4) * width + x + j % 4;
+					if (pixelIndex * 3 + 2 >= deltaFrame.size()) continue;
+
+					deltaFrame[pixelIndex * 3] = color.r;
+					deltaFrame[pixelIndex * 3 + 1] = color.g;
+					deltaFrame[pixelIndex * 3 + 2] = color.b;
+				}
+				x += 4;
+			}
+			i += 2;
+		}
+		else if (opcode >= 0x76 && opcode <= 0x7F) {
+			uint8_t count = opcode - 0x75;
+			
+			for (size_t k = 1; k <= count; ++k) {
+				auto& color = palette[buffer[i + k]];
+				for (size_t j = 0; j < 16; ++j) {
+					size_t idx = ((y + j / 4) * width + x + j % 4) * 3;
+					if (idx + 2 >= deltaFrame.size()) continue;
+
+					deltaFrame[idx] = color.r;
+					deltaFrame[idx + 1] = color.g;
+					deltaFrame[idx + 2] = color.b;
+				}
+				x += 4;
+			}
+			i += count + 1;
+		}
+		else if (opcode >= 0x80 && opcode <= 0xFF) {
+			uint16_t map = buffer[i] | (buffer[i + 1] << 8);
+			auto& c1 = palette[buffer[i + 2]];
+			auto& c0 = palette[buffer[i + 3]];
+			for (size_t j = 0; j < 16; ++j) {
+				auto& color = (map & 0x8000) ? c1 : c0;
+				size_t idx = ((y + j / 4) * width + x + j % 4) * 3;
+				if (idx + 2 >= deltaFrame.size()) continue;
+
+				deltaFrame[idx] = color.r;
+				deltaFrame[idx + 1] = color.g;
+				deltaFrame[idx + 2] = color.b;
+				map <<= 1;
+			}
+			x += 4; i += 4;
+		}
+		else {
+			++i;
+		}
+	}
+	return { palette, deltaFrame };
+}
+*/

@@ -32,6 +32,12 @@ const std::array<unsigned char, 192> MapField = {
 	0xcf, 0x44, 0xd9, 0x4c, 0x99, 0x4c, 0x55, 0x55, 0x3f, 0x60, 0x77, 0x60, 0x37, 0x62, 0xc9, 0x64,
 	0xcd, 0x64, 0xd9, 0x6c, 0xef, 0x70, 0x00, 0x0f, 0xf0, 0x00, 0x00, 0x00, 0x44, 0x44, 0x22, 0x22 };
 
+/*
+std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getDeltaBitmapData(
+	const std::vector<uint8_t>& buffer,
+	std::vector<RGBColor>& palette,
+	const std::vector<uint8_t>& frameBuffer);
+*/
 std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getDeltaBitmapData(std::vector<uint8_t>& buffer,
 	std::vector<RGBColor>& palette,
 	std::vector<uint8_t>& frameBuffer);

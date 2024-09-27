@@ -20,7 +20,8 @@
 ===============================================================================
 */
 
-// Function prototype for lzssDecompress
+// Function prototypes
+std::vector<uint8_t> lzssCompress(const std::vector<uint8_t>& inputData, uint8_t lengthMask, uint8_t lengthBits);
 std::vector<uint8_t> lzssDecompress(const std::vector<uint8_t>& compressedData, uint8_t lengthMask, uint8_t lengthBits);
 
 #endif // LZSS_H

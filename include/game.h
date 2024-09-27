@@ -4,6 +4,7 @@
 #define GAME_H
 
 #include <map>
+#include <functional>
 #include <string>
 
 /*
@@ -51,10 +52,27 @@ const std::map<Room, std::string> ROOM_DATA = {
 // Hotspot structure defining clickable areas
 //
 struct Hotspot {
-    int x;
-    int y;
-    int width;
-    int height;
+    float x;
+    float y;
+    float width;
+    float height;
+    std::function<void()> action;
+};
+
+//
+// Navigation points for moving between views
+//
+struct Navigation {
+    std::string next_view;
+    Hotspot hotspot;
+};
+
+//
+// View structure for each camera/viewpoint
+//
+struct View {
+    std::vector<Hotspot> hotspots;
+    std::vector<Navigation> navigations;
 };
 
 //
