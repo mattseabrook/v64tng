@@ -5,8 +5,15 @@
 #include "game.h"
 #include "window.h"
 #include "gjd.h"
-
 #include "fh.h"
+
+//
+// View Prefixes
+//
+const std::unordered_map<std::string_view, const std::unordered_map<std::string, View>*> viewPrefixes = {
+    { "f_", &f_ },      // Foyer sequences
+    // ...
+};
 
 /* ============================================================================
                             Game Engine Feature
