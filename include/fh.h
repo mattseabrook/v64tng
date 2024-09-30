@@ -58,19 +58,6 @@ foy_sph
 
 
 
-
-
-f_3ba
-f_3bb
-f_3bc
-f_3bd
-f_3fa
-f_3fb
-f_3fc
-f_3fd
-
-
-
 f_4ba
 f_4bb
 f_4bc
@@ -224,6 +211,7 @@ h_p2jb
 h_p2jf
 h_plmorp
 h_prmorp
+
 */
 
 /*
@@ -361,31 +349,136 @@ const std::unordered_map<std::string, View> f_ = {
 	// f_2
 	////////////////////////////////////////////////////////////////////////
 
-	/*
-	f_2ba
-	f_2bb
-	f_2bc
-	f_2bd
-	f_2fa
-	f_2fb
-	f_2fc
-	f_2fd
-	*/
-
 	//
-	// x
+	// Dining Room, turning left
 	//
 	{
 		"f_2ba",
 		{
 			{},
-			{	// Navigation
+			{
+				{"x", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
+				{"x", {33.0f, 0.0f, 33.0f, 100.0f}},		// Forward
+				{"x", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
 			}
 		}
-	}
+	},
+	//
+	// Kitchen, turning left to Dining Room
+	//
+	{
+		"f_2bb",
+		{
+			{},
+			{
+				{"x", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
+				{"x", {33.0f, 0.0f, 33.0f, 100.0f}},		// Forward
+				{"f_2fb", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+			}
+		}
+	},
+	//
+	// Stairs, turning left to Kitchen
+	//
+	{
+		"f_2bc",
+		{
+			{},
+			{
+				{"f_2bb", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
+				{"f_2fc", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+			}
+		}
+	},
+	//
+	// Turning left towards Stairs
+	//
+	{
+		"f_2bd",
+		{
+			{},
+			{
+				{"f_2bc", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
+				{"f_2ba", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+			}
+		}
+	},
+	//
+	// Turning right towards Dining Room
+	//
+	{
+		"f_2fa",
+		{
+			{},
+			{
+				{"f_2ba", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
+				{"f_2fb", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+			}
+		}
+	},
+	//
+	// Dining Room, turning right to Kitchen
+	//
+	{
+		"f_2fb",
+		{
+			{},
+			{
+				{"f_2bb", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
+				{"f_2fc", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+			}
+		}
+	},
+	//
+	// Kitchen, turning right to Stairs
+	//
+	{
+		"f_2fc",
+		{
+			{},
+			{
+				{"f_2bb", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
+				{"x", {33.0f, 0.0f, 33.0f, 100.0f}},		// Forward
+				{"f_2fc", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+			}
+		}
+	},
+	//
+	// Stairs, turning rights
+	//
+	{
+		"f_2fd",
+		{
+			{},
+			{
+				{"f_2bb", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
+				{"f_2fc", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+			}
+		}
+	},
+
+	////////////////////////////////////////////////////////////////////////
+	// f_3
+	////////////////////////////////////////////////////////////////////////
+
+	/*
+	
+	f_3ba
+	f_3bb
+	f_3bc
+	f_3bd
+	f_3fa
+	f_3fb
+	f_3fc
+	f_3fd
+
+	*/
 };
 
+// Further view prefixes ...
+
 //==============================================================================
+
 
 // Function prototypes ...
 
