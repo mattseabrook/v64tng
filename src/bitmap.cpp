@@ -9,6 +9,7 @@
 #include <bitset>
 #include <iomanip>
 #include <tuple>
+#include <array>
 
 #include <png.h>
 
@@ -134,6 +135,55 @@ Return:
 */
 std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getBitmapData(const std::vector<uint8_t>& chunkData)
 {
+    auto [numXTiles, numYTiles, colourDepth] = std::tuple{
+        readLittleEndian<uint16_t>(chunkData.data()),
+        readLittleEndian<uint16_t>(chunkData.data() + 2),
+        readLittleEndian<uint16_t>(chunkData.data() + 4)
+    };
+
+    const int width = numXTiles * 4, height = numYTiles * 4;
+    std::vector<uint8_t> outputImageData(width * height * 3);
+
+    const uint8_t* paletteData = chunkData.data() + 6;
+    std::vector<RGBColor> palette(256);
+    for (int i = 0; i < 256; ++i) {
+        palette[i] = { paletteData[i * 3], paletteData[i * 3 + 1], paletteData[i * 3 + 2] };
+    }
+
+    const uint8_t* imageData = paletteData + (1 << colourDepth) * 3;
+
+    for (int tileY = 0; tileY < numYTiles; ++tileY) {
+        for (int tileX = 0; tileX < numXTiles; ++tileX) {
+            uint8_t colour1 = *imageData++, colour0 = *imageData++;
+            uint16_t colourMap = readLittleEndian<uint16_t>(imageData);
+            imageData += 2;
+
+            std::array<uint8_t, 16> colors;
+            for (int i = 15; i >= 0; --i) {
+                colors[i] = (colourMap & 1) ? colour1 : colour0;
+                colourMap >>= 1;
+            }
+
+            for (int y = 0; y < 4; ++y) {
+                for (int x = 0; x < 4; ++x) {
+                    int pixelIndex = ((tileY * 4 + y) * width + (tileX * 4 + x)) * 3;
+                    auto& pixelColor = palette[colors[x + y * 4]];
+                    outputImageData[pixelIndex] = pixelColor.r;
+                    outputImageData[pixelIndex + 1] = pixelColor.g;
+                    outputImageData[pixelIndex + 2] = pixelColor.b;
+                }
+            }
+        }
+    }
+
+    return { palette, outputImageData };
+}
+
+// old code
+
+/*
+std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getBitmapData(const std::vector<uint8_t>& chunkData)
+{
     // Parse the header
     uint16_t numXTiles = readLittleEndian<uint16_t>(chunkData.data());
     uint16_t numYTiles = readLittleEndian<uint16_t>(chunkData.data() + 2);
@@ -198,3 +248,4 @@ std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getBitmapData(const std:
 
     return std::make_tuple(palette, outputImageData);
 }
+*/

@@ -8,132 +8,6 @@
 #include "bitmap.h"
 #include "delta.h"
 
-std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getDeltaBitmapData(
-	std::vector<uint8_t>& buffer,
-	std::vector<RGBColor>& palette,
-	std::vector<uint8_t>& frameBuffer)
-{
-	constexpr int width = 640, height = 320;
-	auto deltaFrame = frameBuffer;
-
-	if (buffer.size() < 2) return { palette, deltaFrame };
-
-	const uint16_t localPaletteSize = (buffer[0] | (buffer[1] << 8));
-	size_t paletteColorIndex = 0;
-
-	if (localPaletteSize > 0) {
-		for (int paletteGroup = 0; paletteGroup < 16 && (paletteGroup * 2 + 3) < buffer.size(); ++paletteGroup) {
-			uint16_t paletteMap = (buffer[paletteGroup * 2 + 2] | (buffer[paletteGroup * 2 + 3] << 8));
-			for (int colorBit = 0; colorBit < 16; ++colorBit) {
-				if (paletteMap & 0x8000) {
-					if ((34 + paletteColorIndex + 2) >= buffer.size()) break;
-					palette[paletteGroup * 16 + colorBit] = {
-						buffer[34 + paletteColorIndex],
-						buffer[34 + paletteColorIndex + 1],
-						buffer[34 + paletteColorIndex + 2]
-					};
-					paletteColorIndex += 3;
-				}
-				paletteMap <<= 1;
-			}
-		}
-	}
-
-	int xPos = 0, yPos = 0;
-
-	auto updatePixel = [&](int x, int y, const RGBColor& color) {
-		const size_t pixelIndex = (y * width + x) * 3;
-		if (pixelIndex + 2 < deltaFrame.size()) {
-			deltaFrame[pixelIndex] = color.r;
-			deltaFrame[pixelIndex + 1] = color.g;
-			deltaFrame[pixelIndex + 2] = color.b;
-		}
-		};
-
-	for (size_t bufferIndex = localPaletteSize + 2; bufferIndex < buffer.size(); ++bufferIndex) {
-		const uint8_t opcode = buffer[bufferIndex];
-
-		if (opcode <= 0x5F) {
-			if (bufferIndex + 2 >= buffer.size()) break;
-			const uint16_t mapValue = MapField[opcode << 1] | (MapField[(opcode << 1) + 1] << 8);
-			const uint8_t color1 = buffer[bufferIndex + 1], color0 = buffer[bufferIndex + 2];
-			for (int pixelOffset = 0; pixelOffset < 16; ++pixelOffset) {
-				const uint8_t selectedColor = ((mapValue & (0x8000 >> pixelOffset)) != 0) ? color1 : color0;
-				updatePixel(xPos + (pixelOffset % 4), yPos + (pixelOffset / 4), palette[selectedColor]);
-			}
-			xPos += 4;
-			bufferIndex += 2;
-		}
-		else if (opcode == 0x60) {
-			if (bufferIndex + 16 >= buffer.size()) break;
-			for (int pixelOffset = 0; pixelOffset < 16; ++pixelOffset) {
-				updatePixel(xPos + (pixelOffset % 4), yPos + (pixelOffset / 4), palette[buffer[bufferIndex + pixelOffset + 1]]);
-			}
-			xPos += 4;
-			bufferIndex += 16;
-		}
-		else if (opcode == 0x61) {
-			yPos += 4;
-			xPos = 0;
-		}
-		else if (opcode >= 0x62 && opcode <= 0x6B) {
-			xPos += (opcode - 0x62) << 2;  // Changed to match the original version
-		}
-		else if (opcode >= 0x6C && opcode <= 0x75) {
-			if (bufferIndex + 1 >= buffer.size()) break;
-			const int repeatCount = opcode - 0x6B;
-			const RGBColor& color = palette[buffer[bufferIndex + 1]];
-			for (int repeat = 0; repeat < repeatCount; ++repeat) {
-				for (int pixelOffset = 0; pixelOffset < 16; ++pixelOffset) {
-					updatePixel(xPos + (pixelOffset % 4), yPos + (pixelOffset / 4), color);
-				}
-				xPos += 4;
-			}
-			bufferIndex += 1;
-		}
-		else if (opcode >= 0x76 && opcode <= 0x7F) {
-			const int colorCount = opcode - 0x75;
-			if (bufferIndex + colorCount >= buffer.size()) break;
-			for (int i = 1; i <= colorCount; ++i) {
-				const RGBColor& color = palette[buffer[bufferIndex + i]];
-				for (int pixelOffset = 0; pixelOffset < 16; ++pixelOffset) {
-					updatePixel(xPos + (pixelOffset % 4), yPos + (pixelOffset / 4), color);
-				}
-				xPos += 4;
-			}
-			bufferIndex += colorCount;
-		}
-		else if (opcode >= 0x80 && opcode <= 0xFF) {
-			if (bufferIndex + 3 >= buffer.size()) break;
-			const uint16_t mapValue = (buffer[bufferIndex] | (buffer[bufferIndex + 1] << 8));
-			const RGBColor& color1 = palette[buffer[bufferIndex + 2]];
-			const RGBColor& color0 = palette[buffer[bufferIndex + 3]];
-			for (int pixelOffset = 0; pixelOffset < 16; ++pixelOffset) {
-				const RGBColor& selectedColor = ((mapValue & (0x8000 >> pixelOffset)) != 0) ? color1 : color0;
-				updatePixel(xPos + (pixelOffset % 4), yPos + (pixelOffset / 4), selectedColor);
-			}
-			xPos += 4;
-			bufferIndex += 3;
-		}
-	}
-
-	return { palette, deltaFrame };
-}
-
-/*
-#include <vector>
-#include <tuple>
-#include <cstdint>
-#include <cstdio>
-#include <stdexcept>
-#include <string>
-#include <iostream>
-#include <bitset>
-#include <iomanip>
-
-#include "bitmap.h"
-#include "delta.h"
-
 /*
 ===============================================================================
 Function Name: getDeltaBitmapData
@@ -145,153 +19,134 @@ Description:
 
 Parameters:
 	- buffer: Decompressed chunk data
-	- staticBitmap: The 0x20 static bitmap as 8-bit RGB raw bitmap data
+	- palette: The palette data as 8-bit RGB raw bitmap data
+	- frameBuffer: The 0x20 static bitmap as 8-bit RGB raw bitmap data
 
 Return:
-	- std::vector<uint8_t>: 8-bit RGB raw bitmap data structure
-===============================================================================
+	- std::tuple<std::vector<RGBColor>, std::vector<uint8_t>>: 
+		8-bit RGB raw bitmap data structure
 
-std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getDeltaBitmapData(std::vector<uint8_t>& buffer,
+===============================================================================
+*/
+std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getDeltaBitmapData(
+	std::vector<uint8_t>& buffer,
 	std::vector<RGBColor>& palette,
 	std::vector<uint8_t>& frameBuffer)
 {
-	std::vector<uint8_t> deltaFrame = frameBuffer;
+	constexpr int width = 640, height = 320;
+	auto deltaFrame = frameBuffer;
 
-	int i, j, k;
-	uint16_t Map, LocPalSz, x, y, width, height;
+	const uint16_t localPaletteSize = (buffer[0] | (buffer[1] << 8));
+	size_t paletteColorIndex = 0;
 
-	// Check for local palette adaptations
-	LocPalSz = buffer[0] | (buffer[1] << 8);
-	k = 0;
+	if (localPaletteSize > 0) {
+		for (int paletteGroup = 0; paletteGroup < 16 && (paletteGroup * 2 + 3) < buffer.size(); ++paletteGroup) {
+			uint16_t paletteMap = (buffer[paletteGroup * 2 + 2] | (buffer[paletteGroup * 2 + 3] << 8));
 
-	// Alter palette according to bitfield
-	if (LocPalSz > 0)
-	{
-		for (i = 0; i < 16; i++)
-		{
-			Map = buffer[i * 2 + 2] | (buffer[i * 2 + 3] << 8);
-			for (j = 0; j < 16; j++)
-			{
-				if ((Map & 0x8000) != 0)
-				{
-					RGBColor color;
-					color.r = buffer[34 + k];
-					color.g = buffer[34 + k + 1];
-					color.b = buffer[34 + k + 2];
-					palette[i * 16 + j] = color;
-					k += 3;
+			for (int colorBit = 0; colorBit < 16; ++colorBit) {
+				if (paletteMap & 0x8000) {
+					if ((34 + paletteColorIndex + 2) >= buffer.size()) break;
+					palette[paletteGroup * 16 + colorBit] = {
+						buffer[34 + paletteColorIndex],
+						buffer[34 + paletteColorIndex + 1],
+						buffer[34 + paletteColorIndex + 2]
+					};
+
+					paletteColorIndex += 3;
 				}
-				Map <<= 1;
+
+				paletteMap <<= 1;
 			}
 		}
 	}
 
-	x = 0;
-	y = 0;
-	width = 640;
-	height = 320;
-	i = LocPalSz + 2;
+	int xPos = 0, yPos = 0;
 
-	// decode image
-	while (i < buffer.size())
-	{
-		if (buffer[i] >= 0x00 && buffer[i] <= 0x5F)
-		{
-			Map = MapField[buffer[i] << 1] | (MapField[(buffer[i] << 1) + 1] << 8);
-			uint8_t c1 = buffer[i + 1];
-			uint8_t c0 = buffer[i + 2];
-			for (j = 0; j < 16; j++)
-			{
-				uint8_t colorIndex = ((Map & 0x8000) == 0) ? c0 : c1;
-				RGBColor color = palette[colorIndex];
-				int pixelIndex = (y + (j / 4)) * width + x + (j % 4);
-				deltaFrame[pixelIndex * 3] = color.r;
-				deltaFrame[pixelIndex * 3 + 1] = color.g;
-				deltaFrame[pixelIndex * 3 + 2] = color.b;
+	auto updatePixel = [&](int x, int y, const RGBColor& color) {
+		const size_t pixelIndex = (y * width + x) * 3;
 
-				Map <<= 1;
+		if (pixelIndex + 2 < deltaFrame.size()) {
+			deltaFrame[pixelIndex] = color.r;
+			deltaFrame[pixelIndex + 1] = color.g;
+			deltaFrame[pixelIndex + 2] = color.b;
+		}
+		};
+
+	for (size_t bufferIndex = localPaletteSize + 2; bufferIndex < buffer.size(); ++bufferIndex) {
+		const uint8_t opcode = buffer[bufferIndex];
+
+		if (opcode <= 0x5F) {
+			const uint16_t mapValue = MapField[opcode << 1] | (MapField[(opcode << 1) + 1] << 8);
+			const uint8_t color1 = buffer[bufferIndex + 1], color0 = buffer[bufferIndex + 2];
+
+			for (int pixelOffset = 0; pixelOffset < 16; ++pixelOffset) {
+				const uint8_t selectedColor = ((mapValue & (0x8000 >> pixelOffset)) != 0) ? color1 : color0;
+
+				updatePixel(xPos + (pixelOffset % 4), yPos + (pixelOffset / 4), palette[selectedColor]);
 			}
-			x += 4;
-			i += 2;
+
+			xPos += 4;
+			bufferIndex += 2;
 		}
-		else if (buffer[i] == 0x60)
-		{
-			for (j = 0; j < 16; j++)
-			{
-				uint8_t colorIndex = buffer[i + j + 1];
-				RGBColor color = palette[colorIndex];
-				int pixelIndex = (y + (j / 4)) * width + x + (j % 4);
-				deltaFrame[pixelIndex * 3] = color.r;
-				deltaFrame[pixelIndex * 3 + 1] = color.g;
-				deltaFrame[pixelIndex * 3 + 2] = color.b;
+		else if (opcode == 0x60) {
+			for (int pixelOffset = 0; pixelOffset < 16; ++pixelOffset) {
+				updatePixel(xPos + (pixelOffset % 4), yPos + (pixelOffset / 4), palette[buffer[bufferIndex + pixelOffset + 1]]);
 			}
-			x += 4;
-			i += 16;
+
+			xPos += 4;
+			bufferIndex += 16;
 		}
-		else if (buffer[i] == 0x61)
-		{
-			y += 4;
-			x = 0;
+		else if (opcode == 0x61) {
+			yPos += 4;
+			xPos = 0;
 		}
-		else if (buffer[i] >= 0x62 && buffer[i] <= 0x6B)
-		{
-			x += (buffer[i] - 0x62) << 2;
+		else if (opcode >= 0x62 && opcode <= 0x6B) {
+			xPos += (opcode - 0x62) << 2;
 		}
-		else if (buffer[i] >= 0x6C && buffer[i] <= 0x75)
-		{
-			for (k = 1; k <= buffer[i] - 0x6B; k++)
-			{
-				uint8_t colorIndex = buffer[i + 1];
-				RGBColor color = palette[colorIndex];
-				for (j = 0; j < 16; j++)
-				{
-					int pixelIndex = (y + (j / 4)) * width + x + (j % 4);
-					deltaFrame[pixelIndex * 3] = color.r;
-					deltaFrame[pixelIndex * 3 + 1] = color.g;
-					deltaFrame[pixelIndex * 3 + 2] = color.b;
+		else if (opcode >= 0x6C && opcode <= 0x75) {
+			const int repeatCount = opcode - 0x6B;
+			const RGBColor& color = palette[buffer[bufferIndex + 1]];
+
+			for (int repeat = 0; repeat < repeatCount; ++repeat) {
+				for (int pixelOffset = 0; pixelOffset < 16; ++pixelOffset) {
+					updatePixel(xPos + (pixelOffset % 4), yPos + (pixelOffset / 4), color);
 				}
-				x += 4;
+
+				xPos += 4;
 			}
-			i += 1;
+
+			bufferIndex += 1;
 		}
-		else if (buffer[i] >= 0x76 && buffer[i] <= 0x7F)
-		{
-			for (k = 1; k <= buffer[i] - 0x75; k++)
-			{
-				uint8_t colorIndex = buffer[i + k];
-				RGBColor color = palette[colorIndex];
-				for (j = 0; j < 16; j++)
-				{
-					int frameBufferIndex = (y + (j / 4)) * width * 3 + (x + (j % 4)) * 3;
-					deltaFrame[frameBufferIndex] = color.r;
-					deltaFrame[frameBufferIndex + 1] = color.g;
-					deltaFrame[frameBufferIndex + 2] = color.b;
+		else if (opcode >= 0x76 && opcode <= 0x7F) {
+			const int colorCount = opcode - 0x75;
+
+			for (int i = 1; i <= colorCount; ++i) {
+				const RGBColor& color = palette[buffer[bufferIndex + i]];
+
+				for (int pixelOffset = 0; pixelOffset < 16; ++pixelOffset) {
+					updatePixel(xPos + (pixelOffset % 4), yPos + (pixelOffset / 4), color);
 				}
-				x += 4;
+
+				xPos += 4;
 			}
-			i += buffer[i] - 0x75;
+
+			bufferIndex += colorCount;
 		}
-		else if (buffer[i] >= 0x80 && buffer[i] <= 0xFF)
-		{
-			Map = buffer[i] | (buffer[i + 1] << 8);
-			RGBColor c1 = palette[buffer[i + 2]];
-			RGBColor c0 = palette[buffer[i + 3]];
-			for (j = 0; j < 16; j++)
-			{
-				RGBColor selectedColor = ((Map & 0x8000) == 0) ? c0 : c1;
-				int frameBufferIndex = (y + (j / 4)) * width * 3 + (x + (j % 4)) * 3;
-				deltaFrame[frameBufferIndex] = selectedColor.r;
-				deltaFrame[frameBufferIndex + 1] = selectedColor.g;
-				deltaFrame[frameBufferIndex + 2] = selectedColor.b;
-				Map <<= 1;
+		else if (opcode >= 0x80 && opcode <= 0xFF) {
+			const uint16_t mapValue = (buffer[bufferIndex] | (buffer[bufferIndex + 1] << 8));
+			const RGBColor& color1 = palette[buffer[bufferIndex + 2]];
+			const RGBColor& color0 = palette[buffer[bufferIndex + 3]];
+
+			for (int pixelOffset = 0; pixelOffset < 16; ++pixelOffset) {
+				const RGBColor& selectedColor = ((mapValue & (0x8000 >> pixelOffset)) != 0) ? color1 : color0;
+
+				updatePixel(xPos + (pixelOffset % 4), yPos + (pixelOffset / 4), selectedColor);
 			}
-			x += 4;
-			i += 3;
+
+			xPos += 4;
+			bufferIndex += 3;
 		}
-		i++;
 	}
 
-	return std::make_tuple(palette, deltaFrame);
+	return { palette, deltaFrame };
 }
-
-*/
