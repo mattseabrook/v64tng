@@ -444,7 +444,7 @@ const std::unordered_map<std::string, View> f_ = {
 		}
 	},
 	//
-	// Stairs, turning rights
+	// Stairs, turning right
 	//
 	{
 		"f_2fd",
