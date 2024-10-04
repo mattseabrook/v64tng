@@ -118,9 +118,9 @@ std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getBitmapData(const std:
 
 	const uint8_t* paletteData = chunkData.data() + 6;
 	std::vector<RGBColor> palette(256);
-	std::ranges::transform(std::views::iota(0, 256), palette.begin(), [&](int i) {
-		return RGBColor{ paletteData[i * 3], paletteData[i * 3 + 1], paletteData[i * 3 + 2] };
-		});
+	for (int i = 0; i < 256; ++i) {
+		palette[i] = { paletteData[i * 3], paletteData[i * 3 + 1], paletteData[i * 3 + 2] };
+	}
 
 	const uint8_t* imageData = paletteData + (1 << colourDepth) * 3;
 
@@ -131,12 +131,15 @@ std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getBitmapData(const std:
 			imageData += 2;
 
 			std::array<uint8_t, 16> colors;
-			std::ranges::generate(colors, [&]() { return (colourMap & 1) ? colour1 : colour0; colourMap >>= 1; });
+			for (int i = 15; i >= 0; --i) {
+				colors[i] = (colourMap & 1) ? colour1 : colour0;
+				colourMap >>= 1;
+			}
 
 			for (int y = 0; y < 4; ++y) {
 				for (int x = 0; x < 4; ++x) {
 					int pixelIndex = ((tileY * 4 + y) * width + (tileX * 4 + x)) * 3;
-					const auto& pixelColor = palette[colors[x + y * 4]];
+					auto& pixelColor = palette[colors[x + y * 4]];
 					outputImageData[pixelIndex] = pixelColor.r;
 					outputImageData[pixelIndex + 1] = pixelColor.g;
 					outputImageData[pixelIndex + 2] = pixelColor.b;
