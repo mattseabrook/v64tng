@@ -1,5 +1,3 @@
-// window.h
-
 #ifndef WINDOW_H
 #define WINDOW_H
 
@@ -10,16 +8,25 @@
 /*
 ===============================================================================
 
-	7th Guest - Windowing with GLFW and Vulkan
+    7th Guest - Windowing with GLFW and Vulkan
 
-	This is the main entry point for the game engine. It will handle the
-	windowing and Vulkan initialization.
+    This is the main entry point for the game engine. It will handle the
+    windowing and Vulkan initialization.
 
 ===============================================================================
 */
 
-void initWindow();
-void initVulkan();
+extern GLFWwindow* window;
+
+/*
+extern VkBuffer vertexBuffer;
+extern VkDeviceMemory vertexBufferMemory;
+extern VkBuffer indexBuffer;
+extern VkDeviceMemory indexBufferMemory;
+*/
+
+// Function prototypes
+void initializeRenderer();
 void createInstance();
 void createSurface();
 void pickPhysicalDevice();
@@ -27,17 +34,25 @@ void createLogicalDevice();
 void createSwapChain();
 void createImageViews();
 void createRenderPass();
+VkShaderModule createShaderModule(const std::string& filename);
 void createGraphicsPipeline();
 void createFramebuffers();
 void createCommandPool();
+void createTextureImage(const uint8_t* bitmapData, uint32_t width, uint32_t height);
+void createTextureImageView();
+void createTextureSampler();
+void createVertexBuffer();
+void createIndexBuffer();
 void createCommandBuffer();
+void recordCommandBuffer();
 void createSyncObjects();
-void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-void initializeRenderer();
-void renderFrame();
+void drawFrame();
+void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+void renderFrame(const std::vector<uint8_t>& bitmapData);
 void cleanup();
-
-void pollWindowEvents();
-bool windowShouldClose();
 
 #endif // WINDOW_H

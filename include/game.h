@@ -7,6 +7,8 @@
 #include <functional>
 #include <string>
 
+#include "vdx.h"
+
 /*
 ===============================================================================
 
@@ -83,9 +85,11 @@ struct GameState {
 	Room previous_room = current_room;              // Avoid re-loading
 	std::string current_view = "f_1bc";		        // Default view (corresponds to VDXFile .filename struct member)
 	std::string previous_view = current_view;       // Avoid re-rendering
+	std::vector<VDXFile> VDXFiles;				    // Vector of VDXFile objects
 };
 
 // Function prototypes
+const View* getView(const std::string& current_view);
 void updateGame(GameState& state);
 void run();
 
