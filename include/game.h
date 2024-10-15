@@ -90,7 +90,6 @@ struct GameState {
 
 // Function prototypes
 const View* getView(const std::string& current_view);
-void updateGame(GameState& state);
 void run();
 
 #endif // GAME_H

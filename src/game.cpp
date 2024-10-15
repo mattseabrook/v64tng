@@ -36,35 +36,44 @@ const View* getView(const std::string& current_view) {
 }
 
 //
-// State update function
+// Load the VDX files into game state
 //
-void updateGame(GameState& state) {
+void loadRoom(GameState& state) {
+	state.VDXFiles = parseGJDFile(ROOM_DATA.at(state.current_room));
+	//std::ranges::for_each(state.VDXFiles, parseVDXChunks);
+	state.previous_room = state.current_room;
+}
+
+//
+//  Send animation sequence to VULKAN renderer
+//
+void loadView(GameState& state) {
 	static auto lastFrameTime = std::chrono::high_resolution_clock::now();
 	constexpr auto frameDuration = std::chrono::milliseconds(67); // 15 FPS = ~67 ms per frame
+	static size_t currentFrameIndex = 0;
 
-	if (state.current_room != state.previous_room) {
-		state.VDXFiles = parseGJDFile(ROOM_DATA.at(state.current_room));
-		std::ranges::for_each(state.VDXFiles, parseVDXChunks);
-		state.previous_room = state.current_room;
-	}
+	if (auto it = std::ranges::find_if(state.VDXFiles, [&](const auto& file) {
+		return file.filename == state.current_view;
+		}); it != state.VDXFiles.end()) {
 
-	if (state.current_view != state.previous_view) {
-		if (auto it = std::ranges::find_if(state.VDXFiles, [&](const auto& file) {
-			return file.filename == state.current_view;
-			}); it != state.VDXFiles.end())
-		{
-			auto currentTime = std::chrono::high_resolution_clock::now();
-			auto elapsedTime = currentTime - lastFrameTime;
+		VDXFile vdxFile = *it;
+		parseVDXChunks(vdxFile);
 
-			if (elapsedTime >= frameDuration) {
-				for (auto& chunk : it->chunks) {
-					renderFrame(chunk.data);
-				}
-				lastFrameTime = currentTime;
-			}
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		auto elapsedTime = currentTime - lastFrameTime;
 
-			state.previous_view = state.current_view;
+		if (elapsedTime >= frameDuration) {
+			// Render the current frame
+			renderFrame(it->chunks[currentFrameIndex].data);
+
+			// Update the time
+			lastFrameTime = currentTime;
+
+			// Move to the next frame, wrapping around if needed
+			currentFrameIndex = (currentFrameIndex + 1) % it->chunks.size();
 		}
+
+		state.previous_view = state.current_view;
 	}
 }
 
@@ -76,12 +85,22 @@ void run() {
 
 	GameState state;
 
+	// Initial asset rendering
+	loadRoom(state);
+	loadView(state);
+
 	// Main game loop
 	while (!glfwWindowShouldClose(window)) {
-		updateGame(state);
-		glfwPollEvents(); // Handle window events
+		if (state.current_room != state.previous_room) {
+			loadRoom(state);
+		}
+
+		if (state.current_view != state.previous_view) {
+			loadView(state);
+		}
+
+		glfwPollEvents();
 	}
 
-	// Cleanup Vulkan resources
 	cleanup();
 }

@@ -1018,6 +1018,11 @@ void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t 
 // Render Frame
 //
 void renderFrame(const std::vector<uint8_t>& bitmapData) {
+	// Save bitmapData vector to a local file named v64tng-renderFrame.raw:
+	std::ofstream file("v64tng-renderFrame.raw", std::ios::binary);
+	file.write(reinterpret_cast<const char*>(bitmapData.data()), bitmapData.size());
+	file.close();
+
 	VkDeviceSize imageSize = bitmapData.size();
 
 	VkBuffer stagingBuffer;
