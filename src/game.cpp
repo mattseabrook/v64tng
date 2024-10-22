@@ -40,7 +40,7 @@ const View* getView(const std::string& current_view) {
 //
 void loadRoom(GameState& state) {
 	state.VDXFiles = parseGJDFile(ROOM_DATA.at(state.current_room));
-	//std::ranges::for_each(state.VDXFiles, parseVDXChunks);
+	/* We may go back to front-loading decompression activities */
 	state.previous_room = state.current_room;
 }
 
@@ -59,6 +59,10 @@ void loadView(GameState& state) {
 		VDXFile vdxFile = *it;
 		parseVDXChunks(vdxFile);
 
+		// Testing
+		renderFrame(vdxFile.chunks[currentFrameIndex].data);
+
+		/*
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		auto elapsedTime = currentTime - lastFrameTime;
 
@@ -74,6 +78,7 @@ void loadView(GameState& state) {
 		}
 
 		state.previous_view = state.current_view;
+		*/
 	}
 }
 

@@ -34,6 +34,7 @@ VDXFile parseVDXFile(const std::string& filename, const std::vector<uint8_t>& bu
 {
 	VDXFile vdxFile;
 	vdxFile.filename = std::filesystem::path(filename).filename().string();
+	vdxFile.filename = vdxFile.filename.substr(0, vdxFile.filename.find_last_of('.'));
 
 	vdxFile.identifier = buffer[0] | (buffer[1] << 8);
 	std::copy(buffer.begin() + 2, buffer.begin() + 8, vdxFile.unknown.begin());

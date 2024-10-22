@@ -1018,11 +1018,6 @@ void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t 
 // Render Frame
 //
 void renderFrame(const std::vector<uint8_t>& bitmapData) {
-	// Save bitmapData vector to a local file named v64tng-renderFrame.raw:
-	std::ofstream file("v64tng-renderFrame.raw", std::ios::binary);
-	file.write(reinterpret_cast<const char*>(bitmapData.data()), bitmapData.size());
-	file.close();
-
 	VkDeviceSize imageSize = bitmapData.size();
 
 	VkBuffer stagingBuffer;
@@ -1034,9 +1029,9 @@ void renderFrame(const std::vector<uint8_t>& bitmapData) {
 	memcpy(data, bitmapData.data(), static_cast<size_t>(imageSize));
 	vkUnmapMemory(device, stagingBufferMemory);
 
-	transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	transitionImageLayout(textureImage, VK_FORMAT_R8G8B8_SRGB, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	copyBufferToImage(stagingBuffer, textureImage, 640, 320);
-	transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	transitionImageLayout(textureImage, VK_FORMAT_R8G8B8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
