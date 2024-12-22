@@ -72,9 +72,10 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)\</OutDir>
-    <IncludePath>$(SolutionDir)shaders;C:\lib\zlib-1.3;C:\lib\lpng1640;C:\lib\glfw-3.3.8\include;C:\VulkanSDK\1.3.290.0\Include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\lib\zlib-1.3\build\Debug;C:\lib\lpng1640\build_debug\Debug;C:\lib\glfw-3.3.8\build\src\Debug;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)shaders;C:\lib\zlib-1.3.1;C:\lib\lpng1644;C:\lib\glfw-3.4\include;C:\VulkanSDK\1.3.296.0\Include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\lib\zlib-1.3.1\build_debug\;C:\lib\lpng1644\build_debug\;C:\lib\glfw-3.4\build_debug\src\;$(LibraryPath)</LibraryPath>
     <IntDir>$(SolutionDir)\Intermediate\</IntDir>
+    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)\</OutDir>
@@ -118,15 +119,15 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\VulkanSDK\1.3.290.0\Include;C:\lib\lpng1640;C:\lib\glfw-3.3.8\include;$(SolutionDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\VulkanSDK\1.3.296.0\Include;C:\lib\lpng1644\build_debug;C:\lib\glfw-3.4\include;$(SolutionDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\lib\zlib-1.3\build\Debug;C:\lib\lpng1640\build_debug\Debug;C:\lib\glfw-3.3.8\build\src\Debug;C:\VulkanSDK\1.3.290.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libpng16_staticd.lib;zlibstaticd.lib;glfw3.lib;vulkan-1.lib;user32.lib;gdi32.lib;shell32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <IgnoreSpecificDefaultLibraries>MSVCRTD.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <AdditionalLibraryDirectories>C:\lib\zlib-1.3.1\build_debug\Debug;C:\lib\lpng1644\build_debug\Debug;C:\lib\glfw-3.4\build_debug\src\Debug;C:\VulkanSDK\1.3.296.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>zlibstaticd.lib;libpng16_staticd.lib;glfw3.lib;vulkan-1.lib;user32.lib;gdi32.lib;shell32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>/VERBOSE %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /y "$(OutDir)$(TargetName)$(TargetExt)" "C:\T7G\"</Command>
