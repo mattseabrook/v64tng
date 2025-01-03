@@ -9,6 +9,7 @@ nlohmann::json config;
 
 bool devMode;
 bool fullscreen;
+std::string renderer;
 
 //=============================================================================
 
@@ -34,6 +35,7 @@ void load_config(const std::string& filename)
 	// Initialization
 	devMode = get_config_value<bool>("devMode");
 	fullscreen = get_config_value<bool>("fullscreen");
+	renderer = get_config_value<std::string>("renderer");
 }
 
 //

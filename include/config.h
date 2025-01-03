@@ -19,6 +19,7 @@
 const std::string default_config = R"(
 {
     "fullscreen": false,
+	"renderer": "Direct2D",
     "devMode": false
 }
 )";
@@ -29,6 +30,7 @@ extern nlohmann::json config;
 
 extern bool devMode;
 extern bool fullscreen;
+extern std::string renderer;
 
 //=============================================================================
 

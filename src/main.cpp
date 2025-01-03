@@ -1,7 +1,7 @@
 // main.cpp
 
 /*
- * v64tng.exe - GROOVIE 2024
+ * v64tng.exe - GROOVIE 2025
  *
  * Game Engine Re-creation, including tooling designed for the extraction and
  * processing of resource files related to the 7th Guest game.
@@ -12,7 +12,7 @@
  *
  * MIT License
  *
- * Copyright (c) 2024 Matt Seabrook
+ * Copyright (c) 2025 Matt Seabrook
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -278,7 +278,7 @@ int WINAPI WinMain(
 		}
 	}
 	else {
-		run();
+		init();
 	}
 
 	LocalFree(argv);

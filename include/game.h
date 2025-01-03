@@ -90,6 +90,9 @@ struct GameState {
 
 // Function prototypes
 const View* getView(const std::string& current_view);
-void run();
+void loadRoom(GameState& state);
+void renderFrameData(const std::vector<uint8_t>& frameData, uint32_t width, uint32_t height);
+void loadView(GameState& state);
+void init();
 
 #endif // GAME_H

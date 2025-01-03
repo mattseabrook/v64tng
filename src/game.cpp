@@ -12,6 +12,7 @@
 #include "window.h"
 #include "gjd.h"
 #include "fh.h"
+#include "config.h"
 
 /* ============================================================================
 							Game Engine Feature
@@ -45,7 +46,7 @@ void loadRoom(GameState& state) {
 }
 
 //
-//  Send animation sequence to VULKAN renderer
+//  Send animation sequence to Renderer
 //
 void loadView(GameState& state) {
 	static auto lastFrameTime = std::chrono::high_resolution_clock::now();
@@ -85,8 +86,8 @@ void loadView(GameState& state) {
 //
 // Start the game engine
 //
-void run() {
-	initializeRenderer();
+void init() {
+	initializeWindow();
 
 	GameState state;
 
@@ -95,7 +96,10 @@ void run() {
 	loadView(state);
 
 	// Main game loop
-	while (!glfwWindowShouldClose(window)) {
+	bool running = true;
+	while (running) {
+		running = processEvents();
+
 		if (state.current_room != state.previous_room) {
 			loadRoom(state);
 		}
@@ -104,8 +108,9 @@ void run() {
 			loadView(state);
 		}
 
-		glfwPollEvents();
+		// Handle input and game logic here
+		// ...
 	}
 
-	cleanup();
+	cleanupWindow();
 }
