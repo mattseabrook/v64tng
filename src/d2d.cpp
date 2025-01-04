@@ -76,9 +76,7 @@ void initializeD2D() {
 //
 // Render a frame
 //
-void renderFrameD2D(const std::vector<uint8_t>& pixelData) {
-	// uint32_t width, uint32_t height (types)
-	// for this you need to Cast from the global config int to uint32_t
+void renderFrameD2D(const std::vector<uint8_t>& pixelData, uint32_t width, uint32_t height) {
 	if (!renderTarget) {
 		throw std::runtime_error("Render target not initialized");
 	}

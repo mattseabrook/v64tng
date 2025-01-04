@@ -27,11 +27,14 @@ void initializeWindow() {
 // Abstract the rendering of a frame
 //
 void renderFrame(const std::vector<uint8_t>& frameData) {
+	//
+
+
 	if (renderer == "VULKAN") {
 		renderFrameVk(frameData);
 	}
 	else if (renderer == "Direct2D") {
-		renderFrameD2D(frameData);
+		renderFrameD2D(frameData, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 	}
 }
 
