@@ -5,6 +5,8 @@
 #include <vector>
 #include <windows.h>
 
+#include "config.h"
+#include "game.h"
 #include "d2d.h"
 
 // Globals
@@ -37,12 +39,16 @@ void initializeD2D() {
 		throw std::runtime_error("Failed to register window class");
 	}
 
+	RECT rect = { 0, 0, state.ui.width, state.ui.height };
+	AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
+
 	hwnd = CreateWindowEx(
 		0,
 		wc.lpszClassName,
-		L"Direct2D Renderer",
+		std::wstring(windowTitle.begin(), windowTitle.end()).c_str(),
 		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT, 640, 320,
+		CW_USEDEFAULT, CW_USEDEFAULT,
+		rect.right - rect.left, rect.bottom - rect.top,
 		nullptr, nullptr, GetModuleHandle(nullptr), nullptr
 	);
 
@@ -59,15 +65,17 @@ void initializeD2D() {
 	}
 
 	// Create render target
-	RECT rc;
-	GetClientRect(hwnd, &rc);
-	D2D1_SIZE_U size = D2D1::SizeU(rc.right - rc.left, rc.bottom - rc.top);
-
+	RECT clientRect;
+	GetClientRect(hwnd, &clientRect);
+	
 	hr = factory->CreateHwndRenderTarget(
 		D2D1::RenderTargetProperties(),
-		D2D1::HwndRenderTargetProperties(hwnd, size),
+		D2D1::HwndRenderTargetProperties(
+			hwnd, D2D1::SizeU(clientRect.right - clientRect.left, clientRect.bottom - clientRect.top)
+		),
 		&renderTarget
 	);
+
 	if (FAILED(hr)) {
 		throw std::runtime_error("Failed to create Direct2D render target");
 	}
@@ -76,25 +84,25 @@ void initializeD2D() {
 //
 // Render a frame
 //
-void renderFrameD2D(const std::vector<uint8_t>& pixelData, uint32_t width, uint32_t height) {
+void renderFrameD2D(const std::vector<uint8_t>& pixelData) {
 	if (!renderTarget) {
 		throw std::runtime_error("Render target not initialized");
 	}
 
 	// Ensure bitmap matches the frame size
-	if (!bitmap || bitmap->GetSize().width != width || bitmap->GetSize().height != height) {
+	if (!bitmap || bitmap->GetSize().width != static_cast<uint32_t>(state.ui.width) || bitmap->GetSize().height != static_cast<uint32_t>(state.ui.height)) {
 		if (bitmap) {
 			bitmap->Release();
 		}
 		renderTarget->CreateBitmap(
-			D2D1::SizeU(width, height),
+			D2D1::SizeU(static_cast<uint32_t>(state.ui.width), static_cast<uint32_t>(state.ui.height)),
 			D2D1::BitmapProperties(D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE)),
 			&bitmap
 		);
 	}
 
 	// Convert RGB data to BGRA
-	std::vector<uint8_t> bgraData(width * height * 4);
+	std::vector<uint8_t> bgraData(static_cast<uint32_t>(state.ui.width) * static_cast<uint32_t>(state.ui.height) * 4);
 	for (size_t i = 0, j = 0; i < pixelData.size(); i += 3, j += 4) {
 		bgraData[j] = pixelData[i + 2];     // Blue
 		bgraData[j + 1] = pixelData[i + 1]; // Green
@@ -102,7 +110,7 @@ void renderFrameD2D(const std::vector<uint8_t>& pixelData, uint32_t width, uint3
 		bgraData[j + 3] = 255;              // Alpha
 	}
 
-	bitmap->CopyFromMemory(nullptr, bgraData.data(), width * 4);
+	bitmap->CopyFromMemory(nullptr, bgraData.data(), static_cast<uint32_t>(state.ui.width) * 4);
 
 	renderTarget->BeginDraw();
 	renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));

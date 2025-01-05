@@ -81,6 +81,11 @@ struct View {
 // Struct for managing game state
 //
 struct GameState {
+	struct UI {
+		int width;
+		int height;
+	} ui;
+
 	Room current_room = Room::FOYER_HALLWAY;        // Default room (corresponds to ROOM_DATA map key)
 	Room previous_room = current_room;              // Avoid re-loading
 	std::string current_view = "f_1bc";		        // Default view (corresponds to VDXFile .filename struct member)
@@ -88,11 +93,16 @@ struct GameState {
 	std::vector<VDXFile> VDXFiles;				    // Vector of VDXFile objects
 };
 
+//=============================================================================
+
+extern GameState state;
+
+//=============================================================================
+
 // Function prototypes
 const View* getView(const std::string& current_view);
-void loadRoom(GameState& state);
-void renderFrameData(const std::vector<uint8_t>& frameData, uint32_t width, uint32_t height);
-void loadView(GameState& state);
+void loadRoom();
+void loadView();
 void init();
 
 #endif // GAME_H

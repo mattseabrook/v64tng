@@ -10,8 +10,8 @@ nlohmann::json config;
 bool devMode;
 bool fullscreen;
 int width;
-int height;
 std::string renderer;
+std::string windowTitle = "v64tng";
 
 //=============================================================================
 

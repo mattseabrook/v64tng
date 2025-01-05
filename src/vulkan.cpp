@@ -9,6 +9,7 @@
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 
+#include "config.h"
 #include "game.h"
 #include "vdx.h"
 #include "vulkan.h"
@@ -53,7 +54,7 @@ void initializeVulkan() {
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-	window = glfwCreateWindow(640, 320, "v64tng", nullptr, nullptr);
+	window = glfwCreateWindow(state.ui.width, state.ui.height, windowTitle.c_str(), nullptr, nullptr);
 	if (!window) {
 		glfwTerminate();
 		throw std::runtime_error("Failed to create GLFW window");
@@ -374,14 +375,14 @@ void createGraphicsPipeline() {
 	VkViewport viewport{};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = static_cast<float>(640);
-	viewport.height = static_cast<float>(320);
+	viewport.width = static_cast<float>(state.ui.width);
+	viewport.height = static_cast<float>(state.ui.height);
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor{};
 	scissor.offset = { 0, 0 };
-	scissor.extent = { 640, 320 };
+	scissor.extent = { static_cast<uint32_t>(state.ui.width), static_cast<uint32_t>(state.ui.height) };
 
 	VkPipelineViewportStateCreateInfo viewportState{};
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -485,8 +486,8 @@ void createFramebuffers() {
 	framebufferInfo.renderPass = renderPass;
 	framebufferInfo.attachmentCount = 1;
 	framebufferInfo.pAttachments = &swapchainImageView;
-	framebufferInfo.width = 640;
-	framebufferInfo.height = 320;
+	framebufferInfo.width = state.ui.width;
+	framebufferInfo.height = state.ui.height;
 	framebufferInfo.layers = 1;
 
 	if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &framebuffer) != VK_SUCCESS) {
@@ -719,7 +720,7 @@ void recordCommandBuffer() {
 	renderPassInfo.renderPass = renderPass;
 	renderPassInfo.framebuffer = framebuffer;
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = { 640, 320 };
+	renderPassInfo.renderArea.extent = { static_cast<uint32_t>(state.ui.width), static_cast<uint32_t>(state.ui.height) };
 
 	VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
 	renderPassInfo.clearValueCount = 1;
@@ -1040,7 +1041,7 @@ void renderFrameVk(const std::vector<uint8_t>& bitmapData) {
 	vkUnmapMemory(device, stagingBufferMemory);
 
 	transitionImageLayout(textureImage, VK_FORMAT_R8G8B8_SRGB, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	copyBufferToImage(stagingBuffer, textureImage, 640, 320);
+	copyBufferToImage(stagingBuffer, textureImage, state.ui.width, state.ui.height);
 	transitionImageLayout(textureImage, VK_FORMAT_R8G8B8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);

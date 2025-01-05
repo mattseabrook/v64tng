@@ -1,17 +1,30 @@
 // window.cpp
 
+#include <stdexcept>
+#include <string>
+
 #include "window.h"
 #include "vulkan.h"
 #include "d2d.h"
 #include "config.h"
-
-#include <stdexcept>
-#include <string>
+#include "game.h"
 
 //
 // Initialize the window and renderer
 //
 void initializeWindow() {
+	if (fullscreen) {
+		state.ui.width = GetSystemMetrics(SM_CXSCREEN);
+		state.ui.height = GetSystemMetrics(SM_CYSCREEN);
+	}
+	else {
+		if (width % 2 != 0) {
+			width += 1;
+		}
+		state.ui.width = width;
+		state.ui.height = width / 2;
+	}
+
 	if (renderer == "VULKAN") {
 		initializeVulkan();
 	}
@@ -27,14 +40,11 @@ void initializeWindow() {
 // Abstract the rendering of a frame
 //
 void renderFrame(const std::vector<uint8_t>& frameData) {
-	//
-
-
 	if (renderer == "VULKAN") {
 		renderFrameVk(frameData);
 	}
 	else if (renderer == "Direct2D") {
-		renderFrameD2D(frameData, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+		renderFrameD2D(frameData);
 	}
 }
 

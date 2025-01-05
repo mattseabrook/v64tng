@@ -19,6 +19,9 @@
    ============================================================================
 */
 
+// Global variables
+GameState state;
+
 //
 // View Prefixes
 //
@@ -39,7 +42,7 @@ const View* getView(const std::string& current_view) {
 //
 // Load the VDX files into game state
 //
-void loadRoom(GameState& state) {
+void loadRoom() {
 	state.VDXFiles = parseGJDFile(ROOM_DATA.at(state.current_room));
 	/* We may go back to front-loading decompression activities */
 	state.previous_room = state.current_room;
@@ -48,10 +51,10 @@ void loadRoom(GameState& state) {
 //
 //  Send animation sequence to Renderer
 //
-void loadView(GameState& state) {
+void loadView() {
 	static auto lastFrameTime = std::chrono::high_resolution_clock::now();
 	constexpr auto frameDuration = std::chrono::milliseconds(67); // 15 FPS = ~67 ms per frame
-	static size_t currentFrameIndex = 0;
+	static size_t currentFrameIndex = 30; // normally 0
 
 	if (auto it = std::ranges::find_if(state.VDXFiles, [&](const auto& file) {
 		return file.filename == state.current_view;
@@ -89,11 +92,9 @@ void loadView(GameState& state) {
 void init() {
 	initializeWindow();
 
-	GameState state;
-
 	// Initial asset rendering
-	loadRoom(state);
-	loadView(state);
+	loadRoom();
+	loadView();
 
 	// Main game loop
 	bool running = true;
@@ -101,11 +102,11 @@ void init() {
 		running = processEvents();
 
 		if (state.current_room != state.previous_room) {
-			loadRoom(state);
+			loadRoom();
 		}
 
 		if (state.current_view != state.previous_view) {
-			loadView(state);
+			loadView();
 		}
 
 		// Handle input and game logic here
