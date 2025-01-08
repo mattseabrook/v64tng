@@ -33,9 +33,7 @@
 - [Developers](#developers)
   - [Pre-requisites](#pre-requisites)
 - [CHANGELOG](#changelog)
-- [NOTES](#notes-1)
-- [TODO](#todo)
-- [XMI Info](#xmi-info)
+  - [2025-01-05](#2025-01-05)
 
 # Disclaimer
 
@@ -272,78 +270,78 @@ struct WAVHeader {
 
 Here is the table of how the original songs are packed in `XMI.GJD`:
 
-| XMI File Name | Offset | Size (bytes) | Song Name   | Notes        |
-| ------------- | ------ | ------------ | ----------- | ------------ |
-| agu32         | 7299   | 4832         |             |              |
-| agu38         | 12132  | 4288         |             |              |
-| agu50         | 16421  | 13268        |             |              |
-| gu5           | 29690  | 2186         |             |              |
-| gu6           | 31877  | 5608         |             |              |
-| gu8           | 37486  | 1022         |             |              |
-| gu9           | 38509  | 2308         |             |              |
-| gu11a         | 40818  | 406          |             |              |
-| gu11b         | 41225  | 402          |             |              |
-| gu12          | 41628  | 1762         |             |              |
-| gu15          | 43391  | 1532         |             |              |
-| gu16          | 44924  | 12764        |             |              |
-| gu16b         | 57689  | 2794         |             |              |
-| gu17          | 60484  | 968          |             |              |
-| gu18          | 61453  | 3754         |             |              |
-| gu19          | 65208  | 1984         |             |              |
-| gu20          | 67193  | 2344         |             |              |
-| gu21          | 69538  | 5724         |             |              |
-| gu22          | 75263  | 1904         |             |              |
-| gu23          | 77168  | 6140         |             |              |
-| gu24          | 83309  | 2096         |             |              |
-| gu25          | 85406  | 2812         |             |              |
-| gu26          | 88219  | 714          |             |              |
-| gu27          | 88934  | 328          |             |              |
-| gu28          | 89263  | 2730         |             |              |
-| gu29          | 91994  | 1356         |             |              |
-| gu30          | 93351  | 3398         |             |              |
-| gu31          | 96750  | 5756         |             |              |
-| gu32          | 102507 | 5008         |             |              |
-| gu33          | 107516 | 5760         |             |              |
-| gu34          | 113277 | 1482         |             |              |
-| gu35          | 114760 | 560          |             |              |
-| gu36          | 115321 | 1996         |             |              |
-| gu37          | 117318 | 1864         |             |              |
-| gu38          | 119183 | 4578         |             |              |
-| gu39          | 123762 | 3986         |             |              |
-| gu40          | 127749 | 2638         |             |              |
-| gu41          | 130388 | 8572         |             |              |
-| gu42          | 138961 | 870          |             |              |
-| gu43          | 139832 | 2230         |             |              |
-| gu44          | 142063 | 4314         |             |              |
-| gu45          | 146378 | 1226         |             |              |
-| gu46          | 147605 | 1410         |             |              |
-| gu47          | 149016 | 2504         |             |              |
-| gu48          | 151521 | 1024         |             |              |
-| gu49          | 152546 | 3028         |             |              |
-| gu50          | 155575 | 13614        |             |              |
-| gu51          | 169190 | 10006        |             |              |
-| gu52          | 179197 | 1128         |             |              |
-| gu53          | 180326 | 5070         |             |              |
-| gu54          | 185397 | 1036         |             |              |
-| gu55          | 186434 | 2232         |             |              |
-| gu56          | 188667 | 13614        | Ghost of Bo | Main Foyer   |
-| gu58          | 202282 | 4572         |             |              |
-| gu59          | 206855 | 1292         |             |              |
-| gu60          | 208148 | 2286         |             |              |
-| gu61          | 210435 | 4342         |             | Intro Screen |
-| gu63          | 214778 | 9146         |             |              |
-| gu67          | 223925 | 1078         |             |              |
-| gu68          | 225004 | 340          |             |              |
-| gu69          | 225345 | 600          |             |              |
-| gu70          | 225946 | 666          |             |              |
-| gu71          | 226613 | 5094         |             |              |
-| gu72          | 231708 | 4820         |             |              |
-| gu73          | 236529 | 5238         |             |              |
-| gu74          | 241768 | 342          |             |              |
-| gu75          | 242111 | 4214         |             |              |
-| gu76          | 246326 | 1688         |             |              |
-| ini_mt_o      | 248015 | 900          |             |              |
-| ini_sci       | 248916 | 8334         |             |              |
+| XMI File Name | Offset | Size (bytes) | Song Name        | Notes           |
+| ------------- | ------ | ------------ | ---------------- | --------------- |
+| agu32         | 7299   | 4832         |                  |                 |
+| agu38         | 12132  | 4288         |                  |                 |
+| agu50         | 16421  | 13268        |                  |                 |
+| gu5           | 29690  | 2186         |                  |                 |
+| gu6           | 31877  | 5608         |                  |                 |
+| gu8           | 37486  | 1022         |                  |                 |
+| gu9           | 38509  | 2308         |                  |                 |
+| gu11a         | 40818  | 406          |                  |                 |
+| gu11b         | 41225  | 402          |                  |                 |
+| gu12          | 41628  | 1762         |                  |                 |
+| gu15          | 43391  | 1532         |                  |                 |
+| gu16          | 44924  | 12764        |                  |                 |
+| gu16b         | 57689  | 2794         |                  |                 |
+| gu17          | 60484  | 968          |                  |                 |
+| gu18          | 61453  | 3754         |                  |                 |
+| gu19          | 65208  | 1984         |                  |                 |
+| gu20          | 67193  | 2344         |                  |                 |
+| gu21          | 69538  | 5724         |                  |                 |
+| gu22          | 75263  | 1904         |                  |                 |
+| gu23          | 77168  | 6140         | Coffin Dance     | Crypt Puzzle    |
+| gu24          | 83309  | 2096         |                  |                 |
+| gu25          | 85406  | 2812         |                  |                 |
+| gu26          | 88219  | 714          |                  |                 |
+| gu27          | 88934  | 328          |                  |                 |
+| gu28          | 89263  | 2730         |                  |                 |
+| gu29          | 91994  | 1356         |                  |                 |
+| gu30          | 93351  | 3398         |                  |                 |
+| gu31          | 96750  | 5756         |                  |                 |
+| gu32          | 102507 | 5008         |                  |                 |
+| gu33          | 107516 | 5760         |                  |                 |
+| gu34          | 113277 | 1482         |                  |                 |
+| gu35          | 114760 | 560          |                  |                 |
+| gu36          | 115321 | 1996         |                  |                 |
+| gu37          | 117318 | 1864         |                  |                 |
+| gu38          | 119183 | 4578         |                  |                 |
+| gu39          | 123762 | 3986         | Title Screen     |                 |
+| gu40          | 127749 | 2638         |                  |                 |
+| gu41          | 130388 | 8572         |                  |                 |
+| gu42          | 138961 | 870          |                  |                 |
+| gu43          | 139832 | 2230         |                  |                 |
+| gu44          | 142063 | 4314         |                  |                 |
+| gu45          | 146378 | 1226         | Chapel           |                 |
+| gu46          | 147605 | 1410         |                  |                 |
+| gu47          | 149016 | 2504         |                  |                 |
+| gu48          | 151521 | 1024         |                  |                 |
+| gu49          | 152546 | 3028         |                  |                 |
+| gu50          | 155575 | 13614        |                  |                 |
+| gu51          | 169190 | 10006        |                  |                 |
+| gu52          | 179197 | 1128         |                  |                 |
+| gu53          | 180326 | 5070         |                  |                 |
+| gu54          | 185397 | 1036         |                  |                 |
+| gu55          | 186434 | 2232         |                  |                 |
+| gu56          | 188667 | 13614        | Ghost of Bo      | Main Foyer      |
+| gu58          | 202282 | 4572         | Edward & Martine |                 |
+| gu59          | 206855 | 1292         |                  |                 |
+| gu60          | 208148 | 2286         |                  |                 |
+| gu61          | 210435 | 4342         |                  | Intro Screen    |
+| gu63          | 214778 | 9146         | Love Supreme     |                 |
+| gu67          | 223925 | 1078         |                  |                 |
+| gu68          | 225004 | 340          |                  |                 |
+| gu69          | 225345 | 600          |                  |                 |
+| gu70          | 225946 | 666          |                  |                 |
+| gu71          | 226613 | 5094         |                  | Puzzle Zoom-In? |
+| gu72          | 231708 | 4820         |                  | Puzzle Zoom-In? |
+| gu73          | 236529 | 5238         |                  | Puzzle Zoom-In? |
+| gu74          | 241768 | 342          |                  | Puzzle Zoom-In? |
+| gu75          | 242111 | 4214         |                  | End Game?       |
+| gu76          | 246326 | 1688         |                  | End Game?       |
+| ini_mt_o      | 248015 | 900          |                  |                 |
+| ini_sci       | 248916 | 8334         |                  |                 |
 
 ## LZSS
 
@@ -430,88 +428,9 @@ v64tng.exe -x agu16 play|extract
 
 # CHANGELOG
 
-- 
+## 2025-01-05
 
-# NOTES
-
-- N/A
-  
-# TODO
-
-- Finish `VULKAN` implementation.
-
-# XMI Info
-
-```
-agu16,
-agu32,
-agu38,
-agu50,
-gu5,
-gu6,
-gu8,
-gu9,
-gu11a,
-gu11b,
-gu12,
-gu15,
-gu16,
-gu16b,
-gu17,
-gu18,
-gu19,
-gu20,
-gu21,
-gu22,
-gu23,	// Coffin Dance - Crypt puzzle
-gu24,
-gu25,
-gu26,
-gu27,
-gu28,
-gu29,
-gu30,
-gu31,
-gu32,
-gu33,
-gu34,
-gu35,
-gu36,
-gu37,
-gu38,
-gu39,	// Title Screen
-gu40,
-gu41,
-gu42,
-gu43,
-gu44,
-gu45,	// Chapel
-gu46,
-gu47,
-gu48,
-gu49,
-gu50,	// 
-gu51,
-gu52,
-gu53,
-gu54,
-gu55,
-gu56,	// Ghost of Bo - Main Foyer
-gu58,	// Edward & Martine 
-gu59,
-gu60,
-gu61,	// Intro Screen - Main Foyer
-gu63,	// Love Supreme
-gu67,
-gu68,
-gu69,
-gu70,
-gu71,	// Puzzle Zoom-In
-gu72,	// Puzzle Zoom-In
-gu73,	// Puzzle Zoom-In
-gu74,	// Puzzle Zoom-In
-gu75,	// End Game? 
-gu76,	// End Game?
-ini_mt_o,
-ini_sc
-```
+- `VULKAN` was moved out of `window.h` and `window.cpp`, and were moved into dedicated `vulkan.h`, `vulkan.cpp` respectively.
+- `window.cpp` becomes an abstraction to windowing and rendering items
+- DirectX `D2D` implementation completed
+- Many items added to the `config.json` Game Engine configuration file, including `renderer`, `display`, `width`, `x`, and `y`.

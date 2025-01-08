@@ -14,8 +14,14 @@
 
 	7th Guest - Game.h
 
-	This header file contains the enum class and function prototype to map
-	room names to RL filenames, as well as game state.
+	This header file defines the Game Engine Feature:
+
+		- Enum for room names
+		- Mapping room names to RL filenames
+		- Hotspot structure defining clickable areas
+		- Navigation points for moving between views
+		- View structure for each camera/viewpoint
+		- Struct for managing game state
 
 ===============================================================================
 */
@@ -30,11 +36,9 @@ enum class Room {
 	FOYER_HALLWAY,
 	KITCHEN,
 	LIBRARY,
-	GAME_ROOM,
-	BEDROOM,
+	LABORATORY,
 	MUSIC_ROOM,
-	ALTAR,
-	// ... other rooms or special locations
+	// ... need to add more rooms
 };
 
 //
@@ -47,6 +51,8 @@ inline const std::map<Room, std::string> ROOM_DATA = {
 	{Room::FOYER_HALLWAY, "FH.RL"},
 	{Room::KITCHEN, "K.RL"},
 	{Room::LIBRARY, "LI.RL"},
+	{Room::LABORATORY, "LA.RL"},
+	{Room::MUSIC_ROOM, "MU.RL"},
 	// Add more rooms here
 };
 

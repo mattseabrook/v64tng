@@ -5,59 +5,20 @@
 #include <vector>
 #include <windows.h>
 
+#include "d2d.h"
 #include "config.h"
 #include "game.h"
-#include "d2d.h"
+#include "window.h"
 
 // Globals
-static HWND hwnd = nullptr;
 static ID2D1Factory* factory = nullptr;
 static ID2D1HwndRenderTarget* renderTarget = nullptr;
 static ID2D1Bitmap* bitmap = nullptr;
 
 //
-// Window procedure
-//
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-	if (uMsg == WM_DESTROY) {
-		PostQuitMessage(0);
-		return 0;
-	}
-	return DefWindowProc(hwnd, uMsg, wParam, lParam);
-}
-
-//
 // Initialize Direct2D resources and create the application window
 //
 void initializeD2D() {
-	WNDCLASS wc = {};
-	wc.lpfnWndProc = WindowProc;
-	wc.hInstance = GetModuleHandle(nullptr);
-	wc.lpszClassName = L"D2DRenderWindowClass";
-
-	if (!RegisterClass(&wc)) {
-		throw std::runtime_error("Failed to register window class");
-	}
-
-	RECT rect = { 0, 0, state.ui.width, state.ui.height };
-	AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
-
-	hwnd = CreateWindowEx(
-		0,
-		wc.lpszClassName,
-		std::wstring(windowTitle.begin(), windowTitle.end()).c_str(),
-		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT,
-		rect.right - rect.left, rect.bottom - rect.top,
-		nullptr, nullptr, GetModuleHandle(nullptr), nullptr
-	);
-
-	if (!hwnd) {
-		throw std::runtime_error("Failed to create window");
-	}
-
-	ShowWindow(hwnd, SW_SHOW);
-
 	// Initialize Direct2D factory
 	HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &factory);
 	if (FAILED(hr)) {

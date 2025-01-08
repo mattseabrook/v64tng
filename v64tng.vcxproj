@@ -186,6 +186,7 @@ python spv_to_constexpr.py shaders/frag.spv shaders/frag.h fragShaderCode</Comma
     <ClInclude Include="include\vulkan.h" />
     <ClInclude Include="include\window.h" />
     <ClInclude Include="include\xmi.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\bitmap.cpp" />
@@ -203,6 +204,9 @@ python spv_to_constexpr.py shaders/frag.spv shaders/frag.h fragShaderCode</Comma
     <ClCompile Include="src\vulkan.cpp" />
     <ClCompile Include="src\window.cpp" />
     <ClCompile Include="src\xmi.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="resource.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

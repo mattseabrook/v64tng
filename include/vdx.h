@@ -21,9 +21,6 @@
 ===============================================================================
 */
 
-// God Mode
-extern bool devMode;
-
 // VDXChunk struct
 struct VDXChunk
 {
