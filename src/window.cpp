@@ -6,32 +6,23 @@
 #include <map>
 #include <vector>
 
-#include "window.h"
 #include "../resource.h"
+
+#include "window.h"
 #include "vulkan.h"
 #include "d2d.h"
 #include "config.h"
 #include "game.h"
 
-// Globals
 HWND hwnd = nullptr;
 
 //=============================================================================
 
-// Menu command IDs
-enum MenuCommands {
-	CMD_FILE_OPEN = 1,
-	CMD_FILE_SAVE,
-	CMD_FILE_EXIT,
-	CMD_HELP_ABOUT
-};
-
-//=============================================================================
-
 // Maps
-static std::map<std::string, void(*)()> initializeFuncs;
+static std::map<std::string, void(*)()> initializeRenderer;
 static std::map<std::string, void(*)(const std::vector<uint8_t>&)> renderFrameFuncs;
 static std::map<std::string, bool(*)()> processEventsFuncs;
+static std::map<std::string, void(*)(int, int)> resizeHandlers;
 static std::map<std::string, void(*)()> cleanupFuncs;
 
 //=============================================================================
@@ -55,6 +46,72 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		case CMD_HELP_ABOUT:
 			DialogBox(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDD_ABOUT_DIALOG), hwnd, AboutDialogProc);
 			break;
+		}
+		return 0;
+	}
+	case WM_SIZING: {
+		RECT* rect = (RECT*)lParam;
+		const int minClientWidth = 640;
+		const int minClientHeight = 320;
+
+		RECT frameRect = { 0, 0, minClientWidth, minClientHeight };
+		AdjustWindowRect(&frameRect, WS_OVERLAPPEDWINDOW, TRUE);
+		const int minWindowWidth = frameRect.right - frameRect.left;
+		const int minWindowHeight = frameRect.bottom - frameRect.top;
+
+		// Ensure minimum size
+		if ((rect->right - rect->left) < minWindowWidth) {
+			if (wParam == WMSZ_LEFT || wParam == WMSZ_TOPLEFT || wParam == WMSZ_BOTTOMLEFT)
+				rect->left = rect->right - minWindowWidth;
+			else
+				rect->right = rect->left + minWindowWidth;
+		}
+		if ((rect->bottom - rect->top) < minWindowHeight) {
+			if (wParam == WMSZ_TOP || wParam == WMSZ_TOPLEFT || wParam == WMSZ_TOPRIGHT)
+				rect->top = rect->bottom - minWindowHeight;
+			else
+				rect->bottom = rect->top + minWindowHeight;
+		}
+
+		RECT clientRect = *rect;
+		AdjustWindowRect(&clientRect, WS_OVERLAPPEDWINDOW, TRUE);
+		int clientWidth = clientRect.right - clientRect.left;
+		int clientHeight = clientRect.bottom - clientRect.top;
+
+		int desiredHeight = clientWidth / 2;	// Enforce 2:1 aspect ratio based on width
+
+		if (wParam == WMSZ_TOP || wParam == WMSZ_BOTTOM) {
+			// Adjust width based on height
+			int currentHeight = rect->bottom - rect->top;
+			int desiredWidth = currentHeight * 2;
+			if (desiredWidth < minWindowWidth) {
+				desiredWidth = minWindowWidth;
+				currentHeight = desiredWidth / 2;
+			}
+			int widthDelta = desiredWidth - (rect->right - rect->left);
+			rect->right = rect->left + desiredWidth;
+		}
+		else {
+			// Adjust height based on width
+			int heightDelta = desiredHeight - (rect->bottom - rect->top);
+			if (wParam == WMSZ_TOP || wParam == WMSZ_TOPLEFT || wParam == WMSZ_TOPRIGHT)
+				rect->top -= heightDelta;
+			else
+				rect->bottom += heightDelta;
+		}
+		return TRUE;
+	}
+	case WM_SIZE: {
+		if (state.ui.enabled && wParam != SIZE_MINIMIZED) {
+			RECT clientRect;
+			GetClientRect(hwnd, &clientRect);
+			int newWidth = clientRect.right - clientRect.left;
+			int newHeight = clientRect.bottom - clientRect.top;
+
+			state.ui.width = newWidth;
+			state.ui.height = newHeight;
+
+			resizeHandlers[config["renderer"]](newWidth, newHeight);
 		}
 		return 0;
 	}
@@ -84,49 +141,42 @@ LRESULT CALLBACK AboutDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM 
 }
 
 //
-// Initialize the window
+// Initialize handlers
 //
-void initializeWindow() {
-	if (cfg_fullscreen) {
-		state.ui.width = GetSystemMetrics(SM_CXSCREEN);
-		state.ui.height = GetSystemMetrics(SM_CYSCREEN);
-	}
-	else {
-		if (cfg_width % 2 != 0) {
-			cfg_width += 1;
+void initHandlers() {
+	initializeRenderer["VULKAN"] = initializeVulkan;
+	initializeRenderer["Direct2D"] = initializeD2D;
+
+	renderFrameFuncs["VULKAN"] = renderFrameVk;
+	renderFrameFuncs["Direct2D"] = renderFrameD2D;
+
+	processEventsFuncs["VULKAN"] = []() {
+		glfwPollEvents();
+		return !glfwWindowShouldClose(window);
+		};
+	processEventsFuncs["Direct2D"] = []() {
+		MSG msg = {};
+		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+			if (msg.message == WM_QUIT) {
+				return false;
+			}
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
 		}
-		state.ui.width = cfg_width;
-		state.ui.height = cfg_width / 2;
-	}
+		return true;
+		};
 
-	WNDCLASS wc = {};
-	wc.lpfnWndProc = WindowProc;
-	wc.hInstance = GetModuleHandle(nullptr);
-	wc.lpszClassName = L"D2DRenderWindowClass";
-	wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
+	resizeHandlers["VULKAN"] = [](int, int) { /* Placeholder for Vulkan resize */ };
+	resizeHandlers["Direct2D"] = handleD2DResize;
 
-	if (!RegisterClass(&wc)) {
-		throw std::runtime_error("Failed to register window class");
-	}
+	cleanupFuncs["VULKAN"] = cleanupVulkan;
+	cleanupFuncs["Direct2D"] = cleanupD2D;
+}
 
-	RECT rect = { 0, 0, state.ui.width, state.ui.height };
-	AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
-
-	hwnd = CreateWindowEx(
-		0,
-		wc.lpszClassName,
-		std::wstring(cfg_windowTitle.begin(), cfg_windowTitle.end()).c_str(),
-		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT,
-		rect.right - rect.left, rect.bottom - rect.top,
-		nullptr, nullptr, GetModuleHandle(nullptr), nullptr
-	);
-
-	if (!hwnd) {
-		throw std::runtime_error("Failed to create window");
-	}
-
-	// Menu
+//
+// Initialize the menu
+//
+void initMenu() {
 	HMENU hMenu = CreateMenu();
 	HMENU hFileMenu = CreatePopupMenu();
 	HMENU hHelpMenu = CreatePopupMenu();
@@ -143,71 +193,66 @@ void initializeWindow() {
 	AppendMenu(hMenu, MF_POPUP, (UINT_PTR)hHelpMenu, L"Help");
 
 	SetMenu(hwnd, hMenu);
-	
-	ShowWindow(hwnd, SW_SHOW);
-	
-	static bool initialized = false;
-	if (!initialized) {
-		initializeFuncs["VULKAN"] = initializeVulkan;
-		initializeFuncs["Direct2D"] = initializeD2D;
+}
 
-		renderFrameFuncs["VULKAN"] = renderFrameVk;
-		renderFrameFuncs["Direct2D"] = renderFrameD2D;
+//
+// Initialize the window
+//
+void initWindow() {
+	initHandlers();
 
-		processEventsFuncs["VULKAN"] = []() {
-			glfwPollEvents();
-			return !glfwWindowShouldClose(window);
-			};
-		processEventsFuncs["Direct2D"] = []() {
-			MSG msg = {};
-			while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
-				if (msg.message == WM_QUIT) {
-					return false;
-				}
-				TranslateMessage(&msg);
-				DispatchMessage(&msg);
-			}
-			return true;
-			};
-
-		cleanupFuncs["VULKAN"] = cleanupVulkan;
-		cleanupFuncs["Direct2D"] = cleanupD2D;
-
-		initialized = true;
-	}
-
-	if (initializeFuncs.count(cfg_renderer)) {
-		initializeFuncs[cfg_renderer]();
+	if (config["fullscreen"]) {
+		state.ui.width = GetSystemMetrics(SM_CXSCREEN);
+		state.ui.height = GetSystemMetrics(SM_CYSCREEN);
 	}
 	else {
-		throw std::runtime_error("Unsupported renderer type: " + cfg_renderer);
+		if (config["width"] % 2 != 0) {
+			config["width"] += 1;
+		}
+		state.ui.width = config["width"];
+		state.ui.height = config["width"] / 2;
 	}
+
+	WNDCLASS wc = {};
+	wc.lpfnWndProc = WindowProc;
+	wc.hInstance = GetModuleHandle(nullptr);
+	wc.lpszClassName = L"D2DRenderWindowClass";
+	wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
+
+	if (!RegisterClass(&wc)) {
+		throw std::runtime_error("Failed to register window class");
+	}
+
+	RECT rect = { 0, 0, state.ui.width, state.ui.height };
+	
+	if (!config["fullscreen"]) AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, TRUE);
+
+	hwnd = CreateWindowEx(
+		0,
+		wc.lpszClassName,
+		std::wstring(windowTitle.begin(), windowTitle.end()).c_str(),
+		WS_OVERLAPPEDWINDOW,
+		CW_USEDEFAULT, CW_USEDEFAULT,
+		rect.right - rect.left, rect.bottom - rect.top,
+		nullptr, nullptr, GetModuleHandle(nullptr), nullptr
+	);
+
+	if (!hwnd) {
+		throw std::runtime_error("Failed to create window");
+	}
+
+	if (!config["fullscreen"]) { initMenu(); }
+
+	initializeRenderer[config["renderer"]]();
+
+	ShowWindow(hwnd, SW_SHOW);
+
+	state.ui.enabled = true;
 }
 
 //
-// Abstract the rendering of a frame
+// Abstractions
 //
-void renderFrame(const std::vector<uint8_t>& frameData) {
-	if (renderFrameFuncs.count(cfg_renderer)) {
-		renderFrameFuncs[cfg_renderer](frameData);
-	}
-}
-
-//
-// Process window events
-//
-bool processEvents() {
-	if (processEventsFuncs.count(cfg_renderer)) {
-		return processEventsFuncs[cfg_renderer]();
-	}
-	return false;
-}
-
-//
-// Cleanup the window and renderer
-//
-void cleanupWindow() {
-	if (cleanupFuncs.count(cfg_renderer)) {
-		cleanupFuncs[cfg_renderer]();
-	}
-}
+void renderFrame(const std::vector<uint8_t>& frameData) { renderFrameFuncs[config["renderer"]](frameData); }
+bool processEvents() { return processEventsFuncs[config["renderer"]](); }
+void cleanupWindow() { cleanupFuncs[config["renderer"]](); }

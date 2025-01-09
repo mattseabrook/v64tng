@@ -90,7 +90,7 @@ void loadView() {
 // Start the game engine
 //
 void init() {
-	initializeWindow();
+	initWindow();
 
 	// Initial asset rendering
 	loadRoom();

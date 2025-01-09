@@ -54,7 +54,7 @@ void initializeVulkan() {
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-	window = glfwCreateWindow(state.ui.width, state.ui.height, cfg_windowTitle.c_str(), nullptr, nullptr);
+	window = glfwCreateWindow(state.ui.width, state.ui.height, windowTitle.c_str(), nullptr, nullptr);
 	if (!window) {
 		glfwTerminate();
 		throw std::runtime_error("Failed to create GLFW window");

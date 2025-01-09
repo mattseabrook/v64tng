@@ -185,7 +185,7 @@ int WINAPI WinMain(
 						raw = true;
 					}
 					else if (*arg == "alpha") {
-						cfg_devMode = true;
+						config["devMode"] = true;
 					}
 					else if (*arg == "video") {
 						video = true;

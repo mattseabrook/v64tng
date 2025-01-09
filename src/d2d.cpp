@@ -82,6 +82,38 @@ void renderFrameD2D(const std::vector<uint8_t>& pixelData) {
 		throw std::runtime_error("Failed to draw frame");
 	}
 }
+
+//
+// Handle Window Resizing events
+//
+void handleD2DResize(int width, int height) {
+	if (!renderTarget) {
+		throw std::runtime_error("Render target not initialized");
+	}
+
+	// Resize the render target
+	renderTarget->Resize(D2D1::SizeU(width, height));
+
+	// Release old bitmap if it exists
+	if (bitmap) {
+		bitmap->Release();
+		bitmap = nullptr;
+	}
+
+	// Create new bitmap at the new size
+	HRESULT hr = renderTarget->CreateBitmap(
+		D2D1::SizeU(width, height),
+		D2D1::BitmapProperties(
+			D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE)
+		),
+		&bitmap
+	);
+
+	if (FAILED(hr)) {
+		throw std::runtime_error("Failed to create resized bitmap");
+	}
+}
+
 //
 // Process the message loop
 //

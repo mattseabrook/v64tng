@@ -96,7 +96,7 @@ void parseVDXChunks(VDXFile& vdxFile)
 		{
 		case 0x20:
 		case 0x25:
-			if (chunk.chunkType == 0x25 && cfg_devMode && alphaChannel.empty())
+			if (chunk.chunkType == 0x25 && config["devMode"] && alphaChannel.empty())
 			{
 				alphaChannel.resize(vdxFile.chunks[0].data.size());
 				for (size_t j = 0; j < alphaChannel.size(); j += 3)
@@ -109,7 +109,7 @@ void parseVDXChunks(VDXFile& vdxFile)
 
 			auto [palData, bitmapData] = chunk.chunkType == 0x20
 				? getBitmapData(chunk.data)
-				: getDeltaBitmapData(chunk.data, palette, cfg_devMode ? alphaChannel : vdxFile.chunks[prevBitmapIndex].data);
+				: getDeltaBitmapData(chunk.data, palette, config["devMode"] ? alphaChannel : vdxFile.chunks[prevBitmapIndex].data);
 
 			palette = palData;
 			chunk.data = bitmapData;

@@ -87,7 +87,8 @@ struct View {
 // Struct for managing game state
 //
 struct GameState {
-	struct UI {
+	struct {
+		bool enabled = false;
 		int width;
 		int height;
 	} ui;
