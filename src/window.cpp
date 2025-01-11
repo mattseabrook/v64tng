@@ -51,67 +51,62 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 	}
 	case WM_SIZING: {
 		RECT* rect = (RECT*)lParam;
-		const int minClientWidth = 640;
-		const int minClientHeight = 320;
 
-		RECT frameRect = { 0, 0, minClientWidth, minClientHeight };
-		AdjustWindowRect(&frameRect, WS_OVERLAPPEDWINDOW, TRUE);
-		const int minWindowWidth = frameRect.right - frameRect.left;
-		const int minWindowHeight = frameRect.bottom - frameRect.top;
+		// Static minimum client dimensions
+		const int MIN_CLIENT_WIDTH = 640;
+		const int MIN_CLIENT_HEIGHT = 320;
 
-		// Ensure minimum size
+		// Get window frame dimensions
+		RECT frameRect = { 0, 0, MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT };
+		DWORD style = GetWindowLong(hwnd, GWL_STYLE);
+		DWORD exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+		AdjustWindowRectEx(&frameRect, style, TRUE, exStyle);
+
+		// Calculate total window size needed for minimum client area
+		int minWindowWidth = frameRect.right - frameRect.left;
+		int minWindowHeight = frameRect.bottom - frameRect.top;
+
+		// Enforce minimum window size
 		if ((rect->right - rect->left) < minWindowWidth) {
 			if (wParam == WMSZ_LEFT || wParam == WMSZ_TOPLEFT || wParam == WMSZ_BOTTOMLEFT)
 				rect->left = rect->right - minWindowWidth;
 			else
 				rect->right = rect->left + minWindowWidth;
 		}
-		if ((rect->bottom - rect->top) < minWindowHeight) {
-			if (wParam == WMSZ_TOP || wParam == WMSZ_TOPLEFT || wParam == WMSZ_TOPRIGHT)
-				rect->top = rect->bottom - minWindowHeight;
-			else
-				rect->bottom = rect->top + minWindowHeight;
-		}
 
-		RECT clientRect = *rect;
-		AdjustWindowRect(&clientRect, WS_OVERLAPPEDWINDOW, TRUE);
-		int clientWidth = clientRect.right - clientRect.left;
-		int clientHeight = clientRect.bottom - clientRect.top;
+		// Maintain 2:1 aspect ratio
+		int clientWidth = rect->right - rect->left - (frameRect.right - frameRect.left - MIN_CLIENT_WIDTH);
+		int requiredClientHeight = clientWidth / 2;
 
-		int desiredHeight = clientWidth / 2;	// Enforce 2:1 aspect ratio based on width
+		// Calculate total window height including non-client areas
+		int nonClientHeight = (frameRect.bottom - frameRect.top) - MIN_CLIENT_HEIGHT;
+		int requiredWindowHeight = requiredClientHeight + nonClientHeight;
 
-		if (wParam == WMSZ_TOP || wParam == WMSZ_BOTTOM) {
-			// Adjust width based on height
-			int currentHeight = rect->bottom - rect->top;
-			int desiredWidth = currentHeight * 2;
-			if (desiredWidth < minWindowWidth) {
-				desiredWidth = minWindowWidth;
-				currentHeight = desiredWidth / 2;
-			}
-			int widthDelta = desiredWidth - (rect->right - rect->left);
-			rect->right = rect->left + desiredWidth;
-		}
-		else {
-			// Adjust height based on width
-			int heightDelta = desiredHeight - (rect->bottom - rect->top);
-			if (wParam == WMSZ_TOP || wParam == WMSZ_TOPLEFT || wParam == WMSZ_TOPRIGHT)
-				rect->top -= heightDelta;
-			else
-				rect->bottom += heightDelta;
-		}
+		// Adjust height to enforce aspect ratio
+		if (wParam == WMSZ_TOP || wParam == WMSZ_TOPLEFT || wParam == WMSZ_TOPRIGHT)
+			rect->top = rect->bottom - requiredWindowHeight;
+		else
+			rect->bottom = rect->top + requiredWindowHeight;
+
 		return TRUE;
 	}
 	case WM_SIZE: {
 		if (state.ui.enabled && wParam != SIZE_MINIMIZED) {
 			RECT clientRect;
 			GetClientRect(hwnd, &clientRect);
+
 			int newWidth = clientRect.right - clientRect.left;
 			int newHeight = clientRect.bottom - clientRect.top;
 
-			state.ui.width = newWidth;
-			state.ui.height = newHeight;
+			if (state.ui.width != newWidth || state.ui.height != newHeight) {
+				state.ui.width = newWidth;
+				state.ui.height = newHeight;
 
-			resizeHandlers[config["renderer"]](newWidth, newHeight);
+				resizeHandlers[config["renderer"]](newWidth, newHeight);
+
+				// Invalidate window to force re-rendering
+				InvalidateRect(hwnd, nullptr, FALSE);
+			}
 		}
 		return 0;
 	}
@@ -224,7 +219,7 @@ void initWindow() {
 	}
 
 	RECT rect = { 0, 0, state.ui.width, state.ui.height };
-	
+
 	if (!config["fullscreen"]) AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, TRUE);
 
 	hwnd = CreateWindowEx(
@@ -246,8 +241,6 @@ void initWindow() {
 	initializeRenderer[config["renderer"]]();
 
 	ShowWindow(hwnd, SW_SHOW);
-
-	state.ui.enabled = true;
 }
 
 //

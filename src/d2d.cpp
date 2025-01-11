@@ -28,7 +28,7 @@ void initializeD2D() {
 	// Create render target
 	RECT clientRect;
 	GetClientRect(hwnd, &clientRect);
-	
+
 	hr = factory->CreateHwndRenderTarget(
 		D2D1::RenderTargetProperties(),
 		D2D1::HwndRenderTargetProperties(
@@ -40,46 +40,18 @@ void initializeD2D() {
 	if (FAILED(hr)) {
 		throw std::runtime_error("Failed to create Direct2D render target");
 	}
-}
 
-//
-// Render a frame
-//
-void renderFrameD2D(const std::vector<uint8_t>& pixelData) {
-	if (!renderTarget) {
-		throw std::runtime_error("Render target not initialized");
-	}
-
-	// Ensure bitmap matches the frame size
-	if (!bitmap || bitmap->GetSize().width != static_cast<uint32_t>(state.ui.width) || bitmap->GetSize().height != static_cast<uint32_t>(state.ui.height)) {
-		if (bitmap) {
-			bitmap->Release();
-		}
-		renderTarget->CreateBitmap(
-			D2D1::SizeU(static_cast<uint32_t>(state.ui.width), static_cast<uint32_t>(state.ui.height)),
-			D2D1::BitmapProperties(D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE)),
-			&bitmap
-		);
-	}
-
-	// Convert RGB data to BGRA
-	std::vector<uint8_t> bgraData(static_cast<uint32_t>(state.ui.width) * static_cast<uint32_t>(state.ui.height) * 4);
-	for (size_t i = 0, j = 0; i < pixelData.size(); i += 3, j += 4) {
-		bgraData[j] = pixelData[i + 2];     // Blue
-		bgraData[j + 1] = pixelData[i + 1]; // Green
-		bgraData[j + 2] = pixelData[i];     // Red
-		bgraData[j + 3] = 255;              // Alpha
-	}
-
-	bitmap->CopyFromMemory(nullptr, bgraData.data(), static_cast<uint32_t>(state.ui.width) * 4);
-
-	renderTarget->BeginDraw();
-	renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
-	renderTarget->DrawBitmap(bitmap);
-	HRESULT hr = renderTarget->EndDraw();
+	// Initialize the bitmap
+	hr = renderTarget->CreateBitmap(
+		D2D1::SizeU(state.ui.width, state.ui.height),
+		D2D1::BitmapProperties(
+			D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE)
+		),
+		&bitmap
+	);
 
 	if (FAILED(hr)) {
-		throw std::runtime_error("Failed to draw frame");
+		throw std::runtime_error("Failed to create Direct2D bitmap");
 	}
 }
 
@@ -87,21 +59,20 @@ void renderFrameD2D(const std::vector<uint8_t>& pixelData) {
 // Handle Window Resizing events
 //
 void handleD2DResize(int width, int height) {
-	if (!renderTarget) {
-		throw std::runtime_error("Render target not initialized");
-	}
+	if (!renderTarget) return;
 
 	// Resize the render target
-	renderTarget->Resize(D2D1::SizeU(width, height));
-
-	// Release old bitmap if it exists
-	if (bitmap) {
-		bitmap->Release();
-		bitmap = nullptr;
+	HRESULT hr = renderTarget->Resize(D2D1::SizeU(width, height));
+	if (FAILED(hr)) {
+		throw std::runtime_error("Failed to resize render target");
 	}
 
-	// Create new bitmap at the new size
-	HRESULT hr = renderTarget->CreateBitmap(
+	// Recreate bitmap
+	if (bitmap) {
+		bitmap->Release();
+	}
+
+	hr = renderTarget->CreateBitmap(
 		D2D1::SizeU(width, height),
 		D2D1::BitmapProperties(
 			D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE)
@@ -110,7 +81,66 @@ void handleD2DResize(int width, int height) {
 	);
 
 	if (FAILED(hr)) {
-		throw std::runtime_error("Failed to create resized bitmap");
+		throw std::runtime_error("Failed to recreate bitmap after resize");
+	}
+
+	// Invalidate to ensure rendering refresh
+	InvalidateRect(hwnd, nullptr, FALSE);
+}
+
+//
+// Render a frame
+//
+void renderFrameD2D(const std::vector<uint8_t>& pixelData) {
+	if (!renderTarget || !bitmap) {
+		throw std::runtime_error("Render target or bitmap not initialized");
+	} 
+
+	// Convert RGB pixel data to BGRA
+	std::vector<uint8_t> bgraData(state.ui.width * state.ui.height * 4);
+	for (size_t i = 0, j = 0; i < pixelData.size(); i += 3, j += 4) {
+		bgraData[j] = pixelData[i + 2];     // Blue
+		bgraData[j + 1] = pixelData[i + 1]; // Green
+		bgraData[j + 2] = pixelData[i];     // Red
+		bgraData[j + 3] = 255;              // Alpha
+	}
+
+	// Copy frame data into the bitmap
+	HRESULT hr = bitmap->CopyFromMemory(nullptr, bgraData.data(), state.ui.width * 4);
+	if (FAILED(hr)) {
+		throw std::runtime_error("Failed to copy frame data into bitmap");
+	}
+
+	// Begin rendering
+	renderTarget->BeginDraw();
+	renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
+	renderTarget->DrawBitmap(bitmap);
+	hr = renderTarget->EndDraw();
+
+	if (FAILED(hr)) {
+		throw std::runtime_error("Failed to draw frame");
+	}
+}
+
+//
+// Update the D2D bitmap
+//
+void updateD2DBitmap(int width, int height) {
+	if (!renderTarget) return;
+
+	if (bitmap) {
+		ID2D1Bitmap* oldBitmap = bitmap;
+		HRESULT hr = renderTarget->CreateBitmap(
+			D2D1::SizeU(width, height),
+			D2D1::BitmapProperties(
+				D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE)
+			),
+			&bitmap
+		);
+		if (SUCCEEDED(hr)) {
+			oldBitmap->Release();
+			InvalidateRect(hwnd, nullptr, FALSE);
+		}
 	}
 }
 

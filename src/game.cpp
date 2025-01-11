@@ -96,6 +96,8 @@ void init() {
 	loadRoom();
 	loadView();
 
+	state.ui.enabled = true;
+
 	// Main game loop
 	bool running = true;
 	while (running) {
