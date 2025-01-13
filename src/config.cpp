@@ -7,6 +7,8 @@
 
 nlohmann::json config;
 std::string windowTitle = "v64tng";
+const int MIN_CLIENT_WIDTH = 640;
+const int MIN_CLIENT_HEIGHT = 320;
 
 //
 // Load configuration from file

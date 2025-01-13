@@ -91,6 +91,8 @@ struct GameState {
 		bool enabled = false;
 		int width;
 		int height;
+		int x;
+		int y;
 	} ui;
 
 	Room current_room = Room::FOYER_HALLWAY;        // Default room (corresponds to ROOM_DATA map key)

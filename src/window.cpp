@@ -22,7 +22,6 @@ HWND hwnd = nullptr;
 static std::map<std::string, void(*)()> initializeRenderer;
 static std::map<std::string, void(*)(const std::vector<uint8_t>&)> renderFrameFuncs;
 static std::map<std::string, bool(*)()> processEventsFuncs;
-static std::map<std::string, void(*)(int, int)> resizeHandlers;
 static std::map<std::string, void(*)()> cleanupFuncs;
 
 //=============================================================================
@@ -51,10 +50,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 	}
 	case WM_SIZING: {
 		RECT* rect = (RECT*)lParam;
-
-		// Static minimum client dimensions
-		const int MIN_CLIENT_WIDTH = 640;
-		const int MIN_CLIENT_HEIGHT = 320;
 
 		// Get window frame dimensions
 		RECT frameRect = { 0, 0, MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT };
@@ -101,13 +96,27 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 			if (state.ui.width != newWidth || state.ui.height != newHeight) {
 				state.ui.width = newWidth;
 				state.ui.height = newHeight;
-
-				resizeHandlers[config["renderer"]](newWidth, newHeight);
-
-				// Invalidate window to force re-rendering
-				InvalidateRect(hwnd, nullptr, FALSE);
+				InvalidateRect(hwnd, NULL, FALSE);
 			}
+
+			RECT windowRect;
+			GetWindowRect(hwnd, &windowRect);
+			state.ui.x = windowRect.left;
+			state.ui.y = windowRect.top;
+
+
 		}
+		return 0;
+	}
+	case WM_PAINT: {
+		PAINTSTRUCT ps;
+		HDC hdc = BeginPaint(hwnd, &ps);
+
+		if (ps.fErase) {
+			renderFrame({});  // Pass empty vector if no pixel data available
+		}
+
+		EndPaint(hwnd, &ps);
 		return 0;
 	}
 	case WM_DESTROY:
@@ -160,9 +169,6 @@ void initHandlers() {
 		}
 		return true;
 		};
-
-	resizeHandlers["VULKAN"] = [](int, int) { /* Placeholder for Vulkan resize */ };
-	resizeHandlers["Direct2D"] = handleD2DResize;
 
 	cleanupFuncs["VULKAN"] = cleanupVulkan;
 	cleanupFuncs["Direct2D"] = cleanupD2D;

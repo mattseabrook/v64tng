@@ -8,9 +8,7 @@
 
 void initializeD2D();
 void renderFrameD2D(const std::vector<uint8_t>& pixelData);
-void updateD2DBitmap(int width, int height);
-void handleD2DResize(int width, int height);
-void processD2DMessageLoop();
+void ensureBitmapSize(UINT width, UINT height);
 void cleanupD2D();
 
 #endif // D2D_H

@@ -10,6 +10,8 @@
 
 extern nlohmann::json config;
 extern std::string windowTitle;
+extern const int MIN_CLIENT_WIDTH;
+extern const int MIN_CLIENT_HEIGHT;
 
 //=============================================================================
 
