@@ -49,24 +49,26 @@ void loadRoom() {
 }
 
 //
-//  Send animation sequence to Renderer
+//  Setup VDX animation sequence
 //
 void loadView() {
-	static auto lastFrameTime = std::chrono::high_resolution_clock::now();
-	constexpr auto frameDuration = std::chrono::milliseconds(67); // 15 FPS = ~67 ms per frame
-	static size_t currentFrameIndex = 30; // normally 0
-
 	if (auto it = std::ranges::find_if(state.VDXFiles, [&](const auto& file) {
 		return file.filename == state.current_view;
 		}); it != state.VDXFiles.end()) {
 
-		VDXFile vdxFile = *it;
-		parseVDXChunks(vdxFile);
+		VDXFile& vdx = *it;
+		state.currentVDX = &(*it);
 
-		// Testing
-		renderFrame(vdxFile.chunks[currentFrameIndex].data);
+		parseVDXChunks(vdx);
+
+		// vdx.chunks[state.currentFrameIndex].data
+		renderFrame();
 
 		/*
+
+		static auto lastFrameTime = std::chrono::high_resolution_clock::now();
+		constexpr auto frameDuration = std::chrono::milliseconds(67); // 15 FPS = ~67 ms per frame
+
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		auto elapsedTime = currentTime - lastFrameTime;
 
@@ -80,9 +82,10 @@ void loadView() {
 			// Move to the next frame, wrapping around if needed
 			currentFrameIndex = (currentFrameIndex + 1) % it->chunks.size();
 		}
-
-		state.previous_view = state.current_view;
 		*/
+	}
+	else {
+		throw std::runtime_error("VDXFile matching state.current_view not found!");
 	}
 }
 

@@ -7,7 +7,7 @@
 #include <cstdint>
 
 void initializeD2D();
-void renderFrameD2D(const std::vector<uint8_t>& pixelData);
+void renderFrameD2D();
 void ensureBitmapSize(UINT width, UINT height);
 void cleanupD2D();
 

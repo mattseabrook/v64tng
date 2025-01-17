@@ -30,7 +30,7 @@ LRESULT CALLBACK AboutDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM 
 void initHandlers();
 void initWindow();
 void initMenu();
-void renderFrame(const std::vector<uint8_t>& frameData);
+void renderFrame();
 bool processEvents();
 void cleanupWindow();
 

@@ -20,7 +20,7 @@ HWND hwnd = nullptr;
 
 // Maps
 static std::map<std::string, void(*)()> initializeRenderer;
-static std::map<std::string, void(*)(const std::vector<uint8_t>&)> renderFrameFuncs;
+static std::map<std::string, void(*)()> renderFrameFuncs;
 static std::map<std::string, bool(*)()> processEventsFuncs;
 static std::map<std::string, void(*)()> cleanupFuncs;
 
@@ -110,12 +110,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 	}
 	case WM_PAINT: {
 		PAINTSTRUCT ps;
-		HDC hdc = BeginPaint(hwnd, &ps);
-
-		if (ps.fErase) {
-			renderFrame({});  // Pass empty vector if no pixel data available
-		}
-
+		BeginPaint(hwnd, &ps);
+		renderFrame();  // Always render on paint
 		EndPaint(hwnd, &ps);
 		return 0;
 	}
@@ -252,6 +248,9 @@ void initWindow() {
 //
 // Abstractions
 //
-void renderFrame(const std::vector<uint8_t>& frameData) { renderFrameFuncs[config["renderer"]](frameData); }
+void renderFrame() {
+	
+	renderFrameFuncs[config["renderer"]]();
+}
 bool processEvents() { return processEventsFuncs[config["renderer"]](); }
 void cleanupWindow() { cleanupFuncs[config["renderer"]](); }

@@ -95,11 +95,14 @@ struct GameState {
 		int y;
 	} ui;
 
+	std::vector<VDXFile> VDXFiles;				    // Vector of VDXFile objects
+	size_t currentFrameIndex = 30;				    // Normally 0 - hard-coded to 30 for testing
+	VDXFile* currentVDX = nullptr;				    // Reference to current VDXFile object
+
 	Room current_room = Room::FOYER_HALLWAY;        // Default room (corresponds to ROOM_DATA map key)
 	Room previous_room = current_room;              // Avoid re-loading
 	std::string current_view = "f_1bc";		        // Default view (corresponds to VDXFile .filename struct member)
 	std::string previous_view = current_view;       // Avoid re-rendering
-	std::vector<VDXFile> VDXFiles;				    // Vector of VDXFile objects
 };
 
 //=============================================================================

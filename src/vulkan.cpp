@@ -1028,7 +1028,8 @@ void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t 
 //
 // Render Frame
 //
-void renderFrameVk(const std::vector<uint8_t>& bitmapData) {
+void renderFrameVk() {
+	std::span<const uint8_t> bitmapData = state.currentVDX->chunks[state.currentFrameIndex].data;
 	VkDeviceSize imageSize = bitmapData.size();
 
 	VkBuffer stagingBuffer;
