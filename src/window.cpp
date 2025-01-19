@@ -48,6 +48,32 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		}
 		return 0;
 	}
+	case WM_MOVE: {
+		if (state.ui.enabled) {
+			RECT windowRect;
+			GetWindowRect(hwnd, &windowRect);
+
+			HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+			MONITORINFOEX monitorInfo;
+			monitorInfo.cbSize = sizeof(MONITORINFOEX);
+
+			if (GetMonitorInfo(hMonitor, &monitorInfo)) {
+				state.ui.x = windowRect.left - monitorInfo.rcMonitor.left;
+				state.ui.y = windowRect.top - monitorInfo.rcMonitor.top;
+
+				config["x"] = state.ui.x;
+				config["y"] = state.ui.y;
+
+				for (const auto& display : state.ui.displays) {
+					if (EqualRect(&display.bounds, &monitorInfo.rcMonitor)) {
+						config["display"] = display.number;
+						break;
+					}
+				}
+			}
+		}
+		return 0;
+	}
 	case WM_SIZING: {
 		RECT* rect = (RECT*)lParam;
 
@@ -95,16 +121,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
 			if (state.ui.width != newWidth || state.ui.height != newHeight) {
 				state.ui.width = newWidth;
+				config["width"] = newWidth;
+
 				state.ui.height = newHeight;
 				InvalidateRect(hwnd, NULL, FALSE);
 			}
-
-			RECT windowRect;
-			GetWindowRect(hwnd, &windowRect);
-			state.ui.x = windowRect.left;
-			state.ui.y = windowRect.top;
-
-
 		}
 		return 0;
 	}
@@ -193,10 +214,59 @@ void initMenu() {
 }
 
 //
-// Initialize the window
+// Get monitor information
 //
+BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
+	static int displayCount = 0;
+	MONITORINFOEX monitorInfo;
+	monitorInfo.cbSize = sizeof(MONITORINFOEX);
+
+	if (GetMonitorInfo(hMonitor, &monitorInfo)) {
+		DisplayInfo display;
+		display.number = ++displayCount;
+		display.bounds = monitorInfo.rcMonitor;
+		display.isPrimary = (monitorInfo.dwFlags & MONITORINFOF_PRIMARY) != 0;
+		state.ui.displays.push_back(display);
+	}
+
+	return TRUE;
+}
+
+/*
+===============================================================================
+Function Name: initWindow();
+
+Description:
+	- Initialize the window and renderer based on configuration settings
+
+===============================================================================
+*/
 void initWindow() {
 	initHandlers();
+
+	//
+	// Display
+	//
+	state.ui.displays.clear();
+	EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
+	int targetDisplay = config["display"];
+	const DisplayInfo* selectedDisplay = nullptr;
+
+	for (const auto& display : state.ui.displays) {
+		if (display.number == targetDisplay) {
+			selectedDisplay = &display;
+			break;
+		}
+	}
+
+	if (!selectedDisplay) {
+		for (const auto& display : state.ui.displays) {
+			if (display.isPrimary) {
+				selectedDisplay = &display;
+				break;
+			}
+		}
+	}
 
 	if (config["fullscreen"]) {
 		state.ui.width = GetSystemMetrics(SM_CXSCREEN);
@@ -210,6 +280,22 @@ void initWindow() {
 		state.ui.height = config["width"] / 2;
 	}
 
+	state.ui.x = config["x"];
+	state.ui.y = config["y"];
+
+	POINT position;
+	if (selectedDisplay) {
+		position.x = selectedDisplay->bounds.left + state.ui.x;
+		position.y = selectedDisplay->bounds.top + state.ui.y;
+	}
+	else {
+		position.x = CW_USEDEFAULT;
+		position.y = CW_USEDEFAULT;
+	}
+
+	//
+	// Window win32 API
+	//
 	WNDCLASS wc = {};
 	wc.lpfnWndProc = WindowProc;
 	wc.hInstance = GetModuleHandle(nullptr);
@@ -221,7 +307,6 @@ void initWindow() {
 	}
 
 	RECT rect = { 0, 0, state.ui.width, state.ui.height };
-
 	if (!config["fullscreen"]) AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, TRUE);
 
 	hwnd = CreateWindowEx(
@@ -229,7 +314,7 @@ void initWindow() {
 		wc.lpszClassName,
 		std::wstring(windowTitle.begin(), windowTitle.end()).c_str(),
 		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT,
+		position.x, position.y,
 		rect.right - rect.left, rect.bottom - rect.top,
 		nullptr, nullptr, GetModuleHandle(nullptr), nullptr
 	);
@@ -248,9 +333,6 @@ void initWindow() {
 //
 // Abstractions
 //
-void renderFrame() {
-	
-	renderFrameFuncs[config["renderer"]]();
-}
+void renderFrame() { renderFrameFuncs[config["renderer"]](); }
 bool processEvents() { return processEventsFuncs[config["renderer"]](); }
 void cleanupWindow() { cleanupFuncs[config["renderer"]](); }

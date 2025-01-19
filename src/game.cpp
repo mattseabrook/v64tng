@@ -56,12 +56,8 @@ void loadView() {
 		return file.filename == state.current_view;
 		}); it != state.VDXFiles.end()) {
 
-		VDXFile& vdx = *it;
-		state.currentVDX = &(*it);
-
-		parseVDXChunks(vdx);
-
-		// vdx.chunks[state.currentFrameIndex].data
+		state.currentVDX = &(*it);           // Store pointer to current VDX
+		parseVDXChunks(*state.currentVDX);   // Parse chunks directly from pointed VDX
 		renderFrame();
 
 		/*
@@ -85,7 +81,7 @@ void loadView() {
 		*/
 	}
 	else {
-		throw std::runtime_error("VDXFile matching state.current_view not found!");
+		throw std::runtime_error("VDXFile matching " + state.current_view + " not found!");
 	}
 }
 
@@ -117,6 +113,8 @@ void init() {
 		// Handle input and game logic here
 		// ...
 	}
+
+	save_config("config.json");
 
 	cleanupWindow();
 }

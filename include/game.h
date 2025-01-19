@@ -8,6 +8,8 @@
 #include <string>
 
 #include "vdx.h"
+#include "config.h"
+#include "window.h"
 
 /*
 ===============================================================================
@@ -89,10 +91,11 @@ struct View {
 struct GameState {
 	struct {
 		bool enabled = false;
-		int width;
-		int height;
-		int x;
-		int y;
+		int width = 0;
+		int height = 0;
+		std::vector<DisplayInfo> displays;
+		int x = 0;
+		int y = 0;
 	} ui;
 
 	std::vector<VDXFile> VDXFiles;				    // Vector of VDXFile objects

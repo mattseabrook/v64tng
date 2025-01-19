@@ -29,3 +29,16 @@ void load_config(const std::string& filename) {
 		throw std::runtime_error("Failed to open configuration file: " + filename);
 	}
 }
+
+//
+// Save configuration to file
+//
+void save_config(const std::string& filename) {
+	std::ofstream config_file(filename);
+	if (config_file.is_open()) {
+		config_file << std::setw(4) << config << std::endl;
+	}
+	else {
+		throw std::runtime_error("Failed to save configuration file: " + filename);
+	}
+}

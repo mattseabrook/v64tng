@@ -18,12 +18,19 @@ enum MenuCommands {
 	CMD_HELP_ABOUT
 };
 
+struct DisplayInfo {
+	int number;
+	RECT bounds;
+	bool isPrimary;
+};
+
 extern HWND hwnd;
 
 //=============================================================================
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK AboutDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData);
 
 //=============================================================================
 

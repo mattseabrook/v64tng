@@ -32,5 +32,6 @@ constexpr const char* default_config = R"({
 //=============================================================================
 
 void load_config(const std::string& filename);
+void save_config(const std::string& filename);
 
 #endif // CONFIG_H

@@ -233,8 +233,8 @@ void createSwapChain() {
 	else {
 		int width, height;
 		glfwGetFramebufferSize(window, &width, &height);
-		extent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, static_cast<uint32_t>(width)));
-		extent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, static_cast<uint32_t>(height)));
+		extent.width = (std::max)(capabilities.minImageExtent.width, (std::min)(capabilities.maxImageExtent.width, static_cast<uint32_t>(width)));
+		extent.height = (std::max)(capabilities.minImageExtent.height, (std::min)(capabilities.maxImageExtent.height, static_cast<uint32_t>(height)));
 	}
 
 	uint32_t imageCount = capabilities.minImageCount + 1;
