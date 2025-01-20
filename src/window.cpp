@@ -119,6 +119,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 			int newWidth = clientRect.right - clientRect.left;
 			int newHeight = clientRect.bottom - clientRect.top;
 
+			if (renderTarget) {
+				renderTarget->Resize(D2D1::SizeU(newWidth, newHeight));
+			}
+
 			if (state.ui.width != newWidth || state.ui.height != newHeight) {
 				state.ui.width = newWidth;
 				config["width"] = newWidth;
@@ -273,8 +277,8 @@ void initWindow() {
 		state.ui.height = GetSystemMetrics(SM_CYSCREEN);
 	}
 	else {
-		if (config["width"] % 2 != 0) {
-			config["width"] += 1;
+		if ((int)config["width"] & 1) {
+			config["width"] = (int)config["width"] + 1;
 		}
 		state.ui.width = config["width"];
 		state.ui.height = config["width"] / 2;
