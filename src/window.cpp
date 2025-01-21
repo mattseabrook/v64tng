@@ -148,6 +148,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		return TRUE;
 	}
 	case WM_NCHITTEST: {
+		LRESULT hit = DefWindowProc(hwnd, uMsg, wParam, lParam);
+		if (hit != HTCLIENT)
+			return hit;
+
 		POINT pt = { LOWORD(lParam), HIWORD(lParam) };
 		RECT rcWindow;
 		GetWindowRect(hwnd, &rcWindow);
