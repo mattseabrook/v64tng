@@ -140,6 +140,42 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		EndPaint(hwnd, &ps);
 		return 0;
 	}
+	case WM_SETCURSOR: {
+		if (LOWORD(lParam) != HTCLIENT)
+			return DefWindowProc(hwnd, uMsg, wParam, lParam);
+
+		SetCursor(LoadCursor(NULL, IDC_ARROW));
+		return TRUE;
+	}
+	case WM_NCHITTEST: {
+		POINT pt = { LOWORD(lParam), HIWORD(lParam) };
+		RECT rcWindow;
+		GetWindowRect(hwnd, &rcWindow);
+
+		// Convert cursor position to window-relative coordinates
+		pt.x -= rcWindow.left;
+		pt.y -= rcWindow.top;
+
+		// Define a wider resize border that extends inward
+		const int resizeBorder = GetSystemMetrics(SM_CXSIZEFRAME) * 3;
+		const int width = rcWindow.right - rcWindow.left;
+		const int height = rcWindow.bottom - rcWindow.top;
+
+		// Check corners first - we need to detect these before edges
+		if (pt.x < resizeBorder && pt.y < resizeBorder) return HTTOPLEFT;
+		if (pt.x >= width - resizeBorder && pt.y < resizeBorder) return HTTOPRIGHT;
+		if (pt.x < resizeBorder && pt.y >= height - resizeBorder) return HTBOTTOMLEFT;
+		if (pt.x >= width - resizeBorder && pt.y >= height - resizeBorder) return HTBOTTOMRIGHT;
+
+		// Then check edges
+		if (pt.x < resizeBorder) return HTLEFT;
+		if (pt.x >= width - resizeBorder) return HTRIGHT;
+		if (pt.y < resizeBorder) return HTTOP;
+		if (pt.y >= height - resizeBorder) return HTBOTTOM;
+
+		// Everything else is client area
+		return HTCLIENT;
+	}
 	case WM_DESTROY:
 		::PostQuitMessage(0);
 		return 0;
