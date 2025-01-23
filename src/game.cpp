@@ -19,7 +19,6 @@
    ============================================================================
 */
 
-// Globals
 GameState state;
 
 //
@@ -40,48 +39,69 @@ const View* getView(const std::string& current_view) {
 }
 
 //
-// Load the VDX files into game state
-//
-void loadRoom() {
-	state.VDXFiles = parseGJDFile(ROOM_DATA.at(state.current_room));
-	/* We may go back to front-loading decompression activities */
-	state.previous_room = state.current_room;
-}
-
-//
 //  Setup VDX animation sequence
 //
 void loadView() {
+	if (state.current_room != state.previous_room) {
+		state.VDXFiles = parseGJDFile(ROOM_DATA.at(state.current_room));
+		state.previous_room = state.current_room;
+	}
+
 	if (auto it = std::ranges::find_if(state.VDXFiles, [&](const auto& file) {
 		return file.filename == state.current_view;
 		}); it != state.VDXFiles.end()) {
+		state.currentVDX = &(*it);
+		parseVDXChunks(*state.currentVDX);
 
-		state.currentVDX = &(*it);           // Store pointer to current VDX
-		parseVDXChunks(*state.currentVDX);   // Parse chunks directly from pointed VDX
+		state.animation.totalFrames = state.currentVDX->chunks.size();
+		state.currentFrameIndex = 0;
+		state.animation.isPlaying = true;
+		state.animation.lastFrameTime = std::chrono::steady_clock::now();
+
 		renderFrame();
-
-		/*
-
-		static auto lastFrameTime = std::chrono::high_resolution_clock::now();
-		constexpr auto frameDuration = std::chrono::milliseconds(67); // 15 FPS = ~67 ms per frame
-
-		auto currentTime = std::chrono::high_resolution_clock::now();
-		auto elapsedTime = currentTime - lastFrameTime;
-
-		if (elapsedTime >= frameDuration) {
-			// Render the current frame
-			renderFrame(it->chunks[currentFrameIndex].data);
-
-			// Update the time
-			lastFrameTime = currentTime;
-
-			// Move to the next frame, wrapping around if needed
-			currentFrameIndex = (currentFrameIndex + 1) % it->chunks.size();
-		}
-		*/
 	}
 	else {
 		throw std::runtime_error("VDXFile matching " + state.current_view + " not found!");
+	}
+}
+
+//
+// Click event handler
+//
+void handleClick() {
+	if (!state.animation.isPlaying && state.currentVDX) {
+		state.currentFrameIndex = 0;
+		state.animation.isPlaying = true;
+		state.animation.lastFrameTime = std::chrono::steady_clock::now();
+		renderFrame();
+	}
+}
+
+//
+// Animate the VDX sequence
+//
+void updateAnimation() {
+	if (!state.animation.isPlaying || !state.currentVDX) {
+		return;
+	}
+
+	auto currentTime = std::chrono::steady_clock::now();
+	auto elapsedTime = currentTime - state.animation.lastFrameTime;
+
+	// Check if it's time for next frame based on current FPS setting
+	if (elapsedTime >= state.animation.getFrameDuration(state.currentFPS)) {
+		state.currentFrameIndex++;
+
+		// Check for end of animation
+		if (state.currentFrameIndex >= state.animation.totalFrames) {
+			state.animation.isPlaying = false;
+			state.currentFrameIndex = state.animation.totalFrames - 1; // Hold on last frame
+			renderFrame();
+			return;
+		}
+
+		state.animation.lastFrameTime = currentTime;
+		renderFrame();
 	}
 }
 
@@ -90,28 +110,20 @@ void loadView() {
 //
 void init() {
 	initWindow();
-
-	// Initial asset rendering
-	loadRoom();
 	loadView();
 
+	state.previous_room = state.current_room;
 	state.ui.enabled = true;
 
-	// Main game loop
 	bool running = true;
 	while (running) {
 		running = processEvents();
-
-		if (state.current_room != state.previous_room) {
-			loadRoom();
-		}
 
 		if (state.current_view != state.previous_view) {
 			loadView();
 		}
 
-		// Handle input and game logic here
-		// ...
+		updateAnimation();
 	}
 
 	save_config("config.json");

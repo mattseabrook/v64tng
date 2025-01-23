@@ -6,6 +6,7 @@
 #include <map>
 #include <functional>
 #include <string>
+#include <chrono>
 
 #include "vdx.h"
 #include "config.h"
@@ -14,7 +15,7 @@
 /*
 ===============================================================================
 
-	7th Guest - Game.h
+	7th Guest - game.h
 
 	This header file defines the Game Engine Feature:
 
@@ -24,6 +25,7 @@
 		- Navigation points for moving between views
 		- View structure for each camera/viewpoint
 		- Struct for managing game state
+		- State-driven animation / FPS is controlled in the GameState struct
 
 ===============================================================================
 */
@@ -56,6 +58,24 @@ inline const std::map<Room, std::string> ROOM_DATA = {
 	{Room::LABORATORY, "LA.RL"},
 	{Room::MUSIC_ROOM, "MU.RL"},
 	// Add more rooms here
+};
+
+//
+// Animation state structure
+//
+struct AnimationState {
+	bool isPlaying = false;
+	std::chrono::steady_clock::time_point lastFrameTime;
+	size_t totalFrames = 0;
+
+	void reset() {
+		isPlaying = false;
+		totalFrames = 0;
+	}
+
+	std::chrono::microseconds getFrameDuration(double currentFPS) const {
+		return std::chrono::microseconds(static_cast<long long>(1000000.0 / currentFPS));
+	}
 };
 
 //
@@ -98,12 +118,14 @@ struct GameState {
 		int y = 0;
 	} ui;
 
+	double currentFPS = 24.0;						// Current target FPS, adjustable during gameplay
 	std::vector<VDXFile> VDXFiles;				    // Vector of VDXFile objects
 	size_t currentFrameIndex = 30;				    // Normally 0 - hard-coded to 30 for testing
 	VDXFile* currentVDX = nullptr;				    // Reference to current VDXFile object
+	AnimationState animation;						// Animation state management
 
 	Room current_room = Room::FOYER_HALLWAY;        // Default room (corresponds to ROOM_DATA map key)
-	Room previous_room = current_room;              // Avoid re-loading
+	Room previous_room;			                    // Avoid re-rendering
 	std::string current_view = "f_1bc";		        // Default view (corresponds to VDXFile .filename struct member)
 	std::string previous_view = current_view;       // Avoid re-rendering
 };
@@ -116,8 +138,9 @@ extern GameState state;
 
 // Function prototypes
 const View* getView(const std::string& current_view);
-void loadRoom();
 void loadView();
+void handleClick();
+void updateAnimation();
 void init();
 
 #endif // GAME_H

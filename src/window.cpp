@@ -180,6 +180,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		// Everything else is client area
 		return HTCLIENT;
 	}
+	case WM_LBUTTONDOWN: {
+		handleClick();
+		return 0;
+	}
 	case WM_DESTROY:
 		::PostQuitMessage(0);
 		return 0;

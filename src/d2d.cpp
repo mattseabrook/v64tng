@@ -94,12 +94,6 @@ void renderFrameD2D() {
 	renderTarget->BeginDraw();
 	renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
 
-	// Test
-	OutputDebugStringA(("Window size: " + std::to_string(state.ui.width) + "x" + std::to_string(state.ui.height) + "\n").c_str());
-	OutputDebugStringA(("Bitmap size: " + std::to_string(MIN_CLIENT_WIDTH) + "x" + std::to_string(MIN_CLIENT_HEIGHT) + "\n").c_str());
-	float scaleX = static_cast<float>(state.ui.width) / MIN_CLIENT_WIDTH;
-	OutputDebugStringA(("Scale factor: " + std::to_string(scaleX) + "\n").c_str());
-
 	// Calculate scale based on width only since we know window maintains 2:1 ratio
 	float scale = static_cast<float>(state.ui.width) / MIN_CLIENT_WIDTH;
 	int destWidth = static_cast<int>(MIN_CLIENT_WIDTH * scale + 0.5f);
