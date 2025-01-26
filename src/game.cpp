@@ -33,9 +33,15 @@ const std::unordered_map<std::string_view, const std::unordered_map<std::string,
 // Retrieve the View string from one of the view prefix maps
 // 
 const View* getView(const std::string& current_view) {
-	for (const auto& [prefix, view_map_ptr] : viewPrefixes)
-		if (current_view.starts_with(prefix))
-			return &view_map_ptr->at(current_view);
+	for (const auto& [prefix, view_map_ptr] : viewPrefixes) {
+		if (current_view.starts_with(prefix)) {
+			auto it = view_map_ptr->find(current_view);
+			if (it != view_map_ptr->end()) {
+				return &it->second;
+			}
+		}
+	}
+	return nullptr;
 }
 
 //
@@ -46,6 +52,9 @@ void loadView() {
 		state.VDXFiles = parseGJDFile(ROOM_DATA.at(state.current_room));
 		state.previous_room = state.current_room;
 	}
+
+	const View* newView = getView(state.current_view);
+	state.view = *newView;
 
 	if (auto it = std::ranges::find_if(state.VDXFiles, [&](const auto& file) {
 		return file.filename == state.current_view;
@@ -70,10 +79,39 @@ void loadView() {
 //
 void handleClick() {
 	if (!state.animation.isPlaying && state.currentVDX) {
-		state.currentFrameIndex = 0;
-		state.animation.isPlaying = true;
-		state.animation.lastFrameTime = std::chrono::steady_clock::now();
-		renderFrame();
+		POINT cursorPos;
+		GetCursorPos(&cursorPos);
+		ScreenToClient(hwnd, &cursorPos);
+
+		float normalizedX = static_cast<float>(cursorPos.x) / state.ui.width * 100.0f;
+		float normalizedY = static_cast<float>(cursorPos.y) / state.ui.height * 100.0f;
+
+		// Navigation
+		for (const auto& nav : state.view.navigations) {
+			if (normalizedX >= nav.hotspot.x &&
+				normalizedX <= (nav.hotspot.x + nav.hotspot.width) &&
+				normalizedY >= nav.hotspot.y &&
+				normalizedY <= (nav.hotspot.y + nav.hotspot.height)) {
+
+				state.previous_view = state.current_view;
+				state.current_view = nav.next_view;
+				return;
+			}
+		}
+
+		// Hotspots
+		for (const auto& hotspot : state.view.hotspots) {
+			if (normalizedX >= hotspot.x &&
+				normalizedX <= (hotspot.x + hotspot.width) &&
+				normalizedY >= hotspot.y &&
+				normalizedY <= (hotspot.y + hotspot.height)) {
+
+				if (hotspot.action) {
+					hotspot.action();
+				}
+				return;
+			}
+		}
 	}
 }
 

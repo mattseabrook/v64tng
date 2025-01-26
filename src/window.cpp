@@ -16,6 +16,9 @@
 
 HWND hwnd = nullptr;
 
+HCURSOR defaultCursor = nullptr;
+HCURSOR handCursor = nullptr;
+
 //=============================================================================
 
 // Maps
@@ -179,6 +182,50 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
 		// Everything else is client area
 		return HTCLIENT;
+	}
+	case WM_MOUSEMOVE: {
+		POINT cursorPos;
+		GetCursorPos(&cursorPos);
+		ScreenToClient(hwnd, &cursorPos);
+
+		float normalizedX = static_cast<float>(cursorPos.x) / state.ui.width * 100.0f;
+		float normalizedY = static_cast<float>(cursorPos.y) / state.ui.height * 100.0f;
+
+		bool isCursorOver = false;
+
+		// Navigation
+		for (const auto& nav : state.view.navigations) {
+			if (normalizedX >= nav.hotspot.x &&
+				normalizedX <= (nav.hotspot.x + nav.hotspot.width) &&
+				normalizedY >= nav.hotspot.y &&
+				normalizedY <= (nav.hotspot.y + nav.hotspot.height)) {
+
+				SetCursor(handCursor);
+				isCursorOver = true;
+				break;
+			}
+		}
+
+		// Hotspots
+		if (!isCursorOver) {
+			for (const auto& hotspot : state.view.hotspots) {
+				if (normalizedX >= hotspot.x &&
+					normalizedX <= (hotspot.x + hotspot.width) &&
+					normalizedY >= hotspot.y &&
+					normalizedY <= (hotspot.y + hotspot.height)) {
+
+					SetCursor(handCursor);
+					isCursorOver = true;
+					break;
+				}
+			}
+		}
+
+		if (!isCursorOver) {
+			SetCursor(defaultCursor);
+		}
+
+		return 0;
 	}
 	case WM_LBUTTONDOWN: {
 		handleClick();
@@ -344,6 +391,9 @@ void initWindow() {
 	//
 	// Window win32 API
 	//
+	defaultCursor = LoadCursor(NULL, IDC_ARROW);
+	handCursor = LoadCursor(NULL, IDC_HAND);
+
 	WNDCLASS wc = {};
 	wc.lpfnWndProc = WindowProc;
 	wc.hInstance = GetModuleHandle(nullptr);

@@ -261,9 +261,9 @@ const std::unordered_map<std::string, View> f_ = {
 		{
 			{},
 			{   // Navigation
-				{"x", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
-				{"x", {33.0f, 0.0f, 33.0f, 100.0f}},		// Forward
-				{"x", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"x", {33.0f, 0.0f, 33.0f, 85.0f}},			// Forward
+				{"x", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
 				{"x", {0.0f, 50.0f, 25.0f, 30.0f}},			// Dining Room
 				{"x", {80.0f, 50.0f, 20.0f, 30.0f}}			// Music Room
 			}

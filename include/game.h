@@ -15,8 +15,6 @@
 /*
 ===============================================================================
 
-	7th Guest - game.h
-
 	This header file defines the Game Engine Feature:
 
 		- Enum for room names
@@ -127,7 +125,9 @@ struct GameState {
 	Room current_room = Room::FOYER_HALLWAY;        // Default room (corresponds to ROOM_DATA map key)
 	Room previous_room;			                    // Avoid re-rendering
 	std::string current_view = "f_1bc";		        // Default view (corresponds to VDXFile .filename struct member)
-	std::string previous_view = current_view;       // Avoid re-rendering
+	std::string previous_view = "f_1bc";	        // Avoid re-rendering
+
+	View view;										// Current view object
 };
 
 //=============================================================================
