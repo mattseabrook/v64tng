@@ -56,22 +56,24 @@ void loadView() {
 	const View* newView = getView(state.current_view);
 	state.view = *newView;
 
-	if (auto it = std::ranges::find_if(state.VDXFiles, [&](const auto& file) {
+	auto it = std::ranges::find_if(state.VDXFiles, [&](const VDXFile& file) {
 		return file.filename == state.current_view;
-		}); it != state.VDXFiles.end()) {
-		state.currentVDX = &(*it);
+		});
+	state.currentVDX = &(*it);
+
+	if (!state.currentVDX->parsed) {
 		parseVDXChunks(*state.currentVDX);
-
-		state.animation.totalFrames = state.currentVDX->chunks.size();
-		state.currentFrameIndex = 0;
-		state.animation.isPlaying = true;
-		state.animation.lastFrameTime = std::chrono::steady_clock::now();
-
-		renderFrame();
+		state.currentVDX->parsed = true;
 	}
-	else {
-		throw std::runtime_error("VDXFile matching " + state.current_view + " not found!");
-	}
+
+	state.animation.totalFrames = state.currentVDX->chunks.size();
+	state.currentFrameIndex = 0;
+	state.animation.isPlaying = true;
+	state.animation.lastFrameTime = std::chrono::steady_clock::now();
+
+	renderFrame();
+
+	state.previous_view = state.current_view;
 }
 
 //
@@ -93,7 +95,6 @@ void handleClick() {
 				normalizedY >= nav.hotspot.y &&
 				normalizedY <= (nav.hotspot.y + nav.hotspot.height)) {
 
-				state.previous_view = state.current_view;
 				state.current_view = nav.next_view;
 				return;
 			}

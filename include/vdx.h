@@ -39,6 +39,7 @@ struct VDXFile
     uint16_t identifier;
     std::array<uint8_t, 6> unknown;
     std::vector<VDXChunk> chunks;
+    bool parsed = false;
 };
 
 VDXFile parseVDXFile(const std::string& filename, const std::vector<uint8_t>& buffer);
