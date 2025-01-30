@@ -24,7 +24,6 @@ HCURSOR handCursor = nullptr;
 // Maps
 static std::map<std::string, void(*)()> initializeRenderer;
 static std::map<std::string, void(*)()> renderFrameFuncs;
-static std::map<std::string, bool(*)()> processEventsFuncs;
 static std::map<std::string, void(*)()> cleanupFuncs;
 
 //=============================================================================
@@ -266,22 +265,6 @@ void initHandlers() {
 	renderFrameFuncs["VULKAN"] = renderFrameVk;
 	renderFrameFuncs["Direct2D"] = renderFrameD2D;
 
-	processEventsFuncs["VULKAN"] = []() {
-		glfwPollEvents();
-		return !glfwWindowShouldClose(window);
-		};
-	processEventsFuncs["Direct2D"] = []() {
-		MSG msg = {};
-		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
-			if (msg.message == WM_QUIT) {
-				return false;
-			}
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-		return true;
-		};
-
 	cleanupFuncs["VULKAN"] = cleanupVulkan;
 	cleanupFuncs["Direct2D"] = cleanupD2D;
 }
@@ -429,8 +412,22 @@ void initWindow() {
 }
 
 //
+// Process events
+//
+bool processEvents() {
+	MSG msg = {};
+	while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+		if (msg.message == WM_QUIT) {
+			return false;
+		}
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+	return true;
+}
+
+//
 // Abstractions
 //
 void renderFrame() { renderFrameFuncs[config["renderer"]](); }
-bool processEvents() { return processEventsFuncs[config["renderer"]](); }
 void cleanupWindow() { cleanupFuncs[config["renderer"]](); }
