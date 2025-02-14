@@ -129,18 +129,14 @@
       <AdditionalDependencies>zlibstaticd.lib;libpng16_staticd.lib;vulkan-1.lib;user32.lib;gdi32.lib;shell32.lib;winmm.lib;d2d1.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /y "$(OutDir)$(TargetName)$(TargetExt)" "C:\T7G\"</Command>
+      <Command>del /f /q "C:\T7G\v64tng.exe"
+del /f /q "C:\T7G\config.json"
+xcopy /y "$(OutDir)$(TargetName)$(TargetExt)" "C:\T7G\"</Command>
       <Message>Copies the program into my game directory for testing</Message>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>if exist shaders\vert.h del shaders\vert.h
-if exist shaders\frag.h del shaders\frag.h
-if exist shaders\vert.spv del shaders\vert.spv
-if exist shaders\frag.spv del shaders\frag.spv
-C:\VulkanSDK\1.3.290.0\Bin\glslc.exe shaders\shader.vert -o shaders\vert.spv
-C:\VulkanSDK\1.3.290.0\Bin\glslc.exe shaders\shader.frag -o shaders\frag.spv
-python spv_to_constexpr.py shaders/vert.spv shaders/vert.h vertShaderCode
-python spv_to_constexpr.py shaders/frag.spv shaders/frag.h fragShaderCode</Command>
+      <Command>
+      </Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

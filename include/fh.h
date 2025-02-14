@@ -235,8 +235,8 @@ const std::unordered_map<std::string, View> f_ = {
 				{0.0f, 0.0f, 0.0f, 0.0f, []() { /* Spider Puzzle */ }}
 			},
 			{	// Navigation
-				{"f_1bd", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
-				{"x", {100.0f, 0.0f, 25.0f, 100.0f}}			// Right
+				{"f_1bd", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"f_1fa", {90.0f, 0.0f, 10.0f, 100.0f}}			// Right
 			}
 		}
 	},
@@ -278,10 +278,10 @@ const std::unordered_map<std::string, View> f_ = {
 		{
 			{},
 			{   // Navigation
-				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"f_1bc", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
 				{"x", {0.0f, 70.0f, 25.0f, 30.0f}},				// Music Room
 				{"x", {33.0f, 33.0f, 5.0f, 30.0f}},				// Library
-				{"x", {90.0f, 0.0f, 10.0f, 100.0f} }			// Right
+				{"f_1fd", {90.0f, 0.0f, 10.0f, 100.0f}}			// Right
 			}
 		}
 	},
@@ -293,8 +293,8 @@ const std::unordered_map<std::string, View> f_ = {
 		{
 			{},
 			{   // Navigation
-				{"f_1ba", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
-				{"f_1fb", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+				{"f_1ba", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"f_1fb", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
 				{"x", {33.0f, 33.0f, 5.0f, 30.0f}}				// Library
 			}
 		}
@@ -341,7 +341,7 @@ const std::unordered_map<std::string, View> f_ = {
 			},
 			{	// Navigation
 				{"f_1bd", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
-				{"x", {100.0f, 0.0f, 25.0f, 100.0f}}			// Right
+				{"f_1fa", {90.0f, 0.0f, 10.0f, 100.0f}}			// Right
 			}
 		}
 	},
