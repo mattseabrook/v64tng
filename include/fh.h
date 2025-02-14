@@ -357,10 +357,10 @@ const std::unordered_map<std::string, View> f_ = {
 		"f_2ba",
 		{
 			{},
-			{
-				{"x", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
+			{	// Navigation
+				{"f_2bd", {0.0f, 0.0f, 10.0f, 100.0f}},		// Left
 				{"x", {33.0f, 0.0f, 33.0f, 100.0f}},		// Forward
-				{"x", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+				{"f_2fa", {90.0f, 0.0f, 10.0f, 100.0f}},	// Right
 			}
 		}
 	},
@@ -371,10 +371,10 @@ const std::unordered_map<std::string, View> f_ = {
 		"f_2bb",
 		{
 			{},
-			{
-				{"x", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
+			{	// Navigation
+				{"f_2ba", {0.0f, 0.0f, 10.0f, 100.0f}},		// Left
 				{"x", {33.0f, 0.0f, 33.0f, 100.0f}},		// Forward
-				{"f_2fb", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+				{"f_2fb", {90.0f, 0.0f, 10.0f, 100.0f}},	// Right
 			}
 		}
 	},
@@ -385,9 +385,9 @@ const std::unordered_map<std::string, View> f_ = {
 		"f_2bc",
 		{
 			{},
-			{
-				{"f_2bb", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
-				{"f_2fc", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+			{	// Navigation
+				{"f_2bb", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"f_2fc", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
 			}
 		}
 	},
@@ -398,9 +398,9 @@ const std::unordered_map<std::string, View> f_ = {
 		"f_2bd",
 		{
 			{},
-			{
-				{"f_2bc", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
-				{"f_2ba", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+			{	// Navigation
+				{"f_2bc", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"f_2ba", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
 			}
 		}
 	},
@@ -411,9 +411,9 @@ const std::unordered_map<std::string, View> f_ = {
 		"f_2fa",
 		{
 			{},
-			{
-				{"f_2ba", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
-				{"f_2fb", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+			{	// Navigation
+				{"f_2ba", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"f_2fb", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
 			}
 		}
 	},
@@ -424,9 +424,9 @@ const std::unordered_map<std::string, View> f_ = {
 		"f_2fb",
 		{
 			{},
-			{
-				{"f_2bb", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
-				{"f_2fc", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+			{	// Navigation
+				{"f_2bb", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"f_2fc", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
 			}
 		}
 	},
@@ -437,10 +437,10 @@ const std::unordered_map<std::string, View> f_ = {
 		"f_2fc",
 		{
 			{},
-			{
-				{"f_2bb", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
-				{"x", {33.0f, 0.0f, 33.0f, 100.0f}},		// Forward
-				{"f_2fc", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+			{	// Navigation
+				{"f_2bb", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"x", {33.0f, 0.0f, 33.0f, 100.0f}},			// Forward
+				{"f_2fc", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
 			}
 		}
 	},
@@ -451,9 +451,9 @@ const std::unordered_map<std::string, View> f_ = {
 		"f_2fd",
 		{
 			{},
-			{
-				{"f_2bb", {0.0f, 0.0f, 25.0f, 100.0f}},			// Left
-				{"f_2fc", {100.0f, 0.0f, 25.0f, 100.0f}},		// Right
+			{	// Navigation
+				{"f_2bb", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"f_2fc", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
 			}
 		}
 	},
@@ -479,7 +479,6 @@ const std::unordered_map<std::string, View> f_ = {
 // Further view prefixes ...
 
 //==============================================================================
-
 
 // Function prototypes ...
 
