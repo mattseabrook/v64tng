@@ -462,12 +462,63 @@ const std::unordered_map<std::string, View> f_ = {
 	// f_3
 	////////////////////////////////////////////////////////////////////////
 
+	//
+	// Kitchen, facing Dining Room
+	//
+	{
+		"f_3ba",
+		{
+			{},
+			{	// Navigation
+				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"x", {0.0f, 0.0f, 0.0f, 0.0f}},			// Forward
+				{"x", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
+			}
+		}
+	},
+	//
+	// Kitchen, turning left
+	//
+	{
+		"f_3bb",
+		{
+			{},
+			{	// Navigation
+				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"x", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
+			}
+		}
+	},
+	//
+	// Turning left towards Kitchen
+	//
+	{
+		"f_3bc",
+		{
+			{},
+			{	// Navigation
+				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"x", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
+			}
+		}
+	},
+	//
+	// Kitchen, facing south
+	//
+	{
+		"f_3bd",
+		{
+			{},
+			{	// Navigation
+				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"x", {0.0f, 0.0f, 0.0f, 0.0f}},			// Forward
+				{"x", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
+			}
+		}
+	},
+
 	/*
 
-	f_3ba
-	f_3bb
-	f_3bc
-	f_3bd
 	f_3fa
 	f_3fb
 	f_3fc

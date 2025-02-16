@@ -53,71 +53,109 @@ void extractVDX(const std::string_view& filename)
 	}
 }
 
-// Writes out a *.PNG or *.RAW of every 0x20 and 0x25 chunk in the user-specified *.VDX file
-// as a full 640x320 bitmap
-void extractPNG(const std::string_view& filename, bool raw)
-{
-	std::ifstream vdxFile(filename.data(), std::ios::binary | std::ios::ate);
+/*
+===============================================================================
+Function Name: extractPNG
 
-	if (!vdxFile)
-	{
+Description:
+	- Writes out a *.PNG or *.RAW of every 0x20 and 0x25 chunk in the
+	user-specified *.VDX file as a full 640x320 bitmap
+
+Parameters:
+	- filename: The filename of the VDX file to be extracted
+	- raw: If true, the output will be in *.RAW format
+
+===============================================================================
+*/
+void extractPNG(const std::string_view& filename, bool raw) {
+	// Open the VDX file in binary mode
+	std::ifstream vdxFile(filename.data(), std::ios::binary | std::ios::ate);
+	if (!vdxFile) {
 		std::cerr << "ERROR: Failed to open the VDX file: " << filename << std::endl;
 		return;
 	}
 
+	// Read the entire file into memory
 	auto fileSize = static_cast<std::size_t>(vdxFile.tellg());
 	vdxFile.seekg(0, std::ios::beg);
-
 	std::vector<uint8_t> vdxData(fileSize);
 	vdxFile.read(reinterpret_cast<char*>(vdxData.data()), fileSize);
 
+	// Parse the VDX file and its chunks
 	VDXFile parsedVDXFile = parseVDXFile(filename.data(), vdxData);
 	parseVDXChunks(parsedVDXFile);
 
-	std::filesystem::path dirPath = (std::filesystem::path(filename.data()).parent_path() /
-		[](std::string s) { std::replace(s.begin(), s.end(), '.', '_'); return s; }
-	(std::filesystem::path(filename.data()).filename().string()));
+	// Construct the output directory path
+	std::filesystem::path dirPath = std::filesystem::absolute(std::filesystem::path(filename).parent_path() / parsedVDXFile.filename);
 
-	if (!std::filesystem::create_directory(dirPath))
-	{
-		std::cerr << "ERROR: Failed to create the directory: " << dirPath << std::endl;
-		return;
+	// Normalize the path to remove redundant separators
+	dirPath = dirPath.lexically_normal();
+
+	// Debug output for the directory path
+	std::cout << "Resolved directory path: " << dirPath.string() << std::endl;
+
+	// Handle conflicts between files and directories
+	if (std::filesystem::exists(dirPath)) {
+		if (std::filesystem::is_directory(dirPath)) {
+			// Directory already exists, proceed
+			std::cout << "Directory already exists: " << dirPath.string() << std::endl;
+		}
+		else if (std::filesystem::is_regular_file(dirPath)) {
+			// A file with the same name exists, attempt to create a directory
+			std::cout << "File with the same name exists: " << dirPath.string() << std::endl;
+			dirPath /= ""; // Append a trailing separator to differentiate the directory
+			if (!std::filesystem::create_directory(dirPath)) {
+				std::cerr << "ERROR: Failed to create directory: " << dirPath.string() << std::endl;
+				return;
+			}
+		}
+		else {
+			std::cerr << "ERROR: Path exists but is neither a file nor a directory: " << dirPath.string() << std::endl;
+			return;
+		}
+	}
+	else {
+		// Attempt to create the directory
+		if (!std::filesystem::create_directory(dirPath)) {
+			std::cerr << "ERROR: Failed to create directory: " << dirPath.string() << std::endl;
+			return;
+		}
 	}
 
-	for (std::size_t i = 0; i < parsedVDXFile.chunks.size(); i++)
-	{
-		if (parsedVDXFile.chunks[i].chunkType == 0x80)
-		{
-			continue;
-		}
-		else if (parsedVDXFile.chunks[i].chunkType == 0x00)
-		{
+	// Process each chunk and write PNG/RAW files
+	for (std::size_t i = 0; i < parsedVDXFile.chunks.size(); ++i) {
+		const auto& chunk = parsedVDXFile.chunks[i];
+
+		// Skip unsupported chunk types
+		if (chunk.chunkType == 0x80 || chunk.chunkType == 0x00) {
 			continue;
 		}
 
-		// Improve this output later
-		std::cout << "Type: 0x" << std::hex << static_cast<int>(parsedVDXFile.chunks[i].chunkType) <<
-			" , LZSS size (bytes): " << std::dec << parsedVDXFile.chunks[i].dataSize <<
-			" , Size (bytes): " << parsedVDXFile.chunks[i].data.size() << std::endl;
+		// Debug output for chunk information
+		std::cout << "Type: 0x" << std::hex << static_cast<int>(chunk.chunkType)
+			<< " , LZSS size (bytes): " << std::dec << chunk.dataSize
+			<< " , Size (bytes): " << chunk.data.size() << std::endl;
 
+		// Generate frame number string (e.g., "0001")
 		std::ostringstream frameString;
-		frameString << std::setfill('0') << std::setw(4) << i + 1;
+		frameString << std::setfill('0') << std::setw(4) << (i + 1);
 
-		std::filesystem::path outputFilePath = dirPath;
-
-		if (raw)
-		{
-			outputFilePath /= (parsedVDXFile.filename + "_" + frameString.str() + ".raw");
+		// Construct output file path
+		std::filesystem::path outputFilePath = dirPath / (parsedVDXFile.filename + "_" + frameString.str());
+		if (raw) {
+			outputFilePath.replace_extension(".raw");
 			std::ofstream rawBitmapFile(outputFilePath, std::ios::binary);
+			if (!rawBitmapFile) {
+				std::cerr << "ERROR: Failed to create RAW file: " << outputFilePath.string() << std::endl;
+				continue;
+			}
 			std::cout << "Writing: " << outputFilePath.string() << std::endl;
-			rawBitmapFile.write(reinterpret_cast<const char*>(parsedVDXFile.chunks[i].data.data()), parsedVDXFile.chunks[i].data.size());
-			rawBitmapFile.close();
+			rawBitmapFile.write(reinterpret_cast<const char*>(chunk.data.data()), chunk.data.size());
 		}
-		else
-		{
-			outputFilePath /= (parsedVDXFile.filename + "_" + frameString.str() + ".png");
+		else {
+			outputFilePath.replace_extension(".png");
 			std::cout << "Writing: " << outputFilePath.string() << std::endl;
-			savePNG(outputFilePath.string(), parsedVDXFile.chunks[i].data, 640, 320);
+			savePNG(outputFilePath.string(), chunk.data, 640, 320);
 		}
 	}
 }
@@ -126,55 +164,61 @@ void extractPNG(const std::string_view& filename, bool raw)
 // Invokes FFmpeg to create a video from a directory of *.PNG files
 //
 void createVideoFromImages(const std::string& filenameParam) {
+	// Check if FFmpeg is installed
 	if (std::system("ffmpeg -version") != 0) {
-		std::cerr << "FFMPEG is not installed or is not in the system %PATH% variable." << std::endl;
+		std::cerr << "FFmpeg is not installed or not in the system PATH." << std::endl;
 		return;
 	}
 
-	std::string workingDirectory = std::filesystem::current_path().string();
+	// Get current working directory
+	std::filesystem::path workingDirectory = std::filesystem::current_path();
+	std::filesystem::path filepath = std::filesystem::path(filenameParam).lexically_normal();
 
-	std::filesystem::path filepath(filenameParam);
-	std::string baseDirectory = filepath.parent_path().string();
-	std::string filenameWithoutExtension = filepath.stem().string();
+	// Process paths
+	std::filesystem::path baseDirectory = filepath.parent_path();
+	std::string filenameWithoutExtension = filepath.stem().string(); // Base filename without extension
 
-	if (!baseDirectory.empty() && baseDirectory[0] == '.' && (baseDirectory[1] == '\\' || baseDirectory[1] == '/')) {
-		baseDirectory = baseDirectory.substr(2);
+	// Construct PNG directory name
+	std::filesystem::path pngDirPath = workingDirectory / baseDirectory / filenameWithoutExtension;
+	pngDirPath = pngDirPath.lexically_normal();
+
+	// Validate PNG directory
+	if (!std::filesystem::exists(pngDirPath) || !std::filesystem::is_directory(pngDirPath)) {
+		std::cerr << "PNG directory does not exist: " << pngDirPath.string() << std::endl;
+		return;
 	}
 
-	std::replace(filenameWithoutExtension.begin(), filenameWithoutExtension.end(), '.', '_');
-
-	// Windows only
-	std::string pngDirectory = workingDirectory + "\\" + baseDirectory + "\\" + filenameWithoutExtension;
-	std::replace(pngDirectory.begin(), pngDirectory.end(), '/', '\\');
-
-	std::string pngFilename = filenameWithoutExtension;
-	size_t lastUnderscorePos = pngFilename.find_last_of('_');
-	if (lastUnderscorePos != std::string::npos) {
-		pngFilename[lastUnderscorePos] = '.';
-	}
-
-	// Iterate over PNG files in the directory and resize them
-	for (const auto& entry : std::filesystem::directory_iterator(pngDirectory)) {
-		if (entry.path().extension() == ".png") {
-			std::string filePath = entry.path().string();
-			std::string magickCommand = "magick \"" + filePath + "\" -resize 200% -filter point \"" + filePath + "\"";
-			std::system(magickCommand.c_str());
+	// Verify that the directory contains PNG files matching the expected pattern
+	bool foundMatchingFiles = false;
+	for (const auto& entry : std::filesystem::directory_iterator(pngDirPath)) {
+		if (entry.path().extension() == ".png" || entry.path().extension() == ".PNG") {
+			foundMatchingFiles = true;
+			break;
 		}
 	}
-
-	std::string command = "ffmpeg -framerate 15 -i \"" + pngDirectory +
-		"\\" + pngFilename + "_%04d.png\" -c:v libx265 -crf 0 -pix_fmt rgb24 \"" +
-		pngDirectory + "\\" + filenameWithoutExtension + ".mkv\"";
-
-	int result = std::system(command.c_str());
-
-	if (result != 0) {
-		std::cerr << "FFMPEG command execution failed." << std::endl;
+	if (!foundMatchingFiles) {
+		std::cerr << "No PNG files found in directory: " << pngDirPath.string() << std::endl;
+		return;
 	}
-	else {
-		std::string ffplayCommand = "ffplay -loop 0 \"" + pngDirectory + "\\" + filenameWithoutExtension + ".mkv\"";
-		std::system(ffplayCommand.c_str());
+
+	// Build FFmpeg command
+	std::string inputFilePattern = filenameWithoutExtension + "_%04d.png";
+	std::string outputFilePath = (pngDirPath / (filenameWithoutExtension + ".mkv")).string();
+	std::string ffmpegCommand = "ffmpeg -framerate 24 -i \"" +
+		(pngDirPath / inputFilePattern).string() +
+		"\" -c:v libx265 -crf 0 -pix_fmt rgb24 \"" +
+		outputFilePath + "\"";
+
+	// Execute FFmpeg command
+	int ffmpegResult = std::system(ffmpegCommand.c_str());
+	if (ffmpegResult != 0) {
+		std::cerr << "FFmpeg command failed." << std::endl;
+		return;
 	}
+
+	// Optional: Play the generated video using ffplay
+	std::string ffplayCommand = "ffplay -loop 0 \"" + outputFilePath + "\"";
+	std::system(ffplayCommand.c_str());
 }
 
 /*
@@ -189,12 +233,6 @@ Parameters:
 	- imageData: x.
 	- width: width of the image
 	- height: height of the image
-
-Return:
-	- TBD
-
-Notes:
-	- x
 ===============================================================================
 */
 void savePNG(const std::string& filename, const std::vector<uint8_t>& imageData, int width, int height)

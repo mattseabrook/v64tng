@@ -142,7 +142,7 @@ Notes:
 */
 void writeVDXFile(const VDXFile& vdxFile, const std::string& outputDir)
 {
-	std::string vdxFileName = outputDir + "/" + vdxFile.filename;
+	std::string vdxFileName = outputDir + "/" + vdxFile.filename + ".vdx";
 	std::cout << "filename: " << vdxFileName << std::endl;
 
 	std::ofstream vdxFileOut(vdxFileName, std::ios::binary);

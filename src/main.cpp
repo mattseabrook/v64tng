@@ -206,10 +206,7 @@ int WINAPI WinMain(
 					filename = fullPath;
 				}
 
-				size_t lastDotPos = filename.find_last_of('.');
-				if (lastDotPos != std::string::npos) {
-					filename[lastDotPos] = '_';
-				}
+				filename.erase(filename.find_last_of('.'));
 
 				if (video && !raw) {
 					createVideoFromImages(directory.empty() ? filename : directory + "\\" + filename);
