@@ -486,9 +486,9 @@ const std::unordered_map<std::string, View> f_ = {
 		{
 			{},
 			{	// Navigation
-				{"f_2bb", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"f_2bc", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
 				{"x", {33.0f, 0.0f, 33.0f, 100.0f}},			// Forward
-				{"f_2fc", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
+				{"f_2fd", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
 			}
 		}
 	},
@@ -500,8 +500,8 @@ const std::unordered_map<std::string, View> f_ = {
 		{
 			{},
 			{	// Navigation
-				{"f_2bb", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
-				{"f_2fc", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
+				{"f_2bd", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"f_2fa", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
 			}
 		}
 	},
@@ -518,9 +518,9 @@ const std::unordered_map<std::string, View> f_ = {
 		{
 			{},
 			{	// Navigation
-				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
-				{"x", {0.0f, 0.0f, 0.0f, 0.0f}},			// Forward
-				{"x", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
+				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},				// Left
+				{"x", {0.0f, 0.0f, 0.0f, 0.0f}},				// Forward
+				{"x", {90.0f, 0.0f, 10.0f, 100.0f}},			// Right
 			}
 		}
 	},
@@ -532,8 +532,8 @@ const std::unordered_map<std::string, View> f_ = {
 		{
 			{},
 			{	// Navigation
-				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
-				{"x", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
+				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},				// Left
+				{"x", {90.0f, 0.0f, 10.0f, 100.0f}},			// Right
 			}
 		}
 	},
@@ -545,8 +545,8 @@ const std::unordered_map<std::string, View> f_ = {
 		{
 			{},
 			{	// Navigation
-				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
-				{"x", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
+				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},				// Left
+				{"x", {90.0f, 0.0f, 10.0f, 100.0f}},			// Right
 			}
 		}
 	},
@@ -558,9 +558,9 @@ const std::unordered_map<std::string, View> f_ = {
 		{
 			{},
 			{	// Navigation
-				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
-				{"x", {0.0f, 0.0f, 0.0f, 0.0f}},			// Forward
-				{"x", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
+				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},				// Left
+				{"x", {0.0f, 0.0f, 0.0f, 0.0f}},				// Forward
+				{"x", {90.0f, 0.0f, 10.0f, 100.0f}},			// Right
 			}
 		}
 	},
