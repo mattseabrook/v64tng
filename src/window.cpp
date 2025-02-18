@@ -191,43 +191,123 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		float normalizedY = static_cast<float>(cursorPos.y) / state.ui.height * 100.0f;
 
 		bool isCursorOver = false;
+		int highestZIndex = -1;
 
-		// Navigation
-		for (const auto& nav : state.view.navigations) {
+		// Create a list of all hotspots and navigations at the cursor position
+		struct CursorTarget {
+			enum class Type { Navigation, Hotspot } type;
+			int z_index;
+			size_t index;
+		};
+
+		std::vector<CursorTarget> targetsAtCursor;
+
+		// Check navigations
+		for (size_t i = 0; i < state.view.navigations.size(); i++) {
+			const auto& nav = state.view.navigations[i];
 			if (normalizedX >= nav.hotspot.x &&
 				normalizedX <= (nav.hotspot.x + nav.hotspot.width) &&
 				normalizedY >= nav.hotspot.y &&
 				normalizedY <= (nav.hotspot.y + nav.hotspot.height)) {
 
-				SetCursor(handCursor);
-				isCursorOver = true;
-				break;
+				targetsAtCursor.push_back({ CursorTarget::Type::Navigation, nav.z_index, i });
 			}
 		}
 
-		// Hotspots
-		if (!isCursorOver) {
-			for (const auto& hotspot : state.view.hotspots) {
-				if (normalizedX >= hotspot.x &&
-					normalizedX <= (hotspot.x + hotspot.width) &&
-					normalizedY >= hotspot.y &&
-					normalizedY <= (hotspot.y + hotspot.height)) {
+		// Check hotspots
+		for (size_t i = 0; i < state.view.hotspots.size(); i++) {
+			const auto& hotspot = state.view.hotspots[i];
+			if (normalizedX >= hotspot.x &&
+				normalizedX <= (hotspot.x + hotspot.width) &&
+				normalizedY >= hotspot.y &&
+				normalizedY <= (hotspot.y + hotspot.height)) {
 
-					SetCursor(handCursor);
-					isCursorOver = true;
-					break;
-				}
+				targetsAtCursor.push_back({ CursorTarget::Type::Hotspot, hotspot.z_index, i });
 			}
 		}
 
-		if (!isCursorOver) {
+		// Sort by z-index (highest z-index last)
+		std::sort(targetsAtCursor.begin(), targetsAtCursor.end(),
+			[](const CursorTarget& a, const CursorTarget& b) {
+				return a.z_index < b.z_index;
+			});
+
+		// Handle the target with the highest z-index if we have any targets
+		if (!targetsAtCursor.empty()) {
+			isCursorOver = true;
+			SetCursor(handCursor);
+		}
+		else {
 			SetCursor(defaultCursor);
 		}
 
 		return 0;
 	}
 	case WM_LBUTTONDOWN: {
-		handleClick();
+		POINT cursorPos;
+		GetCursorPos(&cursorPos);
+		ScreenToClient(hwnd, &cursorPos);
+
+		float normalizedX = static_cast<float>(cursorPos.x) / state.ui.width * 100.0f;
+		float normalizedY = static_cast<float>(cursorPos.y) / state.ui.height * 100.0f;
+
+		if (!state.animation.isPlaying && state.currentVDX) {
+			// Create a list of all hotspots and navigations at the click position
+			struct ClickTarget {
+				enum class Type { Navigation, Hotspot } type;
+				int z_index;
+				size_t index;
+			};
+
+			std::vector<ClickTarget> targetsAtClick;
+
+			// Check navigations
+			for (size_t i = 0; i < state.view.navigations.size(); i++) {
+				const auto& nav = state.view.navigations[i];
+				if (normalizedX >= nav.hotspot.x &&
+					normalizedX <= (nav.hotspot.x + nav.hotspot.width) &&
+					normalizedY >= nav.hotspot.y &&
+					normalizedY <= (nav.hotspot.y + nav.hotspot.height)) {
+
+					targetsAtClick.push_back({ ClickTarget::Type::Navigation, nav.z_index, i });
+				}
+			}
+
+			// Check hotspots
+			for (size_t i = 0; i < state.view.hotspots.size(); i++) {
+				const auto& hotspot = state.view.hotspots[i];
+				if (normalizedX >= hotspot.x &&
+					normalizedX <= (hotspot.x + hotspot.width) &&
+					normalizedY >= hotspot.y &&
+					normalizedY <= (hotspot.y + hotspot.height)) {
+
+					targetsAtClick.push_back({ ClickTarget::Type::Hotspot, hotspot.z_index, i });
+				}
+			}
+
+			// Sort by z-index (highest z-index last)
+			std::sort(targetsAtClick.begin(), targetsAtClick.end(),
+				[](const ClickTarget& a, const ClickTarget& b) {
+					return a.z_index < b.z_index;
+				});
+
+			// Handle the target with the highest z-index if we have any targets
+			if (!targetsAtClick.empty()) {
+				const auto& topTarget = targetsAtClick.back();
+
+				if (topTarget.type == ClickTarget::Type::Navigation) {
+					state.current_view = state.view.navigations[topTarget.index].next_view;
+					state.animation_sequence.clear();  // Clear any previous sequence
+				}
+				else if (topTarget.type == ClickTarget::Type::Hotspot) {
+					const auto& hotspot = state.view.hotspots[topTarget.index];
+					if (hotspot.action) {
+						hotspot.action();
+					}
+				}
+			}
+		}
+
 		return 0;
 	}
 	case WM_DESTROY:

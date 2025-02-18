@@ -7,6 +7,7 @@
 #include <ranges>
 #include <algorithm>
 #include <chrono>
+#include <sstream>
 
 #include "game.h"
 #include "window.h"
@@ -25,8 +26,8 @@ GameState state;
 // View Prefixes
 //
 const std::unordered_map<std::string_view, const std::unordered_map<std::string, View>*> viewPrefixes = {
-	{ "f_", &f_ },      // Foyer - Stationary Animations
-	{ "f1", &f_ }		// Foyer - Connector Animations
+	{ "f_", &foyer },		// Foyer - Stationary Animations
+	{ "f1", &foyer }		// Foyer - Connector Animations
 	// ...
 };
 
@@ -54,11 +55,23 @@ void loadView() {
 		state.previous_room = state.current_room;
 	}
 
-	const View* newView = getView(state.current_view);
+	// Parse the current_view to get the animation sequence
+	if (state.animation_sequence.empty()) {
+		std::stringstream ss(state.current_view);
+		std::string view;
+
+		while (std::getline(ss, view, ',')) {
+			state.animation_sequence.push_back(view);
+		}
+
+		state.animation_queue_index = 0;
+	}
+
+	const View* newView = getView(state.animation_sequence[state.animation_queue_index]);
 	state.view = *newView;
 
 	auto it = std::ranges::find_if(state.VDXFiles, [&](const VDXFile& file) {
-		return file.filename == state.current_view;
+		return file.filename == state.animation_sequence[state.animation_queue_index];
 		});
 	state.currentVDX = &(*it);
 
@@ -74,47 +87,20 @@ void loadView() {
 
 	renderFrame();
 
-	state.previous_view = state.current_view;
+	state.previous_view = state.animation_sequence[state.animation_queue_index];
 }
 
 //
 // Click event handler
 //
 void handleClick() {
-	if (!state.animation.isPlaying && state.currentVDX) {
-		POINT cursorPos;
-		GetCursorPos(&cursorPos);
-		ScreenToClient(hwnd, &cursorPos);
+	// Actual implementation in window.cpp WM_LBUTTONDOWN handler
+	POINT cursorPos;
+	GetCursorPos(&cursorPos);
+	ScreenToClient(hwnd, &cursorPos);
 
-		float normalizedX = static_cast<float>(cursorPos.x) / state.ui.width * 100.0f;
-		float normalizedY = static_cast<float>(cursorPos.y) / state.ui.height * 100.0f;
-
-		// Navigation
-		for (const auto& nav : state.view.navigations) {
-			if (normalizedX >= nav.hotspot.x &&
-				normalizedX <= (nav.hotspot.x + nav.hotspot.width) &&
-				normalizedY >= nav.hotspot.y &&
-				normalizedY <= (nav.hotspot.y + nav.hotspot.height)) {
-
-				state.current_view = nav.next_view;
-				return;
-			}
-		}
-
-		// Hotspots
-		for (const auto& hotspot : state.view.hotspots) {
-			if (normalizedX >= hotspot.x &&
-				normalizedX <= (hotspot.x + hotspot.width) &&
-				normalizedY >= hotspot.y &&
-				normalizedY <= (hotspot.y + hotspot.height)) {
-
-				if (hotspot.action) {
-					hotspot.action();
-				}
-				return;
-			}
-		}
-	}
+	// Simulate a click event
+	SendMessage(hwnd, WM_LBUTTONDOWN, 0, MAKELPARAM(cursorPos.x, cursorPos.y));
 }
 
 //
@@ -134,10 +120,19 @@ void updateAnimation() {
 
 		// Check for end of animation
 		if (state.currentFrameIndex >= state.animation.totalFrames) {
-			state.animation.isPlaying = false;
-			state.currentFrameIndex = state.animation.totalFrames - 1; // Hold on last frame
-			renderFrame();
-			return;
+			// If we have more animations in the sequence, load the next one
+			if (state.animation_queue_index < state.animation_sequence.size() - 1) {
+				state.animation_queue_index++;
+				loadView();
+			}
+			else {
+				state.animation.isPlaying = false;
+				state.currentFrameIndex = state.animation.totalFrames - 1; // Hold on last frame
+				state.animation_sequence.clear();  // Clear the sequence for next navigation
+				state.animation_queue_index = 0;
+				renderFrame();
+				return;
+			}
 		}
 
 		state.animation.lastFrameTime = currentTime;
@@ -160,6 +155,7 @@ void init() {
 		running = processEvents();
 
 		if (state.current_view != state.previous_view) {
+			state.animation_sequence.clear();  // Clear previous animation sequence
 			loadView();
 		}
 

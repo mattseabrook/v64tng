@@ -223,7 +223,7 @@ h_prmorp
 f_ prefix for Foyer views
 
 */
-const std::unordered_map<std::string, View> f_ = {
+const std::unordered_map<std::string, View> foyer = {
 	////////////////////////////////////////////////////////////////////////
 	// f_1 - In front of the stairs
 	////////////////////////////////////////////////////////////////////////
@@ -252,9 +252,9 @@ const std::unordered_map<std::string, View> f_ = {
 		{
 			{},
 			{   // Navigation
-				{"f_1ba", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
-				{"x", {0.0f, 0.0f, 0.0f, 0.0f}},				// Dining Room
-				{"f_1fb", {90.0f, 0.0f, 10.0f, 100.0f}}			// Right
+				{"f_1ba", {0.0f, 0.0f, 10.0f, 100.0f}, 0},			// Left
+				{"f_1fb,f1_2", {83.0f, 45.0f, 17.0f, 35.0f}, 1},	// Dining Room
+				{"f_1fb", {90.0f, 0.0f, 10.0f, 100.0f}, 0}			// Right
 			}
 		}
 	},
@@ -269,7 +269,7 @@ const std::unordered_map<std::string, View> f_ = {
 				{"f_1bb", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
 				{"f1_6", {33.0f, 0.0f, 33.0f, 85.0f}},			// Forward
 				{"f_1fc", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
-				{"f1_2", {0.0f, 50.0f, 17.0f, 30.0f}},			// Dining Room
+				{"f1_2", {0.0f, 50.0f, 17.0f, 30.0f}, 1},		// Dining Room
 				{"f1_5", {80.0f, 50.0f, 20.0f, 30.0f}}			// Music Room
 			}
 		}

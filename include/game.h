@@ -7,6 +7,7 @@
 #include <functional>
 #include <string>
 #include <chrono>
+#include <vector>
 
 #include "vdx.h"
 #include "config.h"
@@ -85,6 +86,7 @@ struct Hotspot {
 	float width;
 	float height;
 	std::function<void()> action;
+	int z_index = 0;
 };
 
 //
@@ -93,6 +95,7 @@ struct Hotspot {
 struct Navigation {
 	std::string next_view;
 	Hotspot hotspot;
+	int z_index = 0;
 };
 
 //
@@ -126,6 +129,9 @@ struct GameState {
 	Room previous_room;			                    // Avoid re-rendering
 	std::string current_view = "f_1bc";		        // Default view (corresponds to VDXFile .filename struct member)
 	std::string previous_view = "f_1bc";	        // Avoid re-rendering
+
+	std::vector<std::string> animation_sequence;    // Stores the sequence of animations
+	size_t animation_queue_index = 0;               // Current position in the animation sequence
 
 	View view;										// Current view object
 };
