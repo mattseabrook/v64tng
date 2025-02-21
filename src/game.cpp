@@ -50,29 +50,42 @@ const View* getView(const std::string& current_view) {
 //  Setup VDX animation sequence
 //
 void loadView() {
+	// If the room has changed, reload the VDXFiles and reset the animation sequence.
 	if (state.current_room != state.previous_room) {
 		state.VDXFiles = parseGJDFile(ROOM_DATA.at(state.current_room));
 		state.previous_room = state.current_room;
-	}
-
-	// Parse the current_view to get the animation sequence
-	if (state.animation_sequence.empty()) {
-		std::stringstream ss(state.current_view);
-		std::string view;
-
-		while (std::getline(ss, view, ',')) {
-			state.animation_sequence.push_back(view);
-		}
-
+		state.animation_sequence.clear();
 		state.animation_queue_index = 0;
 	}
 
-	const View* newView = getView(state.animation_sequence[state.animation_queue_index]);
+	// If no animation sequence has been set up yet, split the CSV stored in current_view.
+	if (state.animation_sequence.empty()) {
+		std::stringstream ss(state.current_view);
+		std::string token;
+		while (std::getline(ss, token, ',')) {
+			if (!token.empty())
+				state.animation_sequence.push_back(token);
+		}
+		state.animation_queue_index = 0;
+
+		if (!state.animation_sequence.empty()) {
+			state.current_view = state.animation_sequence[state.animation_queue_index];
+		}
+	}
+
+	// Load the view based on the current (single) animation token.
+	const View* newView = getView(state.current_view);
+	if (!newView) {
+		throw std::runtime_error("View not found: " + state.current_view);
+	}
 	state.view = *newView;
 
 	auto it = std::ranges::find_if(state.VDXFiles, [&](const VDXFile& file) {
-		return file.filename == state.animation_sequence[state.animation_queue_index];
+		return file.filename == state.current_view;
 		});
+	if (it == state.VDXFiles.end()) {
+		throw std::runtime_error("VDX file not found for view: " + state.current_view);
+	}
 	state.currentVDX = &(*it);
 
 	if (!state.currentVDX->parsed) {
@@ -80,55 +93,39 @@ void loadView() {
 		state.currentVDX->parsed = true;
 	}
 
+	// Initialize animation state.
 	state.animation.totalFrames = state.currentVDX->chunks.size();
 	state.currentFrameIndex = 0;
 	state.animation.isPlaying = true;
 	state.animation.lastFrameTime = std::chrono::steady_clock::now();
 
 	renderFrame();
-
-	state.previous_view = state.animation_sequence[state.animation_queue_index];
-}
-
-//
-// Click event handler
-//
-void handleClick() {
-	// Actual implementation in window.cpp WM_LBUTTONDOWN handler
-	POINT cursorPos;
-	GetCursorPos(&cursorPos);
-	ScreenToClient(hwnd, &cursorPos);
-
-	// Simulate a click event
-	SendMessage(hwnd, WM_LBUTTONDOWN, 0, MAKELPARAM(cursorPos.x, cursorPos.y));
+	state.previous_view = state.current_view;
 }
 
 //
 // Animate the VDX sequence
 //
 void updateAnimation() {
-	if (!state.animation.isPlaying || !state.currentVDX) {
+	if (!state.animation.isPlaying || !state.currentVDX)
 		return;
-	}
 
 	auto currentTime = std::chrono::steady_clock::now();
 	auto elapsedTime = currentTime - state.animation.lastFrameTime;
 
-	// Check if it's time for next frame based on current FPS setting
 	if (elapsedTime >= state.animation.getFrameDuration(state.currentFPS)) {
 		state.currentFrameIndex++;
 
-		// Check for end of animation
 		if (state.currentFrameIndex >= state.animation.totalFrames) {
-			// If we have more animations in the sequence, load the next one
 			if (state.animation_queue_index < state.animation_sequence.size() - 1) {
 				state.animation_queue_index++;
+				state.current_view = state.animation_sequence[state.animation_queue_index];
 				loadView();
 			}
 			else {
 				state.animation.isPlaying = false;
-				state.currentFrameIndex = state.animation.totalFrames - 1; // Hold on last frame
-				state.animation_sequence.clear();  // Clear the sequence for next navigation
+				state.currentFrameIndex = state.animation.totalFrames - 1;
+				state.animation_sequence.clear();
 				state.animation_queue_index = 0;
 				renderFrame();
 				return;

@@ -145,7 +145,6 @@ extern GameState state;
 // Function prototypes
 const View* getView(const std::string& current_view);
 void loadView();
-void handleClick();
 void updateAnimation();
 void init();
 
