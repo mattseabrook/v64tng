@@ -12,8 +12,10 @@
 #include "game.h"
 #include "window.h"
 #include "gjd.h"
-#include "fh.h"
 #include "config.h"
+
+#include "fh.h"
+#include "dr.h"
 
 /* ============================================================================
 							Game Engine Feature
@@ -27,7 +29,9 @@ GameState state;
 //
 const std::unordered_map<std::string_view, const std::unordered_map<std::string, View>*> viewPrefixes = {
 	{ "f_", &foyer },		// Foyer - Stationary Animations
-	{ "f1", &foyer }		// Foyer - Connector Animations
+	{ "f1", &foyer },		// Foyer - Connector Animations
+	{ "f2", &foyer },		// Foyer - Connector Animations
+	{ "dr", &diningRoom }	// Dining Room
 	// ...
 };
 
@@ -50,12 +54,13 @@ const View* getView(const std::string& current_view) {
 //  Setup VDX animation sequence
 //
 void loadView() {
+	if (state.animation.isPlaying) return;
+
 	// If the room has changed, reload the VDXFiles and reset the animation sequence.
 	if (state.current_room != state.previous_room) {
 		state.VDXFiles = parseGJDFile(ROOM_DATA.at(state.current_room));
 		state.previous_room = state.current_room;
-		state.animation_sequence.clear();
-		state.animation_queue_index = 0;
+		state.animation.reset();
 	}
 
 	// If no animation sequence has been set up yet, split the CSV stored in current_view.

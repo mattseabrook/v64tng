@@ -171,6 +171,7 @@ xcopy /y "$(OutDir)$(TargetName)$(TargetExt)" "C:\T7G\"</Command>
     <ClInclude Include="include\config.h" />
     <ClInclude Include="include\d2d.h" />
     <ClInclude Include="include\delta.h" />
+    <ClInclude Include="include\dr.h" />
     <ClInclude Include="include\extract.h" />
     <ClInclude Include="include\fh.h" />
     <ClInclude Include="include\game.h" />

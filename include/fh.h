@@ -28,12 +28,11 @@ f1_d - Unused animation of the front door opening
 f1_r - Unused animation of the fountain in the foyer
 f1_rm - Unused animation of the fountain in the foyer
 
-f2_
+f2_		// Likely an animation not related to game play or navigation
 
-f2_1
-f2_3
 
-f2_d
+f2_3 - goes to F3
+
 
 f3_0
 f3_2
@@ -297,9 +296,9 @@ const std::unordered_map<std::string, View> foyer = {
 		{
 			{},
 			{   // Navigation
-				{"f_1ba", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
-				{"f_1fb", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
-				{"x", {33.0f, 33.0f, 5.0f, 30.0f}}				// Library
+				{"f_1ba", {0.0f, 0.0f, 10.0f, 100.0f}, 0},			// Left
+				{"f_1fb,f1_2", {83.0f, 45.0f, 17.0f, 35.0f}, 1},	// Dining Room
+				{"f_1fb", {90.0f, 0.0f, 10.0f, 100.0f}, 0}			// Right
 			}
 		}
 	},
@@ -358,7 +357,16 @@ const std::unordered_map<std::string, View> foyer = {
 	{
 		"f1_2",
 		{
-			{},
+			{   // Hotspots
+				{33.0f, 0.0f, 33.0f, 100.0f, []() {
+					state.current_view = "f2_d";
+					loadView();
+
+					state.current_room = Room::DINING_ROOM;		// dr.h
+					state.current_view = "x";
+					loadView();
+				}}
+			},
 			{	// Navigation
 				{"f_2ba", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
 				{"f_2fb", {90.0f, 0.0f, 10.0f, 100.0f}}			// Right
@@ -407,7 +415,6 @@ const std::unordered_map<std::string, View> foyer = {
 			{},
 			{	// Navigation
 				{"f_2bd", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
-				{"x", {33.0f, 0.0f, 33.0f, 100.0f}},			// Forward
 				{"f_2fa", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
 			}
 		}
@@ -421,7 +428,7 @@ const std::unordered_map<std::string, View> foyer = {
 			{},
 			{	// Navigation
 				{"f_2ba", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
-				{"x", {33.0f, 0.0f, 33.0f, 100.0f}},			// Forward
+				{"f2_d", {33.0f, 0.0f, 33.0f, 100.0f}},			// Forward
 				{"f_2fb", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
 			}
 		}
@@ -448,6 +455,7 @@ const std::unordered_map<std::string, View> foyer = {
 			{},
 			{	// Navigation
 				{"f_2bc", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"f2_1", {70.0f, 40.0f, 20.0f, 40.0f}},			// f1
 				{"f_2fd", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
 			}
 		}
@@ -461,6 +469,7 @@ const std::unordered_map<std::string, View> foyer = {
 			{},
 			{	// Navigation
 				{"f_2ba", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"f2_d", {33.0f, 0.0f, 33.0f, 100.0f}},			// Forward
 				{"f_2fb", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
 			}
 		}
@@ -479,7 +488,7 @@ const std::unordered_map<std::string, View> foyer = {
 		}
 	},
 	//
-	// Kitchen, turning right to Stairs
+	// Turning right towards Stairs (facing kitchen)
 	//
 	{
 		"f_2fc",
@@ -487,7 +496,7 @@ const std::unordered_map<std::string, View> foyer = {
 			{},
 			{	// Navigation
 				{"f_2bc", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
-				{"x", {33.0f, 0.0f, 33.0f, 100.0f}},			// Forward
+				{"f2_1", {70.0f, 40.0f, 20.0f, 40.0f}},			// f1
 				{"f_2fd", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
 			}
 		}
@@ -502,6 +511,36 @@ const std::unordered_map<std::string, View> foyer = {
 			{	// Navigation
 				{"f_2bd", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
 				{"f_2fa", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
+			}
+		}
+	},
+
+	////////////////////////////////////////////////////////////////////////
+
+	//
+	// Dining Room -> Front Door
+	//
+	{
+		"f2_1",
+		{
+			{},
+			{	// Navigation
+				{"f_1bd", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"f_1fa", {90.0f, 0.0f, 10.0f, 100.0f}}			// Right
+			}
+		}
+	},
+	//
+	// Fully transition to Dining Room ( DR.RL/GJD )
+	//
+	{
+		"f2_d",
+		{
+			{},
+			{	// Navigation
+				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"x", {90.0f, 0.0f, 10.0f, 100.0f}},		// Forward
+				{"x", {90.0f, 0.0f, 10.0f, 100.0f}}			// Right
 			}
 		}
 	},
