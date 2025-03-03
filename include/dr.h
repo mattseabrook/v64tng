@@ -145,30 +145,28 @@ dr_vb.vdx		// Cake Puzzle - end
 
 /*
 
-f_ prefix for Foyer views
+Prefix map for Dining Room assets
 
 */
 const std::unordered_map<std::string, View> diningRoom = {
 	////////////////////////////////////////////////////////////////////////
-	// d*
+	// Dining Room Navigation animations
 	////////////////////////////////////////////////////////////////////////
 
 	//
-	// x
+	// Turning around left, at the door, facing the table
 	//
 	{
-		"x",
+		"dr_tbc",
 		{
-			{	// Hotspots
-				{0.0f, 0.0f, 0.0f, 0.0f, []() { /* x */ }},
-				{0.0f, 0.0f, 0.0f, 0.0f, []() { /* x */ }}
-			},
+			{},
 			{	// Navigation
 				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
+				{"x", {0.0f, 0.0f, 0.0f, 0.0f}},			// Forward
 				{"x", {90.0f, 0.0f, 10.0f, 100.0f}}			// Right
 			}
 		}
 	},
 };
 
-#endif // DR_H/
+#endif // DR_H

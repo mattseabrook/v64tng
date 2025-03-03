@@ -219,7 +219,7 @@ h_prmorp
 
 /*
 
-f_ prefix for Foyer views
+Prefix map for Foyer assets
 
 */
 const std::unordered_map<std::string, View> foyer = {
@@ -352,18 +352,15 @@ const std::unordered_map<std::string, View> foyer = {
 	////////////////////////////////////////////////////////////////////////
 
 	//
-	// Stairs -> Dining Room Door
+	// Stairs -> Dining Room Door ( f2_d , dr_tbc )
 	//
 	{
 		"f1_2",
 		{
 			{   // Hotspots
 				{33.0f, 0.0f, 33.0f, 100.0f, []() {
-					state.current_view = "f2_d";
-					loadView();
-
-					state.current_room = Room::DINING_ROOM;		// dr.h
-					state.current_view = "x";
+					state.current_room = Room::DINING_ROOM;
+					state.current_view = "dr_tbc";
 					loadView();
 				}}
 			},

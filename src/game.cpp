@@ -54,9 +54,16 @@ const View* getView(const std::string& current_view) {
 //  Setup VDX animation sequence
 //
 void loadView() {
-	if (state.animation.isPlaying) return;
+	// If we are switching rooms, defer the room change until the animation completes
+	if (state.animation.isPlaying) {
+		if (state.current_room != state.previous_room) {
+			state.animation_sequence.clear();
+			state.animation_queue_index = 0;
+		}
+		return;
+	}
 
-	// If the room has changed, reload the VDXFiles and reset the animation sequence.
+	// Room transition logic
 	if (state.current_room != state.previous_room) {
 		state.VDXFiles = parseGJDFile(ROOM_DATA.at(state.current_room));
 		state.previous_room = state.current_room;
@@ -122,16 +129,26 @@ void updateAnimation() {
 		state.currentFrameIndex++;
 
 		if (state.currentFrameIndex >= state.animation.totalFrames) {
+			// If there's another animation queued in the sequence, continue
 			if (state.animation_queue_index < state.animation_sequence.size() - 1) {
 				state.animation_queue_index++;
+				assert(state.animation_queue_index < state.animation_sequence.size());	// DEBUG
 				state.current_view = state.animation_sequence[state.animation_queue_index];
 				loadView();
 			}
 			else {
+				// Animation finished
 				state.animation.isPlaying = false;
 				state.currentFrameIndex = state.animation.totalFrames - 1;
 				state.animation_sequence.clear();
 				state.animation_queue_index = 0;
+
+				// If we were in a transition, now apply the room change
+				if (state.current_room != state.previous_room) {
+					state.previous_room = state.current_room;
+					loadView();
+				}
+
 				renderFrame();
 				return;
 			}
