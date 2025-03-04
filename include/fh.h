@@ -352,15 +352,16 @@ const std::unordered_map<std::string, View> foyer = {
 	////////////////////////////////////////////////////////////////////////
 
 	//
-	// Stairs -> Dining Room Door ( f2_d , dr_tbc )
+	// Stairs -> Dining Room Door
 	//
 	{
 		"f1_2",
 		{
 			{   // Hotspots
 				{33.0f, 0.0f, 33.0f, 100.0f, []() {
-					state.current_room = Room::DINING_ROOM;
-					state.current_view = "dr_tbc";
+					state.current_view = "f2_d,DR:dr_tbc";
+					state.animation_sequence.clear(); // Force new sequence
+					state.animation.reset();          // Ensure animation restarts
 					loadView();
 				}}
 			},

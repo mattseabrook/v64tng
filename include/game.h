@@ -30,36 +30,6 @@
 */
 
 //
-// Enum for room names
-//
-enum class Room {
-	BATHROOM,
-	CHAPEL,
-	DINING_ROOM,
-	FOYER_HALLWAY,
-	KITCHEN,
-	LIBRARY,
-	LABORATORY,
-	MUSIC_ROOM,
-	// ... need to add more rooms
-};
-
-//
-// Mapping room names to RL filenames
-//
-inline const std::map<Room, std::string> ROOM_DATA = {
-	{Room::BATHROOM, "B.RL"},
-	{Room::CHAPEL, "CH.RL"},
-	{Room::DINING_ROOM, "DR.RL"},
-	{Room::FOYER_HALLWAY, "FH.RL"},
-	{Room::KITCHEN, "K.RL"},
-	{Room::LIBRARY, "LI.RL"},
-	{Room::LABORATORY, "LA.RL"},
-	{Room::MUSIC_ROOM, "MU.RL"},
-	// Add more rooms here
-};
-
-//
 // Animation state structure
 //
 struct AnimationState {
@@ -125,8 +95,8 @@ struct GameState {
 	VDXFile* currentVDX = nullptr;				    // Reference to current VDXFile object
 	AnimationState animation;						// Animation state management
 
-	Room current_room = Room::FOYER_HALLWAY;        // Default room (corresponds to ROOM_DATA map key)
-	Room previous_room;			                    // Avoid re-rendering
+	std::string current_room = "FH";		        // Default room (corresponds to ROOM_DATA map key)
+	std::string previous_room;	                    // Avoid re-rendering
 	std::string current_view = "f_1bc";		        // Default view (corresponds to VDXFile .filename struct member)
 	std::string previous_view = "f_1bc";	        // Avoid re-rendering
 

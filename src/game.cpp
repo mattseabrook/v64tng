@@ -51,112 +51,120 @@ const View* getView(const std::string& current_view) {
 }
 
 //
-//  Setup VDX animation sequence
+// Load and process the current view or animation sequence
 //
 void loadView() {
-	// If we are switching rooms, defer the room change until the animation completes
-	if (state.animation.isPlaying) {
-		if (state.current_room != state.previous_room) {
-			state.animation_sequence.clear();
-			state.animation_queue_index = 0;
-		}
-		return;
-	}
+    // Ensure VDXFiles are loaded for the current room
+    if (state.VDXFiles.empty()) {
+        state.VDXFiles = parseGJDFile(state.current_room + ".RL");
+        state.previous_room = state.current_room;
+    }
 
-	// Room transition logic
-	if (state.current_room != state.previous_room) {
-		state.VDXFiles = parseGJDFile(ROOM_DATA.at(state.current_room));
-		state.previous_room = state.current_room;
-		state.animation.reset();
-	}
+    // If an animation is playing and the view hasn't changed, wait for it to finish
+    if (state.animation.isPlaying && state.current_view == state.previous_view) {
+        return;
+    }
 
-	// If no animation sequence has been set up yet, split the CSV stored in current_view.
-	if (state.animation_sequence.empty()) {
-		std::stringstream ss(state.current_view);
-		std::string token;
-		while (std::getline(ss, token, ',')) {
-			if (!token.empty())
-				state.animation_sequence.push_back(token);
-		}
-		state.animation_queue_index = 0;
+    // Parse the animation sequence if empty
+    if (state.animation_sequence.empty()) {
+        std::stringstream ss(state.current_view);
+        std::string token;
+        while (std::getline(ss, token, ',')) {
+            if (token.empty()) continue;
+            state.animation_sequence.push_back(token);
+        }
+        state.animation_queue_index = 0;
 
-		if (!state.animation_sequence.empty()) {
-			state.current_view = state.animation_sequence[state.animation_queue_index];
-		}
-	}
+        if (state.animation_sequence.empty()) {
+            state.currentVDX = nullptr;
+            return;
+        }
+    }
 
-	// Load the view based on the current (single) animation token.
-	const View* newView = getView(state.current_view);
-	if (!newView) {
-		throw std::runtime_error("View not found: " + state.current_view);
-	}
-	state.view = *newView;
+    // Check if we've exhausted the animation sequence
+    if (state.animation_queue_index >= state.animation_sequence.size()) {
+        state.currentVDX = nullptr;
+        return;
+    }
 
-	auto it = std::ranges::find_if(state.VDXFiles, [&](const VDXFile& file) {
-		return file.filename == state.current_view;
-		});
-	if (it == state.VDXFiles.end()) {
-		throw std::runtime_error("VDX file not found for view: " + state.current_view);
-	}
-	state.currentVDX = &(*it);
+    // Get the current token and process room transition if specified
+    std::string token = state.animation_sequence[state.animation_queue_index];
+    size_t colon = token.find(':');
+    if (colon != std::string::npos) {
+        // Room transition specified (e.g., "DR:dr_tbc")
+        std::string room_prefix = token.substr(0, colon);
+        state.current_view = token.substr(colon + 1);
 
-	if (!state.currentVDX->parsed) {
-		parseVDXChunks(*state.currentVDX);
-		state.currentVDX->parsed = true;
-	}
+        // Directly set current_room to the prefix (e.g., "DR")
+        if (state.current_room != room_prefix) {
+            state.current_room = room_prefix;
+            // Load the corresponding RL file (e.g., "DR.RL")
+            state.VDXFiles = parseGJDFile(state.current_room + ".RL");
+            state.previous_room = state.current_room;
+            state.animation.reset();
+        }
+    }
+    else {
+        // No room transition, use the current room
+        state.current_view = token;
+    }
 
-	// Initialize animation state.
-	state.animation.totalFrames = state.currentVDX->chunks.size();
-	state.currentFrameIndex = 0;
-	state.animation.isPlaying = true;
-	state.animation.lastFrameTime = std::chrono::steady_clock::now();
+    // Load the view
+    const View* view = getView(state.current_view);
+    if (!view) throw std::runtime_error("View not found: " + state.current_view);
+    state.view = *view;
 
-	renderFrame();
-	state.previous_view = state.current_view;
+    // Find the VDX file for the current view
+    auto it = std::ranges::find(state.VDXFiles, state.current_view, &VDXFile::filename);
+    if (it == state.VDXFiles.end()) throw std::runtime_error("VDX missing: " + state.current_view);
+
+    state.currentVDX = &(*it);
+    if (!state.currentVDX->parsed) {
+        parseVDXChunks(*state.currentVDX);
+        state.currentVDX->parsed = true;
+    }
+
+    // Initialize animation state
+    state.animation.totalFrames = state.currentVDX->chunks.size();
+    state.currentFrameIndex = 0;
+    state.animation.isPlaying = state.animation.totalFrames > 0;
+    state.animation.lastFrameTime = std::chrono::steady_clock::now();
+    state.previous_view = state.current_view;
+
+    renderFrame();
 }
 
 //
 // Animate the VDX sequence
 //
 void updateAnimation() {
-	if (!state.animation.isPlaying || !state.currentVDX)
-		return;
+    if (!state.animation.isPlaying || !state.currentVDX) return;
 
-	auto currentTime = std::chrono::steady_clock::now();
-	auto elapsedTime = currentTime - state.animation.lastFrameTime;
+    auto currentTime = std::chrono::steady_clock::now();
+    auto elapsedTime = currentTime - state.animation.lastFrameTime;
 
-	if (elapsedTime >= state.animation.getFrameDuration(state.currentFPS)) {
-		state.currentFrameIndex++;
+    if (elapsedTime >= state.animation.getFrameDuration(state.currentFPS)) {
+        state.currentFrameIndex++;
 
-		if (state.currentFrameIndex >= state.animation.totalFrames) {
-			// If there's another animation queued in the sequence, continue
-			if (state.animation_queue_index < state.animation_sequence.size() - 1) {
-				state.animation_queue_index++;
-				assert(state.animation_queue_index < state.animation_sequence.size());	// DEBUG
-				state.current_view = state.animation_sequence[state.animation_queue_index];
-				loadView();
-			}
-			else {
-				// Animation finished
-				state.animation.isPlaying = false;
-				state.currentFrameIndex = state.animation.totalFrames - 1;
-				state.animation_sequence.clear();
-				state.animation_queue_index = 0;
+        if (state.currentFrameIndex >= state.animation.totalFrames) {
+            state.animation.isPlaying = false;
+            state.currentFrameIndex = state.animation.totalFrames - 1;
 
-				// If we were in a transition, now apply the room change
-				if (state.current_room != state.previous_room) {
-					state.previous_room = state.current_room;
-					loadView();
-				}
+            // Move to the next animation in the sequence
+            if (state.animation_queue_index < state.animation_sequence.size() - 1) {
+                state.animation_queue_index++;
+                loadView();
+            }
+            else {
+                // Sequence complete
+                state.animation_sequence.clear();
+                state.animation_queue_index = 0;
+            }
+        }
 
-				renderFrame();
-				return;
-			}
-		}
-
-		state.animation.lastFrameTime = currentTime;
-		renderFrame();
-	}
+        state.animation.lastFrameTime = currentTime;
+        renderFrame();
+    }
 }
 
 //
