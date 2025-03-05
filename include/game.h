@@ -97,8 +97,8 @@ struct GameState {
 
 	std::string current_room = "FH";		        // Default room (corresponds to ROOM_DATA map key)
 	std::string previous_room;	                    // Avoid re-rendering
-	std::string current_view = "f_1bc";		        // Default view (corresponds to VDXFile .filename struct member)
-	std::string previous_view = "f_1bc";	        // Avoid re-rendering
+	std::string current_view = "f_1bc;static";	    // Default view (corresponds to VDXFile .filename struct member)
+	std::string previous_view = "f_1bc;static";	    // Avoid re-rendering
 
 	std::vector<std::string> animation_sequence;    // Stores the sequence of animations
 	size_t animation_queue_index = 0;               // Current position in the animation sequence
