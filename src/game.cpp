@@ -87,13 +87,23 @@ void loadView() {
         return;
     }
 
-    // Get the current token and process room transition if specified
+    // Get the current token and process room transition and modifiers if specified
     std::string token = state.animation_sequence[state.animation_queue_index];
-    size_t colon = token.find(':');
-    if (colon != std::string::npos) {
-        // Room transition specified (e.g., "DR:dr_tbc")
-        std::string room_prefix = token.substr(0, colon);
-        state.current_view = token.substr(colon + 1);
+    size_t first_colon = token.find(':');
+    bool is_static = false;
+
+    if (first_colon != std::string::npos) {
+        // Check for a second colon (e.g., "DR:dr_tbc:static")
+        std::string remaining = token.substr(first_colon + 1);
+        size_t second_colon = remaining.find(':');
+        if (second_colon != std::string::npos && remaining.substr(second_colon + 1) == "static") {
+            is_static = true;
+            remaining = remaining.substr(0, second_colon);
+        }
+
+        // Room transition specified (e.g., "DR:dr_tbc" or "DR:dr_tbc:static")
+        std::string room_prefix = token.substr(0, first_colon);
+        state.current_view = remaining;
 
         // Directly set current_room to the prefix (e.g., "DR")
         if (state.current_room != room_prefix) {
@@ -126,8 +136,14 @@ void loadView() {
 
     // Initialize animation state
     state.animation.totalFrames = state.currentVDX->chunks.size();
-    state.currentFrameIndex = 0;
-    state.animation.isPlaying = state.animation.totalFrames > 0;
+    if (is_static) {
+        state.currentFrameIndex = state.animation.totalFrames - 1; // Last frame
+        state.animation.isPlaying = false;                         // Don't play
+    }
+    else {
+        state.currentFrameIndex = 0;
+        state.animation.isPlaying = state.animation.totalFrames > 0;
+    }
     state.animation.lastFrameTime = std::chrono::steady_clock::now();
     state.previous_view = state.current_view;
 

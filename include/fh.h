@@ -357,17 +357,11 @@ const std::unordered_map<std::string, View> foyer = {
 	{
 		"f1_2",
 		{
-			{   // Hotspots
-				{33.0f, 0.0f, 33.0f, 100.0f, []() {
-					state.current_view = "f2_d,DR:dr_tbc";
-					state.animation_sequence.clear(); // Force new sequence
-					state.animation.reset();          // Ensure animation restarts
-					loadView();
-				}}
-			},
+			{},
 			{	// Navigation
-				{"f_2ba", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
-				{"f_2fb", {90.0f, 0.0f, 10.0f, 100.0f}}			// Right
+				{"f_2ba", {0.0f, 0.0f, 10.0f, 100.0f}},				// Left
+				{"f2_d,DR:dr_tbc:static", {33.0f, 0.0f, 33.0f, 100.0f}},	// Open Dining Room (transition)
+				{"f_2fb", {90.0f, 0.0f, 10.0f, 100.0f}}				// Right
 			}
 		}
 	},
@@ -418,16 +412,16 @@ const std::unordered_map<std::string, View> foyer = {
 		}
 	},
 	//
-	// Kitchen, turning left to Dining Room
+	// Turning left towards the Dining Room
 	//
 	{
 		"f_2bb",
 		{
 			{},
 			{	// Navigation
-				{"f_2ba", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
-				{"f2_d", {33.0f, 0.0f, 33.0f, 100.0f}},			// Forward
-				{"f_2fb", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
+				{"f_2ba", {0.0f, 0.0f, 10.0f, 100.0f}},				// Left
+				{"f2_d,DR:dr_tbc:static", {33.0f, 0.0f, 33.0f, 100.0f}},	// Open Dining Room (transition)
+				{"f_2fb", {90.0f, 0.0f, 10.0f, 100.0f}},			// Right
 			}
 		}
 	},
@@ -466,9 +460,9 @@ const std::unordered_map<std::string, View> foyer = {
 		{
 			{},
 			{	// Navigation
-				{"f_2ba", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
-				{"f2_d", {33.0f, 0.0f, 33.0f, 100.0f}},			// Forward
-				{"f_2fb", {90.0f, 0.0f, 10.0f, 100.0f}},		// Right
+				{"f_2ba", {0.0f, 0.0f, 10.0f, 100.0f}},				// Left
+				{"f2_d,DR:dr_tbc:static", {33.0f, 0.0f, 33.0f, 100.0f}},	// Open Dining Room (transition)
+				{"f_2fb", {90.0f, 0.0f, 10.0f, 100.0f}},			// Right
 			}
 		}
 	},
