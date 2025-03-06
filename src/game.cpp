@@ -12,6 +12,7 @@
 #include "game.h"
 #include "window.h"
 #include "gjd.h"
+#include "xmi.h"
 #include "config.h"
 
 #include "fh.h"
@@ -200,6 +201,8 @@ void init() {
 	initWindow();
 	loadView();
 
+	xmiPlay("gu61");
+
 	state.previous_room = state.current_room;
 	state.ui.enabled = true;
 
@@ -208,7 +211,7 @@ void init() {
 		running = processEvents();
 
 		if (state.current_view != state.previous_view) {
-			state.animation_sequence.clear();  // Clear previous animation sequence
+			state.animation_sequence.clear();
 			loadView();
 		}
 
@@ -216,6 +219,12 @@ void init() {
 	}
 
 	save_config("config.json");
+
+	// Stop and cleanup music playback
+	state.music_playing = false;
+	if (state.music_thread.joinable()) {
+		state.music_thread.join();
+	}
 
 	cleanupWindow();
 }

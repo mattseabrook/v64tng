@@ -25,6 +25,7 @@ constexpr const char* default_config = R"({
     "pcmEnabled": true,
     "pcmVolume": 100,
     "midiEnabled": true,
+    "midiMode": "opl3",
     "midiVolume": 100,
     "devMode": false
 })";

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -73,7 +73,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)\</OutDir>
     <IncludePath>C:\lib\libADLMIDI\include;$(SolutionDir)shaders;C:\lib\zlib-1.3.1;C:\lib\lpng1644;C:\lib\glfw-3.4\include;C:\VulkanSDK\1.3.296.0\Include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\lib\libADLMIDI\build_debug\Debug;C:\lib\zlib-1.3.1\build_debug\;C:\lib\lpng1644\build_debug\;C:\lib\glfw-3.4\build_debug\src\;$(LibraryPath)</LibraryPath>
+    <LibraryPath>C:\lib\libADLMIDI\build\Debug;C:\lib\zlib-1.3.1\build_debug\;C:\lib\lpng1644\build_debug\;C:\lib\glfw-3.4\build_debug\src\;$(LibraryPath)</LibraryPath>
     <IntDir>$(SolutionDir)\Intermediate\</IntDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
@@ -125,8 +125,8 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\lib\libADLMIDI\build_debug\Debug;C:\lib\zlib-1.3.1\build_debug\Debug;C:\lib\lpng1644\build_debug\Debug;C:\lib\glfw-3.4\build_debug\src\Debug;C:\VulkanSDK\1.3.296.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>zlibstaticd.lib;libpng16_staticd.lib;vulkan-1.lib;user32.lib;gdi32.lib;shell32.lib;winmm.lib;d2d1.lib;ADLMIDI.lib;ole32.lib;uuid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\lib\libADLMIDI\build\Debug;C:\lib\zlib-1.3.1\build_debug\Debug;C:\lib\lpng1644\build_debug\Debug;C:\lib\glfw-3.4\build_debug\src\Debug;C:\VulkanSDK\1.3.296.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>zlibstaticd.lib;libpng16_staticd.lib;vulkan-1.lib;user32.lib;gdi32.lib;shell32.lib;winmm.lib;d2d1.lib;libADLMIDI.lib;ole32.lib;uuid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>del /f /q "C:\T7G\v64tng.exe"

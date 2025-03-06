@@ -19,5 +19,6 @@
 
 std::vector<uint8_t> xmiConverter(const RLEntry& song);
 void PlayMIDI(const std::vector<uint8_t>& midiData);
+void xmiPlay(const std::string& songName);
 
 #endif

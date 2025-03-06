@@ -8,6 +8,7 @@
 #include <string>
 #include <chrono>
 #include <vector>
+#include <thread>
 
 #include "vdx.h"
 #include "config.h"
@@ -76,10 +77,13 @@ struct View {
 	std::vector<Navigation> navigations;
 };
 
-//
-// Struct for managing game state
-//
+///////////////////////////////////////////////////////////////////////////////
+//		Struct for managing game state
+///////////////////////////////////////////////////////////////////////////////
 struct GameState {
+	//
+	// UI
+	//
 	struct {
 		bool enabled = false;
 		int width = 0;
@@ -89,21 +93,36 @@ struct GameState {
 		int y = 0;
 	} ui;
 
+	//
+	// Assets
+	//
+	std::string current_room = "FH";		        // Default room (corresponds to RL/GJD file set)
+	std::string previous_room;	                    // Avoid re-rendering
+	std::string current_view = "f_1bc;static";	    // Default view (corresponds to VDXFile .filename struct member)
+	std::string previous_view = "f_1bc;static";	    // Avoid re-rendering
+
+	//
+	// Graphics
+	//
 	double currentFPS = 24.0;						// Current target FPS, adjustable during gameplay
 	std::vector<VDXFile> VDXFiles;				    // Vector of VDXFile objects
 	size_t currentFrameIndex = 30;				    // Normally 0 - hard-coded to 30 for testing
 	VDXFile* currentVDX = nullptr;				    // Reference to current VDXFile object
 	AnimationState animation;						// Animation state management
 
-	std::string current_room = "FH";		        // Default room (corresponds to ROOM_DATA map key)
-	std::string previous_room;	                    // Avoid re-rendering
-	std::string current_view = "f_1bc;static";	    // Default view (corresponds to VDXFile .filename struct member)
-	std::string previous_view = "f_1bc;static";	    // Avoid re-rendering
-
 	std::vector<std::string> animation_sequence;    // Stores the sequence of animations
 	size_t animation_queue_index = 0;               // Current position in the animation sequence
 
 	View view;										// Current view object
+
+	//
+	// Music
+	//
+	std::string current_song;                       // Name of the currently playing song (e.g., "gu39")
+	std::string music_mode = "opl3";                // Playback mode: "opl2", "dual_opl2", "opl3"
+	std::thread music_thread;                       // Thread for non-blocking music playback
+	bool music_playing = false;                     // Flag to indicate if music is playing
+	float music_volume = 1.0f;                      // Volume (0.0 to 1.0)
 };
 
 //=============================================================================
