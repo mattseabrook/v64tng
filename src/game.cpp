@@ -199,9 +199,10 @@ void updateAnimation() {
 //
 void init() {
 	initWindow();
-	loadView();
-
+	
 	xmiPlay("gu61");
+	
+	loadView();
 
 	state.previous_room = state.current_room;
 	state.ui.enabled = true;

@@ -455,36 +455,7 @@ std::vector<uint8_t> xmiConverter(const RLEntry& song)
 // Play MIDI data using libADLMIDI
 //
 void PlayMIDI(const std::vector<uint8_t>& midiData) {
-	// Initialize libADLMIDI
-	struct ADL_MIDIPlayer* player = adl_init(44100); // 44.1 kHz sample rate
-	if (!player) {
-		std::cerr << "ERROR: Failed to initialize libADLMIDI." << std::endl;
-		return;
-	}
-
-	// Configure music mode
-	if (state.music_mode == "opl2") {
-		adl_setNumChips(player, 1); // Single OPL2 chip
-	}
-	else if (state.music_mode == "dual_opl2") {
-		adl_setNumChips(player, 2); // Dual OPL2 chips
-	}
-	else if (state.music_mode == "opl3") {
-		adl_setNumChips(player, 3); // Single OPL3 chip
-	}
-	else {
-		std::cerr << "WARNING: Unknown music mode '" << state.music_mode << "', defaulting to opl3." << std::endl;
-		adl_setNumChips(player, 1);
-	}
-
-	// Load MIDI data
-	if (adl_openData(player, midiData.data(), midiData.size()) < 0) {
-		std::cerr << "ERROR: Failed to load MIDI data in libADLMIDI." << std::endl;
-		adl_close(player);
-		return;
-	}
-
-	// Initialize WASAPI
+	// WASAPI initialization part 1: Determine the actual sample rate
 	HRESULT hr;
 	IMMDeviceEnumerator* pEnumerator = nullptr;
 	IMMDevice* pDevice = nullptr;
@@ -494,7 +465,6 @@ void PlayMIDI(const std::vector<uint8_t>& midiData) {
 	hr = CoInitialize(nullptr);
 	if (FAILED(hr)) {
 		std::cerr << "ERROR: CoInitialize failed, hr=0x" << std::hex << hr << std::endl;
-		adl_close(player);
 		return;
 	}
 
@@ -502,33 +472,16 @@ void PlayMIDI(const std::vector<uint8_t>& midiData) {
 		__uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
 	if (FAILED(hr)) {
 		std::cerr << "ERROR: CoCreateInstance failed, hr=0x" << std::hex << hr << std::endl;
-		adl_close(player);
 		CoUninitialize();
 		return;
 	}
 
-	// Get the default playback device
 	hr = pEnumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &pDevice);
 	if (FAILED(hr)) {
 		std::cerr << "ERROR: GetDefaultAudioEndpoint failed, hr=0x" << std::hex << hr << std::endl;
 		pEnumerator->Release();
-		adl_close(player);
 		CoUninitialize();
 		return;
-	}
-
-	// Get device name (optional, for debugging)
-	IPropertyStore* pProps = nullptr;
-	hr = pDevice->OpenPropertyStore(STGM_READ, &pProps);
-	if (SUCCEEDED(hr)) {
-		PROPVARIANT varName;
-		PropVariantInit(&varName);
-		hr = pProps->GetValue(PKEY_Device_FriendlyName, &varName);
-		if (SUCCEEDED(hr)) {
-			std::wcout << L"Using audio device: " << varName.pwszVal << std::endl;
-			PropVariantClear(&varName);
-		}
-		pProps->Release();
 	}
 
 	hr = pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pAudioClient);
@@ -536,12 +489,11 @@ void PlayMIDI(const std::vector<uint8_t>& midiData) {
 		std::cerr << "ERROR: Activate audio client failed, hr=0x" << std::hex << hr << std::endl;
 		pDevice->Release();
 		pEnumerator->Release();
-		adl_close(player);
 		CoUninitialize();
 		return;
 	}
 
-	// Set up audio format (44.1 kHz, 16-bit stereo)
+	// Set up audio format (try 44.1 kHz first)
 	WAVEFORMATEX wfx = { 0 };
 	wfx.wFormatTag = WAVE_FORMAT_PCM;
 	wfx.nChannels = 2; // Stereo
@@ -553,8 +505,7 @@ void PlayMIDI(const std::vector<uint8_t>& midiData) {
 	// Initialize audio client with 44.1 kHz
 	hr = pAudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, 500000, 0, &wfx, nullptr);
 	if (FAILED(hr)) {
-		std::cerr << "ERROR: Audio client Initialize failed with 44.1 kHz, hr=0x" << std::hex << hr << std::endl;
-		// Fallback to 48 kHz
+		std::cerr << "Falling back to 48 kHz" << std::endl;
 		wfx.nSamplesPerSec = 48000;
 		wfx.nBlockAlign = wfx.nChannels * wfx.wBitsPerSample / 8;
 		wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
@@ -564,53 +515,86 @@ void PlayMIDI(const std::vector<uint8_t>& midiData) {
 			pAudioClient->Release();
 			pDevice->Release();
 			pEnumerator->Release();
-			adl_close(player);
 			CoUninitialize();
 			return;
 		}
-		else {
-			std::cout << "Fell back to 48 kHz successfully" << std::endl;
-		}
-	}
-	else {
-		std::cout << "Initialized with 44.1 kHz successfully" << std::endl;
 	}
 
-	// Get the render client
-	hr = pAudioClient->GetService(__uuidof(IAudioRenderClient), (void**)&pRenderClient);
-	if (FAILED(hr)) {
-		std::cerr << "ERROR: GetService for IAudioRenderClient failed, hr=0x" << std::hex << hr << std::endl;
+	// Initialize libADLMIDI with the actual sample rate
+	int actualSampleRate = wfx.nSamplesPerSec;
+	struct ADL_MIDIPlayer* player = adl_init(actualSampleRate);
+	if (!player) {
+		std::cerr << "ERROR: Failed to initialize libADLMIDI." << std::endl;
 		pAudioClient->Release();
 		pDevice->Release();
 		pEnumerator->Release();
-		adl_close(player);
 		CoUninitialize();
 		return;
 	}
 
-	// Get buffer size
+	// Configure emulation mode using adl_setNumFourOpsChn
+	if (state.music_mode == "opl2") {
+		adl_setNumChips(player, 1); // Single OPL2 chip
+		adl_setNumFourOpsChn(player, 0); // No 4-op channels for OPL2
+	}
+	else if (state.music_mode == "dual_opl2") {
+		adl_setNumChips(player, 2); // Dual OPL2 chips
+		adl_setNumFourOpsChn(player, 0); // No 4-op channels for dual OPL2
+	}
+	else if (state.music_mode == "opl3") {
+		adl_setNumChips(player, 1); // Single OPL3 chip
+		adl_setNumFourOpsChn(player, 6); // Enable 6 4-op channels for OPL3
+	}
+	else {
+		std::cerr << "WARNING: Unknown music mode '" << state.music_mode << "', defaulting to opl3." << std::endl;
+		adl_setNumChips(player, 1);
+		adl_setNumFourOpsChn(player, 6);
+	}
+
+	// Load MIDI data
+	if (adl_openData(player, midiData.data(), midiData.size()) < 0) {
+		std::cerr << "ERROR: Failed to load MIDI data in libADLMIDI." << std::endl;
+		adl_close(player);
+		pAudioClient->Release();
+		pDevice->Release();
+		pEnumerator->Release();
+		CoUninitialize();
+		return;
+	}
+
+	// Continue WASAPI setup
+	hr = pAudioClient->GetService(__uuidof(IAudioRenderClient), (void**)&pRenderClient);
+	if (FAILED(hr)) {
+		std::cerr << "ERROR: GetService for IAudioRenderClient failed, hr=0x" << std::hex << hr << std::endl;
+		adl_close(player);
+		pAudioClient->Release();
+		pDevice->Release();
+		pEnumerator->Release();
+		CoUninitialize();
+		return;
+	}
+
 	UINT32 bufferFrameCount;
 	hr = pAudioClient->GetBufferSize(&bufferFrameCount);
 	if (FAILED(hr)) {
 		std::cerr << "ERROR: GetBufferSize failed, hr=0x" << std::hex << hr << std::endl;
 		pRenderClient->Release();
+		adl_close(player);
 		pAudioClient->Release();
 		pDevice->Release();
 		pEnumerator->Release();
-		adl_close(player);
 		CoUninitialize();
 		return;
 	}
 
-	// Start audio client
 	hr = pAudioClient->Start();
 	if (FAILED(hr)) {
 		std::cerr << "ERROR: Audio client Start failed, hr=0x" << std::hex << hr << std::endl;
 		pRenderClient->Release();
+		adl_close(player);
 		pAudioClient->Release();
 		pDevice->Release();
 		pEnumerator->Release();
-		adl_close(player);
 		CoUninitialize();
 		return;
 	}
@@ -649,10 +633,10 @@ void PlayMIDI(const std::vector<uint8_t>& midiData) {
 	state.music_playing = false;
 	pAudioClient->Stop();
 	pRenderClient->Release();
+	adl_close(player);
 	pAudioClient->Release();
 	pDevice->Release();
 	pEnumerator->Release();
-	adl_close(player);
 	CoUninitialize();
 }
 
