@@ -30,6 +30,7 @@ struct DisplayInfo {
 };
 
 extern HWND g_hwnd;
+extern float scaleFactor;
 
 //=============================================================================
 

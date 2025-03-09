@@ -9,17 +9,22 @@
 #include "../resource.h"
 
 #include "window.h"
+
 #include "vulkan.h"
 #include "d2d.h"
 #include "config.h"
 #include "game.h"
 
+//=============================================================================
+
+// Globals
 HWND g_hwnd = nullptr;
 
 HCURSOR defaultCursor = nullptr;
 HCURSOR handCursor = nullptr;
 
 static RendererType renderer;
+float scaleFactor = 1.0f;
 
 //=============================================================================
 
@@ -123,6 +128,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 			int newWidth = clientRect.right - clientRect.left;
 			int newHeight = clientRect.bottom - clientRect.top;
 
+			scaleFactor = static_cast<float>(newWidth) / MIN_CLIENT_WIDTH;
+
 			if (renderTarget) {
 				renderTarget->Resize(D2D1::SizeU(newWidth, newHeight));
 			}
@@ -130,7 +137,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 			if (state.ui.width != newWidth || state.ui.height != newHeight) {
 				state.ui.width = newWidth;
 				config["width"] = newWidth;
-
 				state.ui.height = newHeight;
 				InvalidateRect(hwnd, NULL, FALSE);
 			}
