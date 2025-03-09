@@ -6,6 +6,7 @@
 #include <windows.h>
 
 #include "d2d.h"
+
 #include "config.h"
 #include "window.h"
 #include "game.h"
@@ -41,12 +42,12 @@ void initializeD2D() {
 
 	// Create render target
 	RECT clientRect;
-	GetClientRect(hwnd, &clientRect);
+	GetClientRect(g_hwnd, &clientRect);
 
 	hr = factory->CreateHwndRenderTarget(
 		D2D1::RenderTargetProperties(),
 		D2D1::HwndRenderTargetProperties(
-			hwnd, D2D1::SizeU(clientRect.right - clientRect.left, clientRect.bottom - clientRect.top)
+			g_hwnd, D2D1::SizeU(clientRect.right - clientRect.left, clientRect.bottom - clientRect.top)
 		),
 		&renderTarget
 	);
@@ -134,6 +135,6 @@ void cleanupD2D() {
 	if (bitmap) bitmap->Release();
 	if (renderTarget) renderTarget->Release();
 	if (factory) factory->Release();
-	if (hwnd) DestroyWindow(hwnd);
-	hwnd = nullptr;
+	if (g_hwnd) DestroyWindow(g_hwnd);
+	g_hwnd = nullptr;
 }

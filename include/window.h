@@ -4,27 +4,32 @@
 #define WINDOW_H
 
 #include <vector>
-#include <string>
+#include <string_view>
 #include <windows.h>
 
 #include "config.h"
 
 //=============================================================================
 
-enum MenuCommands {
-	CMD_FILE_OPEN = 1,
-	CMD_FILE_SAVE,
-	CMD_FILE_EXIT,
-	CMD_HELP_ABOUT
+enum class MenuCommands {
+    FILE_OPEN = 1,
+    FILE_SAVE,
+    FILE_EXIT,
+    HELP_ABOUT
+};
+
+enum class RendererType {
+    VULKAN,
+    DIRECT2D
 };
 
 struct DisplayInfo {
-	int number;
-	RECT bounds;
-	bool isPrimary;
+    int number;
+    RECT bounds;
+    bool isPrimary;
 };
 
-extern HWND hwnd;
+extern HWND g_hwnd;
 
 //=============================================================================
 

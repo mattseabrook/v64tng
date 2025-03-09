@@ -14,17 +14,19 @@
 #include "config.h"
 #include "game.h"
 
-HWND hwnd = nullptr;
+HWND g_hwnd = nullptr;
 
 HCURSOR defaultCursor = nullptr;
 HCURSOR handCursor = nullptr;
 
+static RendererType renderer;
+
 //=============================================================================
 
 // Maps
-static std::map<std::string, void(*)()> initializeRenderer;
-static std::map<std::string, void(*)()> renderFrameFuncs;
-static std::map<std::string, void(*)()> cleanupFuncs;
+static std::map<RendererType, void(*)()> initializeRenderer;
+static std::map<RendererType, void(*)()> renderFrameFuncs;
+static std::map<RendererType, void(*)()> cleanupFuncs;
 
 //=============================================================================
 
@@ -34,17 +36,17 @@ static std::map<std::string, void(*)()> cleanupFuncs;
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
 	case WM_COMMAND: {
-		switch (LOWORD(wParam)) {
-		case CMD_FILE_OPEN:
+		switch (static_cast<int>(LOWORD(wParam))) {
+		case static_cast<int>(MenuCommands::FILE_OPEN):
 			MessageBox(hwnd, L"Open selected", L"File Menu", MB_OK);
 			break;
-		case CMD_FILE_SAVE:
+		case static_cast<int>(MenuCommands::FILE_SAVE):
 			MessageBox(hwnd, L"Save selected", L"File Menu", MB_OK);
 			break;
-		case CMD_FILE_EXIT:
+		case static_cast<int>(MenuCommands::FILE_EXIT):
 			::PostQuitMessage(0);
 			break;
-		case CMD_HELP_ABOUT:
+		case static_cast<int>(MenuCommands::HELP_ABOUT):
 			DialogBox(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDD_ABOUT_DIALOG), hwnd, AboutDialogProc);
 			break;
 		}
@@ -145,8 +147,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 	case WM_SETCURSOR: {
 		if (LOWORD(lParam) != HTCLIENT)
 			return DefWindowProc(hwnd, uMsg, wParam, lParam);
-
-		SetCursor(LoadCursor(NULL, IDC_ARROW));
+		SetCursor(defaultCursor);
 		return TRUE;
 	}
 	case WM_NCHITTEST: {
@@ -185,129 +186,96 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 	case WM_MOUSEMOVE: {
 		POINT cursorPos;
 		GetCursorPos(&cursorPos);
-		ScreenToClient(hwnd, &cursorPos);
+		ScreenToClient(g_hwnd, &cursorPos);
 
 		float normalizedX = static_cast<float>(cursorPos.x) / state.ui.width * 100.0f;
 		float normalizedY = static_cast<float>(cursorPos.y) / state.ui.height * 100.0f;
 
-		bool isCursorOver = false;
 		int highestZIndex = -1;
-
-		// Create a list of all hotspots and navigations at the cursor position
-		struct CursorTarget {
-			enum class Type { Navigation, Hotspot } type;
-			int z_index;
-			size_t index;
-		};
-
-		std::vector<CursorTarget> targetsAtCursor;
+		enum class TargetType { None, Navigation, Hotspot } targetType = TargetType::None;
 
 		// Check navigations
-		for (size_t i = 0; i < state.view.navigations.size(); i++) {
+		for (size_t i = 0; i < state.view.navigations.size(); ++i) {
 			const auto& nav = state.view.navigations[i];
-			if (normalizedX >= nav.hotspot.x &&
-				normalizedX <= (nav.hotspot.x + nav.hotspot.width) &&
-				normalizedY >= nav.hotspot.y &&
-				normalizedY <= (nav.hotspot.y + nav.hotspot.height)) {
-
-				targetsAtCursor.push_back({ CursorTarget::Type::Navigation, nav.z_index, i });
+			if (normalizedX >= nav.hotspot.x && normalizedX <= (nav.hotspot.x + nav.hotspot.width) &&
+				normalizedY >= nav.hotspot.y && normalizedY <= (nav.hotspot.y + nav.hotspot.height)) {
+				if (nav.z_index > highestZIndex) {
+					highestZIndex = nav.z_index;
+					targetType = TargetType::Navigation;
+				}
 			}
 		}
 
 		// Check hotspots
-		for (size_t i = 0; i < state.view.hotspots.size(); i++) {
+		for (size_t i = 0; i < state.view.hotspots.size(); ++i) {
 			const auto& hotspot = state.view.hotspots[i];
-			if (normalizedX >= hotspot.x &&
-				normalizedX <= (hotspot.x + hotspot.width) &&
-				normalizedY >= hotspot.y &&
-				normalizedY <= (hotspot.y + hotspot.height)) {
-
-				targetsAtCursor.push_back({ CursorTarget::Type::Hotspot, hotspot.z_index, i });
+			if (normalizedX >= hotspot.x && normalizedX <= (hotspot.x + hotspot.width) &&
+				normalizedY >= hotspot.y && normalizedY <= (hotspot.y + hotspot.height)) {
+				if (hotspot.z_index > highestZIndex) {
+					highestZIndex = hotspot.z_index;
+					targetType = TargetType::Hotspot;
+				}
 			}
 		}
 
-		// Sort by z-index (highest z-index last)
-		std::sort(targetsAtCursor.begin(), targetsAtCursor.end(),
-			[](const CursorTarget& a, const CursorTarget& b) {
-				return a.z_index < b.z_index;
-			});
-
-		// Handle the target with the highest z-index if we have any targets
-		if (!targetsAtCursor.empty()) {
-			isCursorOver = true;
+		if (targetType != TargetType::None) {
 			SetCursor(handCursor);
 		}
 		else {
 			SetCursor(defaultCursor);
 		}
-
 		return 0;
 	}
 	case WM_LBUTTONDOWN: {
 		POINT cursorPos;
 		GetCursorPos(&cursorPos);
-		ScreenToClient(hwnd, &cursorPos);
+		ScreenToClient(g_hwnd, &cursorPos);
 
 		float normalizedX = static_cast<float>(cursorPos.x) / state.ui.width * 100.0f;
 		float normalizedY = static_cast<float>(cursorPos.y) / state.ui.height * 100.0f;
 
 		if (!state.animation.isPlaying && state.currentVDX) {
-			// Create a list of all hotspots and navigations at the click position
-			struct ClickTarget {
-				enum class Type { Navigation, Hotspot } type;
-				int z_index;
-				size_t index;
-			};
-
-			std::vector<ClickTarget> targetsAtClick;
+			int highestZIndex = -1;
+			size_t targetIndex = 0;
+			enum class TargetType { None, Navigation, Hotspot } targetType = TargetType::None;
 
 			// Check navigations
-			for (size_t i = 0; i < state.view.navigations.size(); i++) {
+			for (size_t i = 0; i < state.view.navigations.size(); ++i) {
 				const auto& nav = state.view.navigations[i];
-				if (normalizedX >= nav.hotspot.x &&
-					normalizedX <= (nav.hotspot.x + nav.hotspot.width) &&
-					normalizedY >= nav.hotspot.y &&
-					normalizedY <= (nav.hotspot.y + nav.hotspot.height)) {
-
-					targetsAtClick.push_back({ ClickTarget::Type::Navigation, nav.z_index, i });
+				if (normalizedX >= nav.hotspot.x && normalizedX <= (nav.hotspot.x + nav.hotspot.width) &&
+					normalizedY >= nav.hotspot.y && normalizedY <= (nav.hotspot.y + nav.hotspot.height)) {
+					if (nav.z_index > highestZIndex) {
+						highestZIndex = nav.z_index;
+						targetIndex = i;
+						targetType = TargetType::Navigation;
+					}
 				}
 			}
 
 			// Check hotspots
-			for (size_t i = 0; i < state.view.hotspots.size(); i++) {
+			for (size_t i = 0; i < state.view.hotspots.size(); ++i) {
 				const auto& hotspot = state.view.hotspots[i];
-				if (normalizedX >= hotspot.x &&
-					normalizedX <= (hotspot.x + hotspot.width) &&
-					normalizedY >= hotspot.y &&
-					normalizedY <= (hotspot.y + hotspot.height)) {
-
-					targetsAtClick.push_back({ ClickTarget::Type::Hotspot, hotspot.z_index, i });
-				}
-			}
-
-			// Sort by z-index (highest z-index last)
-			std::sort(targetsAtClick.begin(), targetsAtClick.end(),
-				[](const ClickTarget& a, const ClickTarget& b) {
-					return a.z_index < b.z_index;
-				});
-
-			// Handle the target with the highest z-index if we have any targets
-			if (!targetsAtClick.empty()) {
-				const auto& topTarget = targetsAtClick.back();
-
-				if (topTarget.type == ClickTarget::Type::Navigation) {
-					state.current_view = state.view.navigations[topTarget.index].next_view;
-					state.animation_sequence.clear();  // Clear any previous sequence
-				}
-				else if (topTarget.type == ClickTarget::Type::Hotspot) {
-					const auto& hotspot = state.view.hotspots[topTarget.index];
-					if (hotspot.action) {
-						hotspot.action();
+				if (normalizedX >= hotspot.x && normalizedX <= (hotspot.x + hotspot.width) &&
+					normalizedY >= hotspot.y && normalizedY <= (hotspot.y + hotspot.height)) {
+					if (hotspot.z_index > highestZIndex) {
+						highestZIndex = hotspot.z_index;
+						targetIndex = i;
+						targetType = TargetType::Hotspot;
 					}
 				}
 			}
-		}
 
+			if (targetType == TargetType::Navigation) {
+				state.current_view = state.view.navigations[targetIndex].next_view;
+				state.animation_sequence.clear();
+			}
+			else if (targetType == TargetType::Hotspot) {
+				const auto& hotspot = state.view.hotspots[targetIndex];
+				if (hotspot.action) {
+					hotspot.action();
+				}
+			}
+		}
 		return 0;
 	}
 	case WM_DESTROY:
@@ -339,14 +307,14 @@ LRESULT CALLBACK AboutDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM 
 // Initialize handlers
 //
 void initHandlers() {
-	initializeRenderer["VULKAN"] = initializeVulkan;
-	initializeRenderer["Direct2D"] = initializeD2D;
+	initializeRenderer[RendererType::VULKAN] = initializeVulkan;
+	initializeRenderer[RendererType::DIRECT2D] = initializeD2D;
 
-	renderFrameFuncs["VULKAN"] = renderFrameVk;
-	renderFrameFuncs["Direct2D"] = renderFrameD2D;
+	renderFrameFuncs[RendererType::VULKAN] = renderFrameVk;
+	renderFrameFuncs[RendererType::DIRECT2D] = renderFrameD2D;
 
-	cleanupFuncs["VULKAN"] = cleanupVulkan;
-	cleanupFuncs["Direct2D"] = cleanupD2D;
+	cleanupFuncs[RendererType::VULKAN] = cleanupVulkan;
+	cleanupFuncs[RendererType::DIRECT2D] = cleanupD2D;
 }
 
 //
@@ -357,18 +325,18 @@ void initMenu() {
 	HMENU hFileMenu = CreatePopupMenu();
 	HMENU hHelpMenu = CreatePopupMenu();
 
-	AppendMenu(hFileMenu, MF_STRING, CMD_FILE_OPEN, L"Open");
+	AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::FILE_OPEN), L"Open");
 	AppendMenu(hFileMenu, MF_SEPARATOR, 0, nullptr);
-	AppendMenu(hFileMenu, MF_STRING, CMD_FILE_SAVE, L"Save");
+	AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::FILE_SAVE), L"Save");
 	AppendMenu(hFileMenu, MF_SEPARATOR, 0, nullptr);
-	AppendMenu(hFileMenu, MF_STRING, CMD_FILE_EXIT, L"Exit");
+	AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::FILE_EXIT), L"Exit");
 
-	AppendMenu(hHelpMenu, MF_STRING, CMD_HELP_ABOUT, L"About");
+	AppendMenu(hHelpMenu, MF_STRING, static_cast<UINT>(MenuCommands::HELP_ABOUT), L"About");
 
-	AppendMenu(hMenu, MF_POPUP, (UINT_PTR)hFileMenu, L"File");
-	AppendMenu(hMenu, MF_POPUP, (UINT_PTR)hHelpMenu, L"Help");
+	AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hFileMenu), L"File");
+	AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hHelpMenu), L"Help");
 
-	SetMenu(hwnd, hMenu);
+	SetMenu(g_hwnd, hMenu);
 }
 
 //
@@ -470,7 +438,7 @@ void initWindow() {
 	RECT rect = { 0, 0, state.ui.width, state.ui.height };
 	if (!config["fullscreen"]) AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, TRUE);
 
-	hwnd = CreateWindowEx(
+	g_hwnd = CreateWindowEx(
 		0,
 		wc.lpszClassName,
 		std::wstring(windowTitle.begin(), windowTitle.end()).c_str(),
@@ -480,15 +448,16 @@ void initWindow() {
 		nullptr, nullptr, GetModuleHandle(nullptr), nullptr
 	);
 
-	if (!hwnd) {
+	if (!g_hwnd) {
 		throw std::runtime_error("Failed to create window");
 	}
 
 	if (!config["fullscreen"]) { initMenu(); }
 
-	initializeRenderer[config["renderer"]]();
+	renderer = (config["renderer"] == "VULKAN") ? RendererType::VULKAN : RendererType::DIRECT2D;
+	initializeRenderer[renderer]();
 
-	ShowWindow(hwnd, SW_SHOW);
+	ShowWindow(g_hwnd, SW_SHOW);
 }
 
 //
@@ -509,5 +478,5 @@ bool processEvents() {
 //
 // Abstractions
 //
-void renderFrame() { renderFrameFuncs[config["renderer"]](); }
-void cleanupWindow() { cleanupFuncs[config["renderer"]](); }
+void renderFrame() { renderFrameFuncs[renderer](); }
+void cleanupWindow() { cleanupFuncs[renderer](); }
