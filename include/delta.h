@@ -5,20 +5,23 @@
 
 #include <array>
 #include <vector>
+#include <span>
+
+#include "bitmap.h"
 
 /*
 ===============================================================================
 
 	7th Guest - Delta Bitmap Frames
 
-	Thehe logic to process delta bitmap frames, meaning the subsequentially
+	The logic to process delta bitmap frames, meaning the subsequentially
 	stored LZSS compressed bitmaps only contain data for the individual pixels
 	that are different from the previous bitmap frame.
 
 ===============================================================================
 */
 
-const std::array<unsigned char, 192> MapField = {
+inline constexpr std::array<uint8_t, 192> MapField = {
 	0x00, 0xc8, 0x80, 0xec, 0xc8, 0xfe, 0xec, 0xff, 0xfe, 0xff, 0x00, 0x31, 0x10, 0x73, 0x31, 0xf7,
 	0x73, 0xff, 0xf7, 0xff, 0x80, 0x6c, 0xc8, 0x36, 0x6c, 0x13, 0x10, 0x63, 0x31, 0xc6, 0x63, 0x8c,
 	0x00, 0xf0, 0x00, 0xff, 0xf0, 0xff, 0x11, 0x11, 0x33, 0x33, 0x77, 0x77, 0x66, 0x66, 0xcc, 0xcc,
@@ -32,8 +35,12 @@ const std::array<unsigned char, 192> MapField = {
 	0xcf, 0x44, 0xd9, 0x4c, 0x99, 0x4c, 0x55, 0x55, 0x3f, 0x60, 0x77, 0x60, 0x37, 0x62, 0xc9, 0x64,
 	0xcd, 0x64, 0xd9, 0x6c, 0xef, 0x70, 0x00, 0x0f, 0xf0, 0x00, 0x00, 0x00, 0x44, 0x44, 0x22, 0x22 };
 
-std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getDeltaBitmapData(std::vector<uint8_t>& buffer,
-	std::vector<RGBColor>& palette,
-	std::vector<uint8_t>& frameBuffer);
+//=============================================================================
+
+// Function prototypes
+std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getDeltaBitmapData(
+	std::span<uint8_t> buffer,
+	std::span<RGBColor> palette,
+	std::span<uint8_t> frameBuffer);
 
 #endif // DELTA_H

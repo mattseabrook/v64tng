@@ -6,39 +6,44 @@
 #include <vector>
 #include <tuple>
 #include <cstdint>
-#include <string>
+#include <string_view>
+#include <span>
 
 /*
 ===============================================================================
 
     7th Guest - Bitmap
 
-    This header file contains x
+	This header file also contains an RGBColor structure that is used to
+	represent an 8-bit RGB color. As well as the readLittleEndian16 function
+	that reads a 16-bit little-endian value from a byte array, used by both
+	the getBitmapData and getDeltaBitmapData functions in delta.cpp
 
 ===============================================================================
 */
 
-struct RGBColor
-{
+//
+// RGBColor
+//
+struct RGBColor {
     uint8_t r, g, b;
 
-    bool operator==(const RGBColor& other) const {
+    bool operator==(const RGBColor& other) const noexcept {
         return r == other.r && g == other.g && b == other.b;
     }
 };
 
-template <typename T>
-T readLittleEndian(const uint8_t* data)
-{
-    T result = 0;
-    for (size_t i = 0; i < sizeof(T); ++i)
-    {
-        result |= static_cast<T>(data[i]) << (i * 8);
-    }
-    return result;
+//
+// readLittleEndian16
+//
+inline uint16_t readLittleEndian16(std::span<const uint8_t> data) noexcept {
+    return data[0] | (data[1] << 8);
 }
 
-std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getBitmapData(const std::vector<uint8_t>& chunkData);
-std::vector<uint8_t> packBitmapData(const std::vector<uint8_t>& rawImageData, const std::vector<RGBColor>& palette, int width, int height);
+//=============================================================================
+
+// Function prototypes
+std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getBitmapData(std::span<const uint8_t> chunkData);
+std::vector<uint8_t> packBitmapData(std::span<const uint8_t> rawImageData, std::span<const RGBColor> palette, int width, int height);
 
 #endif // BITMAP_H
