@@ -9,13 +9,24 @@
 
 #include "extract.h"
 
+#include "config.h"
 #include "rl.h"
 #include "gjd.h"
 #include "vdx.h"
-#include "xmi.h"
+#include "music.h"
 #include "bitmap.h"
 
-// Output the information for a GJD file
+/*
+===============================================================================
+Function Name: GJDInfo
+
+Description:
+	- Outputs the filename, offset, and length of each VDX file in the GJD file
+
+Parameters:
+	- filename: The filename of the VDX file to be extracted
+===============================================================================
+*/
 void GJDInfo(const std::string_view& filename)
 {
 	auto vdxFiles = parseRLFile(filename.data());
@@ -28,7 +39,18 @@ void GJDInfo(const std::string_view& filename)
 	std::cout << "Number of VDX Files: " << vdxFiles.size() << std::endl;
 }
 
-// Extract XMI files from the RL/GJD pair
+/*
+===============================================================================
+Function Name: extractXMI
+
+Description:
+	- Writes out a *.MID or *.XMI file of the given MIDI data
+
+Parameters:
+	- midiData: The MIDI data to be written
+	- name: The filename of the MIDI file to be written
+===============================================================================
+*/
 void extractXMI(const std::vector<uint8_t>& midiData, std::string name)
 {
 	std::ofstream midiFileOut(name + ".mid", std::ios::binary);
@@ -36,8 +58,17 @@ void extractXMI(const std::vector<uint8_t>& midiData, std::string name)
 	midiFileOut.close();
 }
 
-// Extracts all of the *.VDX files from the user-specifed *.GJD file
-void extractVDX(const std::string_view& filename)
+/*
+===============================================================================
+Function Name: extractVDX
+
+Description:
+	- Extracts the VDX files from the GJD file
+
+Parameters:
+	- filename: The filename of the VDX file to be extracted
+===============================================================================
+*/void extractVDX(const std::string_view& filename)
 {
 	std::string dirName(filename.data());
 	dirName.erase(dirName.find_last_of('.'));
@@ -49,7 +80,27 @@ void extractVDX(const std::string_view& filename)
 
 	for (const auto& vdxFile : VDXFiles)
 	{
-		writeVDXFile(vdxFile, dirName);
+		std::string vdxFileName = dirName + "/" + vdxFile.filename + ".vdx";
+		std::cout << "filename: " << vdxFileName << std::endl;
+
+		std::ofstream vdxFileOut(vdxFileName, std::ios::binary);
+		vdxFileOut.write(reinterpret_cast<const char*>(&vdxFile.identifier), sizeof(vdxFile.identifier));
+		vdxFileOut.write(reinterpret_cast<const char*>(vdxFile.unknown.data()), 6);
+
+		for (const auto& chunk : vdxFile.chunks)
+		{
+			// Write chunk header
+			vdxFileOut.write(reinterpret_cast<const char*>(&chunk.chunkType), sizeof(chunk.chunkType));
+			vdxFileOut.write(reinterpret_cast<const char*>(&chunk.unknown), sizeof(chunk.unknown));
+			vdxFileOut.write(reinterpret_cast<const char*>(&chunk.dataSize), sizeof(chunk.dataSize));
+			vdxFileOut.write(reinterpret_cast<const char*>(&chunk.lengthMask), sizeof(chunk.lengthMask));
+			vdxFileOut.write(reinterpret_cast<const char*>(&chunk.lengthBits), sizeof(chunk.lengthBits));
+
+			// Write chunk data
+			vdxFileOut.write(reinterpret_cast<const char*>(chunk.data.data()), chunk.data.size());
+		}
+
+		vdxFileOut.close();
 	}
 }
 
@@ -67,81 +118,40 @@ Parameters:
 
 ===============================================================================
 */
-void extractPNG(const std::string_view& filename, bool raw) {
-	// Open the VDX file in binary mode
+void extractPNG(std::string_view filename, bool raw) {
 	std::ifstream vdxFile(filename.data(), std::ios::binary | std::ios::ate);
 	if (!vdxFile) {
 		std::cerr << "ERROR: Failed to open the VDX file: " << filename << std::endl;
 		return;
 	}
 
-	// Read the entire file into memory
 	auto fileSize = static_cast<std::size_t>(vdxFile.tellg());
 	vdxFile.seekg(0, std::ios::beg);
 	std::vector<uint8_t> vdxData(fileSize);
 	vdxFile.read(reinterpret_cast<char*>(vdxData.data()), fileSize);
 
-	// Parse the VDX file and its chunks
-	VDXFile parsedVDXFile = parseVDXFile(filename.data(), vdxData);
+	VDXFile parsedVDXFile = parseVDXFile(filename, vdxData);
 	parseVDXChunks(parsedVDXFile);
 
-	// Construct the output directory path
-	std::filesystem::path dirPath = std::filesystem::absolute(std::filesystem::path(filename).parent_path() / parsedVDXFile.filename);
-
-	// Normalize the path to remove redundant separators
-	dirPath = dirPath.lexically_normal();
-
-	// Debug output for the directory path
-	std::cout << "Resolved directory path: " << dirPath.string() << std::endl;
-
-	// Handle conflicts between files and directories
-	if (std::filesystem::exists(dirPath)) {
-		if (std::filesystem::is_directory(dirPath)) {
-			// Directory already exists, proceed
-			std::cout << "Directory already exists: " << dirPath.string() << std::endl;
-		}
-		else if (std::filesystem::is_regular_file(dirPath)) {
-			// A file with the same name exists, attempt to create a directory
-			std::cout << "File with the same name exists: " << dirPath.string() << std::endl;
-			dirPath /= ""; // Append a trailing separator to differentiate the directory
-			if (!std::filesystem::create_directory(dirPath)) {
-				std::cerr << "ERROR: Failed to create directory: " << dirPath.string() << std::endl;
-				return;
-			}
-		}
-		else {
-			std::cerr << "ERROR: Path exists but is neither a file nor a directory: " << dirPath.string() << std::endl;
-			return;
-		}
-	}
-	else {
-		// Attempt to create the directory
-		if (!std::filesystem::create_directory(dirPath)) {
-			std::cerr << "ERROR: Failed to create directory: " << dirPath.string() << std::endl;
-			return;
-		}
+	std::filesystem::path dirPath = std::filesystem::absolute(std::filesystem::path(filename).parent_path() / parsedVDXFile.filename).lexically_normal();
+	if (!std::filesystem::exists(dirPath) && !std::filesystem::create_directory(dirPath)) {
+		std::cerr << "ERROR: Failed to create directory: " << dirPath.string() << std::endl;
+		return;
 	}
 
-	// Process each chunk and write PNG/RAW files
-	for (std::size_t i = 0; i < parsedVDXFile.chunks.size(); ++i) {
+	std::vector<uint8_t> alphaFrame(640 * 320 * 3);  // For devMode visualization
+	const RGBColor colorKey{ 255, 0, 255 };  // Fuscia
+
+	for (size_t i = 0; i < parsedVDXFile.chunks.size(); ++i) {
 		const auto& chunk = parsedVDXFile.chunks[i];
-
-		// Skip unsupported chunk types
-		if (chunk.chunkType == 0x80 || chunk.chunkType == 0x00) {
-			continue;
+		if (chunk.chunkType != 0x20 && chunk.chunkType != 0x25) {
+			continue;  // Skip non-bitmap chunks
 		}
 
-		// Debug output for chunk information
-		std::cout << "Type: 0x" << std::hex << static_cast<int>(chunk.chunkType)
-			<< " , LZSS size (bytes): " << std::dec << chunk.dataSize
-			<< " , Size (bytes): " << chunk.data.size() << std::endl;
-
-		// Generate frame number string (e.g., "0001")
 		std::ostringstream frameString;
 		frameString << std::setfill('0') << std::setw(4) << (i + 1);
-
-		// Construct output file path
 		std::filesystem::path outputFilePath = dirPath / (parsedVDXFile.filename + "_" + frameString.str());
+
 		if (raw) {
 			outputFilePath.replace_extension(".raw");
 			std::ofstream rawBitmapFile(outputFilePath, std::ios::binary);
@@ -155,14 +165,39 @@ void extractPNG(const std::string_view& filename, bool raw) {
 		else {
 			outputFilePath.replace_extension(".png");
 			std::cout << "Writing: " << outputFilePath.string() << std::endl;
-			savePNG(outputFilePath.string(), chunk.data, 640, 320);
+			if (config["devMode"] && chunk.chunkType == 0x25 && i > 0) {
+				// Generate alpha visualization for delta chunks
+				const auto& prevFrame = parsedVDXFile.chunks[i - 1].data;
+				alphaFrame = prevFrame;  // Start with previous frame
+				for (size_t j = 0; j < chunk.data.size() && j < prevFrame.size(); j += 3) {
+					if (chunk.data[j] != prevFrame[j] ||
+						chunk.data[j + 1] != prevFrame[j + 1] ||
+						chunk.data[j + 2] != prevFrame[j + 2]) {
+						alphaFrame[j] = colorKey.r;
+						alphaFrame[j + 1] = colorKey.g;
+						alphaFrame[j + 2] = colorKey.b;
+					}
+				}
+				savePNG(outputFilePath.string(), alphaFrame, 640, 320);
+			}
+			else {
+				savePNG(outputFilePath.string(), chunk.data, 640, 320);
+			}
 		}
 	}
 }
 
-//
-// Invokes FFmpeg to create a video from a directory of *.PNG files
-//
+/*
+===============================================================================
+Function Name: createVideoFromImages
+
+Description:
+	- Creates a video from the PNG files in the specified directory using FFmpeg
+
+Parameters:
+	- filenameParam: The filename of the VDX file to be extracted
+===============================================================================
+*/
 void createVideoFromImages(const std::string& filenameParam) {
 	// Check if FFmpeg is installed
 	if (std::system("ffmpeg -version") != 0) {

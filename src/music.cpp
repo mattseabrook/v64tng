@@ -1,4 +1,4 @@
-// xmi.cpp
+// music.cpp
 
 #include <cstring>
 #include <algorithm>
@@ -14,11 +14,10 @@
 #include <Mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
 
-
 #include <adlmidi.h>
 
 #include "game.h"
-#include "xmi.h"
+#include "music.h"
 #include "rl.h"
 
 /*
@@ -455,7 +454,6 @@ std::vector<uint8_t> xmiConverter(const RLEntry& song)
 // Play MIDI data using libADLMIDI
 //
 void PlayMIDI(const std::vector<uint8_t>& midiData) {
-	// WASAPI initialization part 1: Determine the actual sample rate
 	HRESULT hr;
 	IMMDeviceEnumerator* pEnumerator = nullptr;
 	IMMDevice* pDevice = nullptr;
@@ -502,7 +500,6 @@ void PlayMIDI(const std::vector<uint8_t>& midiData) {
 	wfx.nBlockAlign = wfx.nChannels * wfx.wBitsPerSample / 8;
 	wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
 
-	// Initialize audio client with 44.1 kHz
 	hr = pAudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, 500000, 0, &wfx, nullptr);
 	if (FAILED(hr)) {
 		std::cerr << "Falling back to 48 kHz" << std::endl;
@@ -644,11 +641,10 @@ void PlayMIDI(const std::vector<uint8_t>& midiData) {
 // Initialize and play a music track in a non-blocking way
 //
 void xmiPlay(const std::string& songName) {
-	// Load music settings from config.json
 	bool midi_enabled = config.value("midiEnabled", true);
 	int midi_volume = config.value("midiVolume", 100);
 	state.music_volume = std::clamp(midi_volume / 100.0f, 0.0f, 1.0f);
-	state.music_mode = config.value("midiMode", "opl3"); // Default to opl3
+	state.music_mode = config.value("midiMode", "opl3");
 
 	// Play the song in a non-blocking thread if enabled
 	if (midi_enabled) {
@@ -673,54 +669,3 @@ void xmiPlay(const std::string& songName) {
 		state.music_thread = std::thread(play_music);
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-void PlayMIDI(const std::vector<uint8_t>& midiData) {
-	// Create a temporary MIDI file in the user's %TEMP% directory
-	wchar_t tempPath[MAX_PATH];
-	GetTempPathW(MAX_PATH, tempPath);
-
-	wchar_t tempFile[MAX_PATH];
-	GetTempFileNameW(tempPath, L"MIDI", 0, tempFile);
-
-	std::ofstream file(tempFile, std::ios::binary);
-	file.write(reinterpret_cast<const char*>(midiData.data()), midiData.size());
-	file.close();
-
-	std::wstring tempFilePath = tempFile;
-
-	// Open the MIDI file
-	std::wstring openCommand = L"open \"" + tempFilePath + L"\" type sequencer alias midiFile";
-	mciSendStringW(openCommand.c_str(), NULL, 0, NULL);
-
-	// Play the MIDI file
-	mciSendStringW(L"play midiFile from 0", NULL, 0, NULL);
-
-	// Wait for user input to stop playback
-	std::cout << "Press any key to stop playback..." << std::endl;
-	std::cin.get();
-
-	// Close the MIDI device
-	mciSendStringW(L"close midiFile", NULL, 0, NULL);
-
-	// Delete the temporary file
-	DeleteFileW(tempFilePath.c_str());
-}
-*/

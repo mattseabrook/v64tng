@@ -182,7 +182,7 @@ xcopy /y "$(OutDir)$(TargetName)$(TargetExt)" "C:\T7G\"</Command>
     <ClInclude Include="include\vdx.h" />
     <ClInclude Include="include\vulkan.h" />
     <ClInclude Include="include\window.h" />
-    <ClInclude Include="include\xmi.h" />
+    <ClInclude Include="include\music.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
@@ -200,7 +200,7 @@ xcopy /y "$(OutDir)$(TargetName)$(TargetExt)" "C:\T7G\"</Command>
     <ClCompile Include="src\vdx.cpp" />
     <ClCompile Include="src\vulkan.cpp" />
     <ClCompile Include="src\window.cpp" />
-    <ClCompile Include="src\xmi.cpp" />
+    <ClCompile Include="src\music.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="resource.rc" />

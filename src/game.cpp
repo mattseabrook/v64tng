@@ -12,7 +12,7 @@
 #include "game.h"
 #include "window.h"
 #include "gjd.h"
-#include "xmi.h"
+#include "music.h"
 #include "config.h"
 
 #include "fh.h"

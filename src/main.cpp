@@ -37,9 +37,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <thread>
 #include <string>
-#include <memory>
 #include <filesystem>
 #include <algorithm>
 
@@ -50,23 +48,21 @@
 #include "rl.h"
 #include "gjd.h"
 #include "vdx.h"
-#include "xmi.h"
+#include "music.h"
 
- //
- // Working around Microsoft Shittiness (FreeConsole() doesn't work)
- //
-static void simulateEnterKey() {
-	INPUT ip;
-	ip.type = INPUT_KEYBOARD;
-	ip.ki.wScan = 0;
-	ip.ki.time = 0;
-	ip.ki.dwExtraInfo = 0;
-	ip.ki.wVk = VK_RETURN;
-	ip.ki.dwFlags = 0;
-	SendInput(1, &ip, sizeof(INPUT));
-	ip.ki.dwFlags = KEYEVENTF_KEYUP;
-	SendInput(1, &ip, sizeof(INPUT));
-}
+//
+// Console guard to ensure that the console is properly allocated and attached
+//
+struct ConsoleGuard {
+	bool allocated = false;
+	bool attached = false;
+	~ConsoleGuard() {
+		fclose(stdout);
+		fclose(stderr);
+		fclose(stdin);
+		if (allocated) FreeConsole();
+	}
+};
 
 /*
  ====================
@@ -88,11 +84,14 @@ int WINAPI WinMain(
 	}
 
 	std::vector<std::string> args;
+	args.reserve(argc);
+
+	std::vector<char> buffer;
 	for (int i = 0; i < argc; ++i) {
 		int length = WideCharToMultiByte(CP_UTF8, 0, argv[i], -1, nullptr, 0, nullptr, nullptr);
-		std::vector<char> buffer(length);
+		buffer.resize(length);
 		WideCharToMultiByte(CP_UTF8, 0, argv[i], -1, buffer.data(), length, nullptr, nullptr);
-		args.emplace_back(buffer.data(), buffer.size() - 1);
+		args.emplace_back(buffer.data(), length - 1);
 	}
 
 	bool isConsoleApp = (args.size() > 1);
@@ -100,7 +99,8 @@ int WINAPI WinMain(
 	bool consoleAttached = false;
 
 	if (isConsoleApp) {
-		if ((consoleAttached = AttachConsole(ATTACH_PARENT_PROCESS)) || (consoleAllocated = AllocConsole())) {
+		ConsoleGuard guard;
+		if ((guard.attached = AttachConsole(ATTACH_PARENT_PROCESS)) || (guard.allocated = AllocConsole())) {
 			freopen_s(reinterpret_cast<FILE**>(stdout), "CONOUT$", "w", stdout);
 			freopen_s(reinterpret_cast<FILE**>(stderr), "CONOUT$", "w", stderr);
 			freopen_s(reinterpret_cast<FILE**>(stdin), "CONIN$", "r", stdin);
@@ -110,60 +110,58 @@ int WINAPI WinMain(
 			//
 			if (args[1] == "-g") {
 				if (args.size() < 3) {
-					std::cerr << "ERROR: a *.RL file was not specified.\n\nExample: v64tng.exe -g DR.RL" << std::endl;
-					simulateEnterKey();
+					constexpr std::string_view errorMsg = "ERROR: a *.RL file was not specified.\n\nExample: v64tng.exe -g DR.RL\n";
+					std::cerr << errorMsg;
 					return 1;
 				}
 				extractVDX(args[2]);
-				simulateEnterKey();
 			}
 			//
 			// Exposed LZSS compression/decompression functions to test with the last frame of a *.VDX file
 			//
 			else if (args[1] == "-l") {
 				if (args.size() < 3) {
-					MessageBoxA(NULL, "ERROR: a *.vdx file was not specified.\n\nExample: v64tng.exe -l f_1bc.vdx", "v64tng.exe", MB_OK | MB_ICONERROR);
+					constexpr std::string_view errorMsg = "ERROR: a *.vdx file was not specified.\n\nExample: v64tng.exe -l f_1bc.vdx";
+					MessageBoxA(NULL, errorMsg.data(), "v64tng.exe", MB_OK | MB_ICONERROR);
 					return 1;
 				}
 
 				VDXFile vdxFile;
 				std::vector<uint8_t> buffer;
 
-				std::ifstream file(args[2], std::ios::binary | std::ios::ate);
+				// Use std::filesystem for path manipulation
+				std::filesystem::path filePath(args[2]);
+				std::string baseName = filePath.stem().string();
+
+				std::ifstream file(filePath, std::ios::binary | std::ios::ate);
 				if (file) {
-					auto fileSize = static_cast<std::size_t>(file.tellg());
+					buffer.resize(static_cast<std::size_t>(file.tellg()));
 					file.seekg(0, std::ios::beg);
-					buffer.resize(fileSize);
-					file.read(reinterpret_cast<char*>(buffer.data()), fileSize);
+					file.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
 					file.close();
 				}
 				else {
-					MessageBoxA(NULL, "ERROR: Unable to open the *.vdx file", "v64tng.exe", MB_OK | MB_ICONERROR);
+					constexpr std::string_view errorMsg = "ERROR: Unable to open the *.vdx file";
+					MessageBoxA(NULL, errorMsg.data(), "v64tng.exe", MB_OK | MB_ICONERROR);
 					return 1;
 				}
 
-				vdxFile = parseVDXFile(args[2], buffer);
+				vdxFile = parseVDXFile(filePath.string(), buffer);
 
-				// Get the last chunk
 				auto& chunk = vdxFile.chunks.back();
+				std::span<const uint8_t> chunkData(chunk.data); // Zero-copy view
 
-				// Extract only the chunk data (excluding the chunk header)
-				const std::vector<uint8_t>& chunkData = chunk.data;
-
-				// Save the original compressed data (excluding the chunk header)
-				std::ofstream chunkFile(args[2].substr(0, args[2].find_last_of('.')) + "_chunk_original.bin", std::ios::binary);
+				std::ofstream chunkFile(baseName + "_chunk_original.bin", std::ios::binary);
 				chunkFile.write(reinterpret_cast<const char*>(chunkData.data()), chunkData.size());
 				chunkFile.close();
 
-				// Decompress the chunk data
 				auto decompressedData = lzssDecompress(chunkData, chunk.lengthMask, chunk.lengthBits);
-				std::ofstream decompFile(args[2].substr(0, args[2].find_last_of('.')) + "_chunk_decompressed.bin", std::ios::binary);
+				std::ofstream decompFile(baseName + "_chunk_decompressed.bin", std::ios::binary);
 				decompFile.write(reinterpret_cast<const char*>(decompressedData.data()), decompressedData.size());
 				decompFile.close();
 
-				// Compress the decompressed data
 				auto compressedData = lzssCompress(decompressedData, chunk.lengthMask, chunk.lengthBits);
-				std::ofstream compFile(args[2].substr(0, args[2].find_last_of('.')) + "_chunk_compressed.bin", std::ios::binary);
+				std::ofstream compFile(baseName + "_chunk_compressed.bin", std::ios::binary);
 				compFile.write(reinterpret_cast<const char*>(compressedData.data()), compressedData.size());
 				compFile.close();
 			}
@@ -172,77 +170,53 @@ int WINAPI WinMain(
 			//
 			else if (args[1] == "-p") {
 				if (args.size() < 3) {
-					std::cerr << "ERROR: a *.VDX file was not specified.\n\nExample: v64tng.exe -p f_1bb.vdx {raw} {alpha} {video}" << std::endl;
-					simulateEnterKey();
+					constexpr std::string_view errorMsg = "ERROR: a *.VDX file was not specified.\n\nExample: v64tng.exe -p f_1bb.vdx {raw} {alpha} {video}\n";
+					std::cerr << errorMsg;
 					return 1;
 				}
 
-				bool raw = false;
-				bool video = false;
-
-				for (auto arg = args.begin() + 3; arg != args.end(); ++arg) {
-					if (*arg == "raw") {
-						raw = true;
-					}
-					else if (*arg == "alpha") {
-						config["devMode"] = true;
-					}
-					else if (*arg == "video") {
-						video = true;
-					}
+				bool raw = std::ranges::any_of(args | std::ranges::views::drop(3), [](const auto& arg) { return arg == "raw"; });
+				bool video = std::ranges::any_of(args | std::ranges::views::drop(3), [](const auto& arg) { return arg == "video"; });
+				if (std::ranges::any_of(args | std::ranges::views::drop(3), [](const auto& arg) { return arg == "alpha"; })) {
+					config["devMode"] = true;
 				}
+
+				std::filesystem::path filePath(args[2]);
+				std::string basePath = filePath.parent_path().string();
+				std::string baseName = filePath.stem().string();
+
 				extractPNG(args[2], raw);
 
-				std::string fullPath = args[2];
-				std::string directory;
-				std::string filename;
-				size_t lastSlashPos = fullPath.find_last_of("\\/");
-
-				if (lastSlashPos != std::string::npos) {
-					directory = fullPath.substr(0, lastSlashPos);
-					filename = fullPath.substr(lastSlashPos + 1);
-				}
-				else {
-					filename = fullPath;
-				}
-
-				filename.erase(filename.find_last_of('.'));
-
 				if (video && !raw) {
-					createVideoFromImages(directory.empty() ? filename : directory + "\\" + filename);
+					createVideoFromImages(basePath.empty() ? baseName : basePath + "\\" + baseName);
 				}
-
-				simulateEnterKey();
 			}
 			//
 			// Output information about how data is packed in the GJD resource file
 			//
 			else if (args[1] == "-r") {
 				if (args.size() < 3) {
-					std::cerr << "ERROR: a *.RL file was not specified.\n\nExample: v64tng.exe -r DR.RL" << std::endl;
-					simulateEnterKey();
+					constexpr std::string_view errorMsg = "ERROR: a *.RL file was not specified.\n\nExample: v64tng.exe -r DR.RL\n";
+					std::cerr << errorMsg;
 					return 1;
 				}
 				GJDInfo(args[2]);
-				simulateEnterKey();
 			}
 			//
 			// Extract or Play a specific XMI file from the XMI.RL file
 			//
 			else if (args[1] == "-x") {
 				if (args.size() < 3) {
-					std::cerr << "ERROR: an action was not specified.\n\nExample: v64tng.exe -x agu16 {play|extract (xmi)}" << std::endl;
-					simulateEnterKey();
+					constexpr std::string_view errorMsg = "ERROR: an action was not specified.\n\nExample: v64tng.exe -x agu16 {play|extract (xmi)}\n";
+					std::cerr << errorMsg;
 					return 1;
 				}
 
 				auto xmiFiles = parseRLFile("XMI.RL");
-				for (auto& entry : xmiFiles) {
-					entry.filename.erase(entry.filename.find_last_of('.'));
-				}
+				// Process filenames in parseRLFile instead of here
 
-				auto song = std::find_if(xmiFiles.begin(), xmiFiles.end(),
-					[&](const RLEntry& entry) { return entry.filename == args[2]; });
+				auto song = std::ranges::find_if(xmiFiles,
+					[&args](const RLEntry& entry) { return entry.filename == args[2]; });
 
 				if (song != xmiFiles.end()) {
 					if (args.size() > 3 && args[3] == "play") {
@@ -253,24 +227,15 @@ int WINAPI WinMain(
 					}
 				}
 				else {
-					std::cerr << "ERROR: XMI file not found." << std::endl;
-					simulateEnterKey();
+					constexpr std::string_view errorMsg = "ERROR: XMI file not found.\n";
+					std::cerr << errorMsg;
 					return 1;
 				}
 			}
 			else {
 				std::cerr << "ERROR: Invalid option: " << args[1] << std::endl;
 				std::cerr << "\nUsage: " << args[0] << " [-r|-p|-g|-x] file" << std::endl;
-				simulateEnterKey();
 				return 1;
-			}
-
-			fclose(stdout);
-			fclose(stderr);
-			fclose(stdin);
-
-			if (consoleAllocated) {
-				FreeConsole();
 			}
 		}
 	}

@@ -45,7 +45,7 @@
     <ClInclude Include="include\vdx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\xmi.h">
+    <ClInclude Include="include\music.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\vulkan.h">
@@ -98,7 +98,7 @@
     <ClCompile Include="src\vdx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\xmi.cpp">
+    <ClCompile Include="src\music.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\vulkan.cpp">

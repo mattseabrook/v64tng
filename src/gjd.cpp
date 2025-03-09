@@ -1,10 +1,9 @@
 // gjd.cpp
 
-#include <Windows.h>
 #include <fstream>
-#include <string>
 #include <vector>
-#include <iostream>
+#include <string>
+#include <stdexcept>
 
 #include "rl.h"
 #include "gjd.h"
@@ -27,28 +26,28 @@ Notes:
     - None.
 ===============================================================================
 */
-std::vector<VDXFile> parseGJDFile(const std::string& rlFilename)
-{
+std::vector<VDXFile> parseGJDFile(std::string_view rlFilename) {
     std::vector<RLEntry> rlEntries = parseRLFile(rlFilename);
-
-    std::string gjdFilename = rlFilename.substr(0, rlFilename.size() - 3) + ".GJD";
-    std::ifstream gjdFile(gjdFilename, std::ios::binary | std::ios::ate);
-
-    if (!gjdFile)
-    {
-        MessageBoxA(NULL, ("Error opening GJD file: " + gjdFilename).c_str(), "Error", MB_OK | MB_ICONERROR);
-        exit(1);
+    if (rlEntries.empty()) {
+        return {};
     }
 
-    std::vector<VDXFile> GJDData;
+	std::string gjdFilename = std::string(rlFilename.substr(0, rlFilename.find_last_of('.'))) + ".GJD";
+    std::ifstream gjdFile(gjdFilename, std::ios::binary);
+    if (!gjdFile) {
+        throw std::runtime_error("Failed to open GJD file: " + gjdFilename);
+    }
 
+    std::vector<VDXFile> gjdData;
+    gjdData.reserve(rlEntries.size());
     for (const auto& entry : rlEntries) {
         std::vector<uint8_t> vdxData(entry.length);
         gjdFile.seekg(entry.offset, std::ios::beg);
         gjdFile.read(reinterpret_cast<char*>(vdxData.data()), entry.length);
-
-        GJDData.push_back(parseVDXFile(entry.filename, vdxData));
+        if (gjdFile.gcount() != static_cast<std::streamsize>(entry.length)) {
+            throw std::runtime_error("Incomplete read from GJD file for: " + entry.filename);
+        }
+        gjdData.push_back(parseVDXFile(entry.filename, std::move(vdxData)));
     }
-
-    return GJDData;
+    return gjdData;
 }
