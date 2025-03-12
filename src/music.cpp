@@ -6,13 +6,12 @@
 #include <array>
 #include <cstdint>
 #include <fstream>
-#include <filesystem>
 #include <windows.h>
 #include <iostream>
-#include <mmsystem.h>	// Remove?
 #include <Audioclient.h>
 #include <Mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
+#include <thread>
 
 #include <adlmidi.h>
 
@@ -598,6 +597,7 @@ void PlayMIDI(const std::vector<uint8_t>& midiData) {
 
 	// Playback loop
 	state.music_playing = true;
+	const float gain = 6.0f;
 	while (state.music_playing) {
 		UINT32 padding;
 		hr = pAudioClient->GetCurrentPadding(&padding);
@@ -616,10 +616,11 @@ void PlayMIDI(const std::vector<uint8_t>& midiData) {
 		int samples = adl_play(player, framesAvailable * 2, (short*)pData);
 		if (samples <= 0) break; // End of song
 
-		// Apply volume scaling
+		// Apply gain and volume scaling with clamping
 		short* samplesPtr = (short*)pData;
 		for (int i = 0; i < samples; i++) {
-			samplesPtr[i] = static_cast<short>(samplesPtr[i] * state.music_volume);
+			float sample = static_cast<float>(samplesPtr[i]) * gain * state.music_volume;
+			samplesPtr[i] = static_cast<short>(std::clamp(sample, -32768.0f, 32767.0f));
 		}
 
 		hr = pRenderClient->ReleaseBuffer(framesAvailable, 0);
