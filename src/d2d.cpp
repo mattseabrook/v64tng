@@ -6,6 +6,7 @@
 #include <windows.h>
 #include <wrl/client.h>
 #include <cstring>
+#include <immintrin.h>
 
 #include "d2d.h"
 
@@ -50,6 +51,33 @@ void resizeBitmap(UINT width, UINT height) {
 }
 
 //
+// Convert RGB to BGRA using SSE intrinsics
+//
+void convertRGBtoBGRA_SSE(const uint8_t* rgbData, uint8_t* bgraData, size_t pixelCount) {
+	static const __m128i shuffleMask = _mm_set_epi8(
+		static_cast<char>(0x80), 9, 10, 11,
+		static_cast<char>(0x80), 6, 7, 8,
+		static_cast<char>(0x80), 3, 4, 5,
+		static_cast<char>(0x80), 0, 1, 2
+	);
+
+	static const __m128i alphaMask = _mm_set_epi8(
+		static_cast<char>(255), 0, 0, 0,
+		static_cast<char>(255), 0, 0, 0,
+		static_cast<char>(255), 0, 0, 0,
+		static_cast<char>(255), 0, 0, 0
+	);
+
+	size_t i = 0;
+	for (; i < pixelCount; i += 4) {
+		__m128i rgb = _mm_loadu_si128(reinterpret_cast<const __m128i*>(rgbData + i * 3));
+		__m128i shuffled = _mm_shuffle_epi8(rgb, shuffleMask);
+		__m128i bgra = _mm_or_si128(shuffled, alphaMask);
+		_mm_storeu_si128(reinterpret_cast<__m128i*>(bgraData + i * 4), bgra);
+	}
+}
+
+//
 // Initialize Direct2D resources
 //
 void initializeD2D() {
@@ -81,70 +109,49 @@ void initializeD2D() {
 // Render a frame using Direct2D
 //
 void renderFrameD2D() {
-    if (!renderTarget || !bitmap) {
-        throw std::runtime_error("Render target or bitmap not initialized");
-    }
+	if (!renderTarget || !bitmap) {
+		throw std::runtime_error("Render target or bitmap not initialized");
+	}
 
-    std::span<const uint8_t> pixelData = state.currentVDX->chunks[state.currentFrameIndex].data;
+	std::span<const uint8_t> pixelData = state.currentVDX->chunks[state.currentFrameIndex].data;
 
-    if (forceFullUpdate) {
-        // Full update: Convert entire frame to BGRA
-        for (size_t i = 0, j = 0; i < pixelData.size() && j < bgraBuffer.size(); i += 3, j += 4) {
-            bgraBuffer[j] = pixelData[i + 2];     // B
-            bgraBuffer[j + 1] = pixelData[i + 1]; // G
-            bgraBuffer[j + 2] = pixelData[i];     // R
-            bgraBuffer[j + 3] = 255;              // A
-        }
-        bitmap->CopyFromMemory(nullptr, bgraBuffer.data(), MIN_CLIENT_WIDTH * 4);
-        forceFullUpdate = false;
-    } else {
-        // Delta update: Find and update changed rows
-        std::vector<size_t> changedRows;
-        const size_t rowSize = MIN_CLIENT_WIDTH * 3; // RGB bytes per row
-        for (size_t y = 0; y < MIN_CLIENT_HEIGHT; ++y) {
-            const uint8_t* currentRow = &pixelData[y * rowSize];
-            const uint8_t* previousRow = &previousFrameData[y * rowSize];
-            if (memcmp(currentRow, previousRow, rowSize) != 0) {
-                changedRows.push_back(y);
-            }
-        }
+	if (forceFullUpdate) {
+		// Full frame update with SIMD
+		convertRGBtoBGRA_SSE(pixelData.data(), bgraBuffer.data(), MIN_CLIENT_WIDTH * MIN_CLIENT_HEIGHT);
+		bitmap->CopyFromMemory(nullptr, bgraBuffer.data(), MIN_CLIENT_WIDTH * 4);
+		forceFullUpdate = false;
+	}
+	else {
+		// Delta update with SIMD
+		std::vector<size_t> changedRows;
+		const size_t rowSize = MIN_CLIENT_WIDTH * 3; // RGB row size in bytes
+		for (size_t y = 0; y < MIN_CLIENT_HEIGHT; ++y) {
+			if (memcmp(&pixelData[y * rowSize], &previousFrameData[y * rowSize], rowSize) != 0) {
+				changedRows.push_back(y);
+			}
+		}
+		for (size_t y : changedRows) {
+			// Convert one row with SIMD
+			convertRGBtoBGRA_SSE(&pixelData[y * rowSize], &bgraBuffer[y * MIN_CLIENT_WIDTH * 4], MIN_CLIENT_WIDTH);
+			D2D1_RECT_U destRect = { 0, static_cast<UINT32>(y), MIN_CLIENT_WIDTH, static_cast<UINT32>(y + 1) };
+			bitmap->CopyFromMemory(&destRect, &bgraBuffer[y * MIN_CLIENT_WIDTH * 4], MIN_CLIENT_WIDTH * 4);
+		}
+	}
 
-        for (size_t y : changedRows) {
-            const uint8_t* rowData = &pixelData[y * rowSize];
-            uint8_t* bgraRow = &bgraBuffer[y * MIN_CLIENT_WIDTH * 4];
-            for (size_t x = 0; x < MIN_CLIENT_WIDTH; ++x) {
-                size_t rgbIndex = x * 3;
-                size_t bgraIndex = x * 4;
-                bgraRow[bgraIndex] = rowData[rgbIndex + 2];     // B
-                bgraRow[bgraIndex + 1] = rowData[rgbIndex + 1]; // G
-                bgraRow[bgraIndex + 2] = rowData[rgbIndex];     // R
-                bgraRow[bgraIndex + 3] = 255;                   // A
-            }
-            D2D1_RECT_U destRect = { 0, static_cast<UINT32>(y), MIN_CLIENT_WIDTH, static_cast<UINT32>(y + 1) };
-            bitmap->CopyFromMemory(&destRect, &bgraBuffer[y * MIN_CLIENT_WIDTH * 4], MIN_CLIENT_WIDTH * 4);
-        }
-    }
+	// Update previous frame data
+	std::copy(pixelData.begin(), pixelData.end(), previousFrameData.begin());
 
-    // Update previous frame data
-    std::copy(pixelData.begin(), pixelData.end(), previousFrameData.begin());
+	// Draw the frame
+	renderTarget->BeginDraw();
+	renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
+	D2D1_RECT_F destRect = D2D1::RectF(0.0f, 0.0f, MIN_CLIENT_WIDTH * scaleFactor, MIN_CLIENT_HEIGHT * scaleFactor);
+	D2D1_RECT_F sourceRect = D2D1::RectF(0.0f, 0.0f, static_cast<float>(MIN_CLIENT_WIDTH), static_cast<float>(MIN_CLIENT_HEIGHT));
+	renderTarget->DrawBitmap(bitmap.Get(), destRect, 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR, sourceRect);
 
-    // Draw the bitmap
-    renderTarget->BeginDraw();
-    renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
-    D2D1_RECT_F destRect = D2D1::RectF(0.0f, 0.0f, MIN_CLIENT_WIDTH * scaleFactor, MIN_CLIENT_HEIGHT * scaleFactor);
-    D2D1_RECT_F sourceRect = D2D1::RectF(0.0f, 0.0f, static_cast<float>(MIN_CLIENT_WIDTH), static_cast<float>(MIN_CLIENT_HEIGHT));
-    renderTarget->DrawBitmap(
-        bitmap.Get(),
-        destRect,
-        1.0f,
-        D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR,
-        sourceRect
-    );
-
-    HRESULT hr = renderTarget->EndDraw();
-    if (FAILED(hr)) {
-        throw std::runtime_error("Failed to draw frame");
-    }
+	HRESULT hr = renderTarget->EndDraw();
+	if (FAILED(hr)) {
+		throw std::runtime_error("Failed to draw frame");
+	}
 }
 
 // Cleanup Direct2D resources
