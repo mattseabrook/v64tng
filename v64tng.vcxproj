@@ -80,8 +80,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)\</OutDir>
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\libs\libpng\build;C:\libs\libpng;C:\libs\zlib\build;C:\libs\zlib;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\libs\zlib\build\Release;C:\libs\libpng\build\Release;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\VulkanSDK\1.3.296.0\Include;C:\lib\lpng1644\build_release;C:\lib\lpng1644;C:\lib\zlib-1.3.1\build_release;C:\lib\zlib-1.3.1;C:\lib\libADLMIDI\include;E:\v64tng\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\lib\zlib-1.3.1\build_release\Release;C:\lib\lpng1644\build_release\Release;C:\VulkanSDK\1.3.296.0\Lib;C:\lib\libADLMIDI\build_release\Release;$(LibraryPath)</LibraryPath>
     <IntDir>$(SolutionDir)\Intermediate\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -142,7 +142,7 @@ xcopy /y "$(OutDir)$(TargetName)$(TargetExt)" "C:\T7G\"</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <FunctionLevelLinking>
       </FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -156,14 +156,17 @@ xcopy /y "$(OutDir)$(TargetName)$(TargetExt)" "C:\T7G\"</Command>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>zlibstatic.lib;libpng16_static.lib;user32.lib;gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\lib\lpng1644\build_release\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>zlibstatic.lib;libpng16_static.lib;vulkan-1.lib;ADLMIDI.lib;user32.lib;gdi32.lib;shell32.lib;d2d1.lib;ole32.lib;uuid.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <IgnoreSpecificDefaultLibraries>MSVCRTD.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>MSVCRT.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /y "$(OutDir)$(TargetName)$(TargetExt)" "D:\T7G\"</Command>
+      <Command>del /f /q "C:\T7G\v64tng.exe"
+del /f /q "C:\T7G\config.json"
+xcopy /y "$(OutDir)$(TargetName)$(TargetExt)" "C:\T7G\"</Command>
       <Message>Copies the program into my game directory for testing</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
