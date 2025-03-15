@@ -529,11 +529,7 @@ const std::unordered_map<std::string, View> foyer = {
 		"f2_d",
 		{
 			{},
-			{	// Navigation
-				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},							// Left
-				{"x", {90.0f, 0.0f, 10.0f, 100.0f}},						// Forward
-				{"x", {90.0f, 0.0f, 10.0f, 100.0f}}							// Right
-			}
+			{}
 		}
 	},
 

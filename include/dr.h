@@ -126,8 +126,6 @@ dr2_.vdx		// Edward and Martine dialog
 dr_tray.vdx		// End of Cake Puzzle / Empty Tray / Possibly used in conjunction with the blue alpha channel
 come.vdx		// Looks like screen right before the Cake Puzzle zoom-in view
 
-
-dr_d.vdx		// Dining Room Door exit - going back to Foyer F2 views
 dr_mi.vdx		// Moving towards the table
 dr_mo.vdx		// Moving towards the door
 dr_mtb.vdx		// Facing door, turning left
@@ -161,10 +159,51 @@ const std::unordered_map<std::string, View> diningRoom = {
 		{
 			{},
 			{	// Navigation
-				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},			// Left
-				{"x", {0.0f, 0.0f, 0.0f, 0.0f}},			// Forward
-				{"x", {90.0f, 0.0f, 10.0f, 100.0f}}			// Right
+				{"dr_tba", {0.0f, 0.0f, 10.0f, 100.0f}},					// Left
+				{"dr_mi", {33.0f, 0.0f, 33.0f, 100.0f}},					// Forward
+				{"dr_tfc", {90.0f, 0.0f, 10.0f, 100.0f}}					// Right
 			}
+		}
+	},
+	//
+	// Turning left back towards the door
+	//
+	{
+		"dr_tba",
+		{
+			{},
+			{	// Navigation
+				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},					// Left
+				{"dr_d,FH:f_2bd;static", {25.0f, 0.0f, 50.0f, 100.0f}},		// Forward
+				{"x", {90.0f, 0.0f, 10.0f, 100.0f}}					// Right
+			}
+		}
+	},
+	//
+	// Turning right back towards the door
+	//
+	{
+		"dr_tfc",
+		{
+			{},
+			{	// Navigation
+				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},					// Left
+				{"dr_d,FH:f_2bd;static", {25.0f, 0.0f, 50.0f, 100.0f}},		// Forward
+				{"x", {90.0f, 0.0f, 10.0f, 100.0f}}					// Right
+			}
+		}
+	},
+
+	////////////////////////////////////////////////////////////////////////
+
+	//
+	// Dining Room Door exit - going back to Foyer F2 views
+	//
+	{
+		"dr_d",
+		{
+			{},
+			{}
 		}
 	},
 };

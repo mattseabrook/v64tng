@@ -145,14 +145,13 @@ void renderFrameD2D() {
 	renderTarget->BeginDraw();
 	renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
 
-	// Use PRE-COMPUTED values from window.cpp's WM_SIZE handler
 	const float scaledHeight = MIN_CLIENT_HEIGHT * scaleFactor;
-	const float offsetY = (state.ui.height - scaledHeight) * 0.5f;  // <-- Uses stored height
+	const float offsetY = (state.ui.height - scaledHeight) * 0.5f;
 
 	D2D1_RECT_F destRect = D2D1::RectF(
 		0.0f,
 		offsetY,  // Centered vertically
-		state.ui.width,  // Already scaled width from WM_SIZE
+		state.ui.width,
 		offsetY + scaledHeight
 	);
 
