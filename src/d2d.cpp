@@ -145,19 +145,14 @@ void renderFrameD2D() {
 	renderTarget->BeginDraw();
 	renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
 
-	// Get current window height
-	RECT clientRect;
-	GetClientRect(g_hwnd, &clientRect);
-	float windowHeight = static_cast<float>(clientRect.bottom - clientRect.top);
-
-	// Calculate vertical centering offset
-	float scaledHeight = MIN_CLIENT_HEIGHT * scaleFactor;
-	float offsetY = (windowHeight - scaledHeight) * 0.5f;
+	// Use PRE-COMPUTED values from window.cpp's WM_SIZE handler
+	const float scaledHeight = MIN_CLIENT_HEIGHT * scaleFactor;
+	const float offsetY = (state.ui.height - scaledHeight) * 0.5f;  // <-- Uses stored height
 
 	D2D1_RECT_F destRect = D2D1::RectF(
 		0.0f,
 		offsetY,  // Centered vertically
-		MIN_CLIENT_WIDTH * scaleFactor,
+		state.ui.width,  // Already scaled width from WM_SIZE
 		offsetY + scaledHeight
 	);
 
