@@ -70,10 +70,10 @@ struct ConsoleGuard {
  ====================
  */
 int WINAPI WinMain(
-	_In_ HINSTANCE hInstance,
-	_In_opt_ HINSTANCE hPrevInstance,
-	_In_ LPSTR lpCmdLine,
-	_In_ int nCmdShow)
+	_In_ HINSTANCE,
+	_In_opt_ HINSTANCE,
+	_In_ LPSTR,
+	_In_ int)
 {
 	load_config("config.json");
 
@@ -97,6 +97,8 @@ int WINAPI WinMain(
 	bool isConsoleApp = (args.size() > 1);
 	bool consoleAllocated = false;
 	bool consoleAttached = false;
+	(void)consoleAllocated;
+	(void)consoleAttached;
 
 	if (isConsoleApp) {
 		ConsoleGuard guard;
@@ -127,7 +129,7 @@ int WINAPI WinMain(
 				}
 
 				VDXFile vdxFile;
-				std::vector<uint8_t> buffer;
+				std::vector<uint8_t> vdxBuffer;
 
 				// Use std::filesystem for path manipulation
 				std::filesystem::path filePath(args[2]);
@@ -135,9 +137,9 @@ int WINAPI WinMain(
 
 				std::ifstream file(filePath, std::ios::binary | std::ios::ate);
 				if (file) {
-					buffer.resize(static_cast<std::size_t>(file.tellg()));
+					vdxBuffer.resize(static_cast<std::size_t>(file.tellg()));
 					file.seekg(0, std::ios::beg);
-					file.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
+					file.read(reinterpret_cast<char*>(vdxBuffer.data()), vdxBuffer.size());
 					file.close();
 				}
 				else {
@@ -146,7 +148,7 @@ int WINAPI WinMain(
 					return 1;
 				}
 
-				vdxFile = parseVDXFile(filePath.string(), buffer);
+				vdxFile = parseVDXFile(filePath.string(), vdxBuffer);
 
 				auto& chunk = vdxFile.chunks.back();
 				std::span<const uint8_t> chunkData(chunk.data); // Zero-copy view

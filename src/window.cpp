@@ -94,7 +94,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
 		// Calculate total window size needed for minimum client area
 		int minWindowWidth = frameRect.right - frameRect.left;
-		int minWindowHeight = frameRect.bottom - frameRect.top;
+		//int minWindowHeight = frameRect.bottom - frameRect.top;
 
 		// Enforce minimum window size
 		if ((rect->right - rect->left) < minWindowWidth) {
@@ -295,6 +295,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 // About Dialog Procedure
 //
 LRESULT CALLBACK AboutDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
+	(void)lParam;
 	switch (message) {
 	case WM_INITDIALOG:
 		return TRUE;
@@ -349,6 +350,9 @@ void initMenu() {
 // Get monitor information
 //
 BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
+	(void)hdcMonitor;
+	(void)lprcMonitor;
+	(void)dwData;
 	static int displayCount = 0;
 	MONITORINFOEX monitorInfo;
 	monitorInfo.cbSize = sizeof(MONITORINFOEX);

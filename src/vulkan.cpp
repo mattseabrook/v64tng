@@ -132,6 +132,7 @@ void initializeVulkan() {
 // Create a texture from pixel data
 //
 void createVulkanTexture(const uint8_t* pixels, uint32_t width, uint32_t height) {
+	(void)pixels;
 	VkImageCreateInfo imageInfo{};
 	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -231,14 +232,14 @@ void renderFrameVk() {
 	allocInfo.commandPool = ctx.commandPool;
 	allocInfo.commandBufferCount = 1;
 
-	VkCommandBuffer commandBuffer;
-	vkAllocateCommandBuffers(ctx.device, &allocInfo, &commandBuffer);
+	VkCommandBuffer localCommandBuffer;
+	vkAllocateCommandBuffers(ctx.device, &allocInfo, &localCommandBuffer);
 
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+	vkBeginCommandBuffer(localCommandBuffer, &beginInfo);
 
 	VkBufferImageCopy region{};
 	region.bufferOffset = 0;
@@ -251,20 +252,20 @@ void renderFrameVk() {
 	region.imageOffset = { 0, 0, 0 };
 	region.imageExtent = { static_cast<uint32_t>(MIN_CLIENT_WIDTH), static_cast<uint32_t>(MIN_CLIENT_HEIGHT), 1 };
 
-	vkCmdCopyBufferToImage(commandBuffer, stagingBuffer, ctx.textureImage,
+	vkCmdCopyBufferToImage(localCommandBuffer, stagingBuffer, ctx.textureImage,
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-	vkEndCommandBuffer(commandBuffer);
+	vkEndCommandBuffer(localCommandBuffer);
 
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer;
+	submitInfo.pCommandBuffers = &localCommandBuffer;
 
 	vkQueueSubmit(ctx.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 	vkQueueWaitIdle(ctx.graphicsQueue);
 
-	vkFreeCommandBuffers(ctx.device, ctx.commandPool, 1, &commandBuffer);
+	vkFreeCommandBuffers(ctx.device, ctx.commandPool, 1, &localCommandBuffer);
 	vkDestroyBuffer(ctx.device, stagingBuffer, nullptr);
 	vkFreeMemory(ctx.device, stagingBufferMemory, nullptr);
 }

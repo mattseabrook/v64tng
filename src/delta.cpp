@@ -157,7 +157,7 @@ std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getDeltaBitmapData(
 	std::span<uint8_t> buffer,
 	std::span<RGBColor> palette,
 	std::span<uint8_t> frameBuffer) {
-	constexpr int width = 640, height = 320;
+	constexpr int width = 640;		// , height = 320;
 	std::vector<uint8_t> deltaFrame(frameBuffer.begin(), frameBuffer.end());
 
 	uint16_t localPaletteSize = readLittleEndian16(buffer);

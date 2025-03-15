@@ -7,6 +7,7 @@
 // LZSS Compression
 //
 std::vector<uint8_t> lzssCompress(const std::vector<uint8_t>& inputData, uint8_t lengthMask, uint8_t lengthBits) {
+    (void)lengthMask;       // Not known yet if this is actually used anywhere in the 7th Guest VDX chunks
     const uint16_t N = 1 << (16 - lengthBits);
     const uint16_t F = 1 << lengthBits;
     const uint8_t threshold = 3;
@@ -42,8 +43,8 @@ std::vector<uint8_t> lzssCompress(const std::vector<uint8_t>& inputData, uint8_t
             }
 
             if (max_match_length >= threshold) {
-                uint16_t length = max_match_length - threshold;
-                uint16_t ofs_len = (match_offset << lengthBits) | length;
+                uint16_t length = static_cast<uint16_t>(max_match_length - threshold);
+                uint16_t ofs_len = static_cast<uint16_t>((match_offset << lengthBits) | length);
                 compressedData.push_back(ofs_len & 0xFF);
                 compressedData.push_back((ofs_len >> 8) & 0xFF);
                 flags &= ~(1 << i); // 0 for reference

@@ -133,7 +133,7 @@ void renderFrameD2D() {
 		for (size_t y : changedRows) {
 			// Convert one row with SIMD
 			convertRGBtoBGRA_SSE(&pixelData[y * rowSize], &bgraBuffer[y * MIN_CLIENT_WIDTH * 4], MIN_CLIENT_WIDTH);
-			D2D1_RECT_U destRect = { 0, static_cast<UINT32>(y), MIN_CLIENT_WIDTH, static_cast<UINT32>(y + 1) };
+			D2D1_RECT_U destRect = { 0, static_cast<UINT32>(y), static_cast<UINT32>(MIN_CLIENT_WIDTH), static_cast<UINT32>(y + 1) };
 			bitmap->CopyFromMemory(&destRect, &bgraBuffer[y * MIN_CLIENT_WIDTH * 4], MIN_CLIENT_WIDTH * 4);
 		}
 	}

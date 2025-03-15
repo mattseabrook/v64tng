@@ -546,9 +546,9 @@ void PlayMIDI(const std::vector<uint8_t>& midiData) {
 		adl_setNumChips(player, 1);
 		adl_setNumFourOpsChn(player, 6);
 	}
-
+	
 	// Load MIDI data
-	if (adl_openData(player, midiData.data(), midiData.size()) < 0) {
+	if (adl_openData(player, midiData.data(), static_cast<unsigned long>(midiData.size())) < 0) {
 		std::cerr << "ERROR: Failed to load MIDI data in libADLMIDI." << std::endl;
 		adl_close(player);
 		pAudioClient->Release();
