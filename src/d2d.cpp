@@ -144,9 +144,31 @@ void renderFrameD2D() {
 	// Draw the frame
 	renderTarget->BeginDraw();
 	renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
-	D2D1_RECT_F destRect = D2D1::RectF(0.0f, 0.0f, MIN_CLIENT_WIDTH * scaleFactor, MIN_CLIENT_HEIGHT * scaleFactor);
-	D2D1_RECT_F sourceRect = D2D1::RectF(0.0f, 0.0f, static_cast<float>(MIN_CLIENT_WIDTH), static_cast<float>(MIN_CLIENT_HEIGHT));
-	renderTarget->DrawBitmap(bitmap.Get(), destRect, 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR, sourceRect);
+
+	// Get current window height
+	RECT clientRect;
+	GetClientRect(g_hwnd, &clientRect);
+	float windowHeight = static_cast<float>(clientRect.bottom - clientRect.top);
+
+	// Calculate vertical centering offset
+	float scaledHeight = MIN_CLIENT_HEIGHT * scaleFactor;
+	float offsetY = (windowHeight - scaledHeight) * 0.5f;
+
+	D2D1_RECT_F destRect = D2D1::RectF(
+		0.0f,
+		offsetY,  // Centered vertically
+		MIN_CLIENT_WIDTH * scaleFactor,
+		offsetY + scaledHeight
+	);
+
+	D2D1_RECT_F sourceRect = D2D1::RectF(
+		0.0f, 0.0f,
+		static_cast<float>(MIN_CLIENT_WIDTH),
+		static_cast<float>(MIN_CLIENT_HEIGHT)
+	);
+
+	renderTarget->DrawBitmap(bitmap.Get(), destRect, 1.0f,
+		D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR, sourceRect);
 
 	HRESULT hr = renderTarget->EndDraw();
 	if (FAILED(hr)) {
