@@ -115,29 +115,13 @@ View Identifier Table
 2025-03-01  03:26 PM            14,117 dr29db.vdx
 2025-03-01  03:26 PM            14,434 dr29df.vdx
 
-
-
 dr1_0.vdx		// Movie 
-
-
-
 dr2.vdx			// Empty black screen?
 dr2_.vdx		// Edward and Martine dialog
 dr_tray.vdx		// End of Cake Puzzle / Empty Tray / Possibly used in conjunction with the blue alpha channel
 come.vdx		// Looks like screen right before the Cake Puzzle zoom-in view
 
-dr_mi.vdx		// Moving towards the table
-dr_mo.vdx		// Moving towards the door
-dr_mtb.vdx		// Facing door, turning left
-dr_mtf.vdx		// Turning right towards the door
-dr_tbc.vdx		// Door, turning left
-dr_tba.vdx		// Turnin left back towards the door
-dr_tfa.vdx		// Door, turning right
-dr_tfc.vdx		// Turning right back towards the door
-dr_r.vdx		// Easter Egg with the plates and cutlery
-
-dr_v.vdx		// Start the cake puzzle
-dr_vb.vdx		// Cake Puzzle - end
+dr_mtb.vdx		// Looks to be unused!
 
 */
 
@@ -152,7 +136,61 @@ const std::unordered_map<std::string, View> diningRoom = {
 	////////////////////////////////////////////////////////////////////////
 
 	//
-	// Turning around left, at the door, facing the table
+	// Moving towards the table
+	//
+	{
+		"dr_mi",
+		{
+			{	// Hotspots
+				// - Cake Puzzle - dr_v.vdx		// Start the cake puzzle
+				// dr_vb.vdx		// Cake Puzzle - end
+				// Grok3: Cutlery Animation - dr_r.vdx		// Easter Egg
+			},
+			{	// Navigation
+				{"dr_mtf,dr_mo", {90.0f, 0.0f, 10.0f, 100.0f}}				// Right
+			}
+		}
+	},
+	//
+	// Moving towards the door
+	//
+	{
+		"dr_mo",
+		{
+			{},
+			{	// Navigation
+				{"dr_tbc", {0.0f, 0.0f, 10.0f, 100.0f}},					// Left
+				{"dr_d,FH:f_2bd;static", {25.0f, 0.0f, 50.0f, 100.0f}},		// Forward
+				{"dr_tfa", {90.0f, 0.0f, 10.0f, 100.0f}}					// Right
+			}
+		}
+	},
+	//
+	// Table, turning right
+	//
+	{
+		"dr_mtf",
+		{
+			{},
+			{}
+		}
+	},
+	//
+	// Turning left back towards the door
+	//
+	{
+		"dr_tba",
+		{
+			{},
+			{	// Navigation
+				{"dr_tbc", {0.0f, 0.0f, 10.0f, 100.0f}},					// Left
+				{"dr_d,FH:f_2bd;static", {25.0f, 0.0f, 50.0f, 100.0f}},		// Forward
+				{"dr_tfa", {90.0f, 0.0f, 10.0f, 100.0f}}					// Right
+			}
+		}
+	},
+	//
+	// Door, turning left
 	//
 	{
 		"dr_tbc",
@@ -166,16 +204,16 @@ const std::unordered_map<std::string, View> diningRoom = {
 		}
 	},
 	//
-	// Turning left back towards the door
+	// Door, turning right
 	//
 	{
-		"dr_tba",
+		"dr_tfa",
 		{
 			{},
 			{	// Navigation
-				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},					// Left
-				{"dr_d,FH:f_2bd;static", {25.0f, 0.0f, 50.0f, 100.0f}},		// Forward
-				{"x", {90.0f, 0.0f, 10.0f, 100.0f}}					// Right
+				{"dr_tbc", {0.0f, 0.0f, 10.0f, 100.0f}},					// Left
+				{"dr_mi", {25.0f, 0.0f, 50.0f, 100.0f}},					// Forward
+				{"dr_tfc", {90.0f, 0.0f, 10.0f, 100.0f}}					// Right
 			}
 		}
 	},
@@ -187,9 +225,9 @@ const std::unordered_map<std::string, View> diningRoom = {
 		{
 			{},
 			{	// Navigation
-				{"x", {0.0f, 0.0f, 10.0f, 100.0f}},					// Left
+				{"dr_tbc", {0.0f, 0.0f, 10.0f, 100.0f}},					// Left
 				{"dr_d,FH:f_2bd;static", {25.0f, 0.0f, 50.0f, 100.0f}},		// Forward
-				{"x", {90.0f, 0.0f, 10.0f, 100.0f}}					// Right
+				{"dr_tfa", {90.0f, 0.0f, 10.0f, 100.0f}}					// Right
 			}
 		}
 	},
@@ -197,7 +235,7 @@ const std::unordered_map<std::string, View> diningRoom = {
 	////////////////////////////////////////////////////////////////////////
 
 	//
-	// Dining Room Door exit - going back to Foyer F2 views
+	// Dining Room  -> Foyer (F2)
 	//
 	{
 		"dr_d",
