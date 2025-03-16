@@ -109,65 +109,93 @@ void initializeD2D() {
 // Render a frame using Direct2D
 //
 void renderFrameD2D() {
-	if (!renderTarget || !bitmap) {
-		throw std::runtime_error("Render target or bitmap not initialized");
-	}
+    if (!renderTarget || !bitmap) {
+        throw std::runtime_error("Render target or bitmap not initialized");
+    }
 
-	std::span<const uint8_t> pixelData = state.currentVDX->chunks[state.currentFrameIndex].data;
+    const VDXFile* vdx_to_render = nullptr;
+    size_t frame_index = 0;
 
-	if (forceFullUpdate) {
-		// Full frame update with SIMD
-		convertRGBtoBGRA_SSE(pixelData.data(), bgraBuffer.data(), MIN_CLIENT_WIDTH * MIN_CLIENT_HEIGHT);
-		bitmap->CopyFromMemory(nullptr, bgraBuffer.data(), MIN_CLIENT_WIDTH * 4);
-		forceFullUpdate = false;
-	}
-	else {
-		// Delta update with SIMD
-		std::vector<size_t> changedRows;
-		const size_t rowSize = MIN_CLIENT_WIDTH * 3; // RGB row size in bytes
-		for (size_t y = 0; y < MIN_CLIENT_HEIGHT; ++y) {
-			if (memcmp(&pixelData[y * rowSize], &previousFrameData[y * rowSize], rowSize) != 0) {
-				changedRows.push_back(y);
-			}
-		}
-		for (size_t y : changedRows) {
-			// Convert one row with SIMD
-			convertRGBtoBGRA_SSE(&pixelData[y * rowSize], &bgraBuffer[y * MIN_CLIENT_WIDTH * 4], MIN_CLIENT_WIDTH);
-			D2D1_RECT_U destRect = { 0, static_cast<UINT32>(y), static_cast<UINT32>(MIN_CLIENT_WIDTH), static_cast<UINT32>(y + 1) };
-			bitmap->CopyFromMemory(&destRect, &bgraBuffer[y * MIN_CLIENT_WIDTH * 4], MIN_CLIENT_WIDTH * 4);
-		}
-	}
+    // Prioritize transient animation (even if stopped, use its last frame)
+    if (!state.transient_animation_name.empty()) {
+        auto it = std::ranges::find(state.VDXFiles, state.transient_animation_name, &VDXFile::filename);
+        if (it != state.VDXFiles.end()) {
+            vdx_to_render = &(*it);
+            frame_index = state.transient_frame_index;    // Current or last frame
+        }
+        else {
+            throw std::runtime_error("Transient animation VDX not found: " + state.transient_animation_name);
+        }
+    }
+    // Fallback to current VDX if no transient is active
+    else if (state.currentVDX) {
+        vdx_to_render = state.currentVDX;
+        frame_index = state.currentFrameIndex;
+    }
+    else {
+        return; // Nothing to render
+    }
 
-	// Update previous frame data
-	std::copy(pixelData.begin(), pixelData.end(), previousFrameData.begin());
+    std::span<const uint8_t> pixelData = vdx_to_render->chunks[frame_index].data;
 
-	// Draw the frame
-	renderTarget->BeginDraw();
-	renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
+    if (forceFullUpdate) {
+        // Full frame update with SIMD
+        convertRGBtoBGRA_SSE(pixelData.data(), bgraBuffer.data(), MIN_CLIENT_WIDTH * MIN_CLIENT_HEIGHT);
+        bitmap->CopyFromMemory(nullptr, bgraBuffer.data(), MIN_CLIENT_WIDTH * 4);
+        forceFullUpdate = false;
+    }
+    else {
+        // Delta update with SIMD
+        std::vector<size_t> changedRows;
+        const size_t rowSize = MIN_CLIENT_WIDTH * 3; // RGB row size in bytes
+        for (size_t y = 0; y < MIN_CLIENT_HEIGHT; ++y) {
+            if (memcmp(&pixelData[y * rowSize], &previousFrameData[y * rowSize], rowSize) != 0) {
+                changedRows.push_back(y);
+            }
+        }
+        for (size_t y : changedRows) {
+            // Convert one row with SIMD
+            convertRGBtoBGRA_SSE(&pixelData[y * rowSize], &bgraBuffer[y * MIN_CLIENT_WIDTH * 4], MIN_CLIENT_WIDTH);
+            D2D1_RECT_U destRect = { 0, static_cast<UINT32>(y), static_cast<UINT32>(MIN_CLIENT_WIDTH), static_cast<UINT32>(y + 1) };
+            bitmap->CopyFromMemory(&destRect, &bgraBuffer[y * MIN_CLIENT_WIDTH * 4], MIN_CLIENT_WIDTH * 4);
+        }
+    }
 
-	const float scaledHeight = MIN_CLIENT_HEIGHT * scaleFactor;
-	const float offsetY = (state.ui.height - scaledHeight) * 0.5f;
+    // Update previous frame data
+    std::copy(pixelData.begin(), pixelData.end(), previousFrameData.begin());
 
-	D2D1_RECT_F destRect = D2D1::RectF(
-		0.0f,
-		offsetY,  // Centered vertically
-		state.ui.width,
-		offsetY + scaledHeight
-	);
+    // Draw the frame
+    renderTarget->BeginDraw();
+    renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
 
-	D2D1_RECT_F sourceRect = D2D1::RectF(
-		0.0f, 0.0f,
-		static_cast<float>(MIN_CLIENT_WIDTH),
-		static_cast<float>(MIN_CLIENT_HEIGHT)
-	);
+    const float scaledHeight = MIN_CLIENT_HEIGHT * scaleFactor;
+    const float offsetY = (state.ui.height - scaledHeight) * 0.5f;
 
-	renderTarget->DrawBitmap(bitmap.Get(), destRect, 1.0f,
-		D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR, sourceRect);
+    D2D1_RECT_F destRect = D2D1::RectF(
+        0.0f,               // Left
+        offsetY,            // Top (centered vertically)
+        static_cast<float>(state.ui.width),     // Right
+        offsetY + scaledHeight // Bottom
+    );
 
-	HRESULT hr = renderTarget->EndDraw();
-	if (FAILED(hr)) {
-		throw std::runtime_error("Failed to draw frame");
-	}
+    D2D1_RECT_F sourceRect = D2D1::RectF(
+        0.0f, 0.0f,                        // Top-left corner
+        static_cast<float>(MIN_CLIENT_WIDTH), // Right
+        static_cast<float>(MIN_CLIENT_HEIGHT) // Bottom
+    );
+
+    renderTarget->DrawBitmap(
+        bitmap.Get(),
+        destRect,
+        1.0f, // Opacity
+        D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR,
+        sourceRect
+    );
+
+    HRESULT hr = renderTarget->EndDraw();
+    if (FAILED(hr)) {
+        throw std::runtime_error("Failed to draw frame");
+    }
 }
 
 // Cleanup Direct2D resources

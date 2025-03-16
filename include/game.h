@@ -109,6 +109,9 @@ struct GameState {
 	size_t currentFrameIndex = 30;				    // Normally 0 - hard-coded to 30 for testing
 	VDXFile* currentVDX = nullptr;				    // Reference to current VDXFile object
 	AnimationState animation;						// Animation state management
+	std::string transient_animation_name;           // e.g., "dr_r"
+	AnimationState transient_animation;             // Playback state for transient
+	size_t transient_frame_index = 0;               // Current frame of transient
 
 	std::vector<std::string> animation_sequence;    // Stores the sequence of animations
 	size_t animation_queue_index = 0;               // Current position in the animation sequence
@@ -135,6 +138,7 @@ extern GameState state;
 const View* getView(const std::string& current_view);
 void loadView();
 void updateAnimation();
+void playTransientAnimation(const std::string& animation_name);
 void init();
 
 #endif // GAME_H

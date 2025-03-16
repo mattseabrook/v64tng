@@ -66,6 +66,11 @@ void loadView() {
 		return;
 	}
 
+	// Reset transient animation state
+	state.transient_animation_name.clear();
+	state.transient_animation.isPlaying = false;
+	state.transient_frame_index = 0;
+
 	// Parse the animation sequence if empty
 	if (state.animation_sequence.empty()) {
 		std::stringstream ss(state.current_view);
@@ -165,33 +170,67 @@ void loadView() {
 // Animate the VDX sequence
 //
 void updateAnimation() {
-	if (!state.animation.isPlaying || !state.currentVDX) return;
-
-	auto currentTime = std::chrono::steady_clock::now();
-	auto elapsedTime = currentTime - state.animation.lastFrameTime;
-
-	if (elapsedTime >= state.animation.getFrameDuration(state.currentFPS)) {
-		state.currentFrameIndex++;
-
-		if (state.currentFrameIndex >= state.animation.totalFrames) {
-			state.animation.isPlaying = false;
-			state.currentFrameIndex = state.animation.totalFrames - 1;
-
-			// Move to the next animation in the sequence
-			if (state.animation_queue_index < state.animation_sequence.size() - 1) {
-				state.animation_queue_index++;
-				loadView();
+	// Handle transient animations first
+	if (state.transient_animation.isPlaying && !state.transient_animation_name.empty()) {
+		auto it = std::ranges::find(state.VDXFiles, state.transient_animation_name, &VDXFile::filename);
+		if (it != state.VDXFiles.end()) {
+			VDXFile& vdx = *it;
+			if (!vdx.parsed) {
+				parseVDXChunks(vdx);
+				vdx.parsed = true;
 			}
-			else {
-				// Sequence complete
-				state.animation_sequence.clear();
-				state.animation_queue_index = 0;
+			
+			if (state.transient_animation.totalFrames == 0) {
+				state.transient_animation.totalFrames = vdx.chunks.size();
+			}
+
+			auto currentTime = std::chrono::steady_clock::now();
+			auto elapsedTime = currentTime - state.transient_animation.lastFrameTime;
+			if (elapsedTime >= state.transient_animation.getFrameDuration(state.currentFPS)) {
+				state.transient_frame_index++;
+				if (state.transient_frame_index >= state.transient_animation.totalFrames) {
+					state.transient_animation.isPlaying = false;
+					state.transient_frame_index = state.transient_animation.totalFrames - 1;
+				}
+				state.transient_animation.lastFrameTime = currentTime;
+				renderFrame();
 			}
 		}
-
-		state.animation.lastFrameTime = currentTime;
-		renderFrame();
 	}
+	// Handle regular animations
+	else if (state.animation.isPlaying && state.currentVDX) {
+		auto currentTime = std::chrono::steady_clock::now();
+		auto elapsedTime = currentTime - state.animation.lastFrameTime;
+
+		if (elapsedTime >= state.animation.getFrameDuration(state.currentFPS)) {
+			state.currentFrameIndex++;
+			if (state.currentFrameIndex >= state.animation.totalFrames) {
+				state.animation.isPlaying = false;
+				state.currentFrameIndex = state.animation.totalFrames - 1;
+				if (state.animation_queue_index < state.animation_sequence.size() - 1) {
+					state.animation_queue_index++;
+					loadView();
+				}
+				else {
+					state.animation_sequence.clear();
+					state.animation_queue_index = 0;
+				}
+			}
+			state.animation.lastFrameTime = currentTime;
+			renderFrame();
+		}
+	}
+}
+
+//
+// Play a transient animation
+//
+void playTransientAnimation(const std::string& animation_name) {
+	state.transient_animation_name = animation_name;     // e.g., "dr_r"
+	state.transient_animation.totalFrames = 0;
+	state.transient_animation.isPlaying = true;
+	state.transient_animation.lastFrameTime = std::chrono::steady_clock::now();
+	state.transient_frame_index = 0;
 }
 
 //
@@ -199,9 +238,9 @@ void updateAnimation() {
 //
 void init() {
 	initWindow();
-	
+
 	xmiPlay("gu61");
-	
+
 	loadView();
 
 	state.previous_room = state.current_room;

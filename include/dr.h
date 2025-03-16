@@ -114,15 +114,16 @@ View Identifier Table
 2025-03-01  03:26 PM           185,180 dr29cf.vdx
 2025-03-01  03:26 PM            14,117 dr29db.vdx
 2025-03-01  03:26 PM            14,434 dr29df.vdx
+dr_v.vdx		// Start the cake puzzle
+dr_vb.vdx		// Cake Puzzle - end
 
-dr1_0.vdx		// Movie 
+dr1_0.vdx		// Movie
 dr2.vdx			// Empty black screen?
 dr2_.vdx		// Edward and Martine dialog
 dr_tray.vdx		// End of Cake Puzzle / Empty Tray / Possibly used in conjunction with the blue alpha channel
 come.vdx		// Looks like screen right before the Cake Puzzle zoom-in view
 
 dr_mtb.vdx		// Looks to be unused!
-
 */
 
 /*
@@ -142,9 +143,12 @@ const std::unordered_map<std::string, View> diningRoom = {
 		"dr_mi",
 		{
 			{	// Hotspots
-				// - Cake Puzzle - dr_v.vdx		// Start the cake puzzle
-				// dr_vb.vdx		// Cake Puzzle - end
-				// Grok3: Cutlery Animation - dr_r.vdx		// Easter Egg
+				{15.0f, 65.0f, 80.0f, 15.0f, []() {							// Cutlery Animation
+					playTransientAnimation("dr_r");
+					// Play song: x
+				}
+				},
+
 			},
 			{	// Navigation
 				{"dr_mtf,dr_mo", {90.0f, 0.0f, 10.0f, 100.0f}}				// Right
