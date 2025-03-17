@@ -452,7 +452,7 @@ std::vector<uint8_t> xmiConverter(const RLEntry& song)
 //
 // Play MIDI data using libADLMIDI
 //
-void PlayMIDI(const std::vector<uint8_t>& midiData) {
+void PlayMIDI(const std::vector<uint8_t>& midiData, bool isTransient) {
 	HRESULT hr;
 	IMMDeviceEnumerator* pEnumerator = nullptr;
 	IMMDevice* pDevice = nullptr;
@@ -490,7 +490,6 @@ void PlayMIDI(const std::vector<uint8_t>& midiData) {
 		return;
 	}
 
-	// Set up audio format (try 44.1 kHz first)
 	WAVEFORMATEX wfx = { 0 };
 	wfx.wFormatTag = WAVE_FORMAT_PCM;
 	wfx.nChannels = 2; // Stereo
@@ -516,7 +515,6 @@ void PlayMIDI(const std::vector<uint8_t>& midiData) {
 		}
 	}
 
-	// Initialize libADLMIDI with the actual sample rate
 	int actualSampleRate = wfx.nSamplesPerSec;
 	struct ADL_MIDIPlayer* player = adl_init(actualSampleRate);
 	if (!player) {
@@ -528,26 +526,26 @@ void PlayMIDI(const std::vector<uint8_t>& midiData) {
 		return;
 	}
 
-	// Configure emulation mode using adl_setNumFourOpsChn
+	// Configure emulation mode
+	// Come back here later - to get rid of everything except OPL3 and then add modern Wavetable Synthesis
 	if (state.music_mode == "opl2") {
-		adl_setNumChips(player, 1); // Single OPL2 chip
-		adl_setNumFourOpsChn(player, 0); // No 4-op channels for OPL2
+		adl_setNumChips(player, 1);
+		adl_setNumFourOpsChn(player, 0);
 	}
 	else if (state.music_mode == "dual_opl2") {
-		adl_setNumChips(player, 2); // Dual OPL2 chips
-		adl_setNumFourOpsChn(player, 0); // No 4-op channels for dual OPL2
+		adl_setNumChips(player, 2);
+		adl_setNumFourOpsChn(player, 0);
 	}
 	else if (state.music_mode == "opl3") {
-		adl_setNumChips(player, 1); // Single OPL3 chip
-		adl_setNumFourOpsChn(player, 6); // Enable 6 4-op channels for OPL3
+		adl_setNumChips(player, 1);
+		adl_setNumFourOpsChn(player, 6);
 	}
 	else {
 		std::cerr << "WARNING: Unknown music mode '" << state.music_mode << "', defaulting to opl3." << std::endl;
 		adl_setNumChips(player, 1);
 		adl_setNumFourOpsChn(player, 6);
 	}
-	
-	// Load MIDI data
+
 	if (adl_openData(player, midiData.data(), static_cast<unsigned long>(midiData.size())) < 0) {
 		std::cerr << "ERROR: Failed to load MIDI data in libADLMIDI." << std::endl;
 		adl_close(player);
@@ -558,7 +556,14 @@ void PlayMIDI(const std::vector<uint8_t>& midiData) {
 		return;
 	}
 
-	// Continue WASAPI setup
+	// Position handling
+	if (isTransient) {
+		adl_positionRewind(player); // Start transient from beginning
+	}
+	else {
+		adl_positionSeek(player, state.main_song_position); // Resume main song
+	}
+
 	hr = pAudioClient->GetService(__uuidof(IAudioRenderClient), (void**)&pRenderClient);
 	if (FAILED(hr)) {
 		std::cerr << "ERROR: GetService for IAudioRenderClient failed, hr=0x" << std::hex << hr << std::endl;
@@ -595,9 +600,13 @@ void PlayMIDI(const std::vector<uint8_t>& midiData) {
 		return;
 	}
 
-	// Playback loop
+	// Playback loop with fade-in for main song
 	state.music_playing = true;
 	const float gain = 6.0f;
+	const int fadeSamples = static_cast<int>(0.5 * actualSampleRate); // 500ms fade-in
+	int fadeCounter = 0;
+	bool fadingIn = !isTransient; // Fade-in only for main song
+
 	while (state.music_playing) {
 		UINT32 padding;
 		hr = pAudioClient->GetCurrentPadding(&padding);
@@ -616,15 +625,25 @@ void PlayMIDI(const std::vector<uint8_t>& midiData) {
 		int samples = adl_play(player, framesAvailable * 2, (short*)pData);
 		if (samples <= 0) break; // End of song
 
-		// Apply gain and volume scaling with clamping
+		// Apply gain, volume, and fade-in if applicable
 		short* samplesPtr = (short*)pData;
 		for (int i = 0; i < samples; i++) {
 			float sample = static_cast<float>(samplesPtr[i]) * gain * state.music_volume;
+			if (fadingIn && fadeCounter < fadeSamples) {
+				float fadeFactor = static_cast<float>(fadeCounter) / fadeSamples;
+				sample *= fadeFactor;
+				fadeCounter++;
+			}
 			samplesPtr[i] = static_cast<short>(std::clamp(sample, -32768.0f, 32767.0f));
 		}
 
 		hr = pRenderClient->ReleaseBuffer(framesAvailable, 0);
 		if (FAILED(hr)) break;
+	}
+
+	// Save position if main song is paused
+	if (!isTransient) {
+		state.main_song_position = adl_positionTell(player);
 	}
 
 	// Cleanup
@@ -641,15 +660,33 @@ void PlayMIDI(const std::vector<uint8_t>& midiData) {
 //
 // Initialize and play a music track in a non-blocking way
 //
-void xmiPlay(const std::string& songName) {
+void xmiPlay(const std::string& songName, bool isTransient) {
 	bool midi_enabled = config.value("midiEnabled", true);
 	int midi_volume = config.value("midiVolume", 100);
 	state.music_volume = std::clamp(midi_volume / 100.0f, 0.0f, 1.0f);
 	state.music_mode = config.value("midiMode", "opl3");
 
-	// Play the song in a non-blocking thread if enabled
 	if (midi_enabled) {
-		auto play_music = [songName]() {
+		// Stop any currently playing music
+		state.music_playing = false;
+		if (state.music_thread.joinable()) {
+			state.music_thread.join();
+		}
+
+		// Set song names and position
+		if (isTransient) {
+			state.transient_song = songName;
+		}
+		else {
+			if (songName != state.current_song) {
+				state.current_song = songName;
+				state.main_song_position = 0.0; // Reset position only for new main songs
+			}
+			// Else, resuming the same song, so keep state.main_song_position as is
+		}
+
+		// Start new music thread
+		auto play_music = [songName, isTransient]() {
 			auto xmiFiles = parseRLFile("XMI.RL");
 			for (auto& entry : xmiFiles) {
 				entry.filename.erase(entry.filename.find_last_of('.'));
@@ -659,9 +696,8 @@ void xmiPlay(const std::string& songName) {
 				[&songName](const RLEntry& entry) { return entry.filename == songName; });
 
 			if (song != xmiFiles.end()) {
-				state.current_song = songName;
 				auto midiData = xmiConverter(*song);
-				PlayMIDI(midiData);
+				PlayMIDI(midiData, isTransient);
 			}
 			else {
 				std::cerr << "ERROR: XMI file '" << songName << "' not found." << std::endl;

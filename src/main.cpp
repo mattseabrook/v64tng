@@ -215,17 +215,25 @@ int WINAPI WinMain(
 				}
 
 				auto xmiFiles = parseRLFile("XMI.RL");
-				// Process filenames in parseRLFile instead of here
 
-				auto song = std::ranges::find_if(xmiFiles,
-					[&args](const RLEntry& entry) { return entry.filename == args[2]; });
+				// Find the song by comparing base names (before the period)
+				auto song = xmiFiles.end();
+				for (auto it = xmiFiles.begin(); it != xmiFiles.end(); ++it) {
+					std::string baseName = it->filename.substr(0, it->filename.find('.'));
+					if (baseName == args[2]) {
+						song = it;
+						break;
+					}
+				}
 
 				if (song != xmiFiles.end()) {
+					// Extract the base name to send to extractXMI
+					std::string baseName = song->filename.substr(0, song->filename.find('.'));
 					if (args.size() > 3 && args[3] == "play") {
 						PlayMIDI(xmiConverter(*song));
 					}
 					else {
-						extractXMI(xmiConverter(*song), song->filename);
+						extractXMI(xmiConverter(*song), baseName);
 					}
 				}
 				else {

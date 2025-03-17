@@ -122,9 +122,12 @@ struct GameState {
 	// Music
 	//
 	std::string current_song;                       // Name of the currently playing song (e.g., "gu39")
+	std::string transient_song;						// Transient song (if any)
+	double main_song_position = 0.0;				// Position to resume from
 	std::string music_mode;						    // Playback mode: "opl2", "dual_opl2", "opl3"
 	std::thread music_thread;                       // Thread for non-blocking music playback
 	bool music_playing = false;                     // Flag to indicate if music is playing
+	bool is_transient_playing = false;				// Flag to check if transient is active
 	float music_volume = 1.0f;                      // Volume (0.0 to 1.0)
 };
 

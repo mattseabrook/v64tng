@@ -145,7 +145,7 @@ const std::unordered_map<std::string, View> diningRoom = {
 			{	// Hotspots
 				{15.0f, 65.0f, 80.0f, 15.0f, []() {							// Cutlery Animation
 					playTransientAnimation("dr_r");
-					// Play song: x
+					xmiPlay("gu5", true);
 				}
 				},
 
