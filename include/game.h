@@ -127,6 +127,7 @@ struct GameState {
 	std::string music_mode;						    // Playback mode: "opl2", "dual_opl2", "opl3"
 	std::thread music_thread;                       // Thread for non-blocking music playback
 	bool music_playing = false;                     // Flag to indicate if music is playing
+	bool hasPlayedFirstSong = false;				// Tracks if any song has played yet
 	bool is_transient_playing = false;				// Flag to check if transient is active
 	float music_volume = 1.0f;                      // Volume (0.0 to 1.0)
 };

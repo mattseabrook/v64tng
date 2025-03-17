@@ -527,7 +527,6 @@ void PlayMIDI(const std::vector<uint8_t>& midiData, bool isTransient) {
 	}
 
 	// Configure emulation mode
-	// Come back here later - to get rid of everything except OPL3 and then add modern Wavetable Synthesis
 	if (state.music_mode == "opl2") {
 		adl_setNumChips(player, 1);
 		adl_setNumFourOpsChn(player, 0);
@@ -600,12 +599,12 @@ void PlayMIDI(const std::vector<uint8_t>& midiData, bool isTransient) {
 		return;
 	}
 
-	// Playback loop with fade-in for main song
+	// Playback loop with fade-in for main song after first play
 	state.music_playing = true;
 	const float gain = 6.0f;
 	const int fadeSamples = static_cast<int>(0.5 * actualSampleRate); // 500ms fade-in
 	int fadeCounter = 0;
-	bool fadingIn = !isTransient; // Fade-in only for main song
+	bool fadingIn = !isTransient && state.hasPlayedFirstSong; // Fade-in only for main songs after first play
 
 	while (state.music_playing) {
 		UINT32 padding;
@@ -644,6 +643,7 @@ void PlayMIDI(const std::vector<uint8_t>& midiData, bool isTransient) {
 	// Save position if main song is paused
 	if (!isTransient) {
 		state.main_song_position = adl_positionTell(player);
+		state.hasPlayedFirstSong = true; // Mark that a main song has played
 	}
 
 	// Cleanup
