@@ -97,7 +97,10 @@ std::vector<uint8_t> lzssDecompress(std::span<const uint8_t> compressedData, uin
 			}
 			else {
 				if (in_buf_pos + 1 >= compressedData.size()) break;
-				uint16_t ofs_len = compressedData[in_buf_pos++] | (compressedData[in_buf_pos++] << 8);
+				//uint16_t ofs_len = compressedData[in_buf_pos++] | (compressedData[in_buf_pos++] << 8);
+                uint16_t low_byte = compressedData[in_buf_pos++];
+                uint16_t high_byte = compressedData[in_buf_pos++];
+                uint16_t ofs_len = low_byte | (high_byte << 8);
 				if (ofs_len == 0) return decompressedData;
 				uint16_t offset = (his_buf_pos - (ofs_len >> lengthBits)) & (N - 1);
 				uint16_t length = (ofs_len & lengthMask) + threshold;
