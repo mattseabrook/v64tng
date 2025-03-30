@@ -1,15 +1,11 @@
-# Ignore 'x64' directory
-/x64/
-/Intermediate/
-/shaders/*.h
-/shaders/*.spv
+# Ignore build
+/build/
 
 # Ignore .vs dir
 /.vs/
 
 # Ignore the program
 v64tng.exe
-v64tng.pdb
 
 # Ignore 7th Guest commercial assets
 *.RL
