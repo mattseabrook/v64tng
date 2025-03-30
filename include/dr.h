@@ -126,6 +126,9 @@ come.vdx		// Looks like screen right before the Cake Puzzle zoom-in view
 dr_mtb.vdx		// Looks to be unused!
 */
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-field-initializers"
+
 /*
 
 Prefix map for Dining Room assets
@@ -249,5 +252,7 @@ const std::unordered_map<std::string, View> diningRoom = {
 		}
 	},
 };
+
+#pragma clang diagnostic pop
 
 #endif // DR_H

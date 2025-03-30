@@ -148,7 +148,7 @@ void renderFrameD2D() {
         // Delta update with SIMD
         std::vector<size_t> changedRows;
         const size_t rowSize = MIN_CLIENT_WIDTH * 3; // RGB row size in bytes
-        for (size_t y = 0; y < MIN_CLIENT_HEIGHT; ++y) {
+        for (size_t y = 0; y < static_cast<size_t>(MIN_CLIENT_HEIGHT); ++y) {
             if (memcmp(&pixelData[y * rowSize], &previousFrameData[y * rowSize], rowSize) != 0) {
                 changedRows.push_back(y);
             }

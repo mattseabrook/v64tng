@@ -6,14 +6,17 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <iomanip>
+#include <ranges>
+#include <cstdlib>
+#include <stdexcept>
+#include <cstdio>
 
 #include "extract.h"
-
 #include "config.h"
 #include "rl.h"
 #include "gjd.h"
 #include "vdx.h"
-#include "music.h"
 #include "bitmap.h"
 
 /*
@@ -119,69 +122,53 @@ Parameters:
 ===============================================================================
 */
 void extractPNG(std::string_view filename, bool raw) {
-	std::ifstream vdxFile(filename.data(), std::ios::binary | std::ios::ate);
-	if (!vdxFile) {
-		std::cerr << "ERROR: Failed to open the VDX file: " << filename << std::endl;
-		return;
-	}
+	std::ifstream vdxFile{ filename.data(), std::ios::binary | std::ios::ate };
+	if (!vdxFile) return std::cerr << "ERROR: Can't open VDX: " << filename << '\n', void();
 
-	auto fileSize = static_cast<std::size_t>(vdxFile.tellg());
-	vdxFile.seekg(0, std::ios::beg);
-	std::vector<uint8_t> vdxData(fileSize);
-	vdxFile.read(reinterpret_cast<char*>(vdxData.data()), fileSize);
+	std::vector<uint8_t> vdxData(static_cast<std::size_t>(vdxFile.tellg()));
+	vdxFile.seekg(0).read(reinterpret_cast<char*>(vdxData.data()), vdxData.size());
 
-	VDXFile parsedVDXFile = parseVDXFile(filename, vdxData);
-	parseVDXChunks(parsedVDXFile);
+	VDXFile vdx = parseVDXFile(filename, vdxData);
+	parseVDXChunks(vdx);
 
-	std::filesystem::path dirPath = std::filesystem::absolute(std::filesystem::path(filename).parent_path() / parsedVDXFile.filename).lexically_normal();
-	if (!std::filesystem::exists(dirPath) && !std::filesystem::create_directory(dirPath)) {
-		std::cerr << "ERROR: Failed to create directory: " << dirPath.string() << std::endl;
-		return;
-	}
+	std::string dirName = std::filesystem::path{ filename }.stem().string();
+	std::filesystem::path dirPath = std::filesystem::path{ filename }.parent_path() / dirName;
+	std::filesystem::create_directory(dirPath);
 
-	std::vector<uint8_t> alphaFrame(640 * 320 * 3);  // For devMode visualization
-	const RGBColor colorKey{ 255, 0, 255 };  // Fuscia
+	std::vector<uint8_t> alphaFrame(640 * 320 * 3);
+	constexpr RGBColor colorKey{ 255, 0, 255 };
 
-	for (size_t i = 0; i < parsedVDXFile.chunks.size(); ++i) {
-		const auto& chunk = parsedVDXFile.chunks[i];
-		if (chunk.chunkType != 0x20 && chunk.chunkType != 0x25) {
-			continue;  // Skip non-bitmap chunks
-		}
+	for (size_t i = 0; i < vdx.chunks.size(); ++i) {
+		const auto& chunk = vdx.chunks[i];
+		if (chunk.chunkType != 0x20 && chunk.chunkType != 0x25) continue;
 
-		std::ostringstream frameString;
-		frameString << std::setfill('0') << std::setw(4) << (i + 1);
-		std::filesystem::path outputFilePath = dirPath / (parsedVDXFile.filename + "_" + frameString.str());
+		std::ostringstream frame;
+		frame << std::setfill('0') << std::setw(4) << (i + 1);
+		std::string baseName = std::filesystem::path{ filename }.stem().string();
+		std::filesystem::path outPath = dirPath / (baseName + "_" + frame.str());
 
 		if (raw) {
-			outputFilePath.replace_extension(".raw");
-			std::ofstream rawBitmapFile(outputFilePath, std::ios::binary);
-			if (!rawBitmapFile) {
-				std::cerr << "ERROR: Failed to create RAW file: " << outputFilePath.string() << std::endl;
-				continue;
-			}
-			std::cout << "Writing: " << outputFilePath.string() << std::endl;
-			rawBitmapFile.write(reinterpret_cast<const char*>(chunk.data.data()), chunk.data.size());
+			std::ofstream outFile{ outPath.replace_extension(".raw"), std::ios::binary };
+			outFile && (std::cout << "Writing: " << outPath.string() << '\n', outFile.write(reinterpret_cast<const char*>(chunk.data.data()), chunk.data.size()));
 		}
 		else {
-			outputFilePath.replace_extension(".png");
-			std::cout << "Writing: " << outputFilePath.string() << std::endl;
+			std::cout << "Writing: " << (outPath.replace_extension(".png")).string() << '\n';
 			if (config["devMode"] && chunk.chunkType == 0x25 && i > 0) {
-				// Generate alpha visualization for delta chunks
-				const auto& prevFrame = parsedVDXFile.chunks[i - 1].data;
-				alphaFrame = prevFrame;  // Start with previous frame
-				for (size_t j = 0; j < chunk.data.size() && j < prevFrame.size(); j += 3) {
-					if (chunk.data[j] != prevFrame[j] ||
-						chunk.data[j + 1] != prevFrame[j + 1] ||
-						chunk.data[j + 2] != prevFrame[j + 2]) {
+				alphaFrame = vdx.chunks[i - 1].data; // Set alphaFrame to previous frame
+				for (size_t j = 0; j < chunk.data.size() && j < alphaFrame.size(); j += 3) {
+					if (j + 2 < chunk.data.size() && j + 2 < alphaFrame.size() &&
+						(chunk.data[j] != alphaFrame[j] ||
+							chunk.data[j + 1] != alphaFrame[j + 1] ||
+							chunk.data[j + 2] != alphaFrame[j + 2])) {
 						alphaFrame[j] = colorKey.r;
 						alphaFrame[j + 1] = colorKey.g;
 						alphaFrame[j + 2] = colorKey.b;
 					}
 				}
-				savePNG(outputFilePath.string(), alphaFrame, 640, 320);
+				savePNG(outPath.string(), alphaFrame, 640, 320);
 			}
 			else {
-				savePNG(outputFilePath.string(), chunk.data, 640, 320);
+				savePNG(outPath.string(), chunk.data, 640, 320);
 			}
 		}
 	}

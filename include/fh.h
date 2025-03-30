@@ -217,6 +217,9 @@ h_prmorp
 
 */
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-field-initializers"
+
 /*
 
 Prefix map for Foyer assets
@@ -607,5 +610,7 @@ const std::unordered_map<std::string, View> foyer = {
 //==============================================================================
 
 // Function prototypes ...
+
+#pragma clang diagnostic pop
 
 #endif // FH_H

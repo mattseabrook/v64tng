@@ -164,6 +164,12 @@ void loadView() {
 	state.previous_view = state.current_view;
 
 	renderFrame();
+	POINT clientPos;
+	GetCursorPos(&clientPos);
+	ScreenToClient(g_hwnd, &clientPos);
+	updateCursorBasedOnPosition(clientPos); // Sets currentCursor and calls SetCursor
+	SetCursor(currentCursor);               // Ensure it's set immediately
+	PostMessage(g_hwnd, WM_SETCURSOR, reinterpret_cast<WPARAM>(g_hwnd), MAKELPARAM(HTCLIENT, 0)); // Trigger WM_SETCURSOR
 }
 
 //

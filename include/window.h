@@ -31,6 +31,7 @@ struct DisplayInfo {
 
 extern HWND g_hwnd;
 extern float scaleFactor;
+extern HCURSOR currentCursor;
 
 //=============================================================================
 
@@ -45,6 +46,7 @@ void initWindow();
 void initMenu();
 void renderFrame();
 bool processEvents();
+void updateCursorBasedOnPosition(POINT clientPos);
 void cleanupWindow();
 
 #endif // WINDOW_H

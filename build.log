@@ -1,0 +1,435 @@
+**********************
+PowerShell transcript start
+Start time: 20250329203940
+Username: FARPOINTSTATION\info
+RunAs User: FARPOINTSTATION\info
+Configuration Name: 
+Machine: FARPOINTSTATION (Microsoft Windows NT 10.0.22621.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -WorkingDirectory ~
+Process ID: 17072
+PSVersion: 7.5.0
+PSEdition: Core
+GitCommitId: 7.5.0
+OS: Microsoft Windows 10.0.22621
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is build.log
+Compiling resource file...
+Microsoft (R) Windows (R) Resource Compiler Version 10.0.10011.16384
+Copyright (C) Microsoft Corporation.  All rights reserved.
+Compiling and linking with clang++...
+   70 | #       define ADLMIDI_DEPRECATED(message) __attribute__((deprecated(message)))
+      |                ^
+C:\lib\libADLMIDI\include\adlmidi.h:64:16: note: previous definition is here
+   64 | #       define ADLMIDI_DEPRECATED(message) __declspec(deprecated(message))
+      |                ^
+src\music.cpp:302:19: warning: use of old-style cast [-Wold-style-cast]
+  302 |                 double factor = (double)timebase * DEFAULT_QN / ((double)qnlen * DEFAULT_TIMEBASE);
+      |                                 ^       ~~~~~~~~
+src\music.cpp:302:52: warning: use of old-style cast [-Wold-style-cast]
+  302 |                 double factor = (double)timebase * DEFAULT_QN / ((double)qnlen * DEFAULT_TIMEBASE);
+      |                                                                  ^       ~~~~~
+src\music.cpp:303:33: warning: use of old-style cast [-Wold-style-cast]
+  303 |                 delta = static_cast<unsigned>((double)delta * factor + 0.5);
+      |                                               ^       ~~~~~
+src\music.cpp:413:15: warning: use of old-style cast [-Wold-style-cast]
+  413 |                                 qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+      |                                           ^               ~~~~~
+src\music.cpp:413:48: warning: use of old-style cast [-Wold-style-cast]
+  413 |                                 qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+      |                                                                            ^               ~~~~~~~~~
+src\music.cpp:413:83: warning: use of old-style cast [-Wold-style-cast]
+  413 |                                 qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+      |                                                                                                               ^               ~~~~~~~~~
+src\music.cpp:468:24: warning: extension used [-Wlanguage-extension-token]
+  468 |         hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+      |                               ^
+src\music.cpp:469:3: warning: extension used [-Wlanguage-extension-token]
+  469 |                 __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
+      |                 ^
+src\music.cpp:469:34: warning: use of old-style cast [-Wold-style-cast]
+  469 |                 __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
+      |                                                ^       ~~~~~~~~~~~~
+src\music.cpp:484:25: warning: extension used [-Wlanguage-extension-token]
+  484 |         hr = pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pAudioClient);
+      |                                ^
+src\music.cpp:484:70: warning: use of old-style cast [-Wold-style-cast]
+  484 |         hr = pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pAudioClient);
+      |                                                                             ^       ~~~~~~~~~~~~~
+src\music.cpp:493:25: warning: missing field 'nChannels' initializer [-Wmissing-field-initializers]
+  493 |         WAVEFORMATEX wfx = { 0 };
+      |                                ^
+src\music.cpp:566:32: warning: extension used [-Wlanguage-extension-token]
+  566 |         hr = pAudioClient->GetService(__uuidof(IAudioRenderClient), (void**)&pRenderClient);
+      |                                       ^
+src\music.cpp:566:62: warning: use of old-style cast [-Wold-style-cast]
+  566 |         hr = pAudioClient->GetService(__uuidof(IAudioRenderClient), (void**)&pRenderClient);
+      |                                                                     ^       ~~~~~~~~~~~~~~
+src\music.cpp:624:55: warning: use of old-style cast [-Wold-style-cast]
+  624 |                 int samples = adl_play(player, framesAvailable * 2, (short*)pData);
+      |                                                                     ^       ~~~~~
+src\music.cpp:624:55: warning: cast from 'BYTE *' (aka 'unsigned char *') to 'short *' increases required alignment from 1 to 2 [-Wcast-align]
+  624 |                 int samples = adl_play(player, framesAvailable * 2, (short*)pData);
+      |                                                                     ^~~~~~~~~~~~~
+src\music.cpp:628:23: warning: use of old-style cast [-Wold-style-cast]
+  628 |                 short* samplesPtr = (short*)pData;
+      |                                     ^       ~~~~~
+src\music.cpp:628:23: warning: cast from 'BYTE *' (aka 'unsigned char *') to 'short *' increases required alignment from 1 to 2 [-Wcast-align]
+  628 |                 short* samplesPtr = (short*)pData;
+      |                                     ^~~~~~~~~~~~~
+19 warnings generated.
+Build failed!
+Running cleanup...
+Deleted: resource.res
+**********************
+PowerShell transcript end
+End time: 20250329204011
+**********************
+**********************
+PowerShell transcript start
+Start time: 20250329210258
+Username: FARPOINTSTATION\info
+RunAs User: FARPOINTSTATION\info
+Configuration Name: 
+Machine: FARPOINTSTATION (Microsoft Windows NT 10.0.22621.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -WorkingDirectory ~
+Process ID: 17072
+PSVersion: 7.5.0
+PSEdition: Core
+GitCommitId: 7.5.0
+OS: Microsoft Windows 10.0.22621
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is build.log
+Compiling resource file...
+Microsoft (R) Windows (R) Resource Compiler Version 10.0.10011.16384
+Copyright (C) Microsoft Corporation.  All rights reserved.
+Compiling and linking with clang++...
+      |                                                                  ^       ~~~~~
+src\music.cpp:303:33: warning: use of old-style cast [-Wold-style-cast]
+  303 |                 delta = static_cast<unsigned>((double)delta * factor + 0.5);
+      |                                               ^       ~~~~~
+src\music.cpp:413:15: warning: use of old-style cast [-Wold-style-cast]
+  413 |                                 qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+      |                                           ^               ~~~~~
+src\music.cpp:413:48: warning: use of old-style cast [-Wold-style-cast]
+  413 |                                 qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+      |                                                                            ^               ~~~~~~~~~
+src\music.cpp:413:83: warning: use of old-style cast [-Wold-style-cast]
+  413 |                                 qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+      |                                                                                                               ^               ~~~~~~~~~
+src\music.cpp:468:24: warning: extension used [-Wlanguage-extension-token]
+  468 |         hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+      |                               ^
+src\music.cpp:469:3: warning: extension used [-Wlanguage-extension-token]
+  469 |                 __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
+      |                 ^
+src\music.cpp:469:34: warning: use of old-style cast [-Wold-style-cast]
+  469 |                 __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
+      |                                                ^       ~~~~~~~~~~~~
+src\music.cpp:484:25: warning: extension used [-Wlanguage-extension-token]
+  484 |         hr = pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pAudioClient);
+      |                                ^
+src\music.cpp:484:70: warning: use of old-style cast [-Wold-style-cast]
+  484 |         hr = pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pAudioClient);
+      |                                                                             ^       ~~~~~~~~~~~~~
+src\music.cpp:493:25: warning: missing field 'nChannels' initializer [-Wmissing-field-initializers]
+  493 |         WAVEFORMATEX wfx = { 0 };
+      |                                ^
+src\music.cpp:566:32: warning: extension used [-Wlanguage-extension-token]
+  566 |         hr = pAudioClient->GetService(__uuidof(IAudioRenderClient), (void**)&pRenderClient);
+      |                                       ^
+src\music.cpp:566:62: warning: use of old-style cast [-Wold-style-cast]
+  566 |         hr = pAudioClient->GetService(__uuidof(IAudioRenderClient), (void**)&pRenderClient);
+      |                                                                     ^       ~~~~~~~~~~~~~~
+src\music.cpp:624:55: warning: use of old-style cast [-Wold-style-cast]
+  624 |                 int samples = adl_play(player, framesAvailable * 2, (short*)pData);
+      |                                                                     ^       ~~~~~
+src\music.cpp:624:55: warning: cast from 'BYTE *' (aka 'unsigned char *') to 'short *' increases required alignment from 1 to 2 [-Wcast-align]
+  624 |                 int samples = adl_play(player, framesAvailable * 2, (short*)pData);
+      |                                                                     ^~~~~~~~~~~~~
+src\music.cpp:628:23: warning: use of old-style cast [-Wold-style-cast]
+  628 |                 short* samplesPtr = (short*)pData;
+      |                                     ^       ~~~~~
+src\music.cpp:628:23: warning: cast from 'BYTE *' (aka 'unsigned char *') to 'short *' increases required alignment from 1 to 2 [-Wcast-align]
+  628 |                 short* samplesPtr = (short*)pData;
+      |                                     ^~~~~~~~~~~~~
+19 warnings generated.
+ "C:\\clang+llvm-18.1.8-x86_64-pc-windows-msvc\\bin\\lld-link" -out:v64tng.exe -defaultlib:libcmt -defaultlib:oldnames "-libpath:C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\lib\\x64" "-libp
+ath:C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\atlmfc\\lib\\x64" "-libpath:C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.26100.0\\ucrt\\x64" "-libpath:C:\\Program Files (x86)\\Windo
+ws Kits\\10\\Lib\\10.0.26100.0\\um\\x64" "-libpath:C:\\clang+llvm-18.1.8-x86_64-pc-windows-msvc\\lib\\clang\\18\\lib\\windows" "-libpath:C:\\lib\\zlib-1.3.1\\build_release\\Release" "-libpath:C:\\lib\\lpng1644\\build_release\\Release" "
+-libpath:C:\\VulkanSDK\\1.3.296.0\\Lib" "-libpath:C:\\lib\\libADLMIDI\\build_release\\Release" -nologo "C:\\Users\\info\\AppData\\Local\\Temp\\bitmap-9748ea.o" "C:\\Users\\info\\AppData\\Local\\Temp\\config-526578.o" "C:\\Users\\info\\A
+ppData\\Local\\Temp\\d2d-1986af.o" "C:\\Users\\info\\AppData\\Local\\Temp\\delta-c87e88.o" "C:\\Users\\info\\AppData\\Local\\Temp\\extract-599ebc.o" "C:\\Users\\info\\AppData\\Local\\Temp\\fh-4aece8.o" "C:\\Users\\info\\AppData\\Local\\
+Temp\\game-1be446.o" "C:\\Users\\info\\AppData\\Local\\Temp\\gjd-34f160.o" "C:\\Users\\info\\AppData\\Local\\Temp\\lzss-3be51f.o" "C:\\Users\\info\\AppData\\Local\\Temp\\main-f369b6.o" "C:\\Users\\info\\AppData\\Local\\Temp\\rl-0d5265.o
+" "C:\\Users\\info\\AppData\\Local\\Temp\\vdx-39d5af.o" "C:\\Users\\info\\AppData\\Local\\Temp\\vulkan-9f6f62.o" "C:\\Users\\info\\AppData\\Local\\Temp\\window-4b50e9.o" "C:\\Users\\info\\AppData\\Local\\Temp\\music-f1e83a.o" resource.r
+es zlibstatic.lib libpng16_static.lib vulkan-1.lib ADLMIDI.lib user32.lib gdi32.lib shell32.lib d2d1.lib ole32.lib uuid.lib /SUBSYSTEM:WINDOWS /MT
+lld-link: error: could not open '/MT': no such file or directory
+clang++: error: linker command failed with exit code 1 (use -v to see invocation)
+Build failed!
+Running cleanup...
+Deleted: resource.res
+**********************
+PowerShell transcript end
+End time: 20250329210347
+**********************
+**********************
+PowerShell transcript start
+Start time: 20250329210813
+Username: FARPOINTSTATION\info
+RunAs User: FARPOINTSTATION\info
+Configuration Name: 
+Machine: FARPOINTSTATION (Microsoft Windows NT 10.0.22621.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -WorkingDirectory ~
+Process ID: 17072
+PSVersion: 7.5.0
+PSEdition: Core
+GitCommitId: 7.5.0
+OS: Microsoft Windows 10.0.22621
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is build.log
+Compiling resource file...
+Microsoft (R) Windows (R) Resource Compiler Version 10.0.10011.16384
+Copyright (C) Microsoft Corporation.  All rights reserved.
+Compiling and linking with clang++...
+src\music.cpp:302:52: warning: use of old-style cast [-Wold-style-cast]
+  302 |                 double factor = (double)timebase * DEFAULT_QN / ((double)qnlen * DEFAULT_TIMEBASE);
+      |                                                                  ^       ~~~~~
+src\music.cpp:303:33: warning: use of old-style cast [-Wold-style-cast]
+  303 |                 delta = static_cast<unsigned>((double)delta * factor + 0.5);
+      |                                               ^       ~~~~~
+src\music.cpp:413:15: warning: use of old-style cast [-Wold-style-cast]
+  413 |                                 qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+      |                                           ^               ~~~~~
+src\music.cpp:413:48: warning: use of old-style cast [-Wold-style-cast]
+  413 |                                 qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+      |                                                                            ^               ~~~~~~~~~
+src\music.cpp:413:83: warning: use of old-style cast [-Wold-style-cast]
+  413 |                                 qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+      |                                                                                                               ^               ~~~~~~~~~
+src\music.cpp:468:24: warning: extension used [-Wlanguage-extension-token]
+  468 |         hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+      |                               ^
+src\music.cpp:469:3: warning: extension used [-Wlanguage-extension-token]
+  469 |                 __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
+      |                 ^
+src\music.cpp:469:34: warning: use of old-style cast [-Wold-style-cast]
+  469 |                 __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
+      |                                                ^       ~~~~~~~~~~~~
+src\music.cpp:484:25: warning: extension used [-Wlanguage-extension-token]
+  484 |         hr = pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pAudioClient);
+      |                                ^
+src\music.cpp:484:70: warning: use of old-style cast [-Wold-style-cast]
+  484 |         hr = pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pAudioClient);
+      |                                                                             ^       ~~~~~~~~~~~~~
+src\music.cpp:493:25: warning: missing field 'nChannels' initializer [-Wmissing-field-initializers]
+  493 |         WAVEFORMATEX wfx = { 0 };
+      |                                ^
+src\music.cpp:566:32: warning: extension used [-Wlanguage-extension-token]
+  566 |         hr = pAudioClient->GetService(__uuidof(IAudioRenderClient), (void**)&pRenderClient);
+      |                                       ^
+src\music.cpp:566:62: warning: use of old-style cast [-Wold-style-cast]
+  566 |         hr = pAudioClient->GetService(__uuidof(IAudioRenderClient), (void**)&pRenderClient);
+      |                                                                     ^       ~~~~~~~~~~~~~~
+src\music.cpp:624:55: warning: use of old-style cast [-Wold-style-cast]
+  624 |                 int samples = adl_play(player, framesAvailable * 2, (short*)pData);
+      |                                                                     ^       ~~~~~
+src\music.cpp:624:55: warning: cast from 'BYTE *' (aka 'unsigned char *') to 'short *' increases required alignment from 1 to 2 [-Wcast-align]
+  624 |                 int samples = adl_play(player, framesAvailable * 2, (short*)pData);
+      |                                                                     ^~~~~~~~~~~~~
+src\music.cpp:628:23: warning: use of old-style cast [-Wold-style-cast]
+  628 |                 short* samplesPtr = (short*)pData;
+      |                                     ^       ~~~~~
+src\music.cpp:628:23: warning: cast from 'BYTE *' (aka 'unsigned char *') to 'short *' increases required alignment from 1 to 2 [-Wcast-align]
+  628 |                 short* samplesPtr = (short*)pData;
+      |                                     ^~~~~~~~~~~~~
+19 warnings generated.
+ "C:\\clang+llvm-18.1.8-x86_64-pc-windows-msvc\\bin\\lld-link" -out:v64tng.exe -defaultlib:libcmt -defaultlib:oldnames "-libpath:C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\lib\\x64" "-libp
+ath:C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\atlmfc\\lib\\x64" "-libpath:C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.26100.0\\ucrt\\x64" "-libpath:C:\\Program Files (x86)\\Windo
+ws Kits\\10\\Lib\\10.0.26100.0\\um\\x64" "-libpath:C:\\clang+llvm-18.1.8-x86_64-pc-windows-msvc\\lib\\clang\\18\\lib\\windows" "-libpath:C:\\lib\\zlib-1.3.1\\build_release\\Release" "-libpath:C:\\lib\\lpng1644\\build_release\\Release" "
+-libpath:C:\\VulkanSDK\\1.3.296.0\\Lib" "-libpath:C:\\lib\\libADLMIDI\\build_release\\Release" -nologo "C:\\Users\\info\\AppData\\Local\\Temp\\bitmap-cbda6b.o" "C:\\Users\\info\\AppData\\Local\\Temp\\config-4aa7ac.o" "C:\\Users\\info\\A
+ppData\\Local\\Temp\\d2d-20892e.o" "C:\\Users\\info\\AppData\\Local\\Temp\\delta-ac6289.o" "C:\\Users\\info\\AppData\\Local\\Temp\\extract-1b3bf5.o" "C:\\Users\\info\\AppData\\Local\\Temp\\fh-1dfc52.o" "C:\\Users\\info\\AppData\\Local\\
+Temp\\game-e81cb9.o" "C:\\Users\\info\\AppData\\Local\\Temp\\gjd-547f4a.o" "C:\\Users\\info\\AppData\\Local\\Temp\\lzss-5b7cd4.o" "C:\\Users\\info\\AppData\\Local\\Temp\\main-19bd14.o" "C:\\Users\\info\\AppData\\Local\\Temp\\rl-a2333d.o
+" "C:\\Users\\info\\AppData\\Local\\Temp\\vdx-45275c.o" "C:\\Users\\info\\AppData\\Local\\Temp\\vulkan-24dd2b.o" "C:\\Users\\info\\AppData\\Local\\Temp\\window-e00f59.o" "C:\\Users\\info\\AppData\\Local\\Temp\\music-74207b.o" resource.r
+es zlibstatic.lib libpng16_static.lib vulkan-1.lib ADLMIDI.lib user32.lib gdi32.lib shell32.lib d2d1.lib ole32.lib uuid.lib /SUBSYSTEM:WINDOWS
+Build successful! Executable: v64tng.exe
+Running cleanup...
+Deleted: resource.res
+**********************
+PowerShell transcript end
+End time: 20250329210851
+**********************
+**********************
+PowerShell transcript start
+Start time: 20250329212057
+Username: FARPOINTSTATION\info
+RunAs User: FARPOINTSTATION\info
+Configuration Name: 
+Machine: FARPOINTSTATION (Microsoft Windows NT 10.0.22621.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -WorkingDirectory ~
+Process ID: 17072
+PSVersion: 7.5.0
+PSEdition: Core
+GitCommitId: 7.5.0
+OS: Microsoft Windows 10.0.22621
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is build.log
+Compiling resource file...
+Microsoft (R) Windows (R) Resource Compiler Version 10.0.10011.16384
+Copyright (C) Microsoft Corporation.  All rights reserved.
+Compiling and linking with clang++...
+      |                 ^
+src\music.cpp:469:34: warning: use of old-style cast [-Wold-style-cast]
+  469 |                 __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
+      |                                                ^       ~~~~~~~~~~~~
+src\music.cpp:484:25: warning: extension used [-Wlanguage-extension-token]
+  484 |         hr = pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pAudioClient);
+      |                                ^
+src\music.cpp:484:70: warning: use of old-style cast [-Wold-style-cast]
+  484 |         hr = pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pAudioClient);
+      |                                                                             ^       ~~~~~~~~~~~~~
+src\music.cpp:493:25: warning: missing field 'nChannels' initializer [-Wmissing-field-initializers]
+  493 |         WAVEFORMATEX wfx = { 0 };
+      |                                ^
+src\music.cpp:566:32: warning: extension used [-Wlanguage-extension-token]
+  566 |         hr = pAudioClient->GetService(__uuidof(IAudioRenderClient), (void**)&pRenderClient);
+      |                                       ^
+src\music.cpp:566:62: warning: use of old-style cast [-Wold-style-cast]
+  566 |         hr = pAudioClient->GetService(__uuidof(IAudioRenderClient), (void**)&pRenderClient);
+      |                                                                     ^       ~~~~~~~~~~~~~~
+src\music.cpp:624:55: warning: use of old-style cast [-Wold-style-cast]
+  624 |                 int samples = adl_play(player, framesAvailable * 2, (short*)pData);
+      |                                                                     ^       ~~~~~
+src\music.cpp:624:55: warning: cast from 'BYTE *' (aka 'unsigned char *') to 'short *' increases required alignment from 1 to 2 [-Wcast-align]
+  624 |                 int samples = adl_play(player, framesAvailable * 2, (short*)pData);
+      |                                                                     ^~~~~~~~~~~~~
+src\music.cpp:628:23: warning: use of old-style cast [-Wold-style-cast]
+  628 |                 short* samplesPtr = (short*)pData;
+      |                                     ^       ~~~~~
+src\music.cpp:628:23: warning: cast from 'BYTE *' (aka 'unsigned char *') to 'short *' increases required alignment from 1 to 2 [-Wcast-align]
+  628 |                 short* samplesPtr = (short*)pData;
+      |                                     ^~~~~~~~~~~~~
+19 warnings generated.
+ "C:\\clang+llvm-18.1.8-x86_64-pc-windows-msvc\\bin\\lld-link" -out:v64tng.exe -defaultlib:libcmt -defaultlib:oldnames "-libpath:C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\lib\\x64" "-libp
+ath:C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\atlmfc\\lib\\x64" "-libpath:C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.26100.0\\ucrt\\x64" "-libpath:C:\\Program Files (x86)\\Windo
+ws Kits\\10\\Lib\\10.0.26100.0\\um\\x64" "-libpath:C:\\clang+llvm-18.1.8-x86_64-pc-windows-msvc\\lib\\clang\\18\\lib\\windows" "-libpath:C:\\lib\\zlib-1.3.1\\build_release\\Release" "-libpath:C:\\lib\\lpng1644\\build_release\\Release" "
+-libpath:C:\\VulkanSDK\\1.3.296.0\\Lib" "-libpath:C:\\lib\\libADLMIDI\\build_release\\Release" -nologo "C:\\Users\\info\\AppData\\Local\\Temp\\bitmap-2331cf.o" "C:\\Users\\info\\AppData\\Local\\Temp\\config-a1bfc8.o" "C:\\Users\\info\\A
+ppData\\Local\\Temp\\d2d-471fe4.o" "C:\\Users\\info\\AppData\\Local\\Temp\\delta-cb7f29.o" "C:\\Users\\info\\AppData\\Local\\Temp\\extract-567a96.o" "C:\\Users\\info\\AppData\\Local\\Temp\\fh-de57ec.o" "C:\\Users\\info\\AppData\\Local\\
+Temp\\game-0be075.o" "C:\\Users\\info\\AppData\\Local\\Temp\\gjd-222e9c.o" "C:\\Users\\info\\AppData\\Local\\Temp\\lzss-3cff72.o" "C:\\Users\\info\\AppData\\Local\\Temp\\main-354e57.o" "C:\\Users\\info\\AppData\\Local\\Temp\\rl-1cae8e.o
+" "C:\\Users\\info\\AppData\\Local\\Temp\\vdx-b61fac.o" "C:\\Users\\info\\AppData\\Local\\Temp\\vulkan-da48c6.o" "C:\\Users\\info\\AppData\\Local\\Temp\\window-4bf3ec.o" "C:\\Users\\info\\AppData\\Local\\Temp\\music-2a9ef7.o" resource.r
+es zlibstatic.lib libpng16_static.lib vulkan-1.lib ADLMIDI.lib user32.lib gdi32.lib shell32.lib d2d1.lib ole32.lib uuid.lib /SUBSYSTEM:WINDOWS
+Build successful! Executable: v64tng.exe
+Running cleanup...
+Deleted: resource.res
+**********************
+PowerShell transcript end
+End time: 20250329212132
+**********************
+**********************
+PowerShell transcript start
+Start time: 20250329214218
+Username: FARPOINTSTATION\info
+RunAs User: FARPOINTSTATION\info
+Configuration Name: 
+Machine: FARPOINTSTATION (Microsoft Windows NT 10.0.22621.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -WorkingDirectory ~
+Process ID: 17072
+PSVersion: 7.5.0
+PSEdition: Core
+GitCommitId: 7.5.0
+OS: Microsoft Windows 10.0.22621
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is build.log
+Compiling resource file...
+Microsoft (R) Windows (R) Resource Compiler Version 10.0.10011.16384
+Copyright (C) Microsoft Corporation.  All rights reserved.
+Compiling and linking with clang++...
+src\music.cpp:302:52: warning: use of old-style cast [-Wold-style-cast]
+  302 |                 double factor = (double)timebase * DEFAULT_QN / ((double)qnlen * DEFAULT_TIMEBASE);
+      |                                                                  ^       ~~~~~
+src\music.cpp:303:33: warning: use of old-style cast [-Wold-style-cast]
+  303 |                 delta = static_cast<unsigned>((double)delta * factor + 0.5);
+      |                                               ^       ~~~~~
+src\music.cpp:413:15: warning: use of old-style cast [-Wold-style-cast]
+  413 |                                 qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+      |                                           ^               ~~~~~
+src\music.cpp:413:48: warning: use of old-style cast [-Wold-style-cast]
+  413 |                                 qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+      |                                                                            ^               ~~~~~~~~~
+src\music.cpp:413:83: warning: use of old-style cast [-Wold-style-cast]
+  413 |                                 qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+      |                                                                                                               ^               ~~~~~~~~~
+src\music.cpp:468:24: warning: extension used [-Wlanguage-extension-token]
+  468 |         hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+      |                               ^
+src\music.cpp:469:3: warning: extension used [-Wlanguage-extension-token]
+  469 |                 __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
+      |                 ^
+src\music.cpp:469:34: warning: use of old-style cast [-Wold-style-cast]
+  469 |                 __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
+      |                                                ^       ~~~~~~~~~~~~
+src\music.cpp:484:25: warning: extension used [-Wlanguage-extension-token]
+  484 |         hr = pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pAudioClient);
+      |                                ^
+src\music.cpp:484:70: warning: use of old-style cast [-Wold-style-cast]
+  484 |         hr = pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pAudioClient);
+      |                                                                             ^       ~~~~~~~~~~~~~
+src\music.cpp:493:25: warning: missing field 'nChannels' initializer [-Wmissing-field-initializers]
+  493 |         WAVEFORMATEX wfx = { 0 };
+      |                                ^
+src\music.cpp:566:32: warning: extension used [-Wlanguage-extension-token]
+  566 |         hr = pAudioClient->GetService(__uuidof(IAudioRenderClient), (void**)&pRenderClient);
+      |                                       ^
+src\music.cpp:566:62: warning: use of old-style cast [-Wold-style-cast]
+  566 |         hr = pAudioClient->GetService(__uuidof(IAudioRenderClient), (void**)&pRenderClient);
+      |                                                                     ^       ~~~~~~~~~~~~~~
+src\music.cpp:624:55: warning: use of old-style cast [-Wold-style-cast]
+  624 |                 int samples = adl_play(player, framesAvailable * 2, (short*)pData);
+      |                                                                     ^       ~~~~~
+src\music.cpp:624:55: warning: cast from 'BYTE *' (aka 'unsigned char *') to 'short *' increases required alignment from 1 to 2 [-Wcast-align]
+  624 |                 int samples = adl_play(player, framesAvailable * 2, (short*)pData);
+      |                                                                     ^~~~~~~~~~~~~
+src\music.cpp:628:23: warning: use of old-style cast [-Wold-style-cast]
+  628 |                 short* samplesPtr = (short*)pData;
+      |                                     ^       ~~~~~
+src\music.cpp:628:23: warning: cast from 'BYTE *' (aka 'unsigned char *') to 'short *' increases required alignment from 1 to 2 [-Wcast-align]
+  628 |                 short* samplesPtr = (short*)pData;
+      |                                     ^~~~~~~~~~~~~
+19 warnings generated.
+ "C:\\clang+llvm-18.1.8-x86_64-pc-windows-msvc\\bin\\lld-link" -out:v64tng.exe -defaultlib:libcmt -defaultlib:oldnames "-libpath:C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\lib\\x64" "-libp
+ath:C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\atlmfc\\lib\\x64" "-libpath:C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.26100.0\\ucrt\\x64" "-libpath:C:\\Program Files (x86)\\Windo
+ws Kits\\10\\Lib\\10.0.26100.0\\um\\x64" "-libpath:C:\\clang+llvm-18.1.8-x86_64-pc-windows-msvc\\lib\\clang\\18\\lib\\windows" "-libpath:C:\\lib\\zlib-1.3.1\\build_release\\Release" "-libpath:C:\\lib\\lpng1644\\build_release\\Release" "
+-libpath:C:\\VulkanSDK\\1.3.296.0\\Lib" "-libpath:C:\\lib\\libADLMIDI\\build_release\\Release" -nologo "C:\\Users\\info\\AppData\\Local\\Temp\\bitmap-453da1.o" "C:\\Users\\info\\AppData\\Local\\Temp\\config-3fecbc.o" "C:\\Users\\info\\A
+ppData\\Local\\Temp\\d2d-4ac658.o" "C:\\Users\\info\\AppData\\Local\\Temp\\delta-5d9c0a.o" "C:\\Users\\info\\AppData\\Local\\Temp\\extract-d80817.o" "C:\\Users\\info\\AppData\\Local\\Temp\\fh-ac6007.o" "C:\\Users\\info\\AppData\\Local\\
+Temp\\game-dd322b.o" "C:\\Users\\info\\AppData\\Local\\Temp\\gjd-d57ab4.o" "C:\\Users\\info\\AppData\\Local\\Temp\\lzss-b0015c.o" "C:\\Users\\info\\AppData\\Local\\Temp\\main-81215e.o" "C:\\Users\\info\\AppData\\Local\\Temp\\rl-5a78ed.o
+" "C:\\Users\\info\\AppData\\Local\\Temp\\vdx-5b9b53.o" "C:\\Users\\info\\AppData\\Local\\Temp\\vulkan-b45f01.o" "C:\\Users\\info\\AppData\\Local\\Temp\\window-7e5a14.o" "C:\\Users\\info\\AppData\\Local\\Temp\\music-c6b322.o" resource.r
+es zlibstatic.lib libpng16_static.lib vulkan-1.lib ADLMIDI.lib user32.lib gdi32.lib shell32.lib d2d1.lib ole32.lib uuid.lib /SUBSYSTEM:WINDOWS
+Build successful! Executable: v64tng.exe
+Running cleanup...
+Deleted: resource.res
+**********************
+PowerShell transcript end
+End time: 20250329214251
+**********************

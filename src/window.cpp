@@ -22,6 +22,7 @@ HWND g_hwnd = nullptr;
 
 HCURSOR defaultCursor = nullptr;
 HCURSOR handCursor = nullptr;
+HCURSOR currentCursor = nullptr;
 
 static RendererType renderer;
 float scaleFactor = 1.0f;
@@ -84,7 +85,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		return 0;
 	}
 	case WM_SIZING: {
-		RECT* rect = (RECT*)lParam;
+		RECT* rect = reinterpret_cast<RECT*>(lParam);
 
 		// Get window frame dimensions
 		RECT frameRect = { 0, 0, MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT };
@@ -153,7 +154,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 	case WM_SETCURSOR: {
 		if (LOWORD(lParam) != HTCLIENT)
 			return DefWindowProc(hwnd, uMsg, wParam, lParam);
-		SetCursor(defaultCursor);
+		SetCursor(currentCursor); // Use the dynamically updated cursor
 		return TRUE;
 	}
 	case WM_NCHITTEST: {
@@ -190,46 +191,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		return HTCLIENT;
 	}
 	case WM_MOUSEMOVE: {
-		POINT cursorPos;
-		GetCursorPos(&cursorPos);
-		ScreenToClient(g_hwnd, &cursorPos);
-
-		float normalizedX = static_cast<float>(cursorPos.x) / state.ui.width * 100.0f;
-		float normalizedY = static_cast<float>(cursorPos.y) / state.ui.height * 100.0f;
-
-		int highestZIndex = -1;
-		enum class TargetType { None, Navigation, Hotspot } targetType = TargetType::None;
-
-		// Check navigations
-		for (size_t i = 0; i < state.view.navigations.size(); ++i) {
-			const auto& nav = state.view.navigations[i];
-			if (normalizedX >= nav.hotspot.x && normalizedX <= (nav.hotspot.x + nav.hotspot.width) &&
-				normalizedY >= nav.hotspot.y && normalizedY <= (nav.hotspot.y + nav.hotspot.height)) {
-				if (nav.z_index > highestZIndex) {
-					highestZIndex = nav.z_index;
-					targetType = TargetType::Navigation;
-				}
-			}
-		}
-
-		// Check hotspots
-		for (size_t i = 0; i < state.view.hotspots.size(); ++i) {
-			const auto& hotspot = state.view.hotspots[i];
-			if (normalizedX >= hotspot.x && normalizedX <= (hotspot.x + hotspot.width) &&
-				normalizedY >= hotspot.y && normalizedY <= (hotspot.y + hotspot.height)) {
-				if (hotspot.z_index > highestZIndex) {
-					highestZIndex = hotspot.z_index;
-					targetType = TargetType::Hotspot;
-				}
-			}
-		}
-
-		if (targetType != TargetType::None) {
-			SetCursor(handCursor);
-		}
-		else {
-			SetCursor(defaultCursor);
-		}
+		POINT clientPos = { LOWORD(lParam), HIWORD(lParam) };
+		updateCursorBasedOnPosition(clientPos);
 		return 0;
 	}
 	case WM_LBUTTONDOWN: {
@@ -409,11 +372,11 @@ void initWindow() {
 		state.ui.height = GetSystemMetrics(SM_CYSCREEN);
 	}
 	else {
-		if ((int)config["width"] & 1) {
-			config["width"] = (int)config["width"] + 1;
+		if (static_cast<int>(config["width"]) & 1) {
+			config["width"] = static_cast<int>(config["width"]) + 1;
 		}
 		state.ui.width = config["width"];
-		state.ui.height = config["width"] / 2;
+		state.ui.height = config["width"].get<int>() / 2;
 	}
 
 	state.ui.x = config["x"];
@@ -439,7 +402,7 @@ void initWindow() {
 	wc.lpfnWndProc = WindowProc;
 	wc.hInstance = GetModuleHandle(nullptr);
 	wc.lpszClassName = L"D2DRenderWindowClass";
-	wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
+	wc.hbrBackground = reinterpret_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
 
 	if (!RegisterClass(&wc)) {
 		throw std::runtime_error("Failed to register window class");
@@ -483,6 +446,46 @@ bool processEvents() {
 		DispatchMessage(&msg);
 	}
 	return true;
+}
+
+//
+// Update cursor based on position
+//
+void updateCursorBasedOnPosition(POINT clientPos) {
+	float normalizedX = static_cast<float>(clientPos.x) / state.ui.width * 100.0f;
+	float normalizedY = static_cast<float>(clientPos.y) / state.ui.height * 100.0f;
+
+	int highestZIndex = -1;
+	enum class TargetType { None, Navigation, Hotspot } targetType = TargetType::None;
+
+	for (size_t i = 0; i < state.view.navigations.size(); ++i) {
+		const auto& nav = state.view.navigations[i];
+		if (normalizedX >= nav.hotspot.x && normalizedX <= (nav.hotspot.x + nav.hotspot.width) &&
+			normalizedY >= nav.hotspot.y && normalizedY <= (nav.hotspot.y + nav.hotspot.height)) {
+			if (nav.z_index > highestZIndex) {
+				highestZIndex = nav.z_index;
+				targetType = TargetType::Navigation;
+			}
+		}
+	}
+
+	for (size_t i = 0; i < state.view.hotspots.size(); ++i) {
+		const auto& hotspot = state.view.hotspots[i];
+		if (normalizedX >= hotspot.x && normalizedX <= (hotspot.x + hotspot.width) &&
+			normalizedY >= hotspot.y && normalizedY <= (hotspot.y + hotspot.height)) {
+			if (hotspot.z_index > highestZIndex) {
+				highestZIndex = hotspot.z_index;
+				targetType = TargetType::Hotspot;
+			}
+		}
+	}
+
+	if (targetType != TargetType::None) {
+		SetCursor(handCursor);
+	}
+	else {
+		SetCursor(defaultCursor);
+	}
 }
 
 //

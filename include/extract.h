@@ -14,7 +14,7 @@
 
     7th Guest - Command-line extraction functions
 
-    Extracts *.VDX , *.XMI, and *.PNG/*.RAW files from *.GJD files
+    Extracts *.VDX , *.XMI, and *.PNG or *.RAW files from *.GJD files
 
 ===============================================================================
 */

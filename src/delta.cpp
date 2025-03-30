@@ -164,7 +164,7 @@ std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getDeltaBitmapData(
 	size_t paletteColorIndex = 0;
 
 	if (localPaletteSize > 0) {
-		for (int paletteGroup = 0; paletteGroup < 16 && (paletteGroup * 2 + 3) < buffer.size(); ++paletteGroup) {
+		for (size_t paletteGroup = 0; paletteGroup < 16 && (paletteGroup * 2 + 3) < buffer.size(); ++paletteGroup) {
 			uint16_t paletteMap = readLittleEndian16(buffer.subspan(paletteGroup * 2 + 2));
 			for (int colorBit = 0; colorBit < 16; ++colorBit) {
 				if (paletteMap & (0x8000 >> colorBit)) {
