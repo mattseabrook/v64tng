@@ -14,8 +14,10 @@ try {
         New-Item -ItemType Directory -Path "build"
     }
 
-    if (-not (Test-Path "build/resource.res")) {
-        Write-Host "Compiling resource file..." -ForegroundColor Cyan
+    if ((-not (Test-Path "build/resource.res")) -or `
+        ((Get-Item "resource.rc").LastWriteTime -gt (Get-Item "build/resource.res").LastWriteTime)) {
+
+        Write-Host "Compiling/Recompiling resource file..." -ForegroundColor Cyan
         & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\rc.exe" `
             /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um" `
             /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\shared" `
@@ -25,9 +27,6 @@ try {
             Write-Host "Resource compilation failed!" -ForegroundColor Red
             exit 1
         }
-    }
-    else {
-        Write-Host "Resource file already exists, skipping compilation." -ForegroundColor Green
     }
 
     $sources = Get-ChildItem -Path "src" -Filter "*.cpp" | ForEach-Object { $_.FullName }
@@ -77,7 +76,6 @@ try {
     }
 
     Write-Host "Linking to v64tng.exe..." -ForegroundColor Cyan
-    $linkerFlags = "-Wl,-s,--gc-sections"
     $clangLinkArgs = @(
         "-fuse-ld=lld",
         "-Wl,--gc-sections",
