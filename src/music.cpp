@@ -201,13 +201,14 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 	std::vector<PendingNoteOff> note_off_heap;
 	note_off_heap.reserve(100);
 
-	while (!xmi_data.empty())
-	{
-		// 3a. Delta
-		uint32_t current_xmi_delta = read_xmi_delta(xmi_data);
+	bool end_of_track_found = false;
 
-		// 3b. Pending Note Offs
+	while (!xmi_data.empty() && !end_of_track_found)
+	{
+		uint32_t current_xmi_delta = read_xmi_delta(xmi_data);
 		uint32_t processed_delta = 0;
+
+		// Process pending note-offs
 		while (!note_off_heap.empty() && note_off_heap.front().delta_ticks <= (current_xmi_delta - processed_delta))
 		{
 			std::pop_heap(note_off_heap.begin(), note_off_heap.end(), std::greater<>{});
@@ -217,122 +218,111 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 			uint32_t note_off_xmi_delta = note_off.delta_ticks;
 			processed_delta += note_off_xmi_delta;
 
-			std::vector<uint8_t> midi_note_off_event;
-			midi_note_off_event.reserve(3);
-			// FIXED: Use static_cast for bitwise result
-			midi_note_off_event.push_back(static_cast<uint8_t>((note_off.event_data[0] & 0x0F) | 0x80));
-			midi_note_off_event.push_back(note_off.event_data[1]);
-			midi_note_off_event.push_back(uint8_t{0x7F});
-
+			std::vector<uint8_t> midi_note_off_event = {
+				static_cast<uint8_t>((note_off.event_data[0] & 0x0F) | 0x80),
+				note_off.event_data[1],
+				uint8_t{0x7F}};
 			intermediate_events.push_back({note_off_xmi_delta, std::move(midi_note_off_event)});
 
 			for (auto &pending : note_off_heap)
-			{
 				pending.delta_ticks -= note_off_xmi_delta;
-			}
 		}
 
-		// Update remaining deltas
 		uint32_t remaining_event_delta = current_xmi_delta - processed_delta;
 		for (auto &pending : note_off_heap)
-		{
 			pending.delta_ticks -= remaining_event_delta;
-		}
 
-		// 3c. XMI Event
-		uint8_t status = xmi_data.front();
-		xmi_data = xmi_data.subspan(1);
-
-		std::vector<uint8_t> current_midi_event_bytes;
-		current_midi_event_bytes.push_back(status);
-		size_t data_bytes_to_read = 0;
-
-		if (status == uint8_t{0xFF})
-		{ // Meta
-			uint8_t meta_type = xmi_data.front();
+		// Process events with the same delta
+		bool first_event = true;
+		while (!xmi_data.empty() && xmi_data.front() >= 0x80 && !end_of_track_found)
+		{
+			uint8_t status = xmi_data.front();
 			xmi_data = xmi_data.subspan(1);
-			current_midi_event_bytes.push_back(meta_type);
+			std::vector<uint8_t> current_midi_event_bytes = {status};
+			size_t data_bytes_to_read = 0;
 
-			if (meta_type == uint8_t{0x2F})
-			{													// EoT
-				current_midi_event_bytes.push_back(uint8_t{0}); // Length 0
-				std::sort(note_off_heap.begin(), note_off_heap.end(), std::greater<>{});
-				for (const auto &note_off : note_off_heap)
+			if (status == 0xFF)
+			{
+				uint8_t meta_type = xmi_data.front();
+				xmi_data = xmi_data.subspan(1);
+				current_midi_event_bytes.push_back(meta_type);
+
+				if (meta_type == 0x2F)
 				{
-					std::vector<uint8_t> flush_event;
-					flush_event.reserve(3);
-					// FIXED: Use static_cast for bitwise result
-					flush_event.push_back(static_cast<uint8_t>((note_off.event_data[0] & 0x0F) | 0x80));
-					flush_event.push_back(note_off.event_data[1]);
-					flush_event.push_back(uint8_t{0x7F});
-					intermediate_events.push_back({0, std::move(flush_event)});
+					current_midi_event_bytes.push_back(0);
+					std::sort(note_off_heap.begin(), note_off_heap.end(), std::greater<>{});
+					for (const auto &note_off : note_off_heap)
+					{
+						std::vector<uint8_t> flush_event = {
+							static_cast<uint8_t>((note_off.event_data[0] & 0x0F) | 0x80),
+							note_off.event_data[1],
+							uint8_t{0x7F}};
+						intermediate_events.push_back({0, std::move(flush_event)});
+					}
+					note_off_heap.clear();
+					intermediate_events.push_back({remaining_event_delta, std::move(current_midi_event_bytes)});
+					end_of_track_found = true; // Set flag to exit outer loop
 				}
-				note_off_heap.clear();
-				intermediate_events.push_back({remaining_event_delta, std::move(current_midi_event_bytes)});
-				break; // Exit loop
+				else
+				{
+					uint8_t length = xmi_data.front();
+					xmi_data = xmi_data.subspan(1);
+					current_midi_event_bytes.push_back(length);
+					current_midi_event_bytes.insert(current_midi_event_bytes.end(), xmi_data.begin(), xmi_data.begin() + length);
+					xmi_data = xmi_data.subspan(length);
+				}
 			}
-			else
-			{ // Other Meta
+			else if ((status & 0xF0) == 0x90)
+			{
+				uint8_t note = xmi_data[0];
+				uint8_t velocity = xmi_data[1];
+				xmi_data = xmi_data.subspan(2);
+				current_midi_event_bytes.push_back(note);
+				current_midi_event_bytes.push_back(velocity);
+
+				uint32_t note_duration = read_xmi_delta(xmi_data);
+				if (velocity == 0)
+				{
+					current_midi_event_bytes[0] = static_cast<uint8_t>((status & 0x0F) | 0x80);
+					current_midi_event_bytes.back() = 0x7F;
+				}
+				else if (note_duration > 0)
+				{
+					note_off_heap.push_back({note_duration, {status, note, 0}});
+					std::push_heap(note_off_heap.begin(), note_off_heap.end(), std::greater<>{});
+				}
+			}
+			else if ((status & 0xF0) == 0x80 || (status & 0xF0) == 0xA0 ||
+					 (status & 0xF0) == 0xB0 || (status & 0xF0) == 0xE0)
+			{
+				data_bytes_to_read = 2;
+			}
+			else if ((status & 0xF0) == 0xC0 || (status & 0xF0) == 0xD0)
+			{
+				data_bytes_to_read = 1;
+			}
+			else if (status == 0xF0 || status == 0xF7)
+			{
 				uint8_t length = xmi_data.front();
 				xmi_data = xmi_data.subspan(1);
-				current_midi_event_bytes.push_back(length);
 				current_midi_event_bytes.insert(current_midi_event_bytes.end(), xmi_data.begin(), xmi_data.begin() + length);
 				xmi_data = xmi_data.subspan(length);
 			}
-		}
-		else if ((status & 0xF0) == 0x90)
-		{ // Note On
-			uint8_t note = xmi_data[0];
-			uint8_t velocity = xmi_data[1];
-			xmi_data = xmi_data.subspan(2);
-			current_midi_event_bytes.push_back(note);
-			current_midi_event_bytes.push_back(velocity);
 
-			uint32_t note_duration = read_xmi_delta(xmi_data);
-
-			if (velocity == uint8_t{0})
-			{ // Treat as Note Off
-				// FIXED: Use static_cast for bitwise result
-				current_midi_event_bytes[0] = static_cast<uint8_t>((status & 0x0F) | 0x80);
-				current_midi_event_bytes.back() = uint8_t{0x7F}; // Replace velocity
+			if (data_bytes_to_read > 0)
+			{
+				current_midi_event_bytes.insert(current_midi_event_bytes.end(), xmi_data.begin(), xmi_data.begin() + data_bytes_to_read);
+				xmi_data = xmi_data.subspan(data_bytes_to_read);
 			}
-			else if (note_duration > 0)
-			{																		  // Schedule Note Off
-																					  // FIXED: Use static_cast for bitwise result (This line was previously flagged, but might have been misidentified if the error was the one above, double-check if necessary, but should be correct now)
-																					  // Note: The error was likely on assignment `current_midi_event_bytes[0] = ...`, not here. This line looks correct.
-				note_off_heap.push_back({note_duration, {status, note, uint8_t{0}}}); // Pushing back uint8_t array
-				std::push_heap(note_off_heap.begin(), note_off_heap.end(), std::greater<>{});
-			}
-		}
-		else if ((status & 0xF0) == 0x80 || (status & 0xF0) == 0xA0 ||
-				 (status & 0xF0) == 0xB0 || (status & 0xF0) == 0xE0)
-		{
-			data_bytes_to_read = 2;
-		}
-		else if ((status & 0xF0) == 0xC0 || (status & 0xF0) == 0xD0)
-		{
-			data_bytes_to_read = 1;
-		}
-		else if (status == uint8_t{0xF0} || status == uint8_t{0xF7})
-		{
-			// Replace VLQ read with original fixed-length read
-			uint8_t length = xmi_data.front();
-			xmi_data = xmi_data.subspan(1);
-			current_midi_event_bytes.insert(current_midi_event_bytes.end(), xmi_data.begin(), xmi_data.begin() + length);
-			xmi_data = xmi_data.subspan(length);
-		}
 
-		if (data_bytes_to_read > 0)
-		{
-			current_midi_event_bytes.insert(current_midi_event_bytes.end(), xmi_data.begin(), xmi_data.begin() + data_bytes_to_read);
-			xmi_data = xmi_data.subspan(data_bytes_to_read);
+			// Assign delta: first event gets remaining_event_delta, others get 0
+			uint32_t event_delta = first_event ? remaining_event_delta : 0;
+			intermediate_events.push_back({event_delta, std::move(current_midi_event_bytes)});
+			first_event = false;
 		}
+	}
 
-		intermediate_events.push_back({remaining_event_delta, std::move(current_midi_event_bytes)});
-
-	} // End while
-
-	// --- 4. Convert Intermediate Events to Final MIDI Track (Pass 2) ---
+	// --- Pass 2/2 - Convert Intermediate Events to Final MIDI Track ---
 	std::vector<uint8_t> final_midi_track_data;
 	final_midi_track_data.reserve(intermediate_events.size() * 5);
 
@@ -341,7 +331,7 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 	for (const auto &intermediate_event : intermediate_events)
 	{
 		double factor = (static_cast<double>(MIDI_TIMEBASE) * DEFAULT_QN) /
-						(static_cast<double>(current_microsecs_per_qn) * 60.0); // Fix: Use 60.0 or DEFAULT_TIMEBASE
+						(static_cast<double>(current_microsecs_per_qn) * 60.0);
 		uint32_t midi_delta = static_cast<uint32_t>(static_cast<double>(intermediate_event.xmi_delta) * factor + 0.5);
 
 		write_vlq(final_midi_track_data, midi_delta);
@@ -358,11 +348,11 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 			uint32_t tempo = (static_cast<uint32_t>(event_bytes[3]) << 16) |
 							 (static_cast<uint32_t>(event_bytes[4]) << 8) |
 							 (static_cast<uint32_t>(event_bytes[5]));
-			current_microsecs_per_qn = tempo; // Fix: Direct assignment
+			current_microsecs_per_qn = tempo;
 		}
 	}
 
-	// --- 5. Construct Final MIDI File Structure ---
+	// --- Construct Final MIDI File Structure ---
 	std::vector<uint8_t> final_midi_output;
 	final_midi_output.reserve(MIDI_HEADER_SIZE + MIDI_TRACK_HEADER_SIZE + final_midi_track_data.size());
 
@@ -679,7 +669,7 @@ void xmiPlay(const std::string &songName, bool isTransient)
 //
 // DEBUG
 //
-std::vector<uint8_t> _xmiConverter(const RLEntry& song)
+std::vector<uint8_t> _xmiConverter(const RLEntry &song)
 {
 	struct NOEVENTS
 	{
@@ -687,14 +677,14 @@ std::vector<uint8_t> _xmiConverter(const RLEntry& song)
 		std::array<unsigned char, 3> off;
 	};
 
-	std::array<NOEVENTS, 1000> off_events{ {{0xFFFFFFFFL, { 0, 0, 0 }}} };
+	std::array<NOEVENTS, 1000> off_events{{{0xFFFFFFFFL, {0, 0, 0}}}};
 
-	auto comp_events = [](const NOEVENTS& a, const NOEVENTS& b)
-		{
-			return a.delta < b.delta;
-		};
+	auto comp_events = [](const NOEVENTS &a, const NOEVENTS &b)
+	{
+		return a.delta < b.delta;
+	};
 
-	std::array<unsigned char, 18> midiheader = { 'M', 'T', 'h', 'd', 0, 0, 0, 6, 0, 0, 0, 1, 0, 60, 'M', 'T', 'r', 'k' };
+	std::array<unsigned char, 18> midiheader = {'M', 'T', 'h', 'd', 0, 0, 0, 6, 0, 0, 0, 1, 0, 60, 'M', 'T', 'r', 'k'};
 
 	constexpr unsigned long DEFAULT_TEMPO = 120UL;
 	constexpr unsigned long XMI_FREQ = 120UL;
@@ -710,12 +700,12 @@ std::vector<uint8_t> _xmiConverter(const RLEntry& song)
 	std::ifstream xmiData("XMI.GJD", std::ios::binary | std::ios::ate);
 	std::vector<uint8_t> xmiFile(song.length);
 	xmiData.seekg(song.offset);
-	xmiData.read(reinterpret_cast<char*>(xmiFile.data()), song.length);
+	xmiData.read(reinterpret_cast<char *>(xmiFile.data()), song.length);
 
-	unsigned char* cur = xmiFile.data();
+	unsigned char *cur = xmiFile.data();
 
 	cur += 4 * 12 + 2;
-	unsigned lTIMB = _byteswap_ulong(*reinterpret_cast<unsigned*>(cur));
+	unsigned lTIMB = _byteswap_ulong(*reinterpret_cast<unsigned *>(cur));
 	cur += 4;
 
 	for (unsigned i = 0; i < lTIMB; i += 2)
@@ -726,7 +716,7 @@ std::vector<uint8_t> _xmiConverter(const RLEntry& song)
 	if (!std::memcmp(cur, "RBRN", 4))
 	{
 		cur += 8;
-		unsigned short nBranch = *reinterpret_cast<unsigned short*>(cur);
+		unsigned short nBranch = *reinterpret_cast<unsigned short *>(cur);
 		cur += 2;
 
 		for (unsigned i = 0; i < nBranch; i++)
@@ -736,15 +726,15 @@ std::vector<uint8_t> _xmiConverter(const RLEntry& song)
 	}
 
 	cur += 4;
-	unsigned lEVNT = _byteswap_ulong(*reinterpret_cast<unsigned*>(cur));
+	unsigned lEVNT = _byteswap_ulong(*reinterpret_cast<unsigned *>(cur));
 	cur += 4;
 
 	std::vector<unsigned char> midi_decode(xmiFile.size() * 2);
 
-	unsigned char* dcur = midi_decode.data();
+	unsigned char *dcur = midi_decode.data();
 
 	int next_is_delta = 1;
-	unsigned char* st = cur;
+	unsigned char *st = cur;
 	unsigned oevents = 0;
 	while (cur - st < lEVNT)
 	{
@@ -928,9 +918,9 @@ std::vector<uint8_t> _xmiConverter(const RLEntry& song)
 
 	std::vector<unsigned char> midi_write(xmiFile.size() * 2);
 
-	unsigned char* tcur = midi_write.data();
+	unsigned char *tcur = midi_write.data();
 
-	unsigned char* pos = midi_decode.data();
+	unsigned char *pos = midi_decode.data();
 
 	while (pos < dcur)
 	{
@@ -1055,7 +1045,7 @@ std::vector<uint8_t> _xmiConverter(const RLEntry& song)
 			{
 				*tcur++ = *pos++;
 				*tcur++ = *pos++;
-				qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+				qnlen = (*(unsigned char *)(pos) << 16) + (*(unsigned char *)(pos + 1) << 8) + *(unsigned char *)(pos + 2);
 				*tcur++ = *pos++;
 				*tcur++ = *pos++;
 				*tcur++ = *pos++;
@@ -1080,14 +1070,14 @@ std::vector<uint8_t> _xmiConverter(const RLEntry& song)
 	//
 	std::vector<uint8_t> midiData;
 
-	unsigned short swappedTimebase = _byteswap_ushort(timebase);    // Little Endian
+	unsigned short swappedTimebase = _byteswap_ushort(timebase); // Little Endian
 	midiheader[12] = static_cast<unsigned char>(swappedTimebase & 0xFF);
 	midiheader[13] = static_cast<unsigned char>(swappedTimebase >> 8);
 
 	midiData.insert(midiData.end(), midiheader.begin(), midiheader.end());
 
 	unsigned long bs_tlen = _byteswap_ulong(static_cast<unsigned long>(tlen));
-	midiData.insert(midiData.end(), reinterpret_cast<const char*>(&bs_tlen), reinterpret_cast<const char*>(&bs_tlen) + sizeof(unsigned));
+	midiData.insert(midiData.end(), reinterpret_cast<const char *>(&bs_tlen), reinterpret_cast<const char *>(&bs_tlen) + sizeof(unsigned));
 
 	midiData.insert(midiData.end(), midi_write.begin(), midi_write.end());
 

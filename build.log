@@ -2087,3 +2087,530 @@ Linking to v64tng.exe...
 Build successful! Executable: v64tng.exe
 Executable moved to C:\T7G\v64tng.exe
 Transcript stopped, output file is E:\v64tng\build.log
+**********************
+PowerShell transcript start
+Start time: 20250405180247
+Username: FARPOINTSTATION\info
+RunAs User: FARPOINTSTATION\info
+Configuration Name: 
+Machine: FARPOINTSTATION (Microsoft Windows NT 10.0.22621.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -WorkingDirectory ~
+Process ID: 49536
+PSVersion: 7.5.0
+PSEdition: Core
+GitCommitId: 7.5.0
+OS: Microsoft Windows 10.0.22621
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is build.log
+Debug build selected.
+build\bitmap.o is up to date.
+build\config.o is up to date.
+build\d2d.o is up to date.
+build\delta.o is up to date.
+build\dr.o is up to date.
+build\extract.o is up to date.
+build\fh.o is up to date.
+build\game.o is up to date.
+build\gjd.o is up to date.
+build\lzss.o is up to date.
+build\main.o is up to date.
+build\music.o is up to date.
+build\rl.o is up to date.
+build\vdx.o is up to date.
+build\vulkan.o is up to date.
+build\window.o is up to date.
+Linking to v64tng.exe...
+lld-link: warning: ignoring unknown argument '--gc-sections'
+Build successful! Executable: v64tng.exe
+Executable moved to C:\T7G\v64tng.exe
+**********************
+PowerShell transcript end
+End time: 20250405180305
+**********************
+**********************
+PowerShell transcript start
+Start time: 20250405180409
+Username: FARPOINTSTATION\info
+RunAs User: FARPOINTSTATION\info
+Configuration Name: 
+Machine: FARPOINTSTATION (Microsoft Windows NT 10.0.22621.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -WorkingDirectory ~
+Process ID: 49536
+PSVersion: 7.5.0
+PSEdition: Core
+GitCommitId: 7.5.0
+OS: Microsoft Windows 10.0.22621
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is build.log
+Debug build selected.
+build\bitmap.o is up to date.
+build\config.o is up to date.
+build\d2d.o is up to date.
+build\delta.o is up to date.
+build\dr.o is up to date.
+build\extract.o is up to date.
+build\fh.o is up to date.
+build\game.o is up to date.
+build\gjd.o is up to date.
+build\lzss.o is up to date.
+build\main.o is up to date.
+build\music.o is up to date.
+build\rl.o is up to date.
+build\vdx.o is up to date.
+build\vulkan.o is up to date.
+build\window.o is up to date.
+Linking to v64tng.exe...
+lld-link: warning: ignoring unknown argument '--gc-sections'
+Build successful! Executable: v64tng.exe
+Executable moved to C:\T7G\v64tng.exe
+**********************
+PowerShell transcript end
+End time: 20250405180426
+**********************
+**********************
+PowerShell transcript start
+Start time: 20250405182940
+Username: FARPOINTSTATION\info
+RunAs User: FARPOINTSTATION\info
+Configuration Name: 
+Machine: FARPOINTSTATION (Microsoft Windows NT 10.0.22621.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -WorkingDirectory ~
+Process ID: 49536
+PSVersion: 7.5.0
+PSEdition: Core
+GitCommitId: 7.5.0
+OS: Microsoft Windows 10.0.22621
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is build.log
+Debug build selected.
+build\bitmap.o is up to date.
+build\config.o is up to date.
+build\d2d.o is up to date.
+build\delta.o is up to date.
+build\dr.o is up to date.
+build\extract.o is up to date.
+build\fh.o is up to date.
+build\game.o is up to date.
+build\gjd.o is up to date.
+build\lzss.o is up to date.
+build\main.o is up to date.
+build\music.o is up to date.
+build\rl.o is up to date.
+build\vdx.o is up to date.
+build\vulkan.o is up to date.
+build\window.o is up to date.
+Linking to v64tng.exe...
+
+Build successful! Executable: v64tng.exe
+PDB file moved to C:\T7G\v64tng.pdb
+Executable moved to C:\T7G\v64tng.exe
+**********************
+PowerShell transcript end
+End time: 20250405183006
+**********************
+**********************
+PowerShell transcript start
+Start time: 20250405202640
+Username: FARPOINTSTATION\info
+RunAs User: FARPOINTSTATION\info
+Configuration Name: 
+Machine: FARPOINTSTATION (Microsoft Windows NT 10.0.22621.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -WorkingDirectory ~
+Process ID: 49536
+PSVersion: 7.5.0
+PSEdition: Core
+GitCommitId: 7.5.0
+OS: Microsoft Windows 10.0.22621
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is build.log
+Debug build selected.
+build\bitmap.o is up to date.
+build\config.o is up to date.
+build\d2d.o is up to date.
+build\delta.o is up to date.
+build\dr.o is up to date.
+build\extract.o is up to date.
+build\fh.o is up to date.
+build\game.o is up to date.
+build\gjd.o is up to date.
+build\lzss.o is up to date.
+build\main.o is up to date.
+Compiling E:\v64tng\src\music.cpp to build\music.o...
+E:\v64tng\src\music.cpp:577:55: warning: use of old-style cast [-Wold-style-cast]
+  577 |                 int samples = adl_play(player, framesAvailable * 2, (short *)pData);
+      |                                                                     ^        ~~~~~
+E:\v64tng\src\music.cpp:577:55: warning: cast from 'BYTE *' (aka 'unsigned char *') to 'short *' increases required alignment from 1 to 2 [-Wcast-align]
+  577 |                 int samples = adl_play(player, framesAvailable * 2, (short *)pData);
+      |                                                                     ^~~~~~~~~~~~~~
+E:\v64tng\src\music.cpp:582:23: warning: use of old-style cast [-Wold-style-cast]
+  582 |                 short *samplesPtr = (short *)pData;
+      |                                     ^        ~~~~~
+E:\v64tng\src\music.cpp:582:23: warning: cast from 'BYTE *' (aka 'unsigned char *') to 'short *' increases required alignment from 1 to 2 [-Wcast-align]
+  582 |                 short *samplesPtr = (short *)pData;
+      |                                     ^~~~~~~~~~~~~~
+E:\v64tng\src\music.cpp:706:26: warning: declaration shadows a variable in namespace '(anonymous)' [-Wshadow]
+  706 |         constexpr unsigned long XMI_FREQ = 120UL;
+      |                                 ^
+E:\v64tng\src\music.cpp:142:21: note: previous declaration is here
+  142 |         constexpr uint32_t XMI_FREQ = 120;
+      |                            ^
+E:\v64tng\src\music.cpp:707:26: warning: declaration shadows a variable in namespace '(anonymous)' [-Wshadow]
+  707 |         constexpr unsigned long DEFAULT_TIMEBASE = (XMI_FREQ * 60UL / DEFAULT_TEMPO);
+      |                                 ^
+E:\v64tng\src\music.cpp:143:21: note: previous declaration is here
+  143 |         constexpr uint32_t DEFAULT_TIMEBASE = (XMI_FREQ * 60) / DEFAULT_TEMPO_BPM; // 60
+      |                            ^
+E:\v64tng\src\music.cpp:708:26: warning: declaration shadows a variable in namespace '(anonymous)' [-Wshadow]
+  708 |         constexpr unsigned long DEFAULT_QN = (60UL * 1000000UL / DEFAULT_TEMPO);
+      |                                 ^
+E:\v64tng\src\music.cpp:144:21: note: previous declaration is here
+  144 |         constexpr uint32_t DEFAULT_QN = (60 * 1000000) / DEFAULT_TEMPO_BPM;
+      |                            ^
+E:\v64tng\src\music.cpp:953:19: warning: use of old-style cast [-Wold-style-cast]
+  953 |                 double factor = (double)timebase * DEFAULT_QN / ((double)qnlen * DEFAULT_TIMEBASE);
+      |                                 ^       ~~~~~~~~
+E:\v64tng\src\music.cpp:953:52: warning: use of old-style cast [-Wold-style-cast]
+  953 |                 double factor = (double)timebase * DEFAULT_QN / ((double)qnlen * DEFAULT_TIMEBASE);
+      |                                                                  ^       ~~~~~
+E:\v64tng\src\music.cpp:954:33: warning: use of old-style cast [-Wold-style-cast]
+  954 |                 delta = static_cast<unsigned>((double)delta * factor + 0.5);
+      |                                               ^       ~~~~~
+E:\v64tng\src\music.cpp:1064:15: warning: use of old-style cast [-Wold-style-cast]
+ 1064 |                                 qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+      |                                           ^               ~~~~~
+E:\v64tng\src\music.cpp:1064:48: warning: use of old-style cast [-Wold-style-cast]
+ 1064 |                                 qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+      |                                                                            ^               ~~~~~~~~~
+E:\v64tng\src\music.cpp:1064:83: warning: use of old-style cast [-Wold-style-cast]
+ 1064 |                                 qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+      |                                                                                                               ^               ~~~~~~~~~
+E:\v64tng\src\music.cpp:143:21: warning: unused variable 'DEFAULT_TIMEBASE' [-Wunused-const-variable]
+  143 |         constexpr uint32_t DEFAULT_TIMEBASE = (XMI_FREQ * 60) / DEFAULT_TEMPO_BPM; // 60
+      |                            ^~~~~~~~~~~~~~~~
+23 warnings generated.
+build\rl.o is up to date.
+build\vdx.o is up to date.
+build\vulkan.o is up to date.
+build\window.o is up to date.
+Linking to v64tng.exe...
+
+Build successful! Executable: v64tng.exe
+PDB file moved to C:\T7G\v64tng.pdb
+Executable moved to C:\T7G\v64tng.exe
+**********************
+PowerShell transcript end
+End time: 20250405202717
+**********************
+**********************
+PowerShell transcript start
+Start time: 20250405203105
+Username: FARPOINTSTATION\info
+RunAs User: FARPOINTSTATION\info
+Configuration Name: 
+Machine: FARPOINTSTATION (Microsoft Windows NT 10.0.22621.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -WorkingDirectory ~
+Process ID: 49536
+PSVersion: 7.5.0
+PSEdition: Core
+GitCommitId: 7.5.0
+OS: Microsoft Windows 10.0.22621
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is build.log
+Debug build selected.
+build\bitmap.o is up to date.
+build\config.o is up to date.
+build\d2d.o is up to date.
+build\delta.o is up to date.
+build\dr.o is up to date.
+build\extract.o is up to date.
+build\fh.o is up to date.
+build\game.o is up to date.
+build\gjd.o is up to date.
+build\lzss.o is up to date.
+build\main.o is up to date.
+Compiling E:\v64tng\src\music.cpp to build\music.o...
+E:\v64tng\src\music.cpp:577:55: warning: use of old-style cast [-Wold-style-cast]
+  577 |                 int samples = adl_play(player, framesAvailable * 2, (short *)pData);
+      |                                                                     ^        ~~~~~
+E:\v64tng\src\music.cpp:577:55: warning: cast from 'BYTE *' (aka 'unsigned char *') to 'short *' increases required alignment from 1 to 2 [-Wcast-align]
+  577 |                 int samples = adl_play(player, framesAvailable * 2, (short *)pData);
+      |                                                                     ^~~~~~~~~~~~~~
+E:\v64tng\src\music.cpp:582:23: warning: use of old-style cast [-Wold-style-cast]
+  582 |                 short *samplesPtr = (short *)pData;
+      |                                     ^        ~~~~~
+E:\v64tng\src\music.cpp:582:23: warning: cast from 'BYTE *' (aka 'unsigned char *') to 'short *' increases required alignment from 1 to 2 [-Wcast-align]
+  582 |                 short *samplesPtr = (short *)pData;
+      |                                     ^~~~~~~~~~~~~~
+E:\v64tng\src\music.cpp:706:26: warning: declaration shadows a variable in namespace '(anonymous)' [-Wshadow]
+  706 |         constexpr unsigned long XMI_FREQ = 120UL;
+      |                                 ^
+E:\v64tng\src\music.cpp:142:21: note: previous declaration is here
+  142 |         constexpr uint32_t XMI_FREQ = 120;
+      |                            ^
+E:\v64tng\src\music.cpp:707:26: warning: declaration shadows a variable in namespace '(anonymous)' [-Wshadow]
+  707 |         constexpr unsigned long DEFAULT_TIMEBASE = (XMI_FREQ * 60UL / DEFAULT_TEMPO);
+      |                                 ^
+E:\v64tng\src\music.cpp:143:21: note: previous declaration is here
+  143 |         constexpr uint32_t DEFAULT_TIMEBASE = (XMI_FREQ * 60) / DEFAULT_TEMPO_BPM; // 60
+      |                            ^
+E:\v64tng\src\music.cpp:708:26: warning: declaration shadows a variable in namespace '(anonymous)' [-Wshadow]
+  708 |         constexpr unsigned long DEFAULT_QN = (60UL * 1000000UL / DEFAULT_TEMPO);
+      |                                 ^
+E:\v64tng\src\music.cpp:144:21: note: previous declaration is here
+  144 |         constexpr uint32_t DEFAULT_QN = (60 * 1000000) / DEFAULT_TEMPO_BPM;
+      |                            ^
+E:\v64tng\src\music.cpp:953:19: warning: use of old-style cast [-Wold-style-cast]
+  953 |                 double factor = (double)timebase * DEFAULT_QN / ((double)qnlen * DEFAULT_TIMEBASE);
+      |                                 ^       ~~~~~~~~
+E:\v64tng\src\music.cpp:953:52: warning: use of old-style cast [-Wold-style-cast]
+  953 |                 double factor = (double)timebase * DEFAULT_QN / ((double)qnlen * DEFAULT_TIMEBASE);
+      |                                                                  ^       ~~~~~
+E:\v64tng\src\music.cpp:954:33: warning: use of old-style cast [-Wold-style-cast]
+  954 |                 delta = static_cast<unsigned>((double)delta * factor + 0.5);
+      |                                               ^       ~~~~~
+E:\v64tng\src\music.cpp:1064:15: warning: use of old-style cast [-Wold-style-cast]
+ 1064 |                                 qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+      |                                           ^               ~~~~~
+E:\v64tng\src\music.cpp:1064:48: warning: use of old-style cast [-Wold-style-cast]
+ 1064 |                                 qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+      |                                                                            ^               ~~~~~~~~~
+E:\v64tng\src\music.cpp:1064:83: warning: use of old-style cast [-Wold-style-cast]
+ 1064 |                                 qnlen = (*(unsigned char*)(pos) << 16) + (*(unsigned char*)(pos + 1) << 8) + *(unsigned char*)(pos + 2);
+      |                                                                                                               ^               ~~~~~~~~~
+E:\v64tng\src\music.cpp:143:21: warning: unused variable 'DEFAULT_TIMEBASE' [-Wunused-const-variable]
+  143 |         constexpr uint32_t DEFAULT_TIMEBASE = (XMI_FREQ * 60) / DEFAULT_TEMPO_BPM; // 60
+      |                            ^~~~~~~~~~~~~~~~
+23 warnings generated.
+build\rl.o is up to date.
+build\vdx.o is up to date.
+build\vulkan.o is up to date.
+build\window.o is up to date.
+Linking to v64tng.exe...
+
+Build successful! Executable: v64tng.exe
+PDB file moved to C:\T7G\v64tng.pdb
+Executable moved to C:\T7G\v64tng.exe
+**********************
+PowerShell transcript end
+End time: 20250405203136
+**********************
+**********************
+PowerShell transcript start
+Start time: 20250405210222
+Username: FARPOINTSTATION\info
+RunAs User: FARPOINTSTATION\info
+Configuration Name: 
+Machine: FARPOINTSTATION (Microsoft Windows NT 10.0.22621.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -WorkingDirectory ~
+Process ID: 49536
+PSVersion: 7.5.0
+PSEdition: Core
+GitCommitId: 7.5.0
+OS: Microsoft Windows 10.0.22621
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is build.log
+Debug build selected.
+build\bitmap.o is up to date.
+build\config.o is up to date.
+build\d2d.o is up to date.
+build\delta.o is up to date.
+build\dr.o is up to date.
+build\extract.o is up to date.
+build\fh.o is up to date.
+build\game.o is up to date.
+build\gjd.o is up to date.
+build\lzss.o is up to date.
+build\main.o is up to date.
+Compiling E:\v64tng\src\music.cpp to build\music.o...
+E:\v64tng\src\music.cpp:567:55: warning: use of old-style cast [-Wold-style-cast]
+  567 |                 int samples = adl_play(player, framesAvailable * 2, (short *)pData);
+      |                                                                     ^        ~~~~~
+E:\v64tng\src\music.cpp:567:55: warning: cast from 'BYTE *' (aka 'unsigned char *') to 'short *' increases required alignment from 1 to 2 [-Wcast-align]
+  567 |                 int samples = adl_play(player, framesAvailable * 2, (short *)pData);
+      |                                                                     ^~~~~~~~~~~~~~
+E:\v64tng\src\music.cpp:572:23: warning: use of old-style cast [-Wold-style-cast]
+  572 |                 short *samplesPtr = (short *)pData;
+      |                                     ^        ~~~~~
+E:\v64tng\src\music.cpp:572:23: warning: cast from 'BYTE *' (aka 'unsigned char *') to 'short *' increases required alignment from 1 to 2 [-Wcast-align]
+  572 |                 short *samplesPtr = (short *)pData;
+      |                                     ^~~~~~~~~~~~~~
+E:\v64tng\src\music.cpp:690:26: warning: declaration shadows a variable in namespace '(anonymous)' [-Wshadow]
+  690 |         constexpr unsigned long XMI_FREQ = 120UL;
+      |                                 ^
+E:\v64tng\src\music.cpp:142:21: note: previous declaration is here
+  142 |         constexpr uint32_t XMI_FREQ = 120;
+      |                            ^
+E:\v64tng\src\music.cpp:691:26: warning: declaration shadows a variable in namespace '(anonymous)' [-Wshadow]
+  691 |         constexpr unsigned long DEFAULT_TIMEBASE = (XMI_FREQ * 60UL / DEFAULT_TEMPO);
+      |                                 ^
+E:\v64tng\src\music.cpp:143:21: note: previous declaration is here
+  143 |         constexpr uint32_t DEFAULT_TIMEBASE = (XMI_FREQ * 60) / DEFAULT_TEMPO_BPM; // 60
+      |                            ^
+E:\v64tng\src\music.cpp:692:26: warning: declaration shadows a variable in namespace '(anonymous)' [-Wshadow]
+  692 |         constexpr unsigned long DEFAULT_QN = (60UL * 1000000UL / DEFAULT_TEMPO);
+      |                                 ^
+E:\v64tng\src\music.cpp:144:21: note: previous declaration is here
+  144 |         constexpr uint32_t DEFAULT_QN = (60 * 1000000) / DEFAULT_TEMPO_BPM;
+      |                            ^
+E:\v64tng\src\music.cpp:937:19: warning: use of old-style cast [-Wold-style-cast]
+  937 |                 double factor = (double)timebase * DEFAULT_QN / ((double)qnlen * DEFAULT_TIMEBASE);
+      |                                 ^       ~~~~~~~~
+E:\v64tng\src\music.cpp:937:52: warning: use of old-style cast [-Wold-style-cast]
+  937 |                 double factor = (double)timebase * DEFAULT_QN / ((double)qnlen * DEFAULT_TIMEBASE);
+      |                                                                  ^       ~~~~~
+E:\v64tng\src\music.cpp:938:33: warning: use of old-style cast [-Wold-style-cast]
+  938 |                 delta = static_cast<unsigned>((double)delta * factor + 0.5);
+      |                                               ^       ~~~~~
+E:\v64tng\src\music.cpp:1048:15: warning: use of old-style cast [-Wold-style-cast]
+ 1048 |                                 qnlen = (*(unsigned char *)(pos) << 16) + (*(unsigned char *)(pos + 1) << 8) + *(unsigned char *)(pos + 2);
+      |                                           ^                ~~~~~
+E:\v64tng\src\music.cpp:1048:49: warning: use of old-style cast [-Wold-style-cast]
+ 1048 |                                 qnlen = (*(unsigned char *)(pos) << 16) + (*(unsigned char *)(pos + 1) << 8) + *(unsigned char *)(pos + 2);
+      |                                                                             ^                ~~~~~~~~~
+E:\v64tng\src\music.cpp:1048:85: warning: use of old-style cast [-Wold-style-cast]
+ 1048 |                                 qnlen = (*(unsigned char *)(pos) << 16) + (*(unsigned char *)(pos + 1) << 8) + *(unsigned char *)(pos + 2);
+      |                                                                                                                 ^                ~~~~~~~~~
+E:\v64tng\src\music.cpp:143:21: warning: unused variable 'DEFAULT_TIMEBASE' [-Wunused-const-variable]
+  143 |         constexpr uint32_t DEFAULT_TIMEBASE = (XMI_FREQ * 60) / DEFAULT_TEMPO_BPM; // 60
+      |                            ^~~~~~~~~~~~~~~~
+23 warnings generated.
+build\rl.o is up to date.
+build\vdx.o is up to date.
+build\vulkan.o is up to date.
+build\window.o is up to date.
+Linking to v64tng.exe...
+
+Build successful! Executable: v64tng.exe
+PDB file moved to C:\T7G\v64tng.pdb
+Executable moved to C:\T7G\v64tng.exe
+**********************
+PowerShell transcript end
+End time: 20250405210256
+**********************
+**********************
+PowerShell transcript start
+Start time: 20250405210429
+Username: FARPOINTSTATION\info
+RunAs User: FARPOINTSTATION\info
+Configuration Name: 
+Machine: FARPOINTSTATION (Microsoft Windows NT 10.0.22621.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -WorkingDirectory ~
+Process ID: 49536
+PSVersion: 7.5.0
+PSEdition: Core
+GitCommitId: 7.5.0
+OS: Microsoft Windows 10.0.22621
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is build.log
+Release build selected.
+build\bitmap.o is up to date.
+build\config.o is up to date.
+build\d2d.o is up to date.
+build\delta.o is up to date.
+build\dr.o is up to date.
+build\extract.o is up to date.
+build\fh.o is up to date.
+build\game.o is up to date.
+build\gjd.o is up to date.
+build\lzss.o is up to date.
+build\main.o is up to date.
+Compiling E:\v64tng\src\music.cpp to build\music.o...
+ C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\shared
+ C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um
+ C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\winrt
+ C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\cppwinrt
+End of search list.
+In file included from E:\v64tng\src\music.cpp:23:
+C:\lib\libADLMIDI\include\adlmidi.h:70:16: warning: 'ADLMIDI_DEPRECATED' macro redefined [-Wmacro-redefined]
+   70 | #       define ADLMIDI_DEPRECATED(message) __attribute__((deprecated(message)))
+      |                ^
+C:\lib\libADLMIDI\include\adlmidi.h:64:16: note: previous definition is here
+   64 | #       define ADLMIDI_DEPRECATED(message) __declspec(deprecated(message))
+      |                ^
+E:\v64tng\src\music.cpp:391:24: warning: extension used [-Wlanguage-extension-token]
+  391 |         hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+      |                               ^
+E:\v64tng\src\music.cpp:392:9: warning: extension used [-Wlanguage-extension-token]
+  392 |                                                   __uuidof(IMMDeviceEnumerator), (void **)&pEnumerator);
+      |                                                   ^
+E:\v64tng\src\music.cpp:392:40: warning: use of old-style cast [-Wold-style-cast]
+  392 |                                                   __uuidof(IMMDeviceEnumerator), (void **)&pEnumerator);
+      |                                                                                  ^        ~~~~~~~~~~~~
+E:\v64tng\src\music.cpp:409:25: warning: extension used [-Wlanguage-extension-token]
+  409 |         hr = pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void **)&pAudioClient);
+      |                                ^
+E:\v64tng\src\music.cpp:409:70: warning: use of old-style cast [-Wold-style-cast]
+  409 |         hr = pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void **)&pAudioClient);
+      |                                                                             ^        ~~~~~~~~~~~~~
+E:\v64tng\src\music.cpp:419:23: warning: missing field 'nChannels' initializer [-Wmissing-field-initializers]
+  419 |         WAVEFORMATEX wfx = {0};
+      |                              ^
+E:\v64tng\src\music.cpp:502:32: warning: extension used [-Wlanguage-extension-token]
+  502 |         hr = pAudioClient->GetService(__uuidof(IAudioRenderClient), (void **)&pRenderClient);
+      |                                       ^
+E:\v64tng\src\music.cpp:502:62: warning: use of old-style cast [-Wold-style-cast]
+  502 |         hr = pAudioClient->GetService(__uuidof(IAudioRenderClient), (void **)&pRenderClient);
+      |                                                                     ^        ~~~~~~~~~~~~~~
+E:\v64tng\src\music.cpp:567:55: warning: use of old-style cast [-Wold-style-cast]
+  567 |                 int samples = adl_play(player, framesAvailable * 2, (short *)pData);
+      |                                                                     ^        ~~~~~
+E:\v64tng\src\music.cpp:567:55: warning: cast from 'BYTE *' (aka 'unsigned char *') to 'short *' increases required alignment from 1 to 2 [-Wcast-align]
+  567 |                 int samples = adl_play(player, framesAvailable * 2, (short *)pData);
+      |                                                                     ^~~~~~~~~~~~~~
+E:\v64tng\src\music.cpp:572:23: warning: use of old-style cast [-Wold-style-cast]
+  572 |                 short *samplesPtr = (short *)pData;
+      |                                     ^        ~~~~~
+E:\v64tng\src\music.cpp:572:23: warning: cast from 'BYTE *' (aka 'unsigned char *') to 'short *' increases required alignment from 1 to 2 [-Wcast-align]
+  572 |                 short *samplesPtr = (short *)pData;
+      |                                     ^~~~~~~~~~~~~~
+E:\v64tng\src\music.cpp:143:21: warning: unused variable 'DEFAULT_TIMEBASE' [-Wunused-const-variable]
+  143 |         constexpr uint32_t DEFAULT_TIMEBASE = (XMI_FREQ * 60) / DEFAULT_TEMPO_BPM; // 60
+      |                            ^~~~~~~~~~~~~~~~
+14 warnings generated.
+build\rl.o is up to date.
+build\vdx.o is up to date.
+build\vulkan.o is up to date.
+build\window.o is up to date.
+Linking to v64tng.exe...
+
+Build successful! Executable: v64tng.exe
+Executable moved to C:\T7G\v64tng.exe
+**********************
+PowerShell transcript end
+End time: 20250405210441
+**********************
