@@ -1,5 +1,6 @@
 # Ignore build
 /build/
+build.log
 
 # Ignore .vs dir
 /.vs/
