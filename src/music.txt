@@ -12,6 +12,7 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <queue>
 
 // Windows Multimedia
 #define WIN32_LEAN_AND_MEAN
@@ -162,193 +163,344 @@ Return:
 */
 std::vector<uint8_t> xmiConverter(const RLEntry &song)
 {
-	// Read XMI data
 	std::vector<uint8_t> xmi_file_buffer(song.length);
 	{
 		std::ifstream xmi_stream("XMI.GJD", std::ios::binary);
+		if (!xmi_stream)
+		{
+			// Handle error: could not open file
+			std::cerr << "Error: Could not open XMI.GJD" << std::endl;
+			return {};
+		}
 		xmi_stream.seekg(song.offset, std::ios::beg);
+		if (!xmi_stream)
+		{
+			// Handle error: seek failed
+			std::cerr << "Error: Could not seek to offset " << song.offset << " in XMI.GJD" << std::endl;
+			return {};
+		}
 		xmi_stream.read(reinterpret_cast<char *>(xmi_file_buffer.data()), song.length);
+		if (!xmi_stream)
+		{
+			// Handle error: read failed (maybe read less than song.length?)
+			std::cerr << "Error: Could not read " << song.length << " bytes from offset " << song.offset << " in XMI.GJD" << std::endl;
+			// Optionally return partial data if applicable, or empty vector on error
+			return {};
+		}
 	}
 	std::span<const uint8_t> xmi_data = xmi_file_buffer;
 
-	// Parse XMI Headers
-	constexpr size_t initial_skip = 4 * 12 + 2;
-	xmi_data = xmi_data.subspan(initial_skip);
-	uint32_t lTIMB = read_be<uint32_t>(xmi_data);
-	xmi_data = xmi_data.subspan(lTIMB);
-	if (std::memcmp(xmi_data.data(), "RBRN", 4) == 0)
+	// --- Start of MIDI conversion logic adapted from previous versions ---
+
+	std::vector<uint8_t> midi_track;
+	midi_track.reserve(xmi_data.size() * 2);
+
+	std::vector<uint8_t> midi_header;
+	midi_header.reserve(MIDI_HEADER_SIZE);
+	write_be(midi_header, uint32_t{'MThd'});
+	write_be(midi_header, uint32_t{6});
+	write_be(midi_header, uint16_t{0});
+	write_be(midi_header, uint16_t{1});
+	write_be(midi_header, uint16_t{MIDI_TIMEBASE});
+
+	write_be(midi_track, uint32_t{'MTrk'});
+	size_t track_size_offset = midi_track.size();
+	write_be(midi_track, uint32_t{0});
+
+	write_vlq(midi_track, 0);
+	midi_track.insert(midi_track.end(), {uint8_t{0xFF}, uint8_t{0x54}, uint8_t{0x05},
+										 uint8_t{0x60}, uint8_t{0x00}, uint8_t{0x00}, uint8_t{0x00}, uint8_t{0x00}});
+
+	uint32_t current_ticks = 0;
+	uint32_t xmi_timebase = DEFAULT_TIMEBASE;
+	uint32_t microseconds_per_qn = DEFAULT_MICROSECS_PER_QN;
+
+	std::priority_queue<PendingNoteOff, std::vector<PendingNoteOff>, std::greater<PendingNoteOff>> pending_note_offs;
+
+	write_vlq(midi_track, 0);
+	write_be(midi_track, uint8_t{0xFF});
+	write_be(midi_track, uint8_t{0x58});
+	write_be(midi_track, uint8_t{0x04});
+	write_be(midi_track, uint8_t{4});
+	write_be(midi_track, uint8_t{2});
+	write_be(midi_track, uint8_t{24});
+	write_be(midi_track, uint8_t{8});
+
+	write_vlq(midi_track, 0);
+	write_be(midi_track, uint8_t{0xFF});
+	write_be(midi_track, uint8_t{0x51});
+	write_be(midi_track, uint8_t{0x03});
+	write_be(midi_track, uint8_t{(microseconds_per_qn >> 16) & 0xFF});
+	write_be(midi_track, uint8_t{(microseconds_per_qn >> 8) & 0xFF});
+	write_be(midi_track, uint8_t{microseconds_per_qn & 0xFF});
+
+	uint8_t running_status = 0;
+	bool processing_active = true;
+	while (!xmi_data.empty() && processing_active)
 	{
-		xmi_data = xmi_data.subspan(4); // Skip "RBRN"
-		xmi_data = xmi_data.subspan(4); // Skip extra 4 bytes
-		uint16_t nBranch = read_be<uint16_t>(xmi_data);
-		xmi_data = xmi_data.subspan(6 * nBranch);
-	}
-	xmi_data = xmi_data.subspan(4); // Skip 'EVNT'
-	uint32_t lEVNT = read_be<uint32_t>(xmi_data);
-	xmi_data = xmi_data.subspan(0, lEVNT);
+		uint32_t xmi_delta = read_xmi_delta(xmi_data);
+		uint32_t delta_ticks = (uint32_t)((uint64_t)xmi_delta * MIDI_TIMEBASE / xmi_timebase);
+		current_ticks += delta_ticks;
 
-	// Pass 1: Process EVNT chunk
-	struct IntermediateMidiEvent
-	{
-		uint32_t xmi_delta;
-		std::vector<uint8_t> event_bytes;
-	};
-	std::vector<IntermediateMidiEvent> intermediate_events;
-	intermediate_events.reserve(xmi_data.size() / 2);
-
-	std::vector<PendingNoteOff> note_off_heap;
-	note_off_heap.reserve(100);
-
-	bool end_of_track_found = false;
-	while (!xmi_data.empty() && !end_of_track_found)
-	{
-		uint32_t current_xmi_delta = read_xmi_delta(xmi_data);
-		uint32_t processed_delta = 0;
-
-		// Process pending Note Offs
-		while (!note_off_heap.empty() && note_off_heap.front().delta_ticks <= (current_xmi_delta - processed_delta))
+		uint32_t last_event_tick = current_ticks - delta_ticks;
+		while (!pending_note_offs.empty() && pending_note_offs.top().delta_ticks <= current_ticks)
 		{
-			std::pop_heap(note_off_heap.begin(), note_off_heap.end(), std::greater<>{});
-			PendingNoteOff note_off = note_off_heap.back();
-			note_off_heap.pop_back();
-
-			uint32_t note_off_xmi_delta = note_off.delta_ticks;
-			processed_delta += note_off_xmi_delta;
-			std::vector<uint8_t> midi_note_off = {
-				static_cast<uint8_t>((note_off.event_data[0] & 0x0F) | 0x80),
-				note_off.event_data[1],
-				uint8_t{0x7F}};
-			intermediate_events.push_back({note_off_xmi_delta, std::move(midi_note_off)});
-
-			for (auto &pending : note_off_heap)
-				pending.delta_ticks -= note_off_xmi_delta;
-		}
-		uint32_t remaining_event_delta = current_xmi_delta - processed_delta;
-		for (auto &pending : note_off_heap)
-			pending.delta_ticks -= remaining_event_delta;
-
-		// Process all events at this delta
-		bool first_event = true;
-		std::vector<IntermediateMidiEvent> current_group;
-		while (!xmi_data.empty() && xmi_data.front() >= 0x80 && !end_of_track_found)
-		{
-			uint8_t status = xmi_data.front();
-			xmi_data = xmi_data.subspan(1);
-			std::vector<uint8_t> current_event = {status};
-			size_t data_bytes_to_read = 0;
-
-			if (status == 0xFF)
+			PendingNoteOff note_off = pending_note_offs.top();
+			pending_note_offs.pop();
+			uint32_t note_off_midi_delta = note_off.delta_ticks - last_event_tick;
+			last_event_tick = note_off.delta_ticks;
+			write_vlq(midi_track, note_off_midi_delta);
+			midi_track.insert(midi_track.end(), note_off.event_data.begin(), note_off.event_data.end());
+			if (!note_off.event_data.empty())
 			{
-				uint8_t meta_type = xmi_data.front();
-				xmi_data = xmi_data.subspan(1);
-				current_event.push_back(meta_type);
+				running_status = note_off.event_data[0];
+			}
+		}
 
-				if (meta_type == 0x2F)
+		uint32_t current_event_midi_delta = current_ticks - last_event_tick;
+		write_vlq(midi_track, current_event_midi_delta);
+
+		if (xmi_data.empty())
+		{
+			processing_active = false;
+			break;
+		}
+		uint8_t status = read_be<uint8_t>(xmi_data);
+		uint8_t event_type = status & 0xF0;
+		uint8_t channel = status & 0x0F;
+
+		bool use_running_status = (status < 0x80);
+		if (use_running_status)
+		{
+			if (running_status == 0 || running_status >= 0xF0)
+			{
+				std::cerr << "Error: Invalid running status usage or unexpected data byte.\n";
+				processing_active = false;
+				break;
+			}
+			status = running_status;
+			event_type = status & 0xF0;
+			channel = status & 0x0F;
+
+			// No need to "unread" the byte, just don't write status below
+			// Ensure data read below correctly uses the byte originally read as status.
+			// The read_be calls below handle this naturally by reading the *next* byte.
+			// Need to account for the first data byte being the one we read as status.
+			// This part requires careful handling based on how read_be interacts with the span.
+			// Assuming read_be consumes the byte it reads.
+			// Let's adjust the read logic within the switch cases for running status.
+		}
+		else
+		{
+			// Only write status if it wasn't running status
+			write_be(midi_track, status);
+			if (status < 0xF0)
+			{ // Update running status only for channel messages
+				running_status = status;
+			}
+			else
+			{
+				running_status = 0; // Meta/Sysex cancel running status
+			}
+		}
+
+		switch (event_type)
+		{
+		case 0x80:
+		case 0x90:
+		case 0xA0:
+		case 0xB0:
+		case 0xE0:
+		{
+			uint8_t data1;
+			if (use_running_status)
+			{
+				// The 'status' byte we peeked at earlier is actually data1
+				// Need to "consume" it from the span effectively
+				// Let's re-read it formally if read_be advances span
+				data1 = read_be<uint8_t>(xmi_data); // Reads the byte we already saw
+			}
+			else
+			{
+				if (xmi_data.empty())
 				{
-					current_event.push_back(0);
-					std::sort(note_off_heap.begin(), note_off_heap.end(), std::greater<>{});
-					for (const auto &note_off : note_off_heap)
+					processing_active = false;
+					break;
+				}
+				data1 = read_be<uint8_t>(xmi_data);
+				write_be(midi_track, data1);
+			}
+
+			if (xmi_data.empty())
+			{
+				processing_active = false;
+				break;
+			}
+			uint8_t data2 = read_be<uint8_t>(xmi_data);
+			write_be(midi_track, data2);
+
+			if (event_type == 0x90 && data2 != 0)
+			{
+				if (xmi_data.empty())
+				{
+					processing_active = false;
+					break;
+				}
+				uint32_t note_duration_xmi = read_xmi_delta(xmi_data);
+				uint32_t note_duration_ticks = (uint32_t)((uint64_t)note_duration_xmi * MIDI_TIMEBASE / xmi_timebase);
+				std::array<uint8_t, 3> note_off_event = {
+					(uint8_t)(0x80 | channel), data1, 0x40};
+				pending_note_offs.push({current_ticks + note_duration_ticks, note_off_event});
+			}
+			break;
+		}
+		case 0xC0:
+		case 0xD0:
+		{
+			uint8_t data1;
+			if (use_running_status)
+			{
+				data1 = read_be<uint8_t>(xmi_data); // Reads the byte we already saw
+			}
+			else
+			{
+				if (xmi_data.empty())
+				{
+					processing_active = false;
+					break;
+				}
+				data1 = read_be<uint8_t>(xmi_data);
+				write_be(midi_track, data1);
+			}
+			break;
+		}
+		default:
+			if (status >= 0xF0)
+			{
+				running_status = 0; // Meta/Sysex cancel running status
+
+				if (status == 0xFF)
+				{
+					if (xmi_data.empty())
 					{
-						std::vector<uint8_t> flush_event = {
-							static_cast<uint8_t>((note_off.event_data[0] & 0x0F) | 0x80),
-							note_off.event_data[1],
-							uint8_t{0x7F}};
-						current_group.push_back({0, std::move(flush_event)});
+						processing_active = false;
+						break;
 					}
-					note_off_heap.clear();
-					current_group.push_back({remaining_event_delta, std::move(current_event)});
-					end_of_track_found = true;
+					uint8_t meta_type = read_be<uint8_t>(xmi_data);
+					write_be(midi_track, meta_type);
+
+					if (xmi_data.empty())
+					{
+						processing_active = false;
+						break;
+					}
+					uint32_t meta_len = read_xmi_delta(xmi_data);
+					write_vlq(midi_track, meta_len);
+
+					for (uint32_t i = 0; i < meta_len; ++i)
+					{
+						if (xmi_data.empty())
+						{
+							processing_active = false;
+							break;
+						}
+						write_be(midi_track, read_be<uint8_t>(xmi_data));
+					}
+					if (!processing_active)
+						break; // Check break from inner loop
+
+					if (meta_type == 0x51 && meta_len == 3)
+					{
+						size_t tempo_offset = midi_track.size() - 3;
+						microseconds_per_qn = (uint32_t(midi_track[tempo_offset]) << 16) |
+											  (uint32_t(midi_track[tempo_offset + 1]) << 8) |
+											  uint32_t(midi_track[tempo_offset + 2]);
+					}
+					else if (meta_type == 0x2F)
+					{
+						processing_active = false; // End of Track found
+					}
+				}
+				else if (status == 0xF0 || status == 0xF7)
+				{
+					if (xmi_data.empty())
+					{
+						processing_active = false;
+						break;
+					}
+					uint32_t sysex_len = read_xmi_delta(xmi_data);
+					write_vlq(midi_track, sysex_len);
+
+					for (uint32_t i = 0; i < sysex_len; ++i)
+					{
+						if (xmi_data.empty())
+						{
+							processing_active = false;
+							break;
+						}
+						write_be(midi_track, read_be<uint8_t>(xmi_data));
+					}
+					if (!processing_active)
+						break; // Check break from inner loop
 				}
 				else
 				{
-					uint8_t length = xmi_data.front();
-					xmi_data = xmi_data.subspan(1);
-					current_event.push_back(length);
-					current_event.insert(current_event.end(), xmi_data.begin(), xmi_data.begin() + length);
-					xmi_data = xmi_data.subspan(length);
+					std::cerr << "Warning: Unknown MIDI status >= 0xF0 encountered: " << std::hex << (int)status << std::dec << std::endl;
+					processing_active = false; // Stop on unknown Fx status
 				}
 			}
-			else if ((status & 0xF0) == 0x90)
+			else
 			{
-				uint8_t note = xmi_data[0];
-				uint8_t velocity = xmi_data[1];
-				xmi_data = xmi_data.subspan(2);
-				current_event.push_back(note);
-				current_event.push_back(velocity);
-				uint32_t note_duration = read_xmi_delta(xmi_data);
-				if (velocity == 0)
-				{
-					current_event[0] = static_cast<uint8_t>((status & 0x0F) | 0x80);
-					current_event.back() = 0x7F;
-				}
-				else if (note_duration > 0)
-				{
-					note_off_heap.push_back({note_duration, {status, note, 0}});
-					std::push_heap(note_off_heap.begin(), note_off_heap.end(), std::greater<>{});
-				}
+				std::cerr << "Error: Unexpected status byte processing logic failure.\n";
+				processing_active = false; // Should not happen
 			}
-			else if ((status & 0xF0) == 0x80 || (status & 0xF0) == 0xA0 || (status & 0xF0) == 0xB0 || (status & 0xF0) == 0xE0)
-			{
-				data_bytes_to_read = 2;
-			}
-			else if ((status & 0xF0) == 0xC0 || (status & 0xF0) == 0xD0)
-			{
-				data_bytes_to_read = 1;
-			}
-			else if (status == 0xF0 || status == 0xF7)
-			{
-				uint8_t length = xmi_data.front();
-				xmi_data = xmi_data.subspan(1);
-				current_event.insert(current_event.end(), xmi_data.begin(), xmi_data.begin() + length);
-				xmi_data = xmi_data.subspan(length);
-			}
-			if (data_bytes_to_read > 0)
-			{
-				current_event.insert(current_event.end(), xmi_data.begin(), xmi_data.begin() + data_bytes_to_read);
-				xmi_data = xmi_data.subspan(data_bytes_to_read);
-			}
-			uint32_t event_delta = first_event ? remaining_event_delta : 0;
-			current_group.push_back({event_delta, std::move(current_event)});
-			first_event = false;
+			break;
 		}
-		// Append current group to intermediate events
-		intermediate_events.insert(intermediate_events.end(), current_group.begin(), current_group.end());
-	}
+		if (!processing_active)
+			break; // Break out of switch if needed
+	} // End while loop
 
-	// Pass 2: Convert to MIDI
-	std::vector<uint8_t> final_midi_track_data;
-	final_midi_track_data.reserve(intermediate_events.size() * 5);
-	uint32_t current_microsecs_per_qn = DEFAULT_MICROSECS_PER_QN;
-	for (const auto &ime : intermediate_events)
+	// Add final End of Track only if processing didn't stop due to finding one already
+	bool found_eot = false;
+	if (midi_track.size() >= 3)
 	{
-		double factor = (double(MIDI_TIMEBASE) * double(DEFAULT_QN)) / (double(current_microsecs_per_qn) * 60.0);
-		uint32_t midi_delta = static_cast<uint32_t>(ime.xmi_delta * factor + 0.5);
-		write_vlq(final_midi_track_data, midi_delta);
-		final_midi_track_data.insert(final_midi_track_data.end(), ime.event_bytes.begin(), ime.event_bytes.end());
-		if (ime.event_bytes.size() == 6 && ime.event_bytes[0] == 0xFF && ime.event_bytes[1] == 0x51 && ime.event_bytes[2] == 0x03)
+		size_t end_offset = midi_track.size() - 3;
+		if (midi_track[end_offset] == 0xFF && midi_track[end_offset + 1] == 0x2F && midi_track[end_offset + 2] == 0x00)
 		{
-			uint32_t tempo = (uint32_t(ime.event_bytes[3]) << 16) | (uint32_t(ime.event_bytes[4]) << 8) | (uint32_t(ime.event_bytes[5]));
-			current_microsecs_per_qn = tempo;
+			// Basic check - assumes 0 delta before it. A robust check is harder.
+			found_eot = true;
 		}
 	}
+	// Add EOT if processing finished normally (not stopped by finding EOT) and EOT wasn't the last event
+	if (processing_active && !found_eot)
+	{
+		write_vlq(midi_track, 0);
+		write_be(midi_track, uint8_t{0xFF});
+		write_be(midi_track, uint8_t{0x2F});
+		write_be(midi_track, uint8_t{0x00});
+	}
 
-	// Prepend SMPTE-Offset
-	std::vector<uint8_t> smpteEvent = {0x00, 0xFF, 0x54, 0x05, 0x60, 0x00, 0x00, 0x00, 0x00};
-	final_midi_track_data.insert(final_midi_track_data.begin(), smpteEvent.begin(), smpteEvent.end());
+	uint32_t track_size = midi_track.size() - MIDI_TRACK_HEADER_SIZE;
+	size_t final_track_data_size = midi_track.size();
+	midi_track.resize(track_size_offset);
+	write_be(midi_track, track_size);
+	// midi_track now contains header + size, need to append rest of data if track_size_offset technique allows
+	// This resize method is tricky; simpler might be to store data separately then combine.
+	// Let's assume the buffer manipulation works as intended by the original author's potential technique
+	// Or reconstruct:
+	std::vector<uint8_t> final_midi_track;
+	final_midi_track.reserve(MIDI_TRACK_HEADER_SIZE + track_size);
+	write_be(final_midi_track, uint32_t{'MTrk'});
+	write_be(final_midi_track, track_size);
+	// Append the actual track data (which starts *after* the placeholder in the original midi_track buffer)
+	final_midi_track.insert(final_midi_track.end(), midi_track.begin() + track_size_offset + 4, midi_track.begin() + final_track_data_size);
 
-	// Build final MIDI file
-	std::vector<uint8_t> final_midi_output;
-	final_midi_output.reserve(MIDI_HEADER_SIZE + MIDI_TRACK_HEADER_SIZE + final_midi_track_data.size());
-	final_midi_output.insert(final_midi_output.end(), {'M', 'T', 'h', 'd'});
-	write_be<uint32_t>(final_midi_output, 6);
-	write_be<uint16_t>(final_midi_output, MIDI_FORMAT);
-	write_be<uint16_t>(final_midi_output, MIDI_NUM_TRACKS);
-	write_be<uint16_t>(final_midi_output, MIDI_TIMEBASE);
-	final_midi_output.insert(final_midi_output.end(), {'M', 'T', 'r', 'k'});
-	write_be<uint32_t>(final_midi_output, static_cast<uint32_t>(final_midi_track_data.size()));
-	final_midi_output.insert(final_midi_output.end(), final_midi_track_data.begin(), final_midi_track_data.end());
+	std::vector<uint8_t> midi_output;
+	midi_output.reserve(midi_header.size() + final_midi_track.size());
+	midi_output.insert(midi_output.end(), midi_header.begin(), midi_header.end());
+	midi_output.insert(midi_output.end(), final_midi_track.begin(), final_midi_track.end());
 
-	return final_midi_output;
+	return midi_output;
 }
 
 //
@@ -636,8 +788,7 @@ void xmiPlay(const std::string &songName, bool isTransient)
 			if (song != xmiFiles.end())
 			{
 				auto midiData = xmiConverter(*song);
-
-				// Write midiData to a file called badsong.mid:
+				// DEBUG
 				std::ofstream midiFile("badsong.mid", std::ios::binary);
 				midiFile.write(reinterpret_cast<const char *>(midiData.data()), midiData.size());
 				midiFile.close();

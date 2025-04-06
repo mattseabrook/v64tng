@@ -1,6 +1,14 @@
 {
     "files.associations": {
         "vector": "cpp",
-        "array": "cpp"
+        "array": "cpp",
+        "xiosbase": "cpp",
+        "chrono": "cpp",
+        "forward_list": "cpp",
+        "list": "cpp",
+        "span": "cpp",
+        "xstring": "cpp",
+        "xutility": "cpp",
+        "iosfwd": "cpp"
     }
 }
