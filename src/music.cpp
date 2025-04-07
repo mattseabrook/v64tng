@@ -68,6 +68,19 @@ namespace
 		out.insert(out.end(), byte_ptr, byte_ptr + sizeof(T));
 	}
 
+	uint32_t read_vlq(std::span<const uint8_t> &data)
+	{
+		uint32_t value = 0;
+		uint8_t byte;
+		do
+		{
+			byte = data.front();
+			data = data.subspan(1);
+			value = (value << 7) | (byte & 0x7F);
+		} while (byte & 0x80);
+		return value;
+	}
+
 	//
 	// Writes a Variable Length Quantity (MIDI standard)
 	// (UPDATED Signature and Implementation for uint8_t)
@@ -185,168 +198,277 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 	}
 	xmi_data = xmi_data.subspan(4); // Skip 'EVNT'
 	uint32_t lEVNT = read_be<uint32_t>(xmi_data);
-	xmi_data = xmi_data.subspan(0, lEVNT);
+	auto evnt_data = xmi_data.subspan(0, lEVNT);
+	xmi_data = evnt_data;
 
-	// Pass 1: Process EVNT chunk
-	struct IntermediateMidiEvent
-	{
-		uint32_t xmi_delta;
-		std::vector<uint8_t> event_bytes;
-	};
-	std::vector<IntermediateMidiEvent> intermediate_events;
-	intermediate_events.reserve(xmi_data.size() / 2);
+	// Process EVNT chunk - first pass to decode XMI events
+	std::vector<uint8_t> midi_decode;
+	midi_decode.reserve(xmi_data.size() * 2);
 
 	std::vector<PendingNoteOff> note_off_heap;
 	note_off_heap.reserve(100);
 
-	bool end_of_track_found = false;
-	while (!xmi_data.empty() && !end_of_track_found)
+	bool next_is_delta = true;
+	uint32_t pending_delay = 0;
+
+	while (!xmi_data.empty())
 	{
-		uint32_t current_xmi_delta = read_xmi_delta(xmi_data);
-		uint32_t processed_delta = 0;
-
-		// Process pending Note Offs
-		while (!note_off_heap.empty() && note_off_heap.front().delta_ticks <= (current_xmi_delta - processed_delta))
+		// Process delta time
+		if (xmi_data.front() < 0x80)
 		{
-			std::pop_heap(note_off_heap.begin(), note_off_heap.end(), std::greater<>{});
-			PendingNoteOff note_off = note_off_heap.back();
-			note_off_heap.pop_back();
+			uint32_t delay = read_xmi_delta(xmi_data);
 
-			uint32_t note_off_xmi_delta = note_off.delta_ticks;
-			processed_delta += note_off_xmi_delta;
-			std::vector<uint8_t> midi_note_off = {
-				static_cast<uint8_t>((note_off.event_data[0] & 0x0F) | 0x80),
-				note_off.event_data[1],
-				uint8_t{0x7F}};
-			intermediate_events.push_back({note_off_xmi_delta, std::move(midi_note_off)});
+			// Process any note-offs during this delay period
+			while (!note_off_heap.empty() && note_off_heap.front().delta_ticks <= delay)
+			{
+				std::pop_heap(note_off_heap.begin(), note_off_heap.end(), std::greater<>{});
+				PendingNoteOff note_off = note_off_heap.back();
+				note_off_heap.pop_back();
 
-			for (auto &pending : note_off_heap)
-				pending.delta_ticks -= note_off_xmi_delta;
+				uint32_t no_delta = note_off.delta_ticks;
+
+				// Write delta for this note-off event
+				write_vlq(midi_decode, no_delta);
+				midi_decode.push_back(static_cast<uint8_t>((note_off.event_data[0] & 0x0F) | 0x80));
+				midi_decode.push_back(note_off.event_data[1]);
+				midi_decode.push_back(0x7F);
+
+				delay -= no_delta; // Reduce remaining delay
+
+				// Adjust deltas for pending note-offs
+				for (auto &pending : note_off_heap)
+				{
+					pending.delta_ticks -= no_delta;
+				}
+			}
+
+			// Store any leftover delay for the next non-note-off event
+			pending_delay = delay;
+			next_is_delta = true;
 		}
-		uint32_t remaining_event_delta = current_xmi_delta - processed_delta;
-		for (auto &pending : note_off_heap)
-			pending.delta_ticks -= remaining_event_delta;
-
-		// Process all events at this delta
-		bool first_event = true;
-		std::vector<IntermediateMidiEvent> current_group;
-		while (!xmi_data.empty() && xmi_data.front() >= 0x80 && !end_of_track_found)
+		else
 		{
+			if (next_is_delta)
+			{
+				write_vlq(midi_decode, pending_delay);
+				pending_delay = 0;
+			}
+			else
+			{
+				midi_decode.push_back(0); // zero delta for consecutive events
+			}
+
+			next_is_delta = false;
 			uint8_t status = xmi_data.front();
 			xmi_data = xmi_data.subspan(1);
-			std::vector<uint8_t> current_event = {status};
-			size_t data_bytes_to_read = 0;
 
-			if (status == 0xFF)
+			if (status == 0xFF) // Meta event
 			{
 				uint8_t meta_type = xmi_data.front();
 				xmi_data = xmi_data.subspan(1);
-				current_event.push_back(meta_type);
 
-				if (meta_type == 0x2F)
+				midi_decode.push_back(status);
+				midi_decode.push_back(meta_type);
+
+				if (meta_type == 0x2F) // End of track
 				{
-					current_event.push_back(0);
-					std::sort(note_off_heap.begin(), note_off_heap.end(), std::greater<>{});
-					for (const auto &note_off : note_off_heap)
+					// Flush all pending note-offs before end of track
+					uint32_t accumulated_delay = 0;
+					while (!note_off_heap.empty())
 					{
-						std::vector<uint8_t> flush_event = {
-							static_cast<uint8_t>((note_off.event_data[0] & 0x0F) | 0x80),
-							note_off.event_data[1],
-							uint8_t{0x7F}};
-						current_group.push_back({0, std::move(flush_event)});
+						std::pop_heap(note_off_heap.begin(), note_off_heap.end(), std::greater<>{});
+						PendingNoteOff note_off = note_off_heap.back();
+						note_off_heap.pop_back();
+
+						accumulated_delay += note_off.delta_ticks;
+
+						write_vlq(midi_decode, accumulated_delay);
+						midi_decode.push_back(static_cast<uint8_t>((note_off.event_data[0] & 0x0F) | 0x80));
+						midi_decode.push_back(note_off.event_data[1]);
+						midi_decode.push_back(0x7F);
+
+						accumulated_delay = 0;
 					}
-					note_off_heap.clear();
-					current_group.push_back({remaining_event_delta, std::move(current_event)});
-					end_of_track_found = true;
+
+					midi_decode.push_back(0); // Length 0 for end of track
+					break;
 				}
-				else
+				else // Other meta event
 				{
 					uint8_t length = xmi_data.front();
 					xmi_data = xmi_data.subspan(1);
-					current_event.push_back(length);
-					current_event.insert(current_event.end(), xmi_data.begin(), xmi_data.begin() + length);
+					midi_decode.push_back(length);
+
+					midi_decode.insert(midi_decode.end(), xmi_data.begin(), xmi_data.begin() + length);
 					xmi_data = xmi_data.subspan(length);
 				}
 			}
-			else if ((status & 0xF0) == 0x90)
+			else if ((status & 0xF0) == 0x80) // Note Off
+			{
+				midi_decode.push_back(status);
+				midi_decode.push_back(xmi_data[0]); // Note number
+				midi_decode.push_back(xmi_data[1]); // Velocity
+				xmi_data = xmi_data.subspan(2);
+			}
+			else if ((status & 0xF0) == 0x90) // Note On
 			{
 				uint8_t note = xmi_data[0];
 				uint8_t velocity = xmi_data[1];
 				xmi_data = xmi_data.subspan(2);
-				current_event.push_back(note);
-				current_event.push_back(velocity);
-				uint32_t note_duration = read_xmi_delta(xmi_data);
-				if (velocity == 0)
+
+				midi_decode.push_back(status);
+				midi_decode.push_back(note);
+				midi_decode.push_back(velocity);
+
+				// CORRECTED: Read duration as MIDI VLQ instead of XMI delta
+				uint32_t duration = read_vlq(xmi_data);
+
+				if (velocity > 0 && duration > 0)
 				{
-					current_event[0] = static_cast<uint8_t>((status & 0x0F) | 0x80);
-					current_event.back() = 0x7F;
-				}
-				else if (note_duration > 0)
-				{
-					note_off_heap.push_back({note_duration, {status, note, 0}});
+					// Queue a note-off event
+					note_off_heap.push_back({duration, {status, note, 0}});
 					std::push_heap(note_off_heap.begin(), note_off_heap.end(), std::greater<>{});
 				}
 			}
-			else if ((status & 0xF0) == 0x80 || (status & 0xF0) == 0xA0 || (status & 0xF0) == 0xB0 || (status & 0xF0) == 0xE0)
+			else if ((status & 0xF0) == 0xA0 ||
+					 (status & 0xF0) == 0xB0 ||
+					 (status & 0xF0) == 0xE0) // 2-byte data events
 			{
-				data_bytes_to_read = 2;
+				midi_decode.push_back(status);
+				midi_decode.push_back(xmi_data[0]);
+				midi_decode.push_back(xmi_data[1]);
+				xmi_data = xmi_data.subspan(2);
 			}
-			else if ((status & 0xF0) == 0xC0 || (status & 0xF0) == 0xD0)
+			else if ((status & 0xF0) == 0xC0 ||
+					 (status & 0xF0) == 0xD0) // 1-byte data events
 			{
-				data_bytes_to_read = 1;
+				midi_decode.push_back(status);
+				midi_decode.push_back(xmi_data[0]);
+				xmi_data = xmi_data.subspan(1);
 			}
-			else if (status == 0xF0 || status == 0xF7)
+			else if (status == 0xF0 || status == 0xF7) // SysEx events
 			{
+				midi_decode.push_back(status);
 				uint8_t length = xmi_data.front();
 				xmi_data = xmi_data.subspan(1);
-				current_event.insert(current_event.end(), xmi_data.begin(), xmi_data.begin() + length);
+				midi_decode.push_back(length);
+
+				midi_decode.insert(midi_decode.end(), xmi_data.begin(), xmi_data.begin() + length);
 				xmi_data = xmi_data.subspan(length);
 			}
-			if (data_bytes_to_read > 0)
-			{
-				current_event.insert(current_event.end(), xmi_data.begin(), xmi_data.begin() + data_bytes_to_read);
-				xmi_data = xmi_data.subspan(data_bytes_to_read);
-			}
-			uint32_t event_delta = first_event ? remaining_event_delta : 0;
-			current_group.push_back({event_delta, std::move(current_event)});
-			first_event = false;
 		}
-		// Append current group to intermediate events
-		intermediate_events.insert(intermediate_events.end(), current_group.begin(), current_group.end());
 	}
 
-	// Pass 2: Convert to MIDI
-	std::vector<uint8_t> final_midi_track_data;
-	final_midi_track_data.reserve(intermediate_events.size() * 5);
-	uint32_t current_microsecs_per_qn = DEFAULT_MICROSECS_PER_QN;
-	for (const auto &ime : intermediate_events)
+	// Second pass: Convert delta times based on tempo
+	std::vector<uint8_t> midi_write;
+	midi_write.reserve(midi_decode.size());
+
+	uint32_t qnlen = DEFAULT_MICROSECS_PER_QN;
+	const uint8_t *pos = midi_decode.data();
+	const uint8_t *end = pos + midi_decode.size();
+
+	while (pos < end)
 	{
-		double factor = (double(MIDI_TIMEBASE) * double(DEFAULT_QN)) / (double(current_microsecs_per_qn) * 60.0);
-		uint32_t midi_delta = static_cast<uint32_t>(ime.xmi_delta * factor + 0.5);
-		write_vlq(final_midi_track_data, midi_delta);
-		final_midi_track_data.insert(final_midi_track_data.end(), ime.event_bytes.begin(), ime.event_bytes.end());
-		if (ime.event_bytes.size() == 6 && ime.event_bytes[0] == 0xFF && ime.event_bytes[1] == 0x51 && ime.event_bytes[2] == 0x03)
+		// Read delta-time from intermediate format
+		uint32_t delta = 0;
+		while (*pos & 0x80)
 		{
-			uint32_t tempo = (uint32_t(ime.event_bytes[3]) << 16) | (uint32_t(ime.event_bytes[4]) << 8) | (uint32_t(ime.event_bytes[5]));
-			current_microsecs_per_qn = tempo;
+			delta += *pos++ & 0x7F;
+			delta <<= 7;
+		}
+		delta += *pos++ & 0x7F;
+
+		// Convert delta to MIDI timebase (precise calculation like original)
+		double factor = static_cast<double>(MIDI_TIMEBASE) * DEFAULT_QN /
+						(static_cast<double>(qnlen) * DEFAULT_TIMEBASE);
+		delta = static_cast<uint32_t>(static_cast<double>(delta) * factor + 0.5);
+
+		// Write the updated delta
+		write_vlq(midi_write, delta);
+
+		// Process the MIDI event
+		if (pos >= end)
+			break;
+
+		uint8_t status = *pos++;
+		midi_write.push_back(status);
+
+		// Handle different event types
+		if ((status & 0xF0) == 0x80 ||
+			(status & 0xF0) == 0x90 ||
+			(status & 0xF0) == 0xA0 ||
+			(status & 0xF0) == 0xB0 ||
+			(status & 0xF0) == 0xE0) // 2-byte data events
+		{
+			midi_write.push_back(*pos++);
+			midi_write.push_back(*pos++);
+		}
+		else if ((status & 0xF0) == 0xC0 ||
+				 (status & 0xF0) == 0xD0) // 1-byte data events
+		{
+			midi_write.push_back(*pos++);
+		}
+		else if (status == 0xFF) // Meta event
+		{
+			uint8_t type = *pos++;
+			midi_write.push_back(type);
+
+			if (type == 0x51) // Tempo change
+			{
+				uint8_t len = *pos++;
+				midi_write.push_back(len);
+
+				// Copy tempo bytes
+				uint8_t b1 = *pos++;
+				uint8_t b2 = *pos++;
+				uint8_t b3 = *pos++;
+				midi_write.push_back(b1);
+				midi_write.push_back(b2);
+				midi_write.push_back(b3);
+
+				// Update tempo for future delta calculations
+				qnlen = (b1 << 16) | (b2 << 8) | b3;
+			}
+			else
+			{
+				uint8_t len = *pos++;
+				midi_write.push_back(len);
+
+				// Copy meta data
+				for (uint8_t i = 0; i < len; i++)
+				{
+					midi_write.push_back(*pos++);
+				}
+			}
+		}
+		else if (status == 0xF0 || status == 0xF7) // SysEx event
+		{
+			uint8_t len = *pos++;
+			midi_write.push_back(len);
+
+			// Copy SysEx data
+			for (uint8_t i = 0; i < len; i++)
+			{
+				midi_write.push_back(*pos++);
+			}
 		}
 	}
-
-	// Prepend SMPTE-Offset
-	std::vector<uint8_t> smpteEvent = {0x00, 0xFF, 0x54, 0x05, 0x60, 0x00, 0x00, 0x00, 0x00};
-	final_midi_track_data.insert(final_midi_track_data.begin(), smpteEvent.begin(), smpteEvent.end());
 
 	// Build final MIDI file
 	std::vector<uint8_t> final_midi_output;
-	final_midi_output.reserve(MIDI_HEADER_SIZE + MIDI_TRACK_HEADER_SIZE + final_midi_track_data.size());
+	final_midi_output.reserve(MIDI_HEADER_SIZE + MIDI_TRACK_HEADER_SIZE + midi_write.size());
+
+	// Write header
 	final_midi_output.insert(final_midi_output.end(), {'M', 'T', 'h', 'd'});
 	write_be<uint32_t>(final_midi_output, 6);
 	write_be<uint16_t>(final_midi_output, MIDI_FORMAT);
 	write_be<uint16_t>(final_midi_output, MIDI_NUM_TRACKS);
 	write_be<uint16_t>(final_midi_output, MIDI_TIMEBASE);
+
+	// Write track
 	final_midi_output.insert(final_midi_output.end(), {'M', 'T', 'r', 'k'});
-	write_be<uint32_t>(final_midi_output, static_cast<uint32_t>(final_midi_track_data.size()));
-	final_midi_output.insert(final_midi_output.end(), final_midi_track_data.begin(), final_midi_track_data.end());
+	write_be<uint32_t>(final_midi_output, static_cast<uint32_t>(midi_write.size()));
+	final_midi_output.insert(final_midi_output.end(), midi_write.begin(), midi_write.end());
 
 	return final_midi_output;
 }
