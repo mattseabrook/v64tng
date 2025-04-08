@@ -19,7 +19,6 @@
 
 // Function prototypes
 std::vector<uint8_t> xmiConverter(const RLEntry &song);
-std::vector<uint8_t> _xmiConverter(const RLEntry& song);
 void PlayMIDI(const std::vector<uint8_t> &midiData, bool isTransient = false);
 void xmiPlay(const std::string &songName, bool isTransient = false);
 
