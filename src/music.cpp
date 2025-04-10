@@ -97,17 +97,18 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 			v = std::byteswap(v);
 		out.insert(out.end(), reinterpret_cast<const uint8_t *>(&v), reinterpret_cast<const uint8_t *>(&v) + sizeof(v));
 	};
-	auto read_vlq = [](std::span<const uint8_t> &d)
+	auto read_vlq = [](std::span<const uint8_t> &d) -> uint32_t
 	{
 		uint32_t v = 0;
-		uint8_t b;
-		do
+		for (int i = 0; i < 4 && !d.empty(); ++i)
 		{
-			b = d.front();
+			uint8_t b = d.front();
 			d = d.subspan(1);
 			v = (v << 7) | (b & 0x7F);
-		} while (b & 0x80);
-		return v;
+			if (!(b & 0x80))
+				return v;
+		}
+		return v; // If VLQ is malformed or truncated, just return what we have
 	};
 	auto write_vlq = [](std::vector<uint8_t> &out, uint32_t v)
 	{
@@ -171,24 +172,40 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 				auto n = notes.back();
 				notes.pop_back();
 				write_vlq(decode, n.delta_ticks);
-				decode.insert(decode.end(), {uint8_t((n.event_data[0] & 0x0F) | 0x80), n.event_data[1], 0x7F});
-				d -= n.delta_ticks;
-				for (auto &p : notes)
-					p.delta_ticks -= n.delta_ticks;
+				// decode.insert(decode.end(), {uint8_t((n.event_data[0] & 0x0F) | 0x80), n.event_data[1], 0x7F});
+				decode.insert(decode.end(), {
+												static_cast<uint8_t>((n.event_data[0] & 0x0F) | 0x80),
+												n.event_data[1],
+												n.event_data[2] // use the original velocity from note-on or 0
+											});
+				if (d >= n.delta_ticks)
+				{
+					d -= n.delta_ticks;
+					for (auto &p : notes)
+						p.delta_ticks -= n.delta_ticks;
+				}
+				else
+				{
+					// This should never happen, but guard anyway
+					d = 0;
+					for (auto &p : notes)
+						p.delta_ticks = 0;
+				}
+				/*
+					d -= n.delta_ticks;
+					for (auto &p : notes)
+						p.delta_ticks -= n.delta_ticks;
+				*/
 			}
 			delay = d;
 			is_delta = true;
 		}
 		else
 		{
-			if (is_delta)
-			{
-				write_vlq(decode, delay);
-				delay = 0;
-			}
-			else
-				decode.push_back(0);
-			is_delta = false;
+			write_vlq(decode, delay);
+			delay = 0;
+			is_delta = true; // <---- change to TRUE here, not FALSE
+
 			uint8_t status = xmi_data.front();
 			xmi_data = xmi_data.subspan(1);
 			if (status == 0xFF)
@@ -199,17 +216,22 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 				decode.push_back(type);
 				if (type == 0x2F)
 				{
-					uint32_t acc = 0;
 					while (!notes.empty())
 					{
 						std::pop_heap(notes.begin(), notes.end(), std::greater<>{});
 						auto n = notes.back();
 						notes.pop_back();
-						acc += n.delta_ticks;
-						write_vlq(decode, acc);
-						decode.insert(decode.end(), {uint8_t((n.event_data[0] & 0x0F) | 0x80), n.event_data[1], 0x7F});
-						acc = 0;
+						write_vlq(decode, n.delta_ticks);
+						// decode.insert(decode.end(), {uint8_t((n.event_data[0] & 0x0F) | 0x80), n.event_data[1], 0x7F});
+						decode.insert(decode.end(), {n.event_data[0],
+													 n.event_data[1],
+													 n.event_data[2]});
+						for (auto &p : notes)
+							p.delta_ticks -= n.delta_ticks;
 					}
+					decode.push_back(0); // Delta 0 for end of track
+					decode.push_back(0xFF);
+					decode.push_back(0x2F);
 					decode.push_back(0);
 					break;
 				}
@@ -230,7 +252,8 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 				uint32_t dur = read_vlq(xmi_data);
 				if (vel && dur)
 				{
-					notes.push_back({dur, {status, note, 0}});
+					// notes.push_back({dur, {status, note, 0}});
+					notes.push_back({dur, {static_cast<uint8_t>((status & 0x0F) | 0x80), note, vel}});
 					std::push_heap(notes.begin(), notes.end(), std::greater<>{});
 				}
 			}
