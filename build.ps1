@@ -53,6 +53,7 @@ try {
             "-O0", # No optimization for debugging
             "-g", # Debug symbols
             "-gcodeview", # CodeView for x64dbg
+            "-mssse3",
             "-m64",
             "-Wall",
             "-Wextra",

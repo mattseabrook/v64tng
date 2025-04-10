@@ -14,6 +14,10 @@
 #include <chrono>
 #include <functional>
 
+// debug
+#include <iomanip>
+#include <sstream>
+
 // Windows Multimedia
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -45,16 +49,26 @@ Return:
 */
 std::vector<uint8_t> xmiConverter(const RLEntry &song)
 {
+	// Open log file in append mode
+	std::ofstream log_file("midi_log.txt", std::ios::app);
+	if (!log_file.is_open())
+	{
+		return {};
+	}
+
 	// Setup
 	std::vector<uint8_t> buf(song.length);
 	std::ifstream s("XMI.GJD", std::ios::binary);
 	s.seekg(song.offset).read(reinterpret_cast<char *>(buf.data()), song.length);
 	std::span<const uint8_t> xmi_data = buf;
+	// Log XMI data size
+	log_file << "New: XMI data size: " << buf.size() << "\n";
 
 	//
-	// Constants and Helpers
+	// Constants and Helpers (unchanged)
 	//
-	constexpr uint32_t MIDI_HEADER_SIZE = 14, MIDI_TRACK_HEADER_SIZE = 8;
+	constexpr uint32_t MIDI_HEADER_SIZE = 14,
+					   MIDI_TRACK_HEADER_SIZE = 8;
 	constexpr uint16_t MIDI_FORMAT = 0, MIDI_NUM_TRACKS = 1, MIDI_TIMEBASE = 960;
 	constexpr uint32_t DEFAULT_TEMPO_BPM = 120, DEFAULT_MICROSECS_PER_QN = 500000;
 	constexpr uint32_t XMI_FREQ = 120, DEFAULT_TIMEBASE = 60, DEFAULT_QN = 500000;
@@ -133,6 +147,8 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 	xmi_data = xmi_data.subspan(4);
 	auto evnt = xmi_data.subspan(0, read_be(xmi_data).operator()<uint32_t>());
 	xmi_data = evnt;
+	// Log EVNT size
+	log_file << "New: EVNT size: " << evnt.size() << "\n";
 
 	//
 	// First Pass: Decode Events
@@ -236,6 +252,9 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 		}
 	}
 
+	// Log decoded events
+	log_midi_events(log_file, decode, "New Decode");
+
 	//
 	// Second Pass: Tempo Adjustment
 	//
@@ -273,6 +292,8 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 			{
 				write.insert(write.end(), p, p + 3);
 				qnlen = (p[0] << 16) | (p[1] << 8) | p[2];
+				// Log tempo
+				log_file << "New: Tempo set to " << qnlen << " microseconds per quarter note\n";
 				p += 3;
 			}
 			else
@@ -289,6 +310,9 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 			p += len;
 		}
 	}
+
+	// Log final events
+	log_midi_events(log_file, write, "New Final");
 
 	//
 	// Return MIDI Format 0
@@ -629,4 +653,133 @@ void xmiPlay(const std::string &songName, bool isTransient)
 		};
 		state.music_thread = std::thread(play_music);
 	}
+}
+
+//
+// Debug
+//
+void log_midi_events(std::ofstream &log_file, const std::vector<uint8_t> &data, const std::string &prefix)
+{
+	if (!log_file.is_open())
+	{
+		return; // Can’t log if the file’s not open
+	}
+
+	// Log basic info
+	log_file << prefix << ": Data size: " << data.size() << " bytes\n";
+
+	// Parse and log MIDI events
+	size_t pos = 0;
+	while (pos < data.size())
+	{
+		// Delta time
+		unsigned delta = 0;
+		while (pos < data.size() && (data[pos] & 0x80))
+		{
+			delta = (delta << 7) + (data[pos] & 0x7F);
+			pos++;
+		}
+		if (pos < data.size())
+		{
+			delta = (delta << 7) + (data[pos] & 0x7F);
+			pos++;
+		}
+		log_file << prefix << ": Delta-time: " << delta << "\n";
+
+		if (pos >= data.size())
+			break;
+
+		uint8_t event = data[pos++];
+
+		// Status byte
+		if (event >= 0x80 && event < 0xF0)
+		{
+			uint8_t channel = event & 0x0F;
+			uint8_t type = event & 0xF0;
+
+			if (type == 0x80 || type == 0x90 || type == 0xA0 || type == 0xB0 || type == 0xE0)
+			{
+				if (pos + 1 >= data.size())
+					break;
+				uint8_t param1 = data[pos++];
+				uint8_t param2 = data[pos++];
+				log_file << prefix << ": Channel " << (int)channel << " - ";
+				if (type == 0x80)
+					log_file << "Note Off, Note: " << (int)param1 << ", Velocity: " << (int)param2;
+				else if (type == 0x90)
+					log_file << "Note On, Note: " << (int)param1 << ", Velocity: " << (int)param2;
+				else if (type == 0xA0)
+					log_file << "Key Pressure, Note: " << (int)param1 << ", Pressure: " << (int)param2;
+				else if (type == 0xB0)
+					log_file << "Control Change, Controller: " << (int)param1 << ", Value: " << (int)param2;
+				else if (type == 0xE0)
+					log_file << "Pitch Bend, Value: " << ((param2 << 7) + param1);
+				log_file << "\n";
+			}
+			else if (type == 0xC0 || type == 0xD0)
+			{
+				if (pos >= data.size())
+					break;
+				uint8_t param1 = data[pos++];
+				log_file << prefix << ": Channel " << (int)channel << " - ";
+				if (type == 0xC0)
+					log_file << "Program Change, Program: " << (int)param1;
+				else
+					log_file << "Channel Pressure, Pressure: " << (int)param1;
+				log_file << "\n";
+			}
+		}
+		else if (event == 0xFF) // Meta event
+		{
+			if (pos >= data.size())
+				break;
+			uint8_t meta_type = data[pos++];
+			unsigned length = 0;
+			while (pos < data.size() && (data[pos] & 0x80))
+			{
+				length = (length << 7) + (data[pos] & 0x7F);
+				pos++;
+			}
+			if (pos < data.size())
+			{
+				length = (length << 7) + (data[pos] & 0x7F);
+				pos++;
+			}
+			if (meta_type == 0x2F)
+			{
+				log_file << prefix << ": End of Track\n";
+			}
+			else if (meta_type == 0x51)
+			{
+				if (pos + 2 < data.size())
+				{
+					unsigned tempo = (data[pos] << 16) + (data[pos + 1] << 8) + data[pos + 2];
+					log_file << prefix << ": Tempo: " << tempo << " microseconds per quarter note\n";
+					pos += length;
+				}
+			}
+			else
+			{
+				pos += length; // Skip other meta events
+			}
+		}
+		else if (event == 0xF0 || event == 0xF7) // Sysex
+		{
+			unsigned length = 0;
+			while (pos < data.size() && (data[pos] & 0x80))
+			{
+				length = (length << 7) + (data[pos] & 0x7F);
+				pos++;
+			}
+			if (pos < data.size())
+			{
+				length = (length << 7) + (data[pos] & 0x7F);
+				pos++;
+			}
+			log_file << prefix << ": Sysex Event, Length: " << length << "\n";
+			pos += length;
+		}
+	}
+
+	log_file << prefix << ": Logging complete\n";
 }
