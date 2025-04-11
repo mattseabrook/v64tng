@@ -138,8 +138,9 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 	//
 	// Header
 	//
-	xmi_data = xmi_data.subspan(50); // 4 * 12 + 2
-	xmi_data = xmi_data.subspan(read_be(xmi_data).operator()<uint32_t>());
+	xmi_data = xmi_data.subspan(50);
+	uint32_t lTIMB = read_be(xmi_data).operator()<uint32_t>();
+	xmi_data = xmi_data.subspan(lTIMB);
 	if (!std::memcmp(xmi_data.data(), "RBRN", 4))
 	{
 		xmi_data = xmi_data.subspan(8);
@@ -253,15 +254,27 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 				if (vel && dur)
 				{
 					// notes.push_back({dur, {status, note, 0}});
-					notes.push_back({dur, {static_cast<uint8_t>((status & 0x0F) | 0x80), note, vel}});
+					notes.push_back({dur, {static_cast<uint8_t>((status & 0x0F) | 0x80), note, 0x7F}});
 					std::push_heap(notes.begin(), notes.end(), std::greater<>{});
 				}
 			}
 			else if ((status & 0xF0) >= 0x80 && (status & 0xF0) <= 0xE0)
 			{
 				decode.push_back(status);
-				decode.insert(decode.end(), xmi_data.begin(), xmi_data.begin() + ((status & 0xF0) < 0xC0 ? 2 : 1));
-				xmi_data = xmi_data.subspan((status & 0xF0) < 0xC0 ? 2 : 1);
+				// Add bitmasking for pitch bend/data bytes:
+				if ((status & 0xF0) == 0xE0) // Pitch Bend
+				{
+					uint8_t lsb = xmi_data[0] & 0x7F; // <-- Fix here
+					uint8_t msb = xmi_data[1] & 0x7F; // <-- Fix here
+					decode.push_back(lsb);
+					decode.push_back(msb);
+					xmi_data = xmi_data.subspan(2);
+				}
+				else
+				{
+					decode.insert(decode.end(), xmi_data.begin(), xmi_data.begin() + ((status & 0xF0) < 0xC0 ? 2 : 1));
+					xmi_data = xmi_data.subspan((status & 0xF0) < 0xC0 ? 2 : 1);
+				}
 			}
 			else if (status == 0xF0 || status == 0xF7)
 			{
