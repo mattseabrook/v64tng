@@ -13,6 +13,9 @@
 #include <thread>
 #include <chrono>
 #include <functional>
+#include <queue>
+#include <cstring>
+#include <ranges>
 
 // debug
 #include <iomanip>
@@ -49,401 +52,139 @@ Return:
 */
 std::vector<uint8_t> xmiConverter(const RLEntry &song)
 {
-	// Open log file in truncate mode to clear it each run
-	std::ofstream log_file("old_midi_log.txt", std::ios::trunc);
-	if (!log_file.is_open())
-	{
-		return {}; // Bail if we can’t open the file
-	}
+	std::ofstream log("midi_log.txt", std::ios::trunc);
+	constexpr uint16_t ticks_per_beat = 960;
+	constexpr uint32_t us_per_beat = 500000;
+	constexpr uint32_t xmi_freq = 120;
+	auto byteswap = [](uint32_t v)
+	{ return (v << 24) | ((v & 0xFF00) << 8) | ((v & 0xFF0000) >> 8) | (v >> 24); };
 
-	// Define helper struct for note-off events
-	struct NOEVENTS
+	std::vector<uint8_t> xmi(song.length);
+	std::ifstream("XMI.GJD", std::ios::binary).seekg(song.offset).read(reinterpret_cast<char *>(xmi.data()), song.length);
+
+	size_t pos = 50; // 4 * 12 + 2
+	if (std::string(reinterpret_cast<const char *>(xmi.data() + pos), 4) == "TIMB")
+		pos += 8 + byteswap(*reinterpret_cast<uint32_t *>(xmi.data() + pos + 4)) * 2;
+	if (std::string(reinterpret_cast<const char *>(xmi.data() + pos), 4) == "RBRN")
+		pos += 10 + *reinterpret_cast<uint16_t *>(xmi.data() + pos + 8) * 6;
+
+	pos += 4; // Skip "EVNT"
+	uint32_t event_size = byteswap(*reinterpret_cast<uint32_t *>(xmi.data() + pos));
+	pos += 4;
+	size_t event_end = pos + event_size;
+	log << "XMI size: " << song.length << "\nEVNT size: " << event_size << "\n";
+
+	struct NoteOff
 	{
-		unsigned delta;
-		std::array<unsigned char, 3> off;
+		uint32_t time;
+		uint8_t chan, note;
+		bool operator>(const NoteOff &o) const { return time > o.time; }
+	};
+	std::priority_queue<NoteOff, std::vector<NoteOff>, std::greater<>> note_queue;
+	std::vector<std::pair<uint32_t, std::vector<uint8_t>>> events;
+	uint32_t current_time = 0;
+
+	auto read_delay = [&]()
+	{
+		uint32_t delay = 0;
+		while (pos < event_end && xmi[pos] == 0x7F)
+			delay += xmi[pos++];
+		if (pos < event_end)
+			delay += xmi[pos++];
+		return delay;
 	};
 
-	// Array to track note-off events
-	std::array<NOEVENTS, 1000> off_events{{{0xFFFFFFFFL, {0, 0, 0}}}};
-
-	// Comparator for sorting note-off events by delta time
-	auto comp_events = [](const NOEVENTS &a, const NOEVENTS &b)
+	auto read_duration = [&]()
 	{
-		return a.delta < b.delta;
+		uint32_t delta = pos < event_end ? xmi[pos++] & 0x7F : 0;
+		while (pos < event_end && xmi[pos - 1] > 0x80)
+			delta = (delta << 7) + xmi[pos++];
+		return delta;
 	};
 
-	// MIDI header
-	std::array<unsigned char, 18> midiheader = {'M', 'T', 'h', 'd', 0, 0, 0, 6, 0, 0, 0, 1, 0, 60, 'M', 'T', 'r', 'k'};
-
-	// Constants for tempo and timebase
-	constexpr unsigned long DEFAULT_TEMPO = 120UL;
-	constexpr unsigned long XMI_FREQ = 120UL;
-	constexpr unsigned long DEFAULT_TIMEBASE = (XMI_FREQ * 60UL / DEFAULT_TEMPO);
-	constexpr unsigned long DEFAULT_QN = (60UL * 1000000UL / DEFAULT_TEMPO);
-
-	unsigned short timebase = 960;
-	unsigned long qnlen = DEFAULT_QN;
-
-	// Read XMI data from file
-	std::ifstream xmiData("XMI.GJD", std::ios::binary | std::ios::ate);
-	std::vector<uint8_t> xmiFile(song.length);
-	xmiData.seekg(song.offset);
-	xmiData.read(reinterpret_cast<char *>(xmiFile.data()), song.length);
-	log_file << "Old: XMI data size: " << xmiFile.size() << "\n";
-
-	unsigned char *cur = xmiFile.data();
-
-	// Skip headers
-	cur += 4 * 12 + 2;
-	unsigned lTIMB = _byteswap_ulong(*reinterpret_cast<unsigned *>(cur));
-	cur += 4;
-
-	for (unsigned i = 0; i < lTIMB; i += 2)
+	while (pos < event_end)
 	{
-		cur += 2;
-	}
-
-	if (!std::memcmp(cur, "RBRN", 4))
-	{
-		cur += 8;
-		unsigned short nBranch = *reinterpret_cast<unsigned short *>(cur);
-		cur += 2;
-
-		for (unsigned i = 0; i < nBranch; i++)
+		if (xmi[pos] < 0x80)
 		{
-			cur += 6;
-		}
-	}
-
-	cur += 4;
-	unsigned lEVNT = _byteswap_ulong(*reinterpret_cast<unsigned *>(cur));
-	cur += 4;
-	log_file << "Old: EVNT size: " << lEVNT << "\n";
-
-	// Decode MIDI events
-	std::vector<unsigned char> midi_decode(xmiFile.size() * 2);
-	unsigned char *dcur = midi_decode.data();
-
-	int next_is_delta = 1;
-	unsigned char *st = cur;
-	unsigned oevents = 0;
-	while (cur - st < lEVNT)
-	{
-		if (*cur < 0x80)
-		{
-			unsigned delay = 0;
-			while (*cur == 0x7F)
+			uint32_t delay = read_delay(), next_time = current_time + delay;
+			while (!note_queue.empty() && note_queue.top().time <= next_time)
 			{
-				delay += *cur++;
+				auto n = note_queue.top();
+				note_queue.pop();
+				events.emplace_back(n.time - current_time, std::vector<uint8_t>{uint8_t(0x80 | n.chan), n.note, 0x7F});
+				current_time = n.time;
 			}
-			delay += *cur++;
-
-			while (delay > off_events[0].delta)
-			{
-				unsigned no_delta = off_events[0].delta;
-				unsigned tdelay = no_delta & 0x7F;
-
-				while ((no_delta >>= 7))
-				{
-					tdelay <<= 8;
-					tdelay |= (no_delta & 0x7F) | 0x80;
-				}
-
-				while (1)
-				{
-					*dcur++ = tdelay & 0xFF;
-					if (tdelay & 0x80)
-					{
-						tdelay >>= 8;
-					}
-					else
-					{
-						break;
-					}
-				}
-				*dcur++ = off_events[0].off[0] & 0x8F;
-				*dcur++ = off_events[0].off[1];
-				*dcur++ = 0x7F;
-
-				delay -= off_events[0].delta;
-				for (unsigned i = 1; i < oevents; i++)
-				{
-					off_events[i].delta -= off_events[0].delta;
-				}
-				off_events[0].delta = 0xFFFFFFFFL;
-
-				std::sort(off_events.begin(), off_events.begin() + oevents, comp_events);
-
-				oevents--;
-			}
-
-			for (unsigned i = 0; i < oevents; i++)
-			{
-				off_events[i].delta -= delay;
-			}
-
-			unsigned tdelay = delay & 0x7F;
-			while ((delay >>= 7))
-			{
-				tdelay <<= 8;
-				tdelay |= (delay & 0x7F) | 0x80;
-			}
-
-			while (1)
-			{
-				*dcur++ = tdelay & 0xFF;
-				if (tdelay & 0x80)
-				{
-					tdelay >>= 8;
-				}
-				else
-				{
-					break;
-				}
-			}
-			next_is_delta = 0;
+			if (current_time < next_time)
+				events.emplace_back(next_time - current_time, std::vector<uint8_t>{}), current_time = next_time;
 		}
 		else
 		{
-			if (next_is_delta)
+			uint8_t status = xmi[pos++];
+			if (status == 0xFF)
 			{
-				if (*cur >= 0x80)
-				{
-					*dcur++ = 0;
-				}
+				uint8_t type = xmi[pos++], len = xmi[pos++];
+				std::vector<uint8_t> meta = {0xFF, type, len};
+				meta.insert(meta.end(), xmi.begin() + pos, xmi.begin() + pos + len);
+				events.emplace_back(0, meta);
+				pos += len;
 			}
-
-			next_is_delta = 1;
-			if (*cur == 0xFF)
+			else if ((status & 0xF0) == 0x90)
 			{
-				if (*(cur + 1) == 0x2F)
-				{
-					for (unsigned i = 0; i < oevents; i++)
-					{
-						*dcur++ = off_events[i].off[0] & 0x8F;
-						*dcur++ = off_events[i].off[1];
-						*dcur++ = 0x7F;
-						*dcur++ = 0;
-					}
-					*dcur++ = *cur++;
-					*dcur++ = *cur++;
-					*dcur++ = 0;
-					break;
-				}
-				*dcur++ = *cur++;
-				*dcur++ = *cur++;
-				unsigned textlen = *cur + 1;
-				while (textlen--)
-				{
-					*dcur++ = *cur++;
-				}
-			}
-			else if (0x80 == (*cur & 0xF0)) // Note Off
-			{
-				*dcur++ = *cur++;
-				*dcur++ = *cur++;
-				*dcur++ = *cur++;
-			}
-			else if (0x90 == (*cur & 0xF0)) // Note On
-			{
-				*dcur++ = *cur++;
-				*dcur++ = *cur++;
-				*dcur++ = *cur++;
-				unsigned delta = *cur & 0x7F;
-
-				while (*cur++ > 0x80)
-				{
-					delta <<= 7;
-					delta += *cur;
-				}
-
-				off_events[oevents].delta = delta;
-				off_events[oevents].off[0] = *(dcur - 3);
-				off_events[oevents].off[1] = *(dcur - 2);
-
-				oevents++;
-				std::sort(std::begin(off_events), std::begin(off_events) + oevents, comp_events);
-			}
-			else if (0xA0 == (*cur & 0xF0)) // Key Pressure
-			{
-				*dcur++ = *cur++;
-				*dcur++ = *cur++;
-				*dcur++ = *cur++;
-			}
-			else if (0xB0 == (*cur & 0xF0)) // Control Change
-			{
-				*dcur++ = *cur++;
-				*dcur++ = *cur++;
-				*dcur++ = *cur++;
-			}
-			else if (0xC0 == (*cur & 0xF0)) // Program Change
-			{
-				*dcur++ = *cur++;
-				*dcur++ = *cur++;
-			}
-			else if (0xD0 == (*cur & 0xF0)) // Channel Pressure
-			{
-				*dcur++ = *cur++;
-				*dcur++ = *cur++;
-			}
-			else if (0xE0 == (*cur & 0xF0)) // Pitch Bend
-			{
-				*dcur++ = *cur++;
-				*dcur++ = *cur++;
-				*dcur++ = *cur++;
+				uint8_t note = xmi[pos++], vel = xmi[pos++], duration = read_duration();
+				note_queue.push({current_time + duration, uint8_t(status & 0xF), note});
+				events.emplace_back(0, std::vector<uint8_t>{status, note, vel});
 			}
 			else
 			{
-				cur++;
+				size_t len = (status & 0xE0) == 0xC0 ? 1 : 2;
+				std::vector<uint8_t> msg = {status};
+				msg.insert(msg.end(), xmi.begin() + pos, xmi.begin() + pos + len);
+				events.emplace_back(0, msg);
+				pos += len;
 			}
 		}
 	}
 
-	// Log decoded events
-	std::vector<uint8_t> decoded_events(midi_decode.begin(), midi_decode.begin() + (dcur - midi_decode.data()));
-	log_midi_events(log_file, decoded_events, "Old Decode");
-
-	// Write final MIDI events
-	std::vector<unsigned char> midi_write(xmiFile.size() * 2);
-	unsigned char *tcur = midi_write.data();
-	unsigned char *pos = midi_decode.data();
-
-	while (pos < dcur)
+	while (!note_queue.empty())
 	{
-		// Delta-time
-		unsigned delta = 0;
-		while (*pos & 0x80)
-		{
-			delta += *pos++ & 0x7F;
-			delta <<= 7;
-		}
-		delta += *pos++ & 0x7F;
+		auto n = note_queue.top();
+		note_queue.pop();
+		events.emplace_back(n.time - current_time, std::vector<uint8_t>{uint8_t(0x80 | n.chan), n.note, 0x7F});
+		current_time = n.time;
+	}
+	events.emplace_back(0, std::vector<uint8_t>{0xFF, 0x2F, 0x00});
 
-		// Adjust delta based on tempo
-		double factor = (double)timebase * DEFAULT_QN / ((double)qnlen * DEFAULT_TIMEBASE);
-		delta = static_cast<unsigned>((double)delta * factor + 0.5);
+	log << "Events: " << events.size() << "\n";
+	for (const auto &[d, e] : events)
+	{
+		log << "Delta: " << d << "\n";
+		for (uint8_t b : e)
+			log << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(b) << " ";
+		log << std::dec << "\n";
+	}
 
-		unsigned tdelta = delta & 0x7F;
-		while ((delta >>= 7))
+	std::vector<uint8_t> midi_data;
+	uint32_t tempo = us_per_beat;
+	for (const auto &[d, e] : events)
+	{
+		uint32_t scaled_delta = (d * ticks_per_beat * us_per_beat) / (tempo * xmi_freq + 0.5);
+		for (uint32_t val = scaled_delta; val; val >>= 7)
+			midi_data.push_back((val & 0x7F) | (val > 0x7F ? 0x80 : 0));
+		std::ranges::reverse(midi_data.end() - (scaled_delta > 0x7F ? 2 : 1), midi_data.end());
+		if (!e.empty())
 		{
-			tdelta <<= 8;
-			tdelta |= (delta & 0x7F) | 0x80;
-		}
-		while (1)
-		{
-			*tcur++ = tdelta & 0xFF;
-			if (tdelta & 0x80)
-			{
-				tdelta >>= 8;
-			}
-			else
-			{
-				break;
-			}
-		}
-
-		// Event handling
-		if (0x80 == (*pos & 0xF0)) // Note Off
-		{
-			*tcur++ = *pos++;
-			*tcur++ = *pos++;
-			*tcur++ = *pos++;
-		}
-		else if (0x90 == (*pos & 0xF0)) // Note On
-		{
-			*tcur++ = *pos++;
-			*tcur++ = *pos++;
-			*tcur++ = *pos++;
-		}
-		else if (0xA0 == (*pos & 0xF0)) // Key Pressure
-		{
-			*tcur++ = *pos++;
-			*tcur++ = *pos++;
-			*tcur++ = *pos++;
-		}
-		else if (0xB0 == (*pos & 0xF0)) // Control Change
-		{
-			*tcur++ = *pos++;
-			*tcur++ = *pos++;
-			*tcur++ = *pos++;
-		}
-		else if (0xC0 == (*pos & 0xF0)) // Program Change
-		{
-			*tcur++ = *pos++;
-			*tcur++ = *pos++;
-		}
-		else if (0xD0 == (*pos & 0xF0)) // Channel Pressure
-		{
-			*tcur++ = *pos++;
-			*tcur++ = *pos++;
-		}
-		else if (0xE0 == (*pos & 0xF0)) // Pitch Bend
-		{
-			*tcur++ = *pos++;
-			*tcur++ = *pos++;
-			*tcur++ = *pos++;
-		}
-		else if (0xF0 == *pos || 0xF7 == *pos) // Sysex
-		{
-			unsigned exlen = 0;
-			*tcur++ = *pos++;
-			while (*pos < 0)
-			{
-				exlen += *pos & 0x7F;
-				exlen <<= 7;
-				*tcur++ = *pos++;
-			}
-			exlen += *pos & 0x7F;
-			*tcur++ = *pos++;
-			while (exlen--)
-			{
-				*tcur++ = *pos++;
-			}
-		}
-		else if (0xFF == *pos) // Meta Event
-		{
-			*tcur++ = *pos++;
-			if (0x51 == *pos) // Tempo
-			{
-				*tcur++ = *pos++;
-				*tcur++ = *pos++;
-				qnlen = (*(unsigned char *)(pos) << 16) + (*(unsigned char *)(pos + 1) << 8) + *(unsigned char *)(pos + 2);
-				log_file << "Old: Tempo set to " << qnlen << " microseconds per quarter note\n";
-				*tcur++ = *pos++;
-				*tcur++ = *pos++;
-				*tcur++ = *pos++;
-			}
-			else
-			{
-				*tcur++ = *pos++;
-				unsigned textlen = *pos;
-				*tcur++ = *pos++;
-				while (textlen--)
-				{
-					*tcur++ = *pos++;
-				}
-			}
+			if (e[0] == 0xFF && e[1] == 0x51)
+				tempo = (e[3] << 16) | (e[4] << 8) | e[5], log << "Tempo: " << tempo << "\n";
+			midi_data.insert(midi_data.end(), e.begin(), e.end());
 		}
 	}
 
-	ptrdiff_t tlen = tcur - midi_write.data();
-
-	// Log final events
-	std::vector<uint8_t> final_events(midi_write.begin(), midi_write.begin() + tlen);
-	log_midi_events(log_file, final_events, "Old Final");
-
-	// Build MIDI output
-	std::vector<uint8_t> midiData;
-	unsigned short swappedTimebase = _byteswap_ushort(timebase);
-	midiheader[12] = static_cast<unsigned char>(swappedTimebase & 0xFF);
-	midiheader[13] = static_cast<unsigned char>(swappedTimebase >> 8);
-
-	midiData.insert(midiData.end(), midiheader.begin(), midiheader.end());
-	unsigned long bs_tlen = _byteswap_ulong(static_cast<unsigned long>(tlen));
-	midiData.insert(midiData.end(), reinterpret_cast<const char *>(&bs_tlen), reinterpret_cast<const char *>(&bs_tlen) + sizeof(unsigned));
-	midiData.insert(midiData.end(), midi_write.begin(), midi_write.begin() + tlen);
-
-	return midiData;
+	std::vector<uint8_t> midi{'M', 'T', 'h', 'd', 0, 0, 0, 6, 0, 0, 0, 1, 0x03, 0xC0, 'M', 'T', 'r', 'k'};
+	uint32_t track_size = byteswap(midi_data.size());
+	midi.insert(midi.end(), reinterpret_cast<uint8_t *>(&track_size), reinterpret_cast<uint8_t *>(&track_size + 1));
+	midi.insert(midi.end(), midi_data.begin(), midi_data.end());
+	log << "MIDI size: " << midi.size() << "\n";
+	return midi;
 }
 
 /*
@@ -755,7 +496,7 @@ void xmiPlay(const std::string &songName, bool isTransient)
 				auto midiData = xmiConverter(*song);
 
 				// Write midiData to a file called badsong.mid:
-				std::ofstream midiFile("song.mid", std::ios::binary);
+				std::ofstream midiFile("badsong.mid", std::ios::binary);
 				midiFile.write(reinterpret_cast<const char *>(midiData.data()), midiData.size());
 				midiFile.close();
 
