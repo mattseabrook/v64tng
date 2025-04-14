@@ -14,6 +14,8 @@
 #include <chrono>
 #include <functional>
 #include <queue>
+#include <cstring>
+#include <ranges>
 
 // debug
 #include <iomanip>
@@ -50,144 +52,139 @@ Return:
 */
 std::vector<uint8_t> xmiConverter(const RLEntry &song)
 {
-	std::ofstream log("new_midi_log.txt", std::ios::trunc);
-	if (!log)
-		return {};
+	std::ofstream log("midi_log.txt", std::ios::trunc);
+	constexpr uint16_t ticks_per_beat = 960;
+	constexpr uint32_t us_per_beat = 500000;
+	constexpr uint32_t xmi_freq = 120;
+	auto byteswap = [](uint32_t v)
+	{ return (v << 24) | ((v & 0xFF00) << 8) | ((v & 0xFF0000) >> 8) | (v >> 24); };
 
-	// 1. Match original logging exactly
-	log << "New: XMI data size: " << song.length << "\n";
-
-	struct NoteEvent
-	{
-		unsigned delta;
-		uint8_t ch;
-		uint8_t note;
-		bool operator>(const NoteEvent &o) const { return delta > o.delta; }
-	};
-	std::priority_queue<NoteEvent, std::vector<NoteEvent>, std::greater<>> noteOffs;
-
-	// 2. Original MIDI header construction
-	const unsigned char midiHeader[18] = {
-		'M', 'T', 'h', 'd', 0, 0, 0, 6, 0, 0, 0, 1,
-		static_cast<unsigned char>(960 >> 8), static_cast<unsigned char>(960 & 0xFF),
-		'M', 'T', 'r', 'k'};
-
-	// 3. Original file reading without error checking
 	std::vector<uint8_t> xmi(song.length);
 	std::ifstream("XMI.GJD", std::ios::binary).seekg(song.offset).read(reinterpret_cast<char *>(xmi.data()), song.length);
 
-	// 4. Original header parsing without validation
-	unsigned char *cur = xmi.data();
-	cur += 4 * 12 + 2; // Original magic number offset
-	unsigned lTIMB = std::byteswap(*reinterpret_cast<unsigned *>(cur));
-	cur += 4;
-	for (unsigned i = 0; i < lTIMB; i += 2)
-		cur += 2; // Original TIMB handling
+	size_t pos = 50; // 4 * 12 + 2
+	if (std::string(reinterpret_cast<const char *>(xmi.data() + pos), 4) == "TIMB")
+		pos += 8 + byteswap(*reinterpret_cast<uint32_t *>(xmi.data() + pos + 4)) * 2;
+	if (std::string(reinterpret_cast<const char *>(xmi.data() + pos), 4) == "RBRN")
+		pos += 10 + *reinterpret_cast<uint16_t *>(xmi.data() + pos + 8) * 6;
 
-	// 5. Original RBRN chunk skipping
-	if (!memcmp(cur, "RBRN", 4))
+	pos += 4; // Skip "EVNT"
+	uint32_t event_size = byteswap(*reinterpret_cast<uint32_t *>(xmi.data() + pos));
+	pos += 4;
+	size_t event_end = pos + event_size;
+	log << "XMI size: " << song.length << "\nEVNT size: " << event_size << "\n";
+
+	struct NoteOff
 	{
-		cur += 8;
-		unsigned short nBranch = *reinterpret_cast<unsigned short *>(cur);
-		cur += 2;
-		for (unsigned i = 0; i < nBranch; i++)
-			cur += 6;
-	}
+		uint32_t time;
+		uint8_t chan, note;
+		bool operator>(const NoteOff &o) const { return time > o.time; }
+	};
+	std::priority_queue<NoteOff, std::vector<NoteOff>, std::greater<>> note_queue;
+	std::vector<std::pair<uint32_t, std::vector<uint8_t>>> events;
+	uint32_t current_time = 0;
 
-	// 6. Original EVNT processing
-	cur += 4;
-	unsigned lEVNT = std::byteswap(*reinterpret_cast<unsigned *>(cur));
-	cur += 4;
-	log << "New: EVNT size: " << lEVNT << "\n";
-
-	std::vector<uint8_t> decoded, midiData;
-	unsigned currentDelta = 0;
-	bool needsDelta = true;
-
-	// 7. Original event processing loop
-	while (cur - xmi.data() < xmi.size())
+	auto read_delay = [&]()
 	{
-		if (*cur < 0x80)
+		uint32_t delay = 0;
+		while (pos < event_end && xmi[pos] == 0x7F)
+			delay += xmi[pos++];
+		if (pos < event_end)
+			delay += xmi[pos++];
+		return delay;
+	};
+
+	auto read_duration = [&]()
+	{
+		uint32_t delta = pos < event_end ? xmi[pos++] & 0x7F : 0;
+		while (pos < event_end && xmi[pos - 1] > 0x80)
+			delta = (delta << 7) + xmi[pos++];
+		return delta;
+	};
+
+	while (pos < event_end)
+	{
+		if (xmi[pos] < 0x80)
 		{
-			unsigned delay = 0;
-			while (*cur == 0x7F)
-				delay += *cur++;
-			delay += *cur++;
-
-			// Original VLQ encoding
-			unsigned tdelay = delay;
-			std::vector<uint8_t> vlq;
-			do
+			uint32_t delay = read_delay(), next_time = current_time + delay;
+			while (!note_queue.empty() && note_queue.top().time <= next_time)
 			{
-				vlq.push_back(tdelay & 0x7F);
-				tdelay >>= 7;
-			} while (tdelay > 0);
-
-			std::reverse(vlq.begin(), vlq.end());
-			for (size_t i = 0; i < vlq.size() - 1; i++)
-				vlq[i] |= 0x80;
-
-			decoded.insert(decoded.end(), vlq.begin(), vlq.end());
-			needsDelta = false;
+				auto n = note_queue.top();
+				note_queue.pop();
+				events.emplace_back(n.time - current_time, std::vector<uint8_t>{uint8_t(0x80 | n.chan), n.note, 0x7F});
+				current_time = n.time;
+			}
+			if (current_time < next_time)
+				events.emplace_back(next_time - current_time, std::vector<uint8_t>{}), current_time = next_time;
 		}
 		else
 		{
-			if (needsDelta)
-				decoded.push_back(0);
-			needsDelta = true;
-
-			if (*cur == 0xFF)
+			uint8_t status = xmi[pos++];
+			if (status == 0xFF)
 			{
-				decoded.insert(decoded.end(), cur, cur + 3 + cur[2]);
-				cur += 3 + cur[2];
+				uint8_t type = xmi[pos++], len = xmi[pos++];
+				std::vector<uint8_t> meta = {0xFF, type, len};
+				meta.insert(meta.end(), xmi.begin() + pos, xmi.begin() + pos + len);
+				events.emplace_back(0, meta);
+				pos += len;
 			}
-			else if ((*cur & 0xF0) == 0x90)
+			else if ((status & 0xF0) == 0x90)
 			{
-				const uint8_t ch = *cur++;
-				const uint8_t note = *cur++;
-				const uint8_t vel = *cur++;
-
-				decoded.insert(decoded.end(), {ch, note, vel});
-
-				// Original duration parsing
-				unsigned duration = 0;
-				while (*cur & 0x80)
-					duration = (duration << 7) | (*cur++ & 0x7F);
-				duration = (duration << 7) | *cur++;
-
-				noteOffs.push({currentDelta + duration,
-							   static_cast<uint8_t>(ch & 0x0F), note});
+				uint8_t note = xmi[pos++], vel = xmi[pos++], duration = read_duration();
+				note_queue.push({current_time + duration, uint8_t(status & 0xF), note});
+				events.emplace_back(0, std::vector<uint8_t>{status, note, vel});
 			}
 			else
 			{
-				const size_t len = ((*cur & 0xF0) == 0xC0) ? 2 : 3;
-				decoded.insert(decoded.end(), cur, cur + len);
-				cur += len;
+				size_t len = (status & 0xE0) == 0xC0 ? 1 : 2;
+				std::vector<uint8_t> msg = {status};
+				msg.insert(msg.end(), xmi.begin() + pos, xmi.begin() + pos + len);
+				events.emplace_back(0, msg);
+				pos += len;
 			}
 		}
 	}
 
-	// 8. Original final event handling
-	while (!noteOffs.empty())
+	while (!note_queue.empty())
 	{
-		const auto &e = noteOffs.top();
-		decoded.insert(decoded.end(), {0x00, static_cast<uint8_t>(0x80 | e.ch), e.note, 0x00});
-		noteOffs.pop();
+		auto n = note_queue.top();
+		note_queue.pop();
+		events.emplace_back(n.time - current_time, std::vector<uint8_t>{uint8_t(0x80 | n.chan), n.note, 0x7F});
+		current_time = n.time;
 	}
-	decoded.insert(decoded.end(), {0x00, 0xFF, 0x2F, 0x00});
+	events.emplace_back(0, std::vector<uint8_t>{0xFF, 0x2F, 0x00});
 
-	// 9. Original MIDI construction
-	log_midi_events(log, decoded, "New Decode");
+	log << "Events: " << events.size() << "\n";
+	for (const auto &[d, e] : events)
+	{
+		log << "Delta: " << d << "\n";
+		for (uint8_t b : e)
+			log << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(b) << " ";
+		log << std::dec << "\n";
+	}
 
-	midiData.insert(midiData.end(), midiHeader, midiHeader + 18);
-	const uint32_t trackLen = decoded.size();
-	const uint32_t trackLenBE = std::byteswap(trackLen);
-	midiData.insert(midiData.end(), reinterpret_cast<const char *>(&trackLenBE),
-					reinterpret_cast<const char *>(&trackLenBE) + 4);
-	midiData.insert(midiData.end(), decoded.begin(), decoded.end());
+	std::vector<uint8_t> midi_data;
+	uint32_t tempo = us_per_beat;
+	for (const auto &[d, e] : events)
+	{
+		uint32_t scaled_delta = (d * ticks_per_beat * us_per_beat) / (tempo * xmi_freq + 0.5);
+		for (uint32_t val = scaled_delta; val; val >>= 7)
+			midi_data.push_back((val & 0x7F) | (val > 0x7F ? 0x80 : 0));
+		std::ranges::reverse(midi_data.end() - (scaled_delta > 0x7F ? 2 : 1), midi_data.end());
+		if (!e.empty())
+		{
+			if (e[0] == 0xFF && e[1] == 0x51)
+				tempo = (e[3] << 16) | (e[4] << 8) | e[5], log << "Tempo: " << tempo << "\n";
+			midi_data.insert(midi_data.end(), e.begin(), e.end());
+		}
+	}
 
-	log << "New: Final MIDI size: " << midiData.size() << "\n";
-	return midiData;
+	std::vector<uint8_t> midi{'M', 'T', 'h', 'd', 0, 0, 0, 6, 0, 0, 0, 1, 0x03, 0xC0, 'M', 'T', 'r', 'k'};
+	uint32_t track_size = byteswap(midi_data.size());
+	midi.insert(midi.end(), reinterpret_cast<uint8_t *>(&track_size), reinterpret_cast<uint8_t *>(&track_size + 1));
+	midi.insert(midi.end(), midi_data.begin(), midi_data.end());
+	log << "MIDI size: " << midi.size() << "\n";
+	return midi;
 }
 
 /*
