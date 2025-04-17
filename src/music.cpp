@@ -80,6 +80,20 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 		return delta;
 	};
 
+	// Read SysEx length
+	auto read_sysex_length = [](auto &it) -> uint32_t
+	{
+		uint32_t len = 0;
+		while (*it < 0)
+		{
+			len = (len << 7) + (*it & 0x7F);
+			++it;
+		}
+		len = (len << 7) + (*it & 0x7F);
+		++it;
+		return len;
+	};
+
 	// Read variable-length values
 	auto read_varlen = [](auto &inIt) -> uint32_t
 	{
@@ -314,18 +328,10 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 		}
 		else if (*readIt == 0xF0 || *readIt == 0xF7) // Sysex
 		{
-			uint32_t exlen = 0;
 			*writeIt++ = *readIt++;
-			while (*readIt < 0)
-			{
-				exlen += *readIt & 0x7F;
-				exlen <<= 7;
-				*writeIt++ = *readIt++;
-			}
-			exlen += *readIt & 0x7F;
-			*writeIt++ = *readIt++;
-			while (exlen--)
-				*writeIt++ = *readIt++;
+			uint32_t exlen = read_sysex_length(readIt);
+			writeIt = std::copy_n(readIt, exlen, writeIt);
+			readIt += exlen;
 		}
 		else if (*readIt == 0xFF) // Meta Event
 		{
