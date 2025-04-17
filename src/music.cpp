@@ -333,11 +333,11 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 			}
 			else
 			{
-				*writeIt++ = *readIt++;
+				*writeIt++ = *readIt++; // Meta type
 				uint32_t textlen = *readIt;
-				*writeIt++ = *readIt++;
-				while (textlen--)
-					*writeIt++ = *readIt++;
+				*writeIt++ = *readIt++; // Length
+				writeIt = std::copy_n(readIt, textlen, writeIt);
+				readIt += textlen;
 			}
 		}
 	}
