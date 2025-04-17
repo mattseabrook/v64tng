@@ -138,21 +138,7 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 			// Handle pending note-offs
 			while (delay > noteOffs[0].delta)
 			{
-				uint32_t noDelta = noteOffs[0].delta;
-				uint32_t tdelay = noDelta & 0x7F;
-				while ((noDelta >>= 7))
-				{
-					tdelay <<= 8;
-					tdelay |= (noDelta & 0x7F) | 0x80;
-				}
-				while (true)
-				{
-					*decodeIt++ = tdelay & 0xFF;
-					if (tdelay & 0x80)
-						tdelay >>= 8;
-					else
-						break;
-				}
+				write_varlen(decodeIt, noteOffs[0].delta);
 				*decodeIt++ = noteOffs[0].data[0] & 0x8F;
 				*decodeIt++ = noteOffs[0].data[1];
 				*decodeIt++ = 0x7F;
