@@ -45,7 +45,7 @@ Return:
 std::vector<uint8_t> xmiConverter(const RLEntry &song)
 {
 	//
-	// Types and Constants
+	// Types, Constants, and Helpers
 	//
 	struct NoteOffEvent
 	{
@@ -63,6 +63,27 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 
 	uint16_t timebase = 960;
 	uint32_t qnlen = DefaultQN;
+
+	auto eventSort = [](const NoteOffEvent &a, const NoteOffEvent &b)
+	{ return a.delta < b.delta; };
+
+	auto write_varlen = [](auto &outIt, uint32_t value)
+	{
+		uint32_t buffer = value & 0x7F;
+		while (value >>= 7)
+		{
+			buffer <<= 8;
+			buffer |= ((value & 0x7F) | 0x80);
+		}
+		while (true)
+		{
+			*outIt++ = buffer & 0xFF;
+			if (buffer & 0x80)
+				buffer >>= 8;
+			else
+				break;
+		}
+	};
 
 	//
 	// Read XMI data
@@ -100,9 +121,6 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 
 	std::array<NoteOffEvent, MaxNoteOffs> noteOffs;
 	size_t noteOffCount = 0;
-
-	auto eventSort = [](const NoteOffEvent &a, const NoteOffEvent &b)
-	{ return a.delta < b.delta; };
 
 	bool expectDelta = true;
 	auto eventStart = it;
@@ -150,20 +168,7 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 				noteOffs[i].delta -= delay;
 
 			// Write delta
-			uint32_t tdelay = delay & 0x7F;
-			while ((delay >>= 7))
-			{
-				tdelay <<= 8;
-				tdelay |= (delay & 0x7F) | 0x80;
-			}
-			while (true)
-			{
-				*decodeIt++ = tdelay & 0xFF;
-				if (tdelay & 0x80)
-					tdelay >>= 8;
-				else
-					break;
-			}
+			write_varlen(decodeIt, delay);
 			expectDelta = false;
 		}
 		else
@@ -268,21 +273,7 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 		// Adjust delta based on tempo
 		double factor = static_cast<double>(timebase) * DefaultQN / (static_cast<double>(qnlen) * DefaultTimebase);
 		delta = static_cast<uint32_t>(static_cast<double>(delta) * factor + 0.5);
-
-		uint32_t tdelta = delta & 0x7F;
-		while ((delta >>= 7))
-		{
-			tdelta <<= 8;
-			tdelta |= (delta & 0x7F) | 0x80;
-		}
-		while (true)
-		{
-			*writeIt++ = tdelta & 0xFF;
-			if (tdelta & 0x80)
-				tdelta >>= 8;
-			else
-				break;
-		}
+		write_varlen(writeIt, delta);
 
 		// Event handling
 		if ((*readIt & 0xF0) == 0x80) // Note Off
