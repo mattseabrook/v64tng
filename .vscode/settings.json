@@ -78,6 +78,7 @@
         "xtr1common": "cpp",
         "xtree": "cpp",
         "condition_variable": "cpp",
-        "mutex": "cpp"
+        "mutex": "cpp",
+        "*.rh": "cpp"
     }
 }

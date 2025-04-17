@@ -222,8 +222,8 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 				*decodeIt++ = *it++;
 				*decodeIt++ = *it++;
 				uint32_t textlen = *it + 1;
-				while (textlen--)
-					*decodeIt++ = *it++;
+				decodeIt = std::copy_n(it, textlen, decodeIt);
+				it += textlen;
 			}
 			else if ((*it & 0xF0) == 0x80)
 			{ // Note Off
