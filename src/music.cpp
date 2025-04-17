@@ -64,9 +64,23 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 	uint16_t timebase = 960;
 	uint32_t qnlen = DefaultQN;
 
+	// Sort function for note-off events
 	auto eventSort = [](const NoteOffEvent &a, const NoteOffEvent &b)
 	{ return a.delta < b.delta; };
 
+	// Read variable-length values
+	auto read_varlen = [](auto &inIt) -> uint32_t
+	{
+		uint32_t value = 0;
+		while (*inIt & 0x80)
+		{
+			value = (value << 7) | (*inIt++ & 0x7F);
+		}
+		value = (value << 7) | (*inIt++ & 0x7F);
+		return value;
+	};
+
+	// Write variable-length values
 	auto write_varlen = [](auto &outIt, uint32_t value)
 	{
 		uint32_t buffer = value & 0x7F;
@@ -248,13 +262,7 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 	while (readIt < decodeIt)
 	{
 		// Delta-time
-		uint32_t delta = 0;
-		while (*readIt & 0x80)
-		{
-			delta += *readIt++ & 0x7F;
-			delta <<= 7;
-		}
-		delta += *readIt++ & 0x7F;
+		uint32_t delta = read_varlen(readIt);
 
 		// Adjust delta based on tempo
 		double factor = static_cast<double>(timebase) * DefaultQN / (static_cast<double>(qnlen) * DefaultTimebase);
