@@ -1,7 +1,5 @@
 # Build script for v64tng game engine
 
-Start-Transcript -Path "build.log" -Append
-
 try {
     # Clean target
     if ($args[0] -eq "clean") {
@@ -146,7 +144,7 @@ try {
         $linkerFlags = @("-Wl,/DEBUG:FULL", "-Wl,/PDB:v64tng.pdb")
     }
     else {
-        $linkerFlags = @("-Wl,--gc-sections", "-Xlinker", "/OPT:REF")
+        $linkerFlags = @("-Xlinker", "/OPT:REF")    # "-Wl,--gc-sections", 
     }
 
     $clangLinkArgs = $linkerFlags + $commonLinkerArgs
@@ -179,5 +177,3 @@ try {
 }
 finally {
 }
-
-Stop-Transcript

@@ -23,6 +23,7 @@ struct RLEntry {
     size_t length;
 };
 
+// Function Prototypes
 std::vector<RLEntry> parseRLFile(std::string_view rlFilename);
 
 #endif // RL_H
