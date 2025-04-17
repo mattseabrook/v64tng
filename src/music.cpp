@@ -68,6 +68,18 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 	auto eventSort = [](const NoteOffEvent &a, const NoteOffEvent &b)
 	{ return a.delta < b.delta; };
 
+	// Parse note-off delta time
+	auto parse_noteoff_delta = [](auto &it) -> uint32_t
+	{
+		uint32_t delta = *it & 0x7F;
+		while (*it++ > 0x80)
+		{
+			delta <<= 7;
+			delta += *it;
+		}
+		return delta;
+	};
+
 	// Read variable-length values
 	auto read_varlen = [](auto &inIt) -> uint32_t
 	{
@@ -208,12 +220,7 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 			{ // Note On
 				decodeIt = std::copy_n(it, 3, decodeIt);
 				it += 3;
-				uint32_t delta = *it & 0x7F;
-				while (*it++ > 0x80)
-				{
-					delta <<= 7;
-					delta += *it;
-				}
+				uint32_t delta = parse_noteoff_delta(it);
 				noteOffs[noteOffCount].delta = delta;
 				noteOffs[noteOffCount].data[0] = *(decodeIt - 3);
 				noteOffs[noteOffCount].data[1] = *(decodeIt - 2);
