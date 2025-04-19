@@ -46,6 +46,7 @@ void initWindow();
 void initMenu();
 void renderFrame();
 bool processEvents();
+void forceUpdateCursor();
 void updateCursorBasedOnPosition(POINT clientPos);
 void cleanupWindow();
 

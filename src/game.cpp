@@ -178,6 +178,8 @@ void loadView()
 	{
 		state.currentFrameIndex = state.animation.totalFrames - 1; // Last frame
 		state.animation.isPlaying = false;						   // Don't play
+
+		forceUpdateCursor();
 	}
 	else
 	{
@@ -188,12 +190,6 @@ void loadView()
 	state.previous_view = state.current_view;
 
 	renderFrame();
-	POINT clientPos;
-	GetCursorPos(&clientPos);
-	ScreenToClient(g_hwnd, &clientPos);
-	updateCursorBasedOnPosition(clientPos);														  // Sets currentCursor and calls SetCursor
-	SetCursor(currentCursor);																	  // Ensure it's set immediately
-	PostMessage(g_hwnd, WM_SETCURSOR, reinterpret_cast<WPARAM>(g_hwnd), MAKELPARAM(HTCLIENT, 0)); // Trigger WM_SETCURSOR
 }
 
 //
@@ -236,17 +232,10 @@ void updateAnimation()
 						xmiPlay(state.current_song, false);
 					}
 
-					// --- Cursor update block ---
-					POINT pt;
-					GetCursorPos(&pt);
-					ScreenToClient(g_hwnd, &pt);
-					updateCursorBasedOnPosition(pt);
-					SetCursor(currentCursor);
-					PostMessage(g_hwnd, WM_SETCURSOR, reinterpret_cast<WPARAM>(g_hwnd), MAKELPARAM(HTCLIENT, 0));
-					// Force Windows to update the cursor even if the mouse hasn't moved
-					PostMessage(g_hwnd, WM_MOUSEMOVE, 0, MAKELPARAM(pt.x, pt.y));
+					forceUpdateCursor();
 				}
 				state.transient_animation.lastFrameTime = currentTime;
+
 				renderFrame();
 			}
 		}
@@ -274,18 +263,11 @@ void updateAnimation()
 					state.animation_sequence.clear();
 					state.animation_queue_index = 0;
 
-					// --- Cursor update block ---
-					POINT pt;
-					GetCursorPos(&pt);
-					ScreenToClient(g_hwnd, &pt);
-					updateCursorBasedOnPosition(pt);
-					SetCursor(currentCursor);
-					PostMessage(g_hwnd, WM_SETCURSOR, reinterpret_cast<WPARAM>(g_hwnd), MAKELPARAM(HTCLIENT, 0));
-					// Force Windows to update the cursor even if the mouse hasn't moved
-					PostMessage(g_hwnd, WM_MOUSEMOVE, 0, MAKELPARAM(pt.x, pt.y));
+					forceUpdateCursor();
 				}
 			}
 			state.animation.lastFrameTime = currentTime;
+
 			renderFrame();
 		}
 	}

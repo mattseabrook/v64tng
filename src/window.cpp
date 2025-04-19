@@ -30,19 +30,23 @@ float scaleFactor = 1.0f;
 //=============================================================================
 
 // Maps
-static std::map<RendererType, void(*)()> initializeRenderer;
-static std::map<RendererType, void(*)()> renderFrameFuncs;
-static std::map<RendererType, void(*)()> cleanupFuncs;
+static std::map<RendererType, void (*)()> initializeRenderer;
+static std::map<RendererType, void (*)()> renderFrameFuncs;
+static std::map<RendererType, void (*)()> cleanupFuncs;
 
 //=============================================================================
 
 //
 // Window procedure
 //
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-	switch (uMsg) {
-	case WM_COMMAND: {
-		switch (static_cast<int>(LOWORD(wParam))) {
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	switch (uMsg)
+	{
+	case WM_COMMAND:
+	{
+		switch (static_cast<int>(LOWORD(wParam)))
+		{
 		case static_cast<int>(MenuCommands::FILE_OPEN):
 			MessageBox(hwnd, L"Open selected", L"File Menu", MB_OK);
 			break;
@@ -58,8 +62,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		}
 		return 0;
 	}
-	case WM_MOVE: {
-		if (state.ui.enabled) {
+	case WM_MOVE:
+	{
+		if (state.ui.enabled)
+		{
 			RECT windowRect;
 			GetWindowRect(hwnd, &windowRect);
 
@@ -67,15 +73,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 			MONITORINFOEX monitorInfo;
 			monitorInfo.cbSize = sizeof(MONITORINFOEX);
 
-			if (GetMonitorInfo(hMonitor, &monitorInfo)) {
+			if (GetMonitorInfo(hMonitor, &monitorInfo))
+			{
 				state.ui.x = windowRect.left - monitorInfo.rcMonitor.left;
 				state.ui.y = windowRect.top - monitorInfo.rcMonitor.top;
 
 				config["x"] = state.ui.x;
 				config["y"] = state.ui.y;
 
-				for (const auto& display : state.ui.displays) {
-					if (EqualRect(&display.bounds, &monitorInfo.rcMonitor)) {
+				for (const auto &display : state.ui.displays)
+				{
+					if (EqualRect(&display.bounds, &monitorInfo.rcMonitor))
+					{
 						config["display"] = display.number;
 						break;
 					}
@@ -84,21 +93,23 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		}
 		return 0;
 	}
-	case WM_SIZING: {
-		RECT* rect = reinterpret_cast<RECT*>(lParam);
+	case WM_SIZING:
+	{
+		RECT *rect = reinterpret_cast<RECT *>(lParam);
 
 		// Get window frame dimensions
-		RECT frameRect = { 0, 0, MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT };
+		RECT frameRect = {0, 0, MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT};
 		DWORD style = GetWindowLong(hwnd, GWL_STYLE);
 		DWORD exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
 		AdjustWindowRectEx(&frameRect, style, TRUE, exStyle);
 
 		// Calculate total window size needed for minimum client area
 		int minWindowWidth = frameRect.right - frameRect.left;
-		//int minWindowHeight = frameRect.bottom - frameRect.top;
+		// int minWindowHeight = frameRect.bottom - frameRect.top;
 
 		// Enforce minimum window size
-		if ((rect->right - rect->left) < minWindowWidth) {
+		if ((rect->right - rect->left) < minWindowWidth)
+		{
 			if (wParam == WMSZ_LEFT || wParam == WMSZ_TOPLEFT || wParam == WMSZ_BOTTOMLEFT)
 				rect->left = rect->right - minWindowWidth;
 			else
@@ -121,8 +132,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
 		return TRUE;
 	}
-	case WM_SIZE: {
-		if (state.ui.enabled && wParam != SIZE_MINIMIZED) {
+	case WM_SIZE:
+	{
+		if (state.ui.enabled && wParam != SIZE_MINIMIZED)
+		{
 			RECT clientRect;
 			GetClientRect(hwnd, &clientRect);
 
@@ -131,11 +144,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
 			scaleFactor = static_cast<float>(newWidth) / MIN_CLIENT_WIDTH;
 
-			if (renderTarget) {
+			if (renderTarget)
+			{
 				renderTarget->Resize(D2D1::SizeU(newWidth, newHeight));
 			}
 
-			if (state.ui.width != newWidth || state.ui.height != newHeight) {
+			if (state.ui.width != newWidth || state.ui.height != newHeight)
+			{
 				state.ui.width = newWidth;
 				config["width"] = newWidth;
 				state.ui.height = newHeight;
@@ -144,25 +159,28 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		}
 		return 0;
 	}
-	case WM_PAINT: {
+	case WM_PAINT:
+	{
 		PAINTSTRUCT ps;
 		BeginPaint(hwnd, &ps);
-		renderFrame();  // Always render on paint
+		renderFrame(); // Always render on paint
 		EndPaint(hwnd, &ps);
 		return 0;
 	}
-	case WM_SETCURSOR: {
+	case WM_SETCURSOR:
+	{
 		if (LOWORD(lParam) != HTCLIENT)
 			return DefWindowProc(hwnd, uMsg, wParam, lParam);
 		SetCursor(currentCursor); // Use the dynamically updated cursor
 		return TRUE;
 	}
-	case WM_NCHITTEST: {
+	case WM_NCHITTEST:
+	{
 		LRESULT hit = DefWindowProc(hwnd, uMsg, wParam, lParam);
 		if (hit != HTCLIENT)
 			return hit;
 
-		POINT pt = { LOWORD(lParam), HIWORD(lParam) };
+		POINT pt = {LOWORD(lParam), HIWORD(lParam)};
 		RECT rcWindow;
 		GetWindowRect(hwnd, &rcWindow);
 
@@ -176,26 +194,36 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		const int height = rcWindow.bottom - rcWindow.top;
 
 		// Check corners first - we need to detect these before edges
-		if (pt.x < resizeBorder && pt.y < resizeBorder) return HTTOPLEFT;
-		if (pt.x >= width - resizeBorder && pt.y < resizeBorder) return HTTOPRIGHT;
-		if (pt.x < resizeBorder && pt.y >= height - resizeBorder) return HTBOTTOMLEFT;
-		if (pt.x >= width - resizeBorder && pt.y >= height - resizeBorder) return HTBOTTOMRIGHT;
+		if (pt.x < resizeBorder && pt.y < resizeBorder)
+			return HTTOPLEFT;
+		if (pt.x >= width - resizeBorder && pt.y < resizeBorder)
+			return HTTOPRIGHT;
+		if (pt.x < resizeBorder && pt.y >= height - resizeBorder)
+			return HTBOTTOMLEFT;
+		if (pt.x >= width - resizeBorder && pt.y >= height - resizeBorder)
+			return HTBOTTOMRIGHT;
 
 		// Then check edges
-		if (pt.x < resizeBorder) return HTLEFT;
-		if (pt.x >= width - resizeBorder) return HTRIGHT;
-		if (pt.y < resizeBorder) return HTTOP;
-		if (pt.y >= height - resizeBorder) return HTBOTTOM;
+		if (pt.x < resizeBorder)
+			return HTLEFT;
+		if (pt.x >= width - resizeBorder)
+			return HTRIGHT;
+		if (pt.y < resizeBorder)
+			return HTTOP;
+		if (pt.y >= height - resizeBorder)
+			return HTBOTTOM;
 
 		// Everything else is client area
 		return HTCLIENT;
 	}
-	case WM_MOUSEMOVE: {
-		POINT clientPos = { LOWORD(lParam), HIWORD(lParam) };
+	case WM_MOUSEMOVE:
+	{
+		POINT clientPos = {LOWORD(lParam), HIWORD(lParam)};
 		updateCursorBasedOnPosition(clientPos);
 		return 0;
 	}
-	case WM_LBUTTONDOWN: {
+	case WM_LBUTTONDOWN:
+	{
 		POINT cursorPos;
 		GetCursorPos(&cursorPos);
 		ScreenToClient(g_hwnd, &cursorPos);
@@ -203,17 +231,26 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		float normalizedX = static_cast<float>(cursorPos.x) / state.ui.width * 100.0f;
 		float normalizedY = static_cast<float>(cursorPos.y) / state.ui.height * 100.0f;
 
-		if (!state.animation.isPlaying && state.currentVDX) {
+		if (!state.animation.isPlaying && state.currentVDX)
+		{
 			int highestZIndex = -1;
 			size_t targetIndex = 0;
-			enum class TargetType { None, Navigation, Hotspot } targetType = TargetType::None;
+			enum class TargetType
+			{
+				None,
+				Navigation,
+				Hotspot
+			} targetType = TargetType::None;
 
 			// Check navigations
-			for (size_t i = 0; i < state.view.navigations.size(); ++i) {
-				const auto& nav = state.view.navigations[i];
+			for (size_t i = 0; i < state.view.navigations.size(); ++i)
+			{
+				const auto &nav = state.view.navigations[i];
 				if (normalizedX >= nav.hotspot.x && normalizedX <= (nav.hotspot.x + nav.hotspot.width) &&
-					normalizedY >= nav.hotspot.y && normalizedY <= (nav.hotspot.y + nav.hotspot.height)) {
-					if (nav.z_index > highestZIndex) {
+					normalizedY >= nav.hotspot.y && normalizedY <= (nav.hotspot.y + nav.hotspot.height))
+				{
+					if (nav.z_index > highestZIndex)
+					{
 						highestZIndex = nav.z_index;
 						targetIndex = i;
 						targetType = TargetType::Navigation;
@@ -222,11 +259,14 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 			}
 
 			// Check hotspots
-			for (size_t i = 0; i < state.view.hotspots.size(); ++i) {
-				const auto& hotspot = state.view.hotspots[i];
+			for (size_t i = 0; i < state.view.hotspots.size(); ++i)
+			{
+				const auto &hotspot = state.view.hotspots[i];
 				if (normalizedX >= hotspot.x && normalizedX <= (hotspot.x + hotspot.width) &&
-					normalizedY >= hotspot.y && normalizedY <= (hotspot.y + hotspot.height)) {
-					if (hotspot.z_index > highestZIndex) {
+					normalizedY >= hotspot.y && normalizedY <= (hotspot.y + hotspot.height))
+				{
+					if (hotspot.z_index > highestZIndex)
+					{
 						highestZIndex = hotspot.z_index;
 						targetIndex = i;
 						targetType = TargetType::Hotspot;
@@ -234,13 +274,16 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 				}
 			}
 
-			if (targetType == TargetType::Navigation) {
+			if (targetType == TargetType::Navigation)
+			{
 				state.current_view = state.view.navigations[targetIndex].next_view;
 				state.animation_sequence.clear();
 			}
-			else if (targetType == TargetType::Hotspot) {
-				const auto& hotspot = state.view.hotspots[targetIndex];
-				if (hotspot.action) {
+			else if (targetType == TargetType::Hotspot)
+			{
+				const auto &hotspot = state.view.hotspots[targetIndex];
+				if (hotspot.action)
+				{
 					hotspot.action();
 				}
 			}
@@ -257,14 +300,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 //
 // About Dialog Procedure
 //
-LRESULT CALLBACK AboutDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
+LRESULT CALLBACK AboutDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
 	(void)lParam;
-	switch (message) {
+	switch (message)
+	{
 	case WM_INITDIALOG:
 		return TRUE;
 
 	case WM_COMMAND:
-		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) {
+		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+		{
 			EndDialog(hDlg, LOWORD(wParam));
 			return TRUE;
 		}
@@ -276,7 +322,8 @@ LRESULT CALLBACK AboutDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM 
 //
 // Initialize handlers
 //
-void initHandlers() {
+void initHandlers()
+{
 	initializeRenderer[RendererType::VULKAN] = initializeVulkan;
 	initializeRenderer[RendererType::DIRECT2D] = initializeD2D;
 
@@ -290,7 +337,8 @@ void initHandlers() {
 //
 // Initialize the menu
 //
-void initMenu() {
+void initMenu()
+{
 	HMENU hMenu = CreateMenu();
 	HMENU hFileMenu = CreatePopupMenu();
 	HMENU hHelpMenu = CreatePopupMenu();
@@ -312,7 +360,8 @@ void initMenu() {
 //
 // Get monitor information
 //
-BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
+BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
+{
 	(void)hdcMonitor;
 	(void)lprcMonitor;
 	(void)dwData;
@@ -320,7 +369,8 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMoni
 	MONITORINFOEX monitorInfo;
 	monitorInfo.cbSize = sizeof(MONITORINFOEX);
 
-	if (GetMonitorInfo(hMonitor, &monitorInfo)) {
+	if (GetMonitorInfo(hMonitor, &monitorInfo))
+	{
 		DisplayInfo display;
 		display.number = ++displayCount;
 		display.bounds = monitorInfo.rcMonitor;
@@ -340,7 +390,8 @@ Description:
 
 ===============================================================================
 */
-void initWindow() {
+void initWindow()
+{
 	initHandlers();
 
 	//
@@ -349,30 +400,38 @@ void initWindow() {
 	state.ui.displays.clear();
 	EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
 	int targetDisplay = config["display"];
-	const DisplayInfo* selectedDisplay = nullptr;
+	const DisplayInfo *selectedDisplay = nullptr;
 
-	for (const auto& display : state.ui.displays) {
-		if (display.number == targetDisplay) {
+	for (const auto &display : state.ui.displays)
+	{
+		if (display.number == targetDisplay)
+		{
 			selectedDisplay = &display;
 			break;
 		}
 	}
 
-	if (!selectedDisplay) {
-		for (const auto& display : state.ui.displays) {
-			if (display.isPrimary) {
+	if (!selectedDisplay)
+	{
+		for (const auto &display : state.ui.displays)
+		{
+			if (display.isPrimary)
+			{
 				selectedDisplay = &display;
 				break;
 			}
 		}
 	}
 
-	if (config["fullscreen"]) {
+	if (config["fullscreen"])
+	{
 		state.ui.width = GetSystemMetrics(SM_CXSCREEN);
 		state.ui.height = GetSystemMetrics(SM_CYSCREEN);
 	}
-	else {
-		if (static_cast<int>(config["width"]) & 1) {
+	else
+	{
+		if (static_cast<int>(config["width"]) & 1)
+		{
 			config["width"] = static_cast<int>(config["width"]) + 1;
 		}
 		state.ui.width = config["width"];
@@ -383,11 +442,13 @@ void initWindow() {
 	state.ui.y = config["y"];
 
 	POINT position;
-	if (selectedDisplay) {
+	if (selectedDisplay)
+	{
 		position.x = selectedDisplay->bounds.left + state.ui.x;
 		position.y = selectedDisplay->bounds.top + state.ui.y;
 	}
-	else {
+	else
+	{
 		position.x = CW_USEDEFAULT;
 		position.y = CW_USEDEFAULT;
 	}
@@ -404,12 +465,14 @@ void initWindow() {
 	wc.lpszClassName = L"D2DRenderWindowClass";
 	wc.hbrBackground = reinterpret_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
 
-	if (!RegisterClass(&wc)) {
+	if (!RegisterClass(&wc))
+	{
 		throw std::runtime_error("Failed to register window class");
 	}
 
-	RECT rect = { 0, 0, state.ui.width, state.ui.height };
-	if (!config["fullscreen"]) AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, TRUE);
+	RECT rect = {0, 0, state.ui.width, state.ui.height};
+	if (!config["fullscreen"])
+		AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, TRUE);
 
 	g_hwnd = CreateWindowEx(
 		0,
@@ -418,14 +481,17 @@ void initWindow() {
 		WS_OVERLAPPEDWINDOW,
 		position.x, position.y,
 		rect.right - rect.left, rect.bottom - rect.top,
-		nullptr, nullptr, GetModuleHandle(nullptr), nullptr
-	);
+		nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
 
-	if (!g_hwnd) {
+	if (!g_hwnd)
+	{
 		throw std::runtime_error("Failed to create window");
 	}
 
-	if (!config["fullscreen"]) { initMenu(); }
+	if (!config["fullscreen"])
+	{
+		initMenu();
+	}
 
 	renderer = (config["renderer"] == "VULKAN") ? RendererType::VULKAN : RendererType::DIRECT2D;
 	initializeRenderer[renderer]();
@@ -436,10 +502,13 @@ void initWindow() {
 //
 // Process events
 //
-bool processEvents() {
+bool processEvents()
+{
 	MSG msg = {};
-	while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
-		if (msg.message == WM_QUIT) {
+	while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+	{
+		if (msg.message == WM_QUIT)
+		{
 			return false;
 		}
 		TranslateMessage(&msg);
@@ -449,41 +518,69 @@ bool processEvents() {
 }
 
 //
+// Force the cursor to display
+//
+void forceUpdateCursor()
+{
+	POINT pt;
+	GetCursorPos(&pt);
+	ScreenToClient(g_hwnd, &pt);
+	updateCursorBasedOnPosition(pt);
+	SetCursor(currentCursor);
+	PostMessage(g_hwnd, WM_SETCURSOR, reinterpret_cast<WPARAM>(g_hwnd), MAKELPARAM(HTCLIENT, 0));
+	PostMessage(g_hwnd, WM_MOUSEMOVE, 0, MAKELPARAM(pt.x, pt.y));
+}
+
+//
 // Update cursor based on position
 //
-void updateCursorBasedOnPosition(POINT clientPos) {
+void updateCursorBasedOnPosition(POINT clientPos)
+{
 	float normalizedX = static_cast<float>(clientPos.x) / state.ui.width * 100.0f;
 	float normalizedY = static_cast<float>(clientPos.y) / state.ui.height * 100.0f;
 
 	int highestZIndex = -1;
-	enum class TargetType { None, Navigation, Hotspot } targetType = TargetType::None;
+	enum class TargetType
+	{
+		None,
+		Navigation,
+		Hotspot
+	} targetType = TargetType::None;
 
-	for (size_t i = 0; i < state.view.navigations.size(); ++i) {
-		const auto& nav = state.view.navigations[i];
+	for (size_t i = 0; i < state.view.navigations.size(); ++i)
+	{
+		const auto &nav = state.view.navigations[i];
 		if (normalizedX >= nav.hotspot.x && normalizedX <= (nav.hotspot.x + nav.hotspot.width) &&
-			normalizedY >= nav.hotspot.y && normalizedY <= (nav.hotspot.y + nav.hotspot.height)) {
-			if (nav.z_index > highestZIndex) {
+			normalizedY >= nav.hotspot.y && normalizedY <= (nav.hotspot.y + nav.hotspot.height))
+		{
+			if (nav.z_index > highestZIndex)
+			{
 				highestZIndex = nav.z_index;
 				targetType = TargetType::Navigation;
 			}
 		}
 	}
 
-	for (size_t i = 0; i < state.view.hotspots.size(); ++i) {
-		const auto& hotspot = state.view.hotspots[i];
+	for (size_t i = 0; i < state.view.hotspots.size(); ++i)
+	{
+		const auto &hotspot = state.view.hotspots[i];
 		if (normalizedX >= hotspot.x && normalizedX <= (hotspot.x + hotspot.width) &&
-			normalizedY >= hotspot.y && normalizedY <= (hotspot.y + hotspot.height)) {
-			if (hotspot.z_index > highestZIndex) {
+			normalizedY >= hotspot.y && normalizedY <= (hotspot.y + hotspot.height))
+		{
+			if (hotspot.z_index > highestZIndex)
+			{
 				highestZIndex = hotspot.z_index;
 				targetType = TargetType::Hotspot;
 			}
 		}
 	}
 
-	if (targetType != TargetType::None) {
+	if (targetType != TargetType::None)
+	{
 		SetCursor(handCursor);
 	}
-	else {
+	else
+	{
 		SetCursor(defaultCursor);
 	}
 }
