@@ -30,16 +30,159 @@ Parameters:
 	- filename: The filename of the VDX file to be extracted
 ===============================================================================
 */
-void GJDInfo(const std::string_view& filename)
+void GJDInfo(const std::string_view &filename)
 {
 	auto vdxFiles = parseRLFile(filename.data());
+	int RLOffset = 0;
 
-	for (const auto& vdxFile : vdxFiles)
+	// Define column widths
+	const int offsetWidth = 10;		// For RL Offset
+	const int nameWidth = 15;		// For Filename
+	const int fileOffsetWidth = 10; // For Offset
+	const int lengthWidth = 10;		// For Length
+
+	// Output the table header
+	std::cout << std::left
+			  << std::setw(offsetWidth) << "RL Offset" << " | "
+			  << std::setw(nameWidth) << "Filename" << " | "
+			  << std::setw(fileOffsetWidth) << "Offset" << " | "
+			  << std::setw(lengthWidth) << "Length" << std::endl;
+
+	// Output a separator line
+	std::cout << std::string(offsetWidth + nameWidth + fileOffsetWidth + lengthWidth + 8, '-') << std::endl;
+
+	// Output each entry
+	for (const auto &vdxFile : vdxFiles)
 	{
-		std::cout << vdxFile.filename << " | " << vdxFile.offset << " | " << vdxFile.length << std::endl;
+		std::cout << std::right
+				  << std::setw(offsetWidth) << RLOffset << " | "
+				  << std::left
+				  << std::setw(nameWidth) << vdxFile.filename << " | "
+				  << std::right
+				  << std::setw(fileOffsetWidth) << vdxFile.offset << " | "
+				  << std::setw(lengthWidth) << vdxFile.length << std::endl;
+		RLOffset += 20; // Increment RL Offset by 20 for the next entry
 	}
 
 	std::cout << "Number of VDX Files: " << vdxFiles.size() << std::endl;
+}
+
+/*
+===============================================================================
+Function Name: VDXInfo
+
+Description:
+	- Outputs the VDX header information and details of each chunk in a VDX file.
+	  Can parse standalone VDX files or GJD files assumed to contain VDX data directly.
+
+Parameters:
+	- filename: The filename of the VDX or GJD file to analyze
+
+Notes:
+	- Assumes the file starts with a VDX header (identifier 0x6792).
+	- Does not rely on RL files, treating the input as raw VDX data.
+===============================================================================
+*/
+void VDXInfo(const std::string &filename)
+{
+	std::ifstream file(filename, std::ios::binary);
+	if (!file)
+	{
+		std::cerr << "ERROR: Can't open file: " << filename << '\n';
+		return;
+	}
+
+	// Read entire file into buffer
+	file.seekg(0, std::ios::end);
+	size_t fileSize = file.tellg();
+	file.seekg(0, std::ios::beg);
+	std::vector<uint8_t> buffer(fileSize);
+	file.read(reinterpret_cast<char *>(buffer.data()), fileSize);
+	file.close();
+
+	VDXFile vdx;
+	bool isGJD = (filename.find(".GJD") != std::string::npos ||
+				  filename.find(".gjd") != std::string::npos);
+
+	if (!isGJD)
+	{
+		// Normal VDX parsing
+		vdx = parseVDXFile(filename, buffer);
+	}
+	else
+	{
+		// Parse raw chunks without VDX header
+		vdx.filename = filename;
+		size_t offset = 0;
+		while (offset < buffer.size())
+		{
+			VDXChunk chunk;
+			chunk.chunkType = buffer[offset];
+			chunk.unknown = buffer[offset + 1];
+			chunk.dataSize = *reinterpret_cast<const uint32_t *>(&buffer[offset + 2]);
+			chunk.lengthMask = buffer[offset + 6];
+			chunk.lengthBits = buffer[offset + 7];
+			offset += 8;
+			chunk.data.assign(buffer.begin() + offset, buffer.begin() + offset + chunk.dataSize);
+			offset += chunk.dataSize;
+			vdx.chunks.push_back(std::move(chunk));
+		}
+	}
+
+	// Output header (only for VDX files)
+	if (!isGJD)
+	{
+		std::cout << "VDX Header:\n";
+		std::cout << "  Identifier: 0x" << std::hex << std::setw(4) << std::setfill('0') << vdx.identifier << std::dec << '\n';
+		std::cout << "  Unknown: ";
+		for (auto byte : vdx.unknown)
+		{
+			std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte) << ' ';
+		}
+		std::cout << std::dec << '\n';
+	}
+
+	// Output chunk table (same for both VDX and GJD)
+	const int typeWidth = 6;		// Fits "0x20"
+	const int unknownWidth = 8;		// Fits "0x77"
+	const int dataSizeWidth = 10;	// Fits "10073" (right-aligned decimal)
+	const int lengthMaskWidth = 10; // Fits "0x7F"
+	const int lengthBitsWidth = 10; // Fits "0x07"
+
+	// Helper function for hex formatting (unchanged)
+	auto hex8 = [](uint8_t v)
+	{
+		std::ostringstream oss;
+		oss << "0x" << std::uppercase << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(v);
+		return oss.str();
+	};
+
+	std::cout << "\nChunk Information:\n";
+	// Column headers with space padding
+	std::cout << std::left << std::setfill(' ') // Ensure spaces, not zeros
+			  << std::setw(typeWidth) << "Type" << "| "
+			  << std::setw(unknownWidth) << "Unknown" << "| "
+			  << std::setw(dataSizeWidth) << "Data Size" << "| "
+			  << std::setw(lengthMaskWidth) << "Length Mask" << "| "
+			  << std::setw(lengthBitsWidth) << "Length Bits" << '\n';
+
+	// Divider line
+	std::cout << std::string(
+					 typeWidth + unknownWidth + dataSizeWidth + lengthMaskWidth + lengthBitsWidth + 4, '-')
+			  << '\n';
+
+	// Chunk data
+	for (const auto &chunk : vdx.chunks)
+	{
+		std::cout << std::left << std::setfill(' ') // Spaces for padding
+				  << std::setw(typeWidth) << hex8(chunk.chunkType) << "| "
+				  << std::setw(unknownWidth) << hex8(chunk.unknown) << "| "
+				  << std::right << std::setw(dataSizeWidth) << chunk.dataSize << "| "
+				  << std::left << std::setw(lengthMaskWidth) << hex8(chunk.lengthMask) << "| "
+				  << std::setw(lengthBitsWidth) << hex8(chunk.lengthBits) << '\n';
+	}
+
+	std::cout << "\nNumber of Chunks: " << vdx.chunks.size() << '\n';
 }
 
 /*
@@ -54,10 +197,10 @@ Parameters:
 	- name: The filename of the MIDI file to be written
 ===============================================================================
 */
-void extractXMI(const std::vector<uint8_t>& midiData, std::string name)
+void extractXMI(const std::vector<uint8_t> &midiData, std::string name)
 {
 	std::ofstream midiFileOut(name + ".mid", std::ios::binary);
-	midiFileOut.write(reinterpret_cast<const char*>(midiData.data()), midiData.size());
+	midiFileOut.write(reinterpret_cast<const char *>(midiData.data()), midiData.size());
 	midiFileOut.close();
 }
 
@@ -71,7 +214,8 @@ Description:
 Parameters:
 	- filename: The filename of the VDX file to be extracted
 ===============================================================================
-*/void extractVDX(const std::string_view& filename)
+*/
+void extractVDX(const std::string_view &filename)
 {
 	std::string dirName(filename.data());
 	dirName.erase(dirName.find_last_of('.'));
@@ -81,26 +225,26 @@ Parameters:
 
 	std::vector<VDXFile> VDXFiles = parseGJDFile(filename.data());
 
-	for (const auto& vdxFile : VDXFiles)
+	for (const auto &vdxFile : VDXFiles)
 	{
 		std::string vdxFileName = dirName + "/" + vdxFile.filename + ".vdx";
 		std::cout << "filename: " << vdxFileName << std::endl;
 
 		std::ofstream vdxFileOut(vdxFileName, std::ios::binary);
-		vdxFileOut.write(reinterpret_cast<const char*>(&vdxFile.identifier), sizeof(vdxFile.identifier));
-		vdxFileOut.write(reinterpret_cast<const char*>(vdxFile.unknown.data()), 6);
+		vdxFileOut.write(reinterpret_cast<const char *>(&vdxFile.identifier), sizeof(vdxFile.identifier));
+		vdxFileOut.write(reinterpret_cast<const char *>(vdxFile.unknown.data()), 6);
 
-		for (const auto& chunk : vdxFile.chunks)
+		for (const auto &chunk : vdxFile.chunks)
 		{
 			// Write chunk header
-			vdxFileOut.write(reinterpret_cast<const char*>(&chunk.chunkType), sizeof(chunk.chunkType));
-			vdxFileOut.write(reinterpret_cast<const char*>(&chunk.unknown), sizeof(chunk.unknown));
-			vdxFileOut.write(reinterpret_cast<const char*>(&chunk.dataSize), sizeof(chunk.dataSize));
-			vdxFileOut.write(reinterpret_cast<const char*>(&chunk.lengthMask), sizeof(chunk.lengthMask));
-			vdxFileOut.write(reinterpret_cast<const char*>(&chunk.lengthBits), sizeof(chunk.lengthBits));
+			vdxFileOut.write(reinterpret_cast<const char *>(&chunk.chunkType), sizeof(chunk.chunkType));
+			vdxFileOut.write(reinterpret_cast<const char *>(&chunk.unknown), sizeof(chunk.unknown));
+			vdxFileOut.write(reinterpret_cast<const char *>(&chunk.dataSize), sizeof(chunk.dataSize));
+			vdxFileOut.write(reinterpret_cast<const char *>(&chunk.lengthMask), sizeof(chunk.lengthMask));
+			vdxFileOut.write(reinterpret_cast<const char *>(&chunk.lengthBits), sizeof(chunk.lengthBits));
 
 			// Write chunk data
-			vdxFileOut.write(reinterpret_cast<const char*>(chunk.data.data()), chunk.data.size());
+			vdxFileOut.write(reinterpret_cast<const char *>(chunk.data.data()), chunk.data.size());
 		}
 
 		vdxFileOut.close();
@@ -121,45 +265,54 @@ Parameters:
 
 ===============================================================================
 */
-void extractPNG(std::string_view filename, bool raw) {
-	std::ifstream vdxFile{ filename.data(), std::ios::binary | std::ios::ate };
-	if (!vdxFile) return std::cerr << "ERROR: Can't open VDX: " << filename << '\n', void();
+void extractPNG(std::string_view filename, bool raw)
+{
+	std::ifstream vdxFile{filename.data(), std::ios::binary | std::ios::ate};
+	if (!vdxFile)
+		return std::cerr << "ERROR: Can't open VDX: " << filename << '\n', void();
 
 	std::vector<uint8_t> vdxData(static_cast<std::size_t>(vdxFile.tellg()));
-	vdxFile.seekg(0).read(reinterpret_cast<char*>(vdxData.data()), vdxData.size());
+	vdxFile.seekg(0).read(reinterpret_cast<char *>(vdxData.data()), vdxData.size());
 
 	VDXFile vdx = parseVDXFile(filename, vdxData);
 	parseVDXChunks(vdx);
 
-	std::string dirName = std::filesystem::path{ filename }.stem().string();
-	std::filesystem::path dirPath = std::filesystem::path{ filename }.parent_path() / dirName;
+	std::string dirName = std::filesystem::path{filename}.stem().string();
+	std::filesystem::path dirPath = std::filesystem::path{filename}.parent_path() / dirName;
 	std::filesystem::create_directory(dirPath);
 
 	std::vector<uint8_t> alphaFrame(640 * 320 * 3);
-	constexpr RGBColor colorKey{ 255, 0, 255 };
+	constexpr RGBColor colorKey{255, 0, 255};
 
-	for (size_t i = 0; i < vdx.chunks.size(); ++i) {
-		const auto& chunk = vdx.chunks[i];
-		if (chunk.chunkType != 0x20 && chunk.chunkType != 0x25) continue;
+	for (size_t i = 0; i < vdx.chunks.size(); ++i)
+	{
+		const auto &chunk = vdx.chunks[i];
+		if (chunk.chunkType != 0x20 && chunk.chunkType != 0x25)
+			continue;
 
 		std::ostringstream frame;
 		frame << std::setfill('0') << std::setw(4) << (i + 1);
-		std::string baseName = std::filesystem::path{ filename }.stem().string();
+		std::string baseName = std::filesystem::path{filename}.stem().string();
 		std::filesystem::path outPath = dirPath / (baseName + "_" + frame.str());
 
-		if (raw) {
-			std::ofstream outFile{ outPath.replace_extension(".raw"), std::ios::binary };
-			outFile && (std::cout << "Writing: " << outPath.string() << '\n', outFile.write(reinterpret_cast<const char*>(chunk.data.data()), chunk.data.size()));
+		if (raw)
+		{
+			std::ofstream outFile{outPath.replace_extension(".raw"), std::ios::binary};
+			outFile && (std::cout << "Writing: " << outPath.string() << '\n', outFile.write(reinterpret_cast<const char *>(chunk.data.data()), chunk.data.size()));
 		}
-		else {
+		else
+		{
 			std::cout << "Writing: " << (outPath.replace_extension(".png")).string() << '\n';
-			if (config["devMode"] && chunk.chunkType == 0x25 && i > 0) {
+			if (config["devMode"] && chunk.chunkType == 0x25 && i > 0)
+			{
 				alphaFrame = vdx.chunks[i - 1].data; // Set alphaFrame to previous frame
-				for (size_t j = 0; j < chunk.data.size() && j < alphaFrame.size(); j += 3) {
+				for (size_t j = 0; j < chunk.data.size() && j < alphaFrame.size(); j += 3)
+				{
 					if (j + 2 < chunk.data.size() && j + 2 < alphaFrame.size() &&
 						(chunk.data[j] != alphaFrame[j] ||
-							chunk.data[j + 1] != alphaFrame[j + 1] ||
-							chunk.data[j + 2] != alphaFrame[j + 2])) {
+						 chunk.data[j + 1] != alphaFrame[j + 1] ||
+						 chunk.data[j + 2] != alphaFrame[j + 2]))
+					{
 						alphaFrame[j] = colorKey.r;
 						alphaFrame[j + 1] = colorKey.g;
 						alphaFrame[j + 2] = colorKey.b;
@@ -167,7 +320,8 @@ void extractPNG(std::string_view filename, bool raw) {
 				}
 				savePNG(outPath.string(), alphaFrame, 640, 320);
 			}
-			else {
+			else
+			{
 				savePNG(outPath.string(), chunk.data, 640, 320);
 			}
 		}
@@ -185,9 +339,11 @@ Parameters:
 	- filenameParam: The filename of the VDX file to be extracted
 ===============================================================================
 */
-void createVideoFromImages(const std::string& filenameParam) {
+void createVideoFromImages(const std::string &filenameParam)
+{
 	// Check if FFmpeg is installed
-	if (std::system("ffmpeg -version") != 0) {
+	if (std::system("ffmpeg -version") != 0)
+	{
 		std::cerr << "FFmpeg is not installed or not in the system PATH." << std::endl;
 		return;
 	}
@@ -205,20 +361,24 @@ void createVideoFromImages(const std::string& filenameParam) {
 	pngDirPath = pngDirPath.lexically_normal();
 
 	// Validate PNG directory
-	if (!std::filesystem::exists(pngDirPath) || !std::filesystem::is_directory(pngDirPath)) {
+	if (!std::filesystem::exists(pngDirPath) || !std::filesystem::is_directory(pngDirPath))
+	{
 		std::cerr << "PNG directory does not exist: " << pngDirPath.string() << std::endl;
 		return;
 	}
 
 	// Verify that the directory contains PNG files matching the expected pattern
 	bool foundMatchingFiles = false;
-	for (const auto& entry : std::filesystem::directory_iterator(pngDirPath)) {
-		if (entry.path().extension() == ".png" || entry.path().extension() == ".PNG") {
+	for (const auto &entry : std::filesystem::directory_iterator(pngDirPath))
+	{
+		if (entry.path().extension() == ".png" || entry.path().extension() == ".PNG")
+		{
 			foundMatchingFiles = true;
 			break;
 		}
 	}
-	if (!foundMatchingFiles) {
+	if (!foundMatchingFiles)
+	{
 		std::cerr << "No PNG files found in directory: " << pngDirPath.string() << std::endl;
 		return;
 	}
@@ -227,13 +387,14 @@ void createVideoFromImages(const std::string& filenameParam) {
 	std::string inputFilePattern = filenameWithoutExtension + "_%04d.png";
 	std::string outputFilePath = (pngDirPath / (filenameWithoutExtension + ".mkv")).string();
 	std::string ffmpegCommand = "ffmpeg -framerate 24 -i \"" +
-		(pngDirPath / inputFilePattern).string() +
-		"\" -c:v libx265 -crf 0 -pix_fmt rgb24 \"" +
-		outputFilePath + "\"";
+								(pngDirPath / inputFilePattern).string() +
+								"\" -c:v libx265 -crf 0 -pix_fmt rgb24 \"" +
+								outputFilePath + "\"";
 
 	// Execute FFmpeg command
 	int ffmpegResult = std::system(ffmpegCommand.c_str());
-	if (ffmpegResult != 0) {
+	if (ffmpegResult != 0)
+	{
 		std::cerr << "FFmpeg command failed." << std::endl;
 		return;
 	}
@@ -257,9 +418,9 @@ Parameters:
 	- height: height of the image
 ===============================================================================
 */
-void savePNG(const std::string& filename, const std::vector<uint8_t>& imageData, int width, int height)
+void savePNG(const std::string &filename, const std::vector<uint8_t> &imageData, int width, int height)
 {
-	FILE* fp;
+	FILE *fp;
 	errno_t err = fopen_s(&fp, filename.c_str(), "wb");
 	if (err != 0 || !fp)
 	{
@@ -291,15 +452,15 @@ void savePNG(const std::string& filename, const std::vector<uint8_t>& imageData,
 	png_init_io(png_ptr, fp);
 
 	png_set_IHDR(png_ptr, info_ptr, width, height,
-		8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
-		PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+				 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
+				 PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
 	png_write_info(png_ptr, info_ptr);
 
 	std::vector<png_bytep> row_pointers(height);
 	for (int y = 0; y < height; ++y)
 	{
-		row_pointers[y] = const_cast<uint8_t*>(&imageData[y * width * 3]);
+		row_pointers[y] = const_cast<uint8_t *>(&imageData[y * width * 3]);
 	}
 
 	png_write_image(png_ptr, row_pointers.data());
