@@ -281,50 +281,57 @@ void extractPNG(std::string_view filename, bool raw)
 	std::filesystem::path dirPath = std::filesystem::path{filename}.parent_path() / dirName;
 	std::filesystem::create_directory(dirPath);
 
-	std::vector<uint8_t> alphaFrame(640 * 320 * 3);
-	constexpr RGBColor colorKey{255, 0, 255};
+	std::vector<uint8_t> lastFrame; // Store the last frame's RGB data
 
-	for (size_t i = 0; i < vdx.chunks.size(); ++i)
+	for (size_t i = 0, frameNum = 1; i < vdx.chunks.size(); ++i)
 	{
 		const auto &chunk = vdx.chunks[i];
-		if (chunk.chunkType != 0x20 && chunk.chunkType != 0x25)
-			continue;
 
 		std::ostringstream frame;
-		frame << std::setfill('0') << std::setw(4) << (i + 1);
+		frame << std::setfill('0') << std::setw(4) << frameNum;
 		std::string baseName = std::filesystem::path{filename}.stem().string();
 		std::filesystem::path outPath = dirPath / (baseName + "_" + frame.str());
 
-		if (raw)
+		if (chunk.chunkType == 0x20 || chunk.chunkType == 0x25)
 		{
-			std::ofstream outFile{outPath.replace_extension(".raw"), std::ios::binary};
-			outFile && (std::cout << "Writing: " << outPath.string() << '\n', outFile.write(reinterpret_cast<const char *>(chunk.data.data()), chunk.data.size()));
-		}
-		else
-		{
-			std::cout << "Writing: " << (outPath.replace_extension(".png")).string() << '\n';
-			if (config["devMode"] && chunk.chunkType == 0x25 && i > 0)
+			// Save current frame (raw or PNG)
+			if (raw)
 			{
-				alphaFrame = vdx.chunks[i - 1].data; // Set alphaFrame to previous frame
-				for (size_t j = 0; j < chunk.data.size() && j < alphaFrame.size(); j += 3)
+				std::ofstream outFile{outPath.replace_extension(".raw"), std::ios::binary};
+				if (outFile)
 				{
-					if (j + 2 < chunk.data.size() && j + 2 < alphaFrame.size() &&
-						(chunk.data[j] != alphaFrame[j] ||
-						 chunk.data[j + 1] != alphaFrame[j + 1] ||
-						 chunk.data[j + 2] != alphaFrame[j + 2]))
-					{
-						alphaFrame[j] = colorKey.r;
-						alphaFrame[j + 1] = colorKey.g;
-						alphaFrame[j + 2] = colorKey.b;
-					}
+					std::cout << "Writing: " << outPath.string() << '\n';
+					outFile.write(reinterpret_cast<const char *>(chunk.data.data()), chunk.data.size());
 				}
-				savePNG(outPath.string(), alphaFrame, 640, 320);
 			}
 			else
 			{
-				savePNG(outPath.string(), chunk.data, 640, 320);
+				std::cout << "Writing: " << (outPath.replace_extension(".png")).string() << '\n';
+				savePNG(outPath.replace_extension(".png").string(), chunk.data, 640, 320);
 			}
+			lastFrame = chunk.data; // Update last frame
+			++frameNum;
 		}
+		else if (chunk.chunkType == 0x00 && !lastFrame.empty())
+		{
+			// Repeat last frame for "replay/skip" chunk
+			if (raw)
+			{
+				std::ofstream outFile{outPath.replace_extension(".raw"), std::ios::binary};
+				if (outFile)
+				{
+					std::cout << "Writing (repeat): " << outPath.string() << '\n';
+					outFile.write(reinterpret_cast<const char *>(lastFrame.data()), lastFrame.size());
+				}
+			}
+			else
+			{
+				std::cout << "Writing (repeat): " << (outPath.replace_extension(".png")).string() << '\n';
+				savePNG(outPath.replace_extension(".png").string(), lastFrame, 640, 320);
+			}
+			++frameNum;
+		}
+		// else: skip all other chunk types
 	}
 }
 
