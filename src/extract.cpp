@@ -17,6 +17,7 @@
 #include "rl.h"
 #include "gjd.h"
 #include "vdx.h"
+#include "cursor.h"
 #include "bitmap.h"
 
 /*
@@ -253,6 +254,102 @@ void extractVDX(const std::string_view &filename)
 
 /*
 ===============================================================================
+Function Name: extractCursors
+
+Description:
+	- Creates   <ROB>_GJD/
+		├─ 0x00000/PNG/00.png …
+		├─ 0x0182F/PNG/00.png …
+		└─ …                                             (one sub‑dir per blob)
+
+Parameters:
+	- robFilename : path to ROB.GJD
+	- format      : caller‑validated string ("png" for now)
+===============================================================================
+*/
+void extractCursors(const std::string_view &robFilename, const std::string &format)
+{
+	// Open the ROB.GJD file
+	std::ifstream file{robFilename.data(), std::ios::binary | std::ios::ate};
+	if (!file)
+	{
+		std::cerr << "ERROR: Can't open " << robFilename << '\n';
+		return;
+	}
+
+	// Load entire file into memory
+	std::vector<uint8_t> buffer(static_cast<size_t>(file.tellg()));
+	file.seekg(0).read(reinterpret_cast<char *>(buffer.data()), buffer.size());
+
+	// Verify file size for palettes
+	if (buffer.size() < ::CursorPaletteSizeBytes * ::NumCursorPalettes)
+	{
+		std::cerr << "ERROR: ROB.GJD too small (" << buffer.size()
+				  << " bytes) to contain " << static_cast<int>(::NumCursorPalettes)
+				  << " palettes of " << ::CursorPaletteSizeBytes << " bytes each\n";
+		return;
+	}
+
+	// Calculate palette block offset
+	const size_t paletteBlockOffset = buffer.size() - ::CursorPaletteSizeBytes * ::NumCursorPalettes;
+
+	// Create root directory (e.g., ROB_GJD)
+	std::filesystem::path rootDir = std::filesystem::path(robFilename).stem().string() + "_GJD";
+	std::filesystem::create_directories(rootDir);
+
+	// Process each cursor blob
+	for (size_t i = 0; i < ::CursorBlobs.size(); ++i)
+	{
+		const auto &meta = ::CursorBlobs[i];
+		std::cout << "\n[Processing Cursor " << i
+				  << "] Offset: 0x" << std::hex << meta.offset
+				  << " Size: " << std::dec << meta.size
+				  << " Frames: " << static_cast<int>(meta.frames) << '\n';
+
+		// Create subdirectory (e.g., 0x00000/PNG)
+		std::ostringstream hexDir;
+		hexDir << "0x" << std::uppercase << std::hex << std::setw(5) << std::setfill('0') << meta.offset;
+		std::filesystem::path pngDir = rootDir / hexDir.str() / "PNG";
+		std::filesystem::create_directories(pngDir);
+
+		try
+		{
+			// Extract and unpack the blob
+			auto blob = getCursorBlob(buffer, i);
+			CursorImage img = unpackCursorBlob(blob, meta.frames);
+
+			// Validate dimensions
+			if (img.width == 0 || img.height == 0)
+				throw std::runtime_error("Invalid cursor dimensions");
+
+			// Load palette
+			const size_t palOff = paletteBlockOffset + meta.paletteIdx * ::CursorPaletteSizeBytes;
+			if (palOff + ::CursorPaletteSizeBytes > buffer.size())
+				throw std::runtime_error("Palette offset out of bounds");
+			std::span<const uint8_t> pal(&buffer[palOff], ::CursorPaletteSizeBytes);
+
+			// Generate PNGs for each frame
+			const size_t digits = (meta.frames >= 100) ? 3 : 2;
+			for (size_t f = 0; f < meta.frames; ++f)
+			{
+				auto rgba = cursorFrameToRGBA(img, f, pal);
+				std::ostringstream fn;
+				fn << std::setw(digits) << std::setfill('0') << f << ".png";
+				std::filesystem::path outPath = pngDir / fn.str();
+
+				savePNG(outPath.string(), rgba, img.width, img.height, true);
+				std::cout << "  Wrote: " << outPath.filename().string() << '\n';
+			}
+		}
+		catch (const std::exception &e)
+		{
+			std::cerr << "FAILED: " << e.what() << "\n";
+		}
+	}
+}
+
+/*
+===============================================================================
 Function Name: extractPNG
 
 Description:
@@ -425,20 +522,17 @@ Parameters:
 	- height: height of the image
 ===============================================================================
 */
-void savePNG(const std::string &filename, const std::vector<uint8_t> &imageData, int width, int height)
+void savePNG(const std::string &filename, const std::vector<uint8_t> &imageData, int width, int height, bool hasAlpha)
 {
 	FILE *fp;
-	errno_t err = fopen_s(&fp, filename.c_str(), "wb");
-	if (err != 0 || !fp)
-	{
-		throw std::runtime_error("Failed to open file for writing: " + filename);
-	}
+	if (fopen_s(&fp, filename.c_str(), "wb") || !fp)
+		throw std::runtime_error("Failed to open " + filename);
 
 	png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
 	if (!png_ptr)
 	{
 		fclose(fp);
-		throw std::runtime_error("Failed to create PNG write struct");
+		throw std::runtime_error("png_create_write_struct");
 	}
 
 	png_infop info_ptr = png_create_info_struct(png_ptr);
@@ -446,32 +540,32 @@ void savePNG(const std::string &filename, const std::vector<uint8_t> &imageData,
 	{
 		fclose(fp);
 		png_destroy_write_struct(&png_ptr, nullptr);
-		throw std::runtime_error("Failed to create PNG info struct");
+		throw std::runtime_error("png_create_info_struct");
 	}
 
 	if (setjmp(png_jmpbuf(png_ptr)))
 	{
 		fclose(fp);
 		png_destroy_write_struct(&png_ptr, &info_ptr);
-		throw std::runtime_error("Error during PNG initialization");
+		throw std::runtime_error("libpng error");
 	}
 
 	png_init_io(png_ptr, fp);
 
+	const int colorType = hasAlpha ? PNG_COLOR_TYPE_RGBA : PNG_COLOR_TYPE_RGB;
+	const int bytesPerPixel = hasAlpha ? 4 : 3;
+
 	png_set_IHDR(png_ptr, info_ptr, width, height,
-				 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
+				 8, colorType, PNG_INTERLACE_NONE,
 				 PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
 	png_write_info(png_ptr, info_ptr);
 
-	std::vector<png_bytep> row_pointers(height);
+	std::vector<png_bytep> rows(height);
 	for (int y = 0; y < height; ++y)
-	{
-		row_pointers[y] = const_cast<uint8_t *>(&imageData[y * width * 3]);
-	}
+		rows[y] = const_cast<uint8_t *>(&imageData[y * width * bytesPerPixel]);
 
-	png_write_image(png_ptr, row_pointers.data());
-
+	png_write_image(png_ptr, rows.data());
 	png_write_end(png_ptr, nullptr);
 
 	fclose(fp);

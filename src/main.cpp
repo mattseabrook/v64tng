@@ -39,6 +39,7 @@
 #include <filesystem>
 #include <fstream>
 #include <algorithm>
+#include <io.h>
 
 #include "config.h"
 #include "game.h"
@@ -66,33 +67,98 @@ struct ConsoleGuard
 
 	bool setup()
 	{
+		// Try to attach to existing console first
 		attached = AttachConsole(ATTACH_PARENT_PROCESS);
+
+		// If no parent console exists, create a new one
 		if (!attached)
 		{
 			allocated = AllocConsole();
+
+			// If console allocation failed, try alternative approaches
+			if (!allocated)
+			{
+				// Fallback: Create a hidden console window
+				HWND hwnd = GetConsoleWindow();
+				if (hwnd)
+					ShowWindow(hwnd, SW_HIDE);
+
+				// Try alternate method if AllocConsole fails
+				FILE *dummy;
+				if (freopen_s(&dummy, "CONOUT$", "w", stdout) != 0 ||
+					freopen_s(&dummy, "CONOUT$", "w", stderr) != 0 ||
+					freopen_s(&dummy, "CONIN$", "r", stdin) != 0)
+				{
+					return false;
+				}
+				return true;
+			}
 		}
 
-		if (attached || allocated)
+		// Successfully attached or allocated
+		FILE *dummy;
+		if (freopen_s(&dummy, "CONOUT$", "w", stdout) != 0 ||
+			freopen_s(&dummy, "CONOUT$", "w", stderr) != 0 ||
+			freopen_s(&dummy, "CONIN$", "r", stdin) != 0)
 		{
-			FILE *dummy;
-			freopen_s(&dummy, "CONOUT$", "w", stdout);
-			freopen_s(&dummy, "CONOUT$", "w", stderr);
-			freopen_s(&dummy, "CONIN$", "r", stdin);
-			return true;
+			return false;
 		}
-		return false;
+
+		// Configure console for non-blocking operation
+		configureConsole();
+		return true;
+	}
+
+	void configureConsole()
+	{
+		// Get the current console input handle
+		HANDLE hInput = GetStdHandle(STD_INPUT_HANDLE);
+		if (hInput != INVALID_HANDLE_VALUE)
+		{
+			// Set console input mode to discard all input
+			SetConsoleMode(hInput, 0);
+		}
+
+		// Get the current console output handle
+		HANDLE hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+		if (hOutput != INVALID_HANDLE_VALUE)
+		{
+			// Enable virtual terminal processing for ANSI color support
+			DWORD mode = 0;
+			if (GetConsoleMode(hOutput, &mode))
+			{
+				SetConsoleMode(hOutput, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+			}
+		}
+
+		// Prevent QuickEdit mode that can cause hangs
+		SetConsoleMode(hInput, 0);
 	}
 
 	~ConsoleGuard()
 	{
-		if (stdout)
-			fclose(stdout);
-		if (stderr)
-			fclose(stderr);
-		if (stdin)
-			fclose(stdin);
+		// Flush all buffers before cleanup
+		fflush(stdout);
+		fflush(stderr);
+
+		// Detach from console rather than freeing it
 		if (allocated)
+		{
+			// Clear any remaining input events
+			HANDLE hInput = GetStdHandle(STD_INPUT_HANDLE);
+			if (hInput != INVALID_HANDLE_VALUE)
+			{
+				FlushConsoleInputBuffer(hInput);
+			}
+
+			// Forcefully close standard streams
+			CloseHandle(reinterpret_cast<HANDLE>(_get_osfhandle(_fileno(stdin))));
+			CloseHandle(reinterpret_cast<HANDLE>(_get_osfhandle(_fileno(stdout))));
+			CloseHandle(reinterpret_cast<HANDLE>(_get_osfhandle(_fileno(stderr))));
+
+			// Detach from console without freeing
 			FreeConsole();
+		}
 	}
 };
 #endif
@@ -111,11 +177,10 @@ std::vector<std::string> get_args(int argc, char *argv[])
 	return args;
 }
 
-#ifdef _WIN32
-
 //
 // Convert Windows wide args to UTF-8
 //
+#ifdef _WIN32
 std::vector<std::string> get_args_windows()
 {
 	int argc;
@@ -156,9 +221,25 @@ int process_args(const std::vector<std::string> &args)
 	}
 
 	//
+	// Extract cursors from the user-specified *.ROB file (ROB.GJD for 7th Guest)
+	//
+	if (args[1] == "-c" && args.size() >= 4)
+	{
+		const std::string &fmt = args[3];
+		if (fmt != "png" && fmt != "ico" && fmt != "ani")
+		{
+			std::cerr << "ERROR: format must be png, ico or ani\n";
+			return 1;
+		}
+		if (fmt != "png")
+			std::cout << "NOTE: only png export implemented; " << fmt << " coming later.\n";
+
+		extractCursors(args[2], fmt);
+	}
+	//
 	// Extract all of the *.VDX files from the user-specified *.RL/GJD file pair
 	//
-	if (args[1] == "-g" && args.size() >= 3)
+	else if (args[1] == "-g" && args.size() >= 3)
 	{
 		if (args.size() < 3)
 		{
@@ -364,7 +445,16 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
 		return 1;
 	}
 
-	return process_args(args);
+	// return process_args(args);
+	int ret = process_args(args);
+
+	if (!args.empty() && args[1] != "!")
+	{
+		FreeConsole();	  // close the window immediately
+		ExitProcess(ret); // skip any SDL/CRT teardown that might block
+	}
+
+	return ret;
 }
 #else
 // Standard entry point for non-Windows platforms
