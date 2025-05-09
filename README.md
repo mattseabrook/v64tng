@@ -22,6 +22,7 @@
       - [0x80 Raw WAV data](#0x80-raw-wav-data)
       - [Notes](#notes)
   - [XMI](#xmi)
+  - [Cursors](#cursors)
   - [LZSS](#lzss)
 - [Usage](#usage)
   - [Starting the Game Engine](#starting-the-game-engine)
@@ -343,6 +344,10 @@ Here is the table of how the original songs are packed in `XMI.GJD`:
 | ini_mt_o      | 248015 | 900          |                        |                                                             |
 | ini_sci       | 248916 | 8334         |                        |                                                             |
 
+## Cursors
+
+- `ROB.GJD`
+  
 ## LZSS
 
 VDX chunks can optionally be compressed using a common variant of the LZSS algorithm. The chunks are compressed if, and only if, both `lengthMask` and `lengthBits` are not equal to zero. Decompression will occur using a circular history buffer (`his_buf`) and a sliding window with the following parameters:

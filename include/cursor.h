@@ -8,6 +8,7 @@
 #include <vector>
 #include <string_view>
 #include <span>
+#include <stdexcept>
 
 /*
 ===============================================================================
@@ -48,14 +49,14 @@ struct CursorImage
 //
 inline constexpr std::array<CursorBlobInfo, 9> CursorBlobs{{
     /*0*/ {0x00000, 0x0182F, 0, 8},  // Skeleton Hand - Waving No   *default cursor
-    /*1*/ {0x0182F, 0x0233E, 2, 8},  // Theatre Mask - Indicates an FMV     *first image was used as the icon for v32tng.exe
+    /*1*/ {0x0182F, 0x0233E, 2, 8},  // Theatre Mask - Indicates an FMV     *first image used for icon.ico
     /*2*/ {0x03B6D, 0x0155F, 1, 4},  // Brain Puzzle
-    /*3*/ {0x050CC, 0x01CAD, 0, 4},  // ?
+    /*3*/ {0x050CC, 0x01CAD, 0, 4},  // Skeleton Hand - Pointing Forward
     /*4*/ {0x06E79, 0x013E4, 0, 6},  // Skeleton Hand - Turn Right
     /*5*/ {0x0825D, 0x0147A, 0, 4},  // Skeleton Hand - Turn Left
-    /*6*/ {0x096D7, 0x00CE0, 3, 4},  // ?
-    /*7*/ {0x0A455, 0x00221, 5, 11}, // ?
-    /*8*/ {0x0A776, 0x00FBE, 4, 12}  // ?
+    /*6*/ {0x096D7, 0x00CE0, 3, 4},  // Chattering Teeth - Indicates an Easter Egg
+    /*7*/ {0x0A455, 0x00221, 5, 11}, // Pyramid
+    /*8*/ {0x0A776, 0x00FBE, 4, 12}  // Eyeball - Puzzle Action
 }};
 
 // Metadata for the 7 palettes
@@ -71,4 +72,3 @@ CursorImage unpackCursorBlob(std::span<const uint8_t> blobData, size_t blobIndex
 std::vector<uint8_t> cursorFrameToRGBA(const CursorImage &img, size_t frameIdx, std::span<const uint8_t> palette);
 
 #endif // CURSOR_H
-//...

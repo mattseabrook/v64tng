@@ -27,43 +27,47 @@ Parameters:
 std::vector<uint8_t> decompressCursorBlob(std::span<const uint8_t> compressed)
 {
     std::vector<uint8_t> output;
-    output.reserve(65536); // Big enough for most cursors
+    output.reserve(65536);
 
     size_t inPos = 0;
     bool finished = false;
     while (!finished && inPos < compressed.size())
     {
+        if (inPos >= compressed.size())
+            break; // Just in case
         uint8_t flagByte = compressed[inPos++];
-        for (int i = 0; i < 8 && !finished && inPos < compressed.size(); ++i)
+        for (int i = 0; i < 8 && !finished && inPos <= compressed.size(); ++i)
         {
             if (flagByte & 1)
             {
-                output.push_back(compressed[inPos++]);
+                if (inPos < compressed.size())
+                    output.push_back(compressed[inPos++]);
+                else
+                    finished = true; // End mid-literal
             }
             else
             {
-                if (inPos + 1 >= compressed.size())
+                if (inPos + 1 < compressed.size())
                 {
-                    // Ran out of data mid-reference, stop here
-                    finished = true;
-                    break;
+                    uint8_t var_8 = compressed[inPos++];
+                    uint8_t offsetLen = compressed[inPos++];
+                    if (var_8 == 0 && offsetLen == 0)
+                    {
+                        finished = true;
+                    }
+                    else
+                    {
+                        uint8_t length = (offsetLen & 0x0F) + 3;
+                        uint16_t offset = (static_cast<uint16_t>(offsetLen >> 4) << 8) + var_8;
+                        if (output.size() < offset)
+                            throw std::runtime_error("Invalid offset: " + std::to_string(offset));
+                        for (uint8_t j = 0; j < length; ++j)
+                            output.push_back(output[output.size() - offset]);
+                    }
                 }
-                uint8_t var_8 = compressed[inPos++];
-                uint8_t offsetLen = compressed[inPos++];
-                if (var_8 == 0 && offsetLen == 0)
+                else
                 {
-                    finished = true; // Termination marker
-                    break;
-                }
-                uint8_t length = (offsetLen & 0x0F) + 3;
-                uint16_t offset = (static_cast<uint16_t>(offsetLen >> 4) << 8) + var_8;
-                if (output.size() < offset)
-                {
-                    throw std::runtime_error("Invalid offset in decompression: " + std::to_string(offset));
-                }
-                for (uint8_t j = 0; j < length; ++j)
-                {
-                    output.push_back(output[output.size() - offset]);
+                    finished = true; // End mid-reference
                 }
             }
             flagByte >>= 1;
@@ -90,7 +94,7 @@ std::span<const uint8_t> getCursorBlob(std::span<const uint8_t> robBuffer, size_
 {
     assert(blobIndex < CursorBlobs.size());
     const auto &meta = CursorBlobs[blobIndex];
-    return robBuffer.subspan(meta.offset, meta.size);
+    return robBuffer.subspan(meta.offset); // No size limit
 }
 
 /*
@@ -112,12 +116,16 @@ Parameters:
 CursorImage unpackCursorBlob(std::span<const uint8_t> blobData, size_t blobIndex)
 {
     auto decomp = decompressCursorBlob(blobData);
+    std::cout << "  Decompressed size: " << decomp.size() << " bytes\n";
     if (decomp.size() < 5)
         throw std::runtime_error("Decompressed data too small for header");
 
     uint8_t width = decomp[0];
     uint8_t height = decomp[1];
-    uint8_t frames = decomp[2]; // From header, not metadata
+    uint8_t frames = decomp[2];
+    std::cout << "  Header: width=" << static_cast<int>(width)
+              << ", height=" << static_cast<int>(height)
+              << ", frames=" << static_cast<int>(frames) << '\n';
     size_t pixelOffset = 5;
     size_t pixelSize = static_cast<size_t>(width) * height * frames;
 
