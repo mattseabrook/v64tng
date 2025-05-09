@@ -8,6 +8,7 @@ build.log
 
 # Ignore the program
 v64tng.exe
+config.json
 
 # Ignore 7th Guest commercial assets
 *.RL
