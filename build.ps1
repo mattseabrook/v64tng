@@ -9,7 +9,7 @@ try {
         exit 0
     }
 
-    # Determine build type: release is default, debug if specified
+    # Determine build type
     $buildType = "release"
     if ($args[0] -eq "debug") {
         $buildType = "debug"
@@ -19,29 +19,56 @@ try {
         Write-Host "Release build selected." -ForegroundColor Cyan
     }
 
-    if (-not (Test-Path "build")) {
-        New-Item -ItemType Directory -Path "build"
+    # Create build directory
+    $buildDir = "build"
+    if (-not (Test-Path $buildDir)) {
+        New-Item -ItemType Directory -Path $buildDir | Out-Null
+        Write-Host "Created build directory." -ForegroundColor Green
     }
 
-    # Compile resources if needed
-    if ((-not (Test-Path "build/resource.res")) -or `
-        ((Get-Item "resource.rc").LastWriteTime -gt (Get-Item "build/resource.res").LastWriteTime)) {
+    # Compile resources
+    $resourceRes = "$buildDir/resource.res"
+    $resourceRc = "resource.rc"
+    if ((Test-Path $resourceRc) -and ((-not (Test-Path $resourceRes)) -or 
+        ((Get-Item $resourceRc).LastWriteTime -gt (Get-Item $resourceRes).LastWriteTime))) {
         Write-Host "Compiling/Recompiling resource file..." -ForegroundColor Cyan
         & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\rc.exe" `
             /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um" `
             /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\shared" `
             /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt" `
-            /fo "build/resource.res" resource.rc
+            /fo $resourceRes $resourceRc
         if ($LASTEXITCODE -ne 0) {
             Write-Host "Resource compilation failed!" -ForegroundColor Red
             exit 1
         }
     }
 
-    $sources = Get-ChildItem -Path "src" -Filter "*.cpp" | ForEach-Object { $_.FullName }
-    $objects = $sources | ForEach-Object { "build\$($_.Split('\')[-1] -replace '\.cpp$', '.o')" }
+    # Get and sort sources
+    $sources = Get-ChildItem -Path "src" -Filter "*.cpp" -File | 
+    Sort-Object Name | 
+    ForEach-Object { $_.FullName }
+    
+    Write-Host "Found $(($sources).Length) source files to process:" -ForegroundColor Yellow
+    foreach ($src in $sources) {
+        Write-Host "  - $(Split-Path $src -Leaf)" -ForegroundColor Gray
+    }
 
-    # Compiler flags based on build type
+    # Generate object paths
+    $objects = $sources | ForEach-Object { 
+        $objName = [System.IO.Path]::GetFileNameWithoutExtension($_) + ".o"
+        Join-Path $buildDir $objName
+    }
+
+    # Compiler flags
+    $commonIncludes = @(
+        "-I", "$PSScriptRoot/include",
+        "-I", "C:\lib\libADLMIDI\include",
+        "-I", "C:\VulkanSDK\1.3.296.0\Include",
+        "-I", "C:\lib\zlib-1.3.1",
+        "-I", "C:\lib\lpng1644",
+        "-I", "C:\lib\lpng1644\build_release"
+    )
+
     if ($buildType -eq "debug") {
         $clangFlags = @(
             "-v",
@@ -51,8 +78,6 @@ try {
             "-O0",
             "-g",
             "-gcodeview",
-            "-mssse3",
-            "-m64",
             "-Wall",
             "-Wextra",
             "-Wpedantic",
@@ -61,14 +86,8 @@ try {
             "-Wold-style-cast",
             "-Wcast-align",
             "-Wunused",
-            "-Woverloaded-virtual",
-            "-I", "E:\v64tng\include",
-            "-I", "C:\lib\libADLMIDI\include",
-            "-I", "C:\VulkanSDK\1.3.296.0\Include",
-            "-I", "C:\lib\zlib-1.3.1",
-            "-I", "C:\lib\lpng1644",
-            "-I", "C:\lib\lpng1644\build_release"
-        )
+            "-Woverloaded-virtual"
+        ) + $commonIncludes
     }
     else {
         $clangFlags = @(
@@ -80,7 +99,6 @@ try {
             "-march=native",
             "-flto=thin",
             "-fno-rtti",
-            "-m64",
             "-Wall",
             "-Wextra",
             "-Wpedantic",
@@ -89,63 +107,132 @@ try {
             "-Wold-style-cast",
             "-Wcast-align",
             "-Wunused",
-            "-Woverloaded-virtual",
-            "-I", "E:\v64tng\include",
-            "-I", "C:\lib\libADLMIDI\include",
-            "-I", "C:\VulkanSDK\1.3.296.0\Include",
-            "-I", "C:\lib\zlib-1.3.1",
-            "-I", "C:\lib\lpng1644",
-            "-I", "C:\lib\lpng1644\build_release"
-        )
+            "-Woverloaded-virtual"
+        ) + $commonIncludes
     }
 
-    # Compile source files in parallel with specific header dependency checking
-    $jobs = @()
-    foreach ($i in 0..($sources.Length - 1)) {
+    # Track successfully compiled objects
+    $compiledObjects = @()
+    $startTime = Get-Date
+    $totalFiles = $sources.Count
+    $completedFiles = 0
+
+    # Compile each source file
+    for ($i = 0; $i -lt $sources.Length; $i++) {
         $src = $sources[$i]
         $obj = $objects[$i]
         $baseName = [System.IO.Path]::GetFileNameWithoutExtension($src)
-        $header = "E:\v64tng\include\$baseName.h"
-
-        $objTime = if (Test-Path $obj) { (Get-Item $obj).LastWriteTime } else { [DateTime]::MinValue }
-        $srcTime = (Get-Item $src).LastWriteTime
-        $headerTime = if (Test-Path $header) { (Get-Item $header).LastWriteTime } else { [DateTime]::MinValue }
-
-        if (-not (Test-Path $obj) -or $srcTime -gt $objTime -or $headerTime -gt $objTime) {
-            $job = Start-Job -ScriptBlock {
-                param($src, $obj, $clangFlags)
-                Write-Host "Compiling $src to $obj..." -ForegroundColor Cyan
-                clang++ -c $src -o $obj @clangFlags
-                if ($LASTEXITCODE -ne 0) {
-                    Write-Host "Compilation failed for $src!" -ForegroundColor Red
-                    exit 1
+        $header = Join-Path "$PSScriptRoot/include" "$baseName.h"
+        
+        # Show progress
+        $completedFiles++
+        $percentComplete = [math]::Round(($completedFiles / $totalFiles) * 100)
+        $fileNumber = "[$completedFiles/$totalFiles]"
+        Write-Host "Processing $fileNumber $(Split-Path $src -Leaf)..." -ForegroundColor Yellow
+        
+        # Check if we need to compile
+        $needsCompile = $true
+        
+        if (Test-Path $obj -PathType Leaf) {
+            $objInfo = Get-Item $obj
+            $srcInfo = Get-Item $src
+            
+            # Compare timestamps
+            if ($srcInfo.LastWriteTime -le $objInfo.LastWriteTime) {
+                $needsCompile = $false
+                
+                # Check header if it exists
+                if (Test-Path $header -PathType Leaf) {
+                    $headerInfo = Get-Item $header
+                    if ($headerInfo.LastWriteTime -gt $objInfo.LastWriteTime) {
+                        $needsCompile = $true
+                        Write-Host "  Header is newer than object file" -ForegroundColor Yellow
+                    }
                 }
-            } -ArgumentList $src, $obj, $clangFlags
-            $jobs += $job
-        }
-        else {
-            Write-Host "$obj is up to date." -ForegroundColor Green
-        }
-    }
-
-    if ($jobs.Count -gt 0) {
-        Wait-Job -Job $jobs
-        foreach ($job in $jobs) {
-            Receive-Job -Job $job
-            if ($job.State -eq "Failed") {
-                Write-Host "Compilation job failed!" -ForegroundColor Red
-                exit 1
+            }
+            else {
+                Write-Host "  Source is newer than object file" -ForegroundColor Yellow
+            }
+            
+            # Check file size
+            if ($objInfo.Length -eq 0) {
+                $needsCompile = $true
+                Write-Host "  Object file has zero size" -ForegroundColor Red
             }
         }
+        else {
+            Write-Host "  Object file does not exist" -ForegroundColor Yellow
+        }
+        
+        if ($needsCompile) {
+            # Clean up any existing broken object file
+            if (Test-Path $obj) {
+                Remove-Item $obj -Force -ErrorAction SilentlyContinue
+            }
+            
+            Write-Host "  Compiling $(Split-Path $src -Leaf)..." -ForegroundColor Cyan
+            & clang++ -c $src -o $obj @clangFlags
+            
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "  Compilation failed for $(Split-Path $src -Leaf)!" -ForegroundColor Red
+                exit 1
+            }
+            
+            if (-not (Test-Path $obj -PathType Leaf)) {
+                Write-Host "  ERROR: Object file wasn't created after compilation!" -ForegroundColor Red
+                exit 1
+            }
+            
+            $objInfo = Get-Item $obj
+            Write-Host "  Compiled $(Split-Path $src -Leaf) - Size: $($objInfo.Length) bytes" -ForegroundColor Green
+        }
+        else {
+            Write-Host "  Object file is up to date - Size: $($objInfo.Length) bytes" -ForegroundColor Green
+        }
+        
+        $compiledObjects += $obj
     }
-
-    # Link
+    
+    # Calculate compilation time
+    $endTime = Get-Date
+    $duration = $endTime - $startTime
+    Write-Host "Compilation completed in $($duration.TotalSeconds.ToString("0.00")) seconds." -ForegroundColor Green
+    
+    # Verify all object files exist before linking
+    Write-Host "Verifying all object files before linking..." -ForegroundColor Cyan
+    $missingObjects = @()
+    
+    foreach ($obj in $objects) {
+        if (-not (Test-Path $obj -PathType Leaf)) {
+            $missingObjects += $obj
+        }
+    }
+    
+    if ($missingObjects.Count -gt 0) {
+        Write-Host "ERROR: The following object files are missing before linking:" -ForegroundColor Red
+        foreach ($missing in $missingObjects) {
+            Write-Host "  - $missing" -ForegroundColor Red
+        }
+        exit 1
+    }
+    
+    # All objects confirmed to exist
+    Write-Host "All object files verified. Proceeding to link..." -ForegroundColor Green
+    
+    # Link executable
     Write-Host "Linking to v64tng.exe..." -ForegroundColor Cyan
-    $commonLinkerArgs = @(
+    $linkArgs = @(
         "-fuse-ld=lld",
         "-o", "v64tng.exe"
-    ) + $objects + @(
-        "build/resource.res",
+    ) + $objects
+    
+    # Add resource file if it exists
+    if (Test-Path $resourceRes -PathType Leaf) {
+        $linkArgs += $resourceRes
+    }
+    
+    # Add remaining link arguments
+    $linkArgs += @(
         "-L", "C:\lib\zlib-1.3.1\build_release\Release",
         "-L", "C:\lib\lpng1644\build_release\Release",
         "-L", "C:\VulkanSDK\1.3.296.0\Lib",
@@ -164,39 +251,43 @@ try {
     )
 
     if ($buildType -eq "debug") {
-        $linkerFlags = @("-Wl,/DEBUG:FULL", "-Wl,/PDB:v64tng.pdb")
+        $linkArgs += @("-Wl,/DEBUG:FULL", "-Wl,/PDB:v64tng.pdb")
     }
     else {
-        $linkerFlags = @("-Xlinker", "/OPT:REF")
+        $linkArgs += @("-Xlinker", "/OPT:REF")
     }
 
-    $clangLinkArgs = $linkerFlags + $commonLinkerArgs
-    & clang++ @clangLinkArgs
+    & clang++ @linkArgs
 
-    # Post-build steps
+    # Handle post-build
     if ($LASTEXITCODE -eq 0) {
         Write-Host "Build successful! Executable: v64tng.exe" -ForegroundColor Green
-        if ($buildType -eq "debug") {
-            $pdbSource = "v64tng.pdb"
-            $pdbDestination = "C:\T7G\v64tng.pdb"
-            if (Test-Path $pdbSource) {
-                Move-Item -Path $pdbSource -Destination $pdbDestination -Force
-                Write-Host "PDB file moved to $pdbDestination" -ForegroundColor Green
-            }
-            else {
-                Write-Host "PDB file not found!" -ForegroundColor Yellow
-            }
-        }
+        
         $destination = "C:\T7G\v64tng.exe"
         if (Test-Path $destination) {
             Remove-Item $destination -Force
         }
-        Move-Item -Path "v64tng.exe" -Destination $destination
-        Write-Host "Executable moved to $destination" -ForegroundColor Green
+        Move-Item -Path "v64tng.exe" -Destination $destination -Force
+        
+        if ($buildType -eq "debug") {
+            $pdbSource = "v64tng.pdb"
+            $pdbDest = "C:\T7G\v64tng.pdb"
+            if (Test-Path $pdbSource) {
+                Move-Item -Path $pdbSource -Destination $pdbDest -Force
+                Write-Host "PDB file moved to $pdbDest" -ForegroundColor Green
+            }
+        }
     }
     else {
         Write-Host "Build failed!" -ForegroundColor Red
+        exit 1
     }
 }
+catch {
+    Write-Host "Error occurred: $_" -ForegroundColor Red
+    Write-Host "Stack trace: $($_.ScriptStackTrace)" -ForegroundColor Red
+    exit 1
+}
 finally {
+    Write-Host "Build script completed." -ForegroundColor Green
 }

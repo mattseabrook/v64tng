@@ -93,8 +93,7 @@ Parameters:
 std::span<const uint8_t> getCursorBlob(std::span<const uint8_t> robBuffer, size_t blobIndex)
 {
     assert(blobIndex < CursorBlobs.size());
-    const auto &meta = CursorBlobs[blobIndex];
-    return robBuffer.subspan(meta.offset); // No size limit
+    return robBuffer.subspan(CursorBlobs[blobIndex].offset);
 }
 
 /*
@@ -123,7 +122,8 @@ CursorImage unpackCursorBlob(std::span<const uint8_t> blobData, size_t blobIndex
     uint8_t width = decomp[0];
     uint8_t height = decomp[1];
     uint8_t frames = decomp[2];
-    std::cout << "  Header: width=" << static_cast<int>(width)
+    std::cout << "  Header: " << '\n'
+              << "width=" << static_cast<int>(width)
               << ", height=" << static_cast<int>(height)
               << ", frames=" << static_cast<int>(frames) << '\n';
     size_t pixelOffset = 5;

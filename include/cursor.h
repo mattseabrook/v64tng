@@ -28,10 +28,23 @@
 struct CursorBlobInfo
 {
     uint32_t offset;
-    uint32_t size;
     uint8_t paletteIdx;
-    uint8_t frames;
 };
+
+//
+// CursorBlobInfo array
+//
+inline constexpr std::array<CursorBlobInfo, 9> CursorBlobs{{
+    /*0*/ {0x00000, 0}, // Skeleton Hand - Waving No   *default cursor
+    /*1*/ {0x0182F, 2}, // Theatre Mask - Indicates an FMV     *first image used for icon.ico
+    /*2*/ {0x03B6D, 1}, // Brain Puzzle
+    /*3*/ {0x050CC, 0}, // Skeleton Hand - Pointing Forward
+    /*4*/ {0x06E79, 0}, // Skeleton Hand - Turn Right
+    /*5*/ {0x0825D, 0}, // Skeleton Hand - Turn Left
+    /*6*/ {0x096D7, 3}, // Chattering Teeth - Indicates an Easter Egg
+    /*7*/ {0x0A455, 5}, // Pyramid
+    /*8*/ {0x0A776, 4}  // Eyeball - Puzzle Action
+}};
 
 //
 // CursorImage
@@ -43,21 +56,6 @@ struct CursorImage
     uint8_t frames;
     std::vector<uint8_t> pixels;
 };
-
-//
-// CursorBlobInfo array
-//
-inline constexpr std::array<CursorBlobInfo, 9> CursorBlobs{{
-    /*0*/ {0x00000, 0x0182F, 0, 8},  // Skeleton Hand - Waving No   *default cursor
-    /*1*/ {0x0182F, 0x0233E, 2, 8},  // Theatre Mask - Indicates an FMV     *first image used for icon.ico
-    /*2*/ {0x03B6D, 0x0155F, 1, 4},  // Brain Puzzle
-    /*3*/ {0x050CC, 0x01CAD, 0, 4},  // Skeleton Hand - Pointing Forward
-    /*4*/ {0x06E79, 0x013E4, 0, 6},  // Skeleton Hand - Turn Right
-    /*5*/ {0x0825D, 0x0147A, 0, 4},  // Skeleton Hand - Turn Left
-    /*6*/ {0x096D7, 0x00CE0, 3, 4},  // Chattering Teeth - Indicates an Easter Egg
-    /*7*/ {0x0A455, 0x00221, 5, 11}, // Pyramid
-    /*8*/ {0x0A776, 0x00FBE, 4, 12}  // Eyeball - Puzzle Action
-}};
 
 // Metadata for the 7 palettes
 inline constexpr uint32_t CursorPaletteSizeBytes = 0x60;

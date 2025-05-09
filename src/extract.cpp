@@ -303,8 +303,9 @@ void extractCursors(const std::string_view &robFilename, const std::string &form
 		const auto &meta = ::CursorBlobs[i];
 		std::cout << "\n[Processing Cursor " << i
 				  << "] Offset: 0x" << std::hex << meta.offset
-				  << " Size: " << std::dec << meta.size
-				  << " Metadata Frames: " << static_cast<int>(meta.frames) << '\n';
+				  //<< " Size: " << std::dec << meta.size
+				  //<< " Metadata Frames: " << static_cast<int>(meta.frames)
+				  << '\n';
 
 		// Create subdirectory (e.g., 0x00000/PNG)
 		std::ostringstream hexDir;
