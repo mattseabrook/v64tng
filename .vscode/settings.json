@@ -79,6 +79,17 @@
         "xtree": "cpp",
         "condition_variable": "cpp",
         "mutex": "cpp",
-        "*.rh": "cpp"
+        "*.rh": "cpp",
+        "cinttypes": "cpp",
+        "csignal": "cpp",
+        "cstdarg": "cpp",
+        "coroutine": "cpp",
+        "resumable": "cpp",
+        "future": "cpp",
+        "random": "cpp",
+        "regex": "cpp",
+        "set": "cpp",
+        "stack": "cpp",
+        "variant": "cpp"
     }
 }

@@ -304,7 +304,7 @@ void extractCursors(const std::string_view &robFilename, const std::string &form
 		std::cout << "\n[Processing Cursor " << i
 				  << "] Offset: 0x" << std::hex << meta.offset
 				  << " Size: " << std::dec << meta.size
-				  << " Frames: " << static_cast<int>(meta.frames) << '\n';
+				  << " Metadata Frames: " << static_cast<int>(meta.frames) << '\n';
 
 		// Create subdirectory (e.g., 0x00000/PNG)
 		std::ostringstream hexDir;
@@ -316,7 +316,7 @@ void extractCursors(const std::string_view &robFilename, const std::string &form
 		{
 			// Extract and unpack the blob
 			auto blob = getCursorBlob(buffer, i);
-			CursorImage img = unpackCursorBlob(blob, meta.frames);
+			CursorImage img = unpackCursorBlob(blob, i);
 
 			// Validate dimensions
 			if (img.width == 0 || img.height == 0)
@@ -328,15 +328,16 @@ void extractCursors(const std::string_view &robFilename, const std::string &form
 				throw std::runtime_error("Palette offset out of bounds");
 			std::span<const uint8_t> pal(&buffer[palOff], ::CursorPaletteSizeBytes);
 
-			// Generate PNGs for each frame
-			const size_t digits = (meta.frames >= 100) ? 3 : 2;
-			for (size_t f = 0; f < meta.frames; ++f)
+			// Determine digits for filename padding based on frame count
+			const size_t digits = (img.frames >= 100) ? 3 : 2;
+
+			// Write PNGs for each frame using the header's frame count (img.frames)
+			for (size_t f = 0; f < img.frames; ++f)
 			{
 				auto rgba = cursorFrameToRGBA(img, f, pal);
 				std::ostringstream fn;
 				fn << std::setw(digits) << std::setfill('0') << f << ".png";
 				std::filesystem::path outPath = pngDir / fn.str();
-
 				savePNG(outPath.string(), rgba, img.width, img.height, true);
 				std::cout << "  Wrote: " << outPath.filename().string() << '\n';
 			}

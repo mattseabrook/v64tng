@@ -27,32 +27,33 @@ Parameters:
 std::vector<uint8_t> decompressCursorBlob(std::span<const uint8_t> compressed)
 {
     std::vector<uint8_t> output;
-    output.reserve(65536); // Reasonable max size
+    output.reserve(65536); // Big enough for most cursors
 
     size_t inPos = 0;
-    while (inPos < compressed.size())
+    bool finished = false;
+    while (!finished && inPos < compressed.size())
     {
         uint8_t flagByte = compressed[inPos++];
-        for (int i = 0; i < 8; ++i)
+        for (int i = 0; i < 8 && !finished && inPos < compressed.size(); ++i)
         {
-            if (inPos >= compressed.size())
-                break;
-
-            if (flagByte & 1) // Literal byte
+            if (flagByte & 1)
             {
                 output.push_back(compressed[inPos++]);
             }
-            else // Reference
+            else
             {
                 if (inPos + 1 >= compressed.size())
                 {
-                    throw std::runtime_error("Unexpected end of compressed data in reference");
+                    // Ran out of data mid-reference, stop here
+                    finished = true;
+                    break;
                 }
                 uint8_t var_8 = compressed[inPos++];
                 uint8_t offsetLen = compressed[inPos++];
-                if (var_8 == 0 && offsetLen == 0) // Termination marker
+                if (var_8 == 0 && offsetLen == 0)
                 {
-                    return output; // Exit immediately
+                    finished = true; // Termination marker
+                    break;
                 }
                 uint8_t length = (offsetLen & 0x0F) + 3;
                 uint16_t offset = (static_cast<uint16_t>(offsetLen >> 4) << 8) + var_8;
@@ -108,36 +109,22 @@ Parameters:
     - palette: A span of uint8_t representing the color palette.
 ===============================================================================
 */
-CursorImage unpackCursorBlob(std::span<const uint8_t> compressed, uint8_t expectedFrames)
+CursorImage unpackCursorBlob(std::span<const uint8_t> blobData, size_t blobIndex)
 {
-    std::vector<uint8_t> decomp = decompressCursorBlob(compressed);
-
+    auto decomp = decompressCursorBlob(blobData);
     if (decomp.size() < 5)
-    {
         throw std::runtime_error("Decompressed data too small for header");
-    }
 
     uint8_t width = decomp[0];
     uint8_t height = decomp[1];
-    uint8_t frames = decomp[2];
+    uint8_t frames = decomp[2]; // From header, not metadata
     size_t pixelOffset = 5;
     size_t pixelSize = static_cast<size_t>(width) * height * frames;
 
-    if (frames != expectedFrames)
-    {
-        std::cerr << "Warning: Frame count mismatch: expected " << static_cast<int>(expectedFrames)
-                  << ", got " << static_cast<int>(frames) << '\n';
-    }
-
     if (decomp.size() < pixelOffset + pixelSize)
-    {
         throw std::runtime_error("Decompressed data too small for pixels");
-    }
 
-    CursorImage img;
-    img.width = width;
-    img.height = height;
-    img.frames = frames;
+    CursorImage img{width, height, frames};
     img.pixels.assign(decomp.begin() + pixelOffset, decomp.begin() + pixelOffset + pixelSize);
     return img;
 }

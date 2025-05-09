@@ -48,9 +48,9 @@ try {
             "-DUNICODE",
             "-D_UNICODE",
             "-std=c++23",
-            "-O0", # No optimization for debugging
-            "-g", # Debug symbols
-            "-gcodeview", # CodeView for x64dbg
+            "-O0",
+            "-g",
+            "-gcodeview",
             "-mssse3",
             "-m64",
             "-Wall",
@@ -76,10 +76,10 @@ try {
             "-DUNICODE",
             "-D_UNICODE",
             "-std=c++23",
-            "-O3", # Max optimization
-            "-march=native", # CPU-specific tuning
-            "-flto=thin", # Thin LTO
-            "-fno-rtti", # No RTTI
+            "-O3",
+            "-march=native",
+            "-flto=thin",
+            "-fno-rtti",
             "-m64",
             "-Wall",
             "-Wextra",
@@ -99,20 +99,43 @@ try {
         )
     }
 
-    # Compile source files
+    # Compile source files in parallel with specific header dependency checking
+    $jobs = @()
     foreach ($i in 0..($sources.Length - 1)) {
         $src = $sources[$i]
         $obj = $objects[$i]
-        if (-not (Test-Path $obj) -or (Get-Item $src).LastWriteTime -gt (Get-Item $obj).LastWriteTime) {
-            Write-Host "Compiling $src to $obj..." -ForegroundColor Cyan
-            clang++ -c $src -o $obj @clangFlags
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host "Compilation failed for $src!" -ForegroundColor Red
-                exit 1
-            }
+        $baseName = [System.IO.Path]::GetFileNameWithoutExtension($src)
+        $header = "E:\v64tng\include\$baseName.h"
+
+        $objTime = if (Test-Path $obj) { (Get-Item $obj).LastWriteTime } else { [DateTime]::MinValue }
+        $srcTime = (Get-Item $src).LastWriteTime
+        $headerTime = if (Test-Path $header) { (Get-Item $header).LastWriteTime } else { [DateTime]::MinValue }
+
+        if (-not (Test-Path $obj) -or $srcTime -gt $objTime -or $headerTime -gt $objTime) {
+            $job = Start-Job -ScriptBlock {
+                param($src, $obj, $clangFlags)
+                Write-Host "Compiling $src to $obj..." -ForegroundColor Cyan
+                clang++ -c $src -o $obj @clangFlags
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "Compilation failed for $src!" -ForegroundColor Red
+                    exit 1
+                }
+            } -ArgumentList $src, $obj, $clangFlags
+            $jobs += $job
         }
         else {
             Write-Host "$obj is up to date." -ForegroundColor Green
+        }
+    }
+
+    if ($jobs.Count -gt 0) {
+        Wait-Job -Job $jobs
+        foreach ($job in $jobs) {
+            Receive-Job -Job $job
+            if ($job.State -eq "Failed") {
+                Write-Host "Compilation job failed!" -ForegroundColor Red
+                exit 1
+            }
         }
     }
 
@@ -144,7 +167,7 @@ try {
         $linkerFlags = @("-Wl,/DEBUG:FULL", "-Wl,/PDB:v64tng.pdb")
     }
     else {
-        $linkerFlags = @("-Xlinker", "/OPT:REF")    # "-Wl,--gc-sections", 
+        $linkerFlags = @("-Xlinker", "/OPT:REF")
     }
 
     $clangLinkArgs = $linkerFlags + $commonLinkerArgs
