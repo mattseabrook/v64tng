@@ -197,6 +197,9 @@ void loadView()
 //
 void updateAnimation()
 {
+	// Update cursor animation
+	updateCursorAnimation();
+
 	// Handle transient animations first
 	if (state.transient_animation.isPlaying && !state.transient_animation_name.empty())
 	{
@@ -296,6 +299,11 @@ void init()
 
 	loadView();
 
+	if (!initCursors("ROB.GJD"))
+	{
+		std::cerr << "WARNING: Failed to initialize cursors, using system defaults\n";
+	}
+
 	state.previous_room = state.current_room;
 	state.ui.enabled = true;
 
@@ -322,5 +330,6 @@ void init()
 		state.music_thread.join();
 	}
 
+	cleanupCursors();
 	cleanupWindow();
 }

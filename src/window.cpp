@@ -17,13 +17,14 @@
 
 //=============================================================================
 
+inline constexpr UINT CURSOR_TIMER_ID = 0x7C0A;
+inline constexpr UINT CURSOR_TIMER_INTERVAL = static_cast<UINT>(1000.0 / CURSOR_FPS);
+
 // Globals
 HWND g_hwnd = nullptr;
-
-HCURSOR defaultCursor = nullptr;
-HCURSOR handCursor = nullptr;
+bool g_menuActive = false;
+HHOOK g_mouseHook = NULL;
 HCURSOR currentCursor = nullptr;
-
 static RendererType renderer;
 float scaleFactor = 1.0f;
 
@@ -159,6 +160,37 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		}
 		return 0;
 	}
+	case WM_TIMER:
+	{
+		if (wParam == 0x7C0B)
+		{
+			// Reset menu state after a delay
+			KillTimer(hwnd, 0x7C0B);
+			g_menuActive = false;
+			return 0;
+		}
+
+		if (wParam == CURSOR_TIMER_ID && g_cursorsInitialized)
+		{
+			updateCursorAnimation();
+
+			// Only update cursor display if not in a menu
+			if (!g_menuActive)
+			{
+				// Force cursor update if in client area
+				POINT pt;
+				GetCursorPos(&pt);
+				ScreenToClient(hwnd, &pt);
+				RECT rc;
+				GetClientRect(hwnd, &rc);
+				if (PtInRect(&rc, pt))
+				{
+					SetCursor(getCurrentCursor());
+				}
+			}
+		}
+		return 0;
+	}
 	case WM_PAINT:
 	{
 		PAINTSTRUCT ps;
@@ -169,9 +201,22 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	}
 	case WM_SETCURSOR:
 	{
+		// Always use system arrow when any menu is active
+		if (g_menuActive)
+		{
+			SetCursor(LoadCursor(nullptr, IDC_ARROW));
+			return TRUE;
+		}
+
+		// For non-client area, use system cursor
 		if (LOWORD(lParam) != HTCLIENT)
-			return DefWindowProc(hwnd, uMsg, wParam, lParam);
-		SetCursor(currentCursor); // Use the dynamically updated cursor
+		{
+			SetCursor(LoadCursor(nullptr, IDC_ARROW));
+			return TRUE;
+		}
+
+		// For client area, use custom cursor
+		SetCursor(getCurrentCursor());
 		return TRUE;
 	}
 	case WM_NCHITTEST:
@@ -290,11 +335,58 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		}
 		return 0;
 	}
+	case WM_ENTERMENULOOP:
+	{
+		g_menuActive = true;
+		SetCursor(LoadCursor(nullptr, IDC_ARROW));
+		return DefWindowProc(hwnd, uMsg, wParam, lParam); // Call default window proc
+	}
+	case WM_EXITMENULOOP:
+	{
+		SetTimer(hwnd, 0x7C0B, 50, NULL); // One-shot timer
+		return DefWindowProc(hwnd, uMsg, wParam, lParam);
+	}
+	case WM_INITMENU:
+	case WM_INITMENUPOPUP:
+	{
+		g_menuActive = true;
+		SetCursor(LoadCursor(nullptr, IDC_ARROW));
+		return DefWindowProc(hwnd, uMsg, wParam, lParam);
+	}
 	case WM_DESTROY:
+	{
+		if (g_mouseHook)
+		{
+			UnhookWindowsHookEx(g_mouseHook);
+			g_mouseHook = NULL;
+		}
+		KillTimer(g_hwnd, CURSOR_TIMER_ID);
 		::PostQuitMessage(0);
 		return 0;
 	}
+	}
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
+
+//
+// Mouse Hook procedure
+//
+LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+	if (nCode >= 0)
+	{
+		// Check if a menu is active
+		if (g_menuActive)
+		{
+			// For mouse move, force arrow cursor
+			if (wParam == WM_MOUSEMOVE)
+			{
+				SetCursor(LoadCursor(NULL, IDC_ARROW));
+			}
+		}
+	}
+	// Always call next hook
+	return CallNextHookEx(g_mouseHook, nCode, wParam, lParam);
 }
 
 //
@@ -456,16 +548,23 @@ void initWindow()
 	//
 	// Window win32 API
 	//
-	defaultCursor = LoadCursor(NULL, IDC_ARROW);
-	handCursor = LoadCursor(NULL, IDC_HAND);
+	HICON hIcon = static_cast<HICON>(LoadImage(
+		GetModuleHandle(nullptr),
+		MAKEINTRESOURCE(IDI_ICON1),
+		IMAGE_ICON,
+		0, 0, // Use icon's default size
+		LR_DEFAULTCOLOR));
 
-	WNDCLASS wc = {};
+	WNDCLASSEX wc = {};
+	wc.cbSize = sizeof(WNDCLASSEX);
+	wc.hIcon = hIcon;
+	wc.hIconSm = hIcon;
 	wc.lpfnWndProc = WindowProc;
 	wc.hInstance = GetModuleHandle(nullptr);
 	wc.lpszClassName = L"D2DRenderWindowClass";
 	wc.hbrBackground = reinterpret_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
 
-	if (!RegisterClass(&wc))
+	if (!RegisterClassEx(&wc))
 	{
 		throw std::runtime_error("Failed to register window class");
 	}
@@ -488,6 +587,12 @@ void initWindow()
 		throw std::runtime_error("Failed to create window");
 	}
 
+	if (hIcon)
+	{
+		SendMessage(g_hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);	// Taskbar and Alt-Tab
+		SendMessage(g_hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon); // Title bar
+	}
+
 	if (!config["fullscreen"])
 	{
 		initMenu();
@@ -497,6 +602,11 @@ void initWindow()
 	initializeRenderer[renderer]();
 
 	ShowWindow(g_hwnd, SW_SHOW);
+
+	g_mouseHook = SetWindowsHookEx(WH_MOUSE, MouseHookProc,
+								   NULL, GetCurrentThreadId());
+
+	SetTimer(g_hwnd, CURSOR_TIMER_ID, CURSOR_TIMER_INTERVAL, NULL);
 }
 
 //
@@ -536,31 +646,35 @@ void forceUpdateCursor()
 //
 void updateCursorBasedOnPosition(POINT clientPos)
 {
+	// Don't change cursor if menu is active
+	if (g_menuActive)
+	{
+		SetCursor(LoadCursor(nullptr, IDC_ARROW));
+		return;
+	}
+
 	float normalizedX = static_cast<float>(clientPos.x) / state.ui.width * 100.0f;
 	float normalizedY = static_cast<float>(clientPos.y) / state.ui.height * 100.0f;
 
 	int highestZIndex = -1;
-	enum class TargetType
-	{
-		None,
-		Navigation,
-		Hotspot
-	} targetType = TargetType::None;
+	uint8_t newCursorType = CURSOR_DEFAULT;
 
+	// Check navigations
 	for (size_t i = 0; i < state.view.navigations.size(); ++i)
 	{
 		const auto &nav = state.view.navigations[i];
 		if (normalizedX >= nav.hotspot.x && normalizedX <= (nav.hotspot.x + nav.hotspot.width) &&
 			normalizedY >= nav.hotspot.y && normalizedY <= (nav.hotspot.y + nav.hotspot.height))
 		{
-			if (nav.z_index > highestZIndex)
+			if (nav.hotspot.z_index > highestZIndex)
 			{
-				highestZIndex = nav.z_index;
-				targetType = TargetType::Navigation;
+				highestZIndex = nav.hotspot.z_index;
+				newCursorType = nav.cursorType;
 			}
 		}
 	}
 
+	// Check hotspots
 	for (size_t i = 0; i < state.view.hotspots.size(); ++i)
 	{
 		const auto &hotspot = state.view.hotspots[i];
@@ -570,19 +684,15 @@ void updateCursorBasedOnPosition(POINT clientPos)
 			if (hotspot.z_index > highestZIndex)
 			{
 				highestZIndex = hotspot.z_index;
-				targetType = TargetType::Hotspot;
+				newCursorType = hotspot.cursorType;
 			}
 		}
 	}
 
-	if (targetType != TargetType::None)
-	{
-		SetCursor(handCursor);
-	}
-	else
-	{
-		SetCursor(defaultCursor);
-	}
+	// Update active cursor
+	g_activeCursorType = static_cast<CursorType>(newCursorType);
+	currentCursor = getCurrentCursor();
+	SetCursor(currentCursor);
 }
 
 //

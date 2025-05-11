@@ -12,6 +12,7 @@
 
 #include "vdx.h"
 #include "config.h"
+#include "cursor.h"
 #include "window.h"
 
 /*
@@ -33,17 +34,20 @@
 //
 // Animation state structure
 //
-struct AnimationState {
+struct AnimationState
+{
 	bool isPlaying = false;
 	std::chrono::steady_clock::time_point lastFrameTime;
 	size_t totalFrames = 0;
 
-	void reset() {
+	void reset()
+	{
 		isPlaying = false;
 		totalFrames = 0;
 	}
 
-	std::chrono::microseconds getFrameDuration(double currentFPS) const {
+	std::chrono::microseconds getFrameDuration(double currentFPS) const
+	{
 		return std::chrono::microseconds(static_cast<long long>(1000000.0 / currentFPS));
 	}
 };
@@ -51,28 +55,33 @@ struct AnimationState {
 //
 // Hotspot structure defining clickable areas
 //
-struct Hotspot {
+struct Hotspot
+{
 	float x;
 	float y;
 	float width;
 	float height;
 	std::function<void()> action;
+	uint8_t cursorType = CURSOR_FORWARD;
 	int z_index = 0;
 };
 
 //
 // Navigation points for moving between views
 //
-struct Navigation {
+struct Navigation
+{
 	std::string next_view;
 	Hotspot hotspot;
+	uint8_t cursorType = CURSOR_FORWARD;
 	int z_index = 0;
 };
 
 //
 // View structure for each camera/viewpoint
 //
-struct View {
+struct View
+{
 	std::vector<Hotspot> hotspots;
 	std::vector<Navigation> navigations;
 };
@@ -80,11 +89,13 @@ struct View {
 ///////////////////////////////////////////////////////////////////////////////
 //		Struct for managing game state
 ///////////////////////////////////////////////////////////////////////////////
-struct GameState {
+struct GameState
+{
 	//
 	// UI
 	//
-	struct {
+	struct
+	{
 		bool enabled = false;
 		int width = 0;
 		int height = 0;
@@ -96,40 +107,40 @@ struct GameState {
 	//
 	// Assets
 	//
-	std::string current_room = "FH";		        // Default room (corresponds to RL/GJD file set)
-	std::string previous_room;	                    // Avoid re-rendering
-	std::string current_view = "f_1bc;static";	    // Default view (corresponds to VDXFile .filename struct member)
-	std::string previous_view = "f_1bc;static";	    // Avoid re-rendering
+	std::string current_room = "FH";			// Default room (corresponds to RL/GJD file set)
+	std::string previous_room;					// Avoid re-rendering
+	std::string current_view = "f_1bc;static";	// Default view (corresponds to VDXFile .filename struct member)
+	std::string previous_view = "f_1bc;static"; // Avoid re-rendering
 
 	//
 	// Graphics
 	//
-	double currentFPS = 24.0;						// Current target FPS, adjustable during gameplay
-	std::vector<VDXFile> VDXFiles;				    // Vector of VDXFile objects
-	size_t currentFrameIndex = 30;				    // Normally 0 - hard-coded to 30 for testing
-	VDXFile* currentVDX = nullptr;				    // Reference to current VDXFile object
-	AnimationState animation;						// Animation state management
-	std::string transient_animation_name;           // e.g., "dr_r"
-	AnimationState transient_animation;             // Playback state for transient
-	size_t transient_frame_index = 0;               // Current frame of transient
+	double currentFPS = 24.0;			  // Current target FPS, adjustable during gameplay
+	std::vector<VDXFile> VDXFiles;		  // Vector of VDXFile objects
+	size_t currentFrameIndex = 30;		  // Normally 0 - hard-coded to 30 for testing
+	VDXFile *currentVDX = nullptr;		  // Reference to current VDXFile object
+	AnimationState animation;			  // Animation state management
+	std::string transient_animation_name; // e.g., "dr_r"
+	AnimationState transient_animation;	  // Playback state for transient
+	size_t transient_frame_index = 0;	  // Current frame of transient
 
-	std::vector<std::string> animation_sequence;    // Stores the sequence of animations
-	size_t animation_queue_index = 0;               // Current position in the animation sequence
+	std::vector<std::string> animation_sequence; // Stores the sequence of animations
+	size_t animation_queue_index = 0;			 // Current position in the animation sequence
 
-	View view;										// Current view object
+	View view; // Current view object
 
 	//
 	// Music
 	//
-	std::string current_song;                       // Name of the currently playing song (e.g., "gu39")
-	std::string transient_song;						// Transient song (if any)
-	double main_song_position = 0.0;				// Position to resume from
-	std::string music_mode;						    // Playback mode: "opl2", "dual_opl2", "opl3"
-	std::thread music_thread;                       // Thread for non-blocking music playback
-	bool music_playing = false;                     // Flag to indicate if music is playing
-	bool hasPlayedFirstSong = false;				// Tracks if any song has played yet
-	bool is_transient_playing = false;				// Flag to check if transient is active
-	float music_volume = 1.0f;                      // Volume (0.0 to 1.0)
+	std::string current_song;		   // Name of the currently playing song (e.g., "gu39")
+	std::string transient_song;		   // Transient song (if any)
+	double main_song_position = 0.0;   // Position to resume from
+	std::string music_mode;			   // Playback mode: "opl2", "dual_opl2", "opl3"
+	std::thread music_thread;		   // Thread for non-blocking music playback
+	bool music_playing = false;		   // Flag to indicate if music is playing
+	bool hasPlayedFirstSong = false;   // Tracks if any song has played yet
+	bool is_transient_playing = false; // Flag to check if transient is active
+	float music_volume = 1.0f;		   // Volume (0.0 to 1.0)
 };
 
 //=============================================================================
@@ -139,10 +150,10 @@ extern GameState state;
 //=============================================================================
 
 // Function prototypes
-const View* getView(const std::string& current_view);
+const View *getView(const std::string &current_view);
 void loadView();
 void updateAnimation();
-void playTransientAnimation(const std::string& animation_name);
+void playTransientAnimation(const std::string &animation_name);
 void init();
 
 #endif // GAME_H

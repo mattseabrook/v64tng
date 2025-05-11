@@ -11,6 +11,16 @@
 
 #include "cursor.h"
 
+//=============================================================================
+
+// Cursor system globals
+std::array<LoadedCursor, 9> g_cursors;
+CursorType g_activeCursorType = CURSOR_DEFAULT;
+uint64_t g_cursorLastFrameTime = 0;
+bool g_cursorsInitialized = false;
+
+//=============================================================================
+
 /*
 ===============================================================================
 Function Name: decompressCursorBlob
@@ -180,4 +190,252 @@ std::vector<uint8_t> cursorFrameToRGBA(const CursorImage &img, size_t frameIdx, 
         rgba.push_back(idx == 0 ? 0x00 : 0xFF);
     }
     return rgba;
+}
+
+//
+// Create a Windows cursor from RGBA data
+//
+HCURSOR createWindowsCursor(const std::vector<uint8_t> &rgbaData, int width, int height)
+{
+    // Better hotspot positioning
+    const int HOTSPOT_X = width / 2;
+    const int HOTSPOT_Y = height / 2;
+
+    // Create icon/cursor compatible bitmap structures
+    BITMAPV5HEADER bi = {0};
+    bi.bV5Size = sizeof(BITMAPV5HEADER);
+    bi.bV5Width = width;
+    bi.bV5Height = -height; // Negative height for top-down DIB
+    bi.bV5Planes = 1;
+    bi.bV5BitCount = 32;
+    bi.bV5Compression = BI_BITFIELDS;
+    bi.bV5RedMask = 0x00FF0000;
+    bi.bV5GreenMask = 0x0000FF00;
+    bi.bV5BlueMask = 0x000000FF;
+    bi.bV5AlphaMask = 0xFF000000;
+
+    // Create DIB with device context
+    HDC hdc = GetDC(NULL);
+    void *bits = nullptr;
+    HBITMAP color = CreateDIBSection(hdc, (BITMAPINFO *)&bi, DIB_RGB_COLORS, &bits, NULL, 0);
+
+    if (!color || !bits)
+    {
+        ReleaseDC(NULL, hdc);
+        return NULL; // Failed to create bitmap
+    }
+
+    // Copy RGBA data into DIB section, converting from RGBA to BGRA
+    BYTE *dst = (BYTE *)bits;
+    for (int y = 0; y < height; y++)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            int srcIdx = (y * width + x) * 4;
+            int destIdx = (y * width + x) * 4;
+
+            // RGBA to BGRA conversion
+            dst[destIdx + 0] = rgbaData[srcIdx + 2]; // B from R
+            dst[destIdx + 1] = rgbaData[srcIdx + 1]; // G from G
+            dst[destIdx + 2] = rgbaData[srcIdx + 0]; // R from B
+            dst[destIdx + 3] = rgbaData[srcIdx + 3]; // A from A
+        }
+    }
+
+    // Create monochrome mask bitmap (required for cursors)
+    HBITMAP mask = CreateBitmap(width, height, 1, 1, NULL);
+
+    // Fill mask bitmap based on alpha values
+    HDC hdcMask = CreateCompatibleDC(hdc);
+    HDC hdcColor = CreateCompatibleDC(hdc);
+    HBITMAP oldMask = (HBITMAP)SelectObject(hdcMask, mask);
+    HBITMAP oldColor = (HBITMAP)SelectObject(hdcColor, color);
+
+    // Set mask based on alpha channel (transparent where alpha > 0)
+    for (int y = 0; y < height; y++)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            int idx = (y * width + x) * 4;
+            BYTE alpha = rgbaData[idx + 3];
+
+            if (alpha < 128)
+            {
+                // Transparent pixel
+                SetPixel(hdcMask, x, y, RGB(255, 255, 255));
+            }
+            else
+            {
+                // Opaque pixel
+                SetPixel(hdcMask, x, y, RGB(0, 0, 0));
+            }
+        }
+    }
+
+    // Create the icon info
+    ICONINFO ii = {0};
+    ii.fIcon = FALSE; // This is a cursor
+    ii.xHotspot = HOTSPOT_X;
+    ii.yHotspot = HOTSPOT_Y;
+    ii.hbmMask = mask;
+    ii.hbmColor = color;
+
+    // Create the cursor
+    HCURSOR hCursor = CreateIconIndirect(&ii);
+
+    // Clean up
+    SelectObject(hdcMask, oldMask);
+    SelectObject(hdcColor, oldColor);
+    DeleteDC(hdcMask);
+    DeleteDC(hdcColor);
+    DeleteObject(mask);
+    DeleteObject(color);
+    ReleaseDC(NULL, hdc);
+
+    return hCursor;
+}
+
+//
+// Initialize cursors from ROB.GJD file
+//
+bool initCursors(const std::string_view &robPath)
+{
+    if (g_cursorsInitialized)
+        return true;
+
+    // Load ROB.GJD
+    std::ifstream file(robPath.data(), std::ios::binary | std::ios::ate);
+    if (!file)
+    {
+        std::cerr << "Failed to open " << robPath << '\n';
+        return false;
+    }
+
+    // Read entire file
+    size_t fileSize = file.tellg();
+    file.seekg(0);
+    std::vector<uint8_t> robData(fileSize);
+    file.read(reinterpret_cast<char *>(robData.data()), fileSize);
+
+    // Palette block starts at end of file
+    const size_t paletteBlockOffset = fileSize - (CursorPaletteSizeBytes * NumCursorPalettes);
+
+    // Process each cursor
+    for (size_t i = 0; i < CursorBlobs.size(); i++)
+    {
+        try
+        {
+            // Get cursor blob data
+            auto blob = getCursorBlob(robData, i);
+
+            // Unpack the cursor image
+            CursorImage img = unpackCursorBlob(blob, i);
+
+            // Find the palette
+            const auto &meta = CursorBlobs[i];
+            const size_t palOff = paletteBlockOffset + meta.paletteIdx * CursorPaletteSizeBytes;
+            std::span<const uint8_t> pal(&robData[palOff], CursorPaletteSizeBytes);
+
+            // Store image data
+            g_cursors[i].image = img;
+            g_cursors[i].currentFrame = 0;
+
+            // Pre-generate all RGBA frames and cursor handles
+            g_cursors[i].rgbaFrames.resize(img.frames);
+            g_cursors[i].winHandles.resize(img.frames);
+
+            for (size_t f = 0; f < img.frames; f++)
+            {
+                // Convert frame to RGBA
+                g_cursors[i].rgbaFrames[f] = cursorFrameToRGBA(img, f, pal);
+
+                // Create Windows cursor
+                g_cursors[i].winHandles[f] = createWindowsCursor(
+                    g_cursors[i].rgbaFrames[f],
+                    img.width,
+                    img.height);
+
+                if (!g_cursors[i].winHandles[f])
+                {
+                    throw std::runtime_error("Failed to create Windows cursor");
+                }
+            }
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "Error loading cursor " << i << ": " << e.what() << "\n";
+            cleanupCursors(); // Clean up already loaded cursors
+            return false;
+        }
+    }
+
+    g_cursorLastFrameTime = GetTickCount64();
+    g_cursorsInitialized = true;
+    return true;
+}
+
+//
+// Update the current cursor animation frame based on elapsed time
+//
+void updateCursorAnimation()
+{
+    if (!g_cursorsInitialized)
+        return;
+
+    uint64_t currentTime = GetTickCount64();
+    uint64_t frameTime = static_cast<uint64_t>(1000.0 / CURSOR_FPS);
+
+    if ((currentTime - g_cursorLastFrameTime) >= frameTime)
+    {
+        // Get current cursor
+        LoadedCursor &cursor = g_cursors[g_activeCursorType];
+
+        // Only animate if more than one frame
+        if (cursor.image.frames > 1)
+        {
+            cursor.currentFrame = (cursor.currentFrame + 1) % cursor.image.frames;
+            // IMPORTANT: Don't call SetCursor() here - let the WM_TIMER handler do it
+        }
+
+        g_cursorLastFrameTime = currentTime;
+    }
+}
+
+//
+// Get the current cursor handle
+//
+HCURSOR getCurrentCursor()
+{
+    if (!g_cursorsInitialized)
+    {
+        return LoadCursor(NULL, IDC_ARROW);
+    }
+
+    const LoadedCursor &cursor = g_cursors[g_activeCursorType];
+    if (cursor.winHandles.empty() || cursor.currentFrame >= cursor.winHandles.size())
+    {
+        return LoadCursor(NULL, IDC_ARROW);
+    }
+
+    return cursor.winHandles[cursor.currentFrame];
+}
+
+//
+// Clean up all loaded cursors
+//
+void cleanupCursors()
+{
+    for (auto &cursor : g_cursors)
+    {
+        for (HCURSOR handle : cursor.winHandles)
+        {
+            if (handle)
+            {
+                DestroyCursor(handle);
+            }
+        }
+        cursor.winHandles.clear();
+        cursor.rgbaFrames.clear();
+    }
+    g_cursorsInitialized = false;
 }

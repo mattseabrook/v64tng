@@ -9,6 +9,7 @@
 #include <string_view>
 #include <span>
 #include <stdexcept>
+#include <Windows.h>
 
 /*
 ===============================================================================
@@ -47,6 +48,22 @@ inline constexpr std::array<CursorBlobInfo, 9> CursorBlobs{{
 }};
 
 //
+// Cursor Type Enum
+//
+enum CursorType
+{
+    CURSOR_DEFAULT = 0,
+    CURSOR_FMV = 1,
+    CURSOR_PUZZLE = 2,
+    CURSOR_FORWARD = 3,
+    CURSOR_RIGHT = 4,
+    CURSOR_LEFT = 5,
+    CURSOR_EASTER_EGG = 6,
+    CURSOR_PYRAMID = 7,
+    CURSOR_ACTION = 8
+};
+
+//
 // CursorImage
 //
 struct CursorImage
@@ -57,9 +74,27 @@ struct CursorImage
     std::vector<uint8_t> pixels;
 };
 
+//
+// LoadedCursor structure
+//
+struct LoadedCursor
+{
+    CursorImage image;
+    std::vector<HCURSOR> winHandles;
+    std::vector<std::vector<uint8_t>> rgbaFrames;
+    uint8_t currentFrame = 0;
+};
+
 // Metadata for the 7 palettes
 inline constexpr uint32_t CursorPaletteSizeBytes = 0x60;
 inline constexpr uint8_t NumCursorPalettes = 7;
+
+// Cursor system globals
+extern std::array<LoadedCursor, 9> g_cursors;
+extern CursorType g_activeCursorType;
+extern uint64_t g_cursorLastFrameTime;
+extern bool g_cursorsInitialized;
+inline constexpr double CURSOR_FPS = 24.0;
 
 //=============================================================================
 
@@ -68,5 +103,10 @@ std::vector<uint8_t> decompressCursorBlob(std::span<const uint8_t> compressed);
 std::span<const uint8_t> getCursorBlob(std::span<const uint8_t> robBuffer, size_t blobIndex);
 CursorImage unpackCursorBlob(std::span<const uint8_t> blobData, size_t blobIndex);
 std::vector<uint8_t> cursorFrameToRGBA(const CursorImage &img, size_t frameIdx, std::span<const uint8_t> palette);
+bool initCursors(const std::string_view &robPath);
+void updateCursorAnimation();
+HCURSOR getCurrentCursor();
+HCURSOR createWindowsCursor(const std::vector<uint8_t> &rgbaData, int width, int height);
+void cleanupCursors();
 
 #endif // CURSOR_H
