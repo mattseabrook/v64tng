@@ -213,13 +213,24 @@ Parameters:
 */
 LRESULT HandleSetCursor(LPARAM lParam)
 {
-	if (g_menuActive || LOWORD(lParam) != HTCLIENT)
+	WORD hitTest = LOWORD(lParam);
+
+	// If menu active, always use default arrow
+	if (g_menuActive)
 	{
 		SetCursor(LoadCursor(nullptr, IDC_ARROW));
 		return TRUE;
 	}
-	SetCursor(getCurrentCursor());
-	return TRUE;
+
+	// For client area, use our custom cursor
+	if (hitTest == HTCLIENT)
+	{
+		SetCursor(getCurrentCursor());
+		return TRUE;
+	}
+
+	// For non-client areas (resize handles, etc.), let Windows handle it
+	return DefWindowProc(g_hwnd, WM_SETCURSOR, (WPARAM)g_hwnd, lParam);
 }
 
 /*
