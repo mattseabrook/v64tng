@@ -325,11 +325,12 @@ LRESULT HandleLButtonDown(LPARAM lParam)
 	for (size_t i = 0; i < state.view.navigations.size(); ++i)
 	{
 		const auto &nav = state.view.navigations[i];
-		if (normalizedX >= nav.hotspot.x && normalizedX <= (nav.hotspot.x + nav.hotspot.width) &&
-			normalizedY >= nav.hotspot.y && normalizedY <= (nav.hotspot.y + nav.hotspot.height) &&
-			nav.z_index > highestZIndex)
+		const auto &area = nav.area;
+		if (normalizedX >= area.x && normalizedX <= (area.x + area.width) &&
+			normalizedY >= area.y && normalizedY <= (area.y + area.height) &&
+			area.z_index > highestZIndex)
 		{
-			highestZIndex = nav.z_index;
+			highestZIndex = area.z_index;
 			targetIndex = i;
 			targetType = TargetType::Navigation;
 		}
@@ -337,11 +338,12 @@ LRESULT HandleLButtonDown(LPARAM lParam)
 	for (size_t i = 0; i < state.view.hotspots.size(); ++i)
 	{
 		const auto &hotspot = state.view.hotspots[i];
-		if (normalizedX >= hotspot.x && normalizedX <= (hotspot.x + hotspot.width) &&
-			normalizedY >= hotspot.y && normalizedY <= (hotspot.y + hotspot.height) &&
-			hotspot.z_index > highestZIndex)
+		const auto &area = hotspot.area;
+		if (normalizedX >= area.x && normalizedX <= (area.x + area.width) &&
+			normalizedY >= area.y && normalizedY <= (area.y + area.height) &&
+			area.z_index > highestZIndex)
 		{
-			highestZIndex = hotspot.z_index;
+			highestZIndex = area.z_index;
 			targetIndex = i;
 			targetType = TargetType::Hotspot;
 		}
@@ -663,21 +665,27 @@ void updateCursorBasedOnPosition(POINT clientPos)
 	int highestZIndex = -1;
 	uint8_t newCursorType = CURSOR_DEFAULT;
 	for (const auto &nav : state.view.navigations)
-		if (normalizedX >= nav.hotspot.x && normalizedX <= (nav.hotspot.x + nav.hotspot.width) &&
-			normalizedY >= nav.hotspot.y && normalizedY <= (nav.hotspot.y + nav.hotspot.height) &&
-			nav.hotspot.z_index > highestZIndex)
+	{
+		const auto &area = nav.area;
+		if (normalizedX >= area.x && normalizedX <= (area.x + area.width) &&
+			normalizedY >= area.y && normalizedY <= (area.y + area.height) &&
+			area.z_index > highestZIndex)
 		{
-			highestZIndex = nav.hotspot.z_index;
-			newCursorType = nav.cursorType;
+			highestZIndex = area.z_index;
+			newCursorType = area.cursorType;
 		}
+	}
 	for (const auto &hotspot : state.view.hotspots)
-		if (normalizedX >= hotspot.x && normalizedX <= (hotspot.x + hotspot.width) &&
-			normalizedY >= hotspot.y && normalizedY <= (hotspot.y + hotspot.height) &&
-			hotspot.z_index > highestZIndex)
+	{
+		const auto &area = hotspot.area;
+		if (normalizedX >= area.x && normalizedX <= (area.x + area.width) &&
+			normalizedY >= area.y && normalizedY <= (area.y + area.height) &&
+			area.z_index > highestZIndex)
 		{
-			highestZIndex = hotspot.z_index;
-			newCursorType = hotspot.cursorType;
+			highestZIndex = area.z_index;
+			newCursorType = area.cursorType;
 		}
+	}
 	g_activeCursorType = static_cast<CursorType>(newCursorType);
 	currentCursor = getCurrentCursor();
 	SetCursor(currentCursor);

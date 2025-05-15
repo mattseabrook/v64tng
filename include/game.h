@@ -53,17 +53,25 @@ struct AnimationState
 };
 
 //
-// Hotspot structure defining clickable areas
+// Structure that defines clickable areas
 //
-struct Hotspot
+struct ClickArea
 {
 	float x;
 	float y;
 	float width;
 	float height;
-	std::function<void()> action;
 	uint8_t cursorType = CURSOR_FORWARD;
 	int z_index = 0;
+};
+
+//
+// Hotspot structure defining clickable areas
+//
+struct Hotspot
+{
+	ClickArea area;
+	std::function<void()> action;
 };
 
 //
@@ -71,10 +79,8 @@ struct Hotspot
 //
 struct Navigation
 {
+	ClickArea area;
 	std::string next_view;
-	Hotspot hotspot;
-	uint8_t cursorType = CURSOR_FORWARD;
-	int z_index = 0;
 };
 
 //

@@ -144,113 +144,75 @@ const std::unordered_map<std::string, View> diningRoom = {
 	//
 	{
 		"dr_mi",
-		{
-			{	// Hotspots
-				{15.0f, 65.0f, 80.0f, 15.0f, []() {							// Cutlery Animation
-					playTransientAnimation("dr_r");
-					xmiPlay("gu5", true);
-				}
-				},
-
-			},
-			{	// Navigation
-				{"dr_mtf,dr_mo", {90.0f, 0.0f, 10.0f, 100.0f}}				// Right
-			}
-		}
-	},
+		{// Hotspots
+		 {
+			 {{15.0f, 65.0f, 80.0f, 15.0f, CURSOR_EASTER_EGG, 0}, []() { // Cutlery Animation
+				  playTransientAnimation("dr_r");
+				  xmiPlay("gu5", true);
+			  }}},
+		 // Navigation
+		 {{{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "dr_mtf,dr_mo"}}}}, // Right
 	//
 	// Moving towards the door
 	//
-	{
-		"dr_mo",
-		{
-			{},
-			{	// Navigation
-				{"dr_tbc", {0.0f, 0.0f, 10.0f, 100.0f}},					// Left
-				{"dr_d,FH:f_2bd;static", {25.0f, 0.0f, 50.0f, 100.0f}},		// Forward
-				{"dr_tfa", {90.0f, 0.0f, 10.0f, 100.0f}}					// Right
-			}
-		}
-	},
+	{"dr_mo",
+	 {// Hotspots
+	  {},
+	  // Navigation
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "dr_tbc"},					  // Left
+	   {{25.0f, 0.0f, 50.0f, 100.0f, CURSOR_FORWARD, 0}, "dr_d,FH:f_2bd;static"}, // Forward
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "dr_tfa"}}}},			  // Right
 	//
 	// Table, turning right
 	//
-	{
-		"dr_mtf",
-		{
-			{},
-			{}
-		}
-	},
+	{"dr_mtf", {{}, {}}},
 	//
 	// Turning left back towards the door
 	//
-	{
-		"dr_tba",
-		{
-			{},
-			{	// Navigation
-				{"dr_tbc", {0.0f, 0.0f, 10.0f, 100.0f}},					// Left
-				{"dr_d,FH:f_2bd;static", {25.0f, 0.0f, 50.0f, 100.0f}},		// Forward
-				{"dr_tfa", {90.0f, 0.0f, 10.0f, 100.0f}}					// Right
-			}
-		}
-	},
+	{"dr_tba",
+	 {// Hotspots
+	  {},
+	  // Navigation
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "dr_tbc"},					  // Left
+	   {{25.0f, 0.0f, 50.0f, 100.0f, CURSOR_FORWARD, 0}, "dr_d,FH:f_2bd;static"}, // Forward
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "dr_tfa"}}}},			  // Right
 	//
 	// Door, turning left
 	//
-	{
-		"dr_tbc",
-		{
-			{},
-			{	// Navigation
-				{"dr_tba", {0.0f, 0.0f, 10.0f, 100.0f}},					// Left
-				{"dr_mi", {33.0f, 0.0f, 33.0f, 100.0f}},					// Forward
-				{"dr_tfc", {90.0f, 0.0f, 10.0f, 100.0f}}					// Right
-			}
-		}
-	},
+	{"dr_tbc",
+	 {// Hotspots
+	  {},
+	  // Navigation
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "dr_tba"},		 // Left
+	   {{33.0f, 0.0f, 33.0f, 100.0f, CURSOR_FORWARD, 0}, "dr_mi"},	 // Forward
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "dr_tfc"}}}}, // Right
 	//
 	// Door, turning right
 	//
-	{
-		"dr_tfa",
-		{
-			{},
-			{	// Navigation
-				{"dr_tbc", {0.0f, 0.0f, 10.0f, 100.0f}},					// Left
-				{"dr_mi", {25.0f, 0.0f, 50.0f, 100.0f}},					// Forward
-				{"dr_tfc", {90.0f, 0.0f, 10.0f, 100.0f}}					// Right
-			}
-		}
-	},
+	{"dr_tfa",
+	 {// Hotspots
+	  {},
+	  // Navigation
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "dr_tbc"},		 // Left
+	   {{25.0f, 0.0f, 50.0f, 100.0f, CURSOR_FORWARD, 0}, "dr_mi"},	 // Forward
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "dr_tfc"}}}}, // Right
 	//
 	// Turning right back towards the door
 	//
-	{
-		"dr_tfc",
-		{
-			{},
-			{	// Navigation
-				{"dr_tbc", {0.0f, 0.0f, 10.0f, 100.0f}},					// Left
-				{"dr_d,FH:f_2bd;static", {25.0f, 0.0f, 50.0f, 100.0f}},		// Forward
-				{"dr_tfa", {90.0f, 0.0f, 10.0f, 100.0f}}					// Right
-			}
-		}
-	},
+	{"dr_tfc",
+	 {// Hotspots
+	  {},
+	  // Navigation
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "dr_tbc"},					  // Left
+	   {{25.0f, 0.0f, 50.0f, 100.0f, CURSOR_FORWARD, 0}, "dr_d,FH:f_2bd;static"}, // Forward
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "dr_tfa"}}}},			  // Right
 
 	////////////////////////////////////////////////////////////////////////
 
 	//
 	// Dining Room  -> Foyer (F2)
 	//
-	{
-		"dr_d",
-		{
-			{},
-			{}
-		}
-	},
+	{"dr_d", {{}, {}}},
 };
 
 #pragma clang diagnostic pop
