@@ -24,6 +24,7 @@ HWND g_hwnd = nullptr;
 bool g_menuActive = false;
 HHOOK g_mouseHook = NULL;
 HCURSOR currentCursor = nullptr;
+bool g_userIsResizing = false;
 static RendererType renderer;
 float scaleFactor = 1.0f;
 
@@ -130,6 +131,11 @@ LRESULT HandleSize(HWND hwnd, WPARAM wParam)
 	int newWidth = clientRect.right - clientRect.left;
 	int newHeight = clientRect.bottom - clientRect.top;
 	scaleFactor = static_cast<float>(newWidth) / MIN_CLIENT_WIDTH;
+	if (!g_userIsResizing)
+	{
+		auto activeCursors = getActiveCursorsForView(state.view);
+		recreateScaledCursors(scaleFactor, activeCursors);
+	}
 	if (renderTarget)
 		renderTarget->Resize(D2D1::SizeU(newWidth, newHeight));
 	if (state.ui.width != newWidth || state.ui.height != newHeight)
@@ -443,6 +449,19 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return HandleMouseMove(lParam);
 	case WM_LBUTTONDOWN:
 		return HandleLButtonDown(lParam);
+	case WM_ENTERSIZEMOVE:
+		g_userIsResizing = true;
+		break;
+	case WM_EXITSIZEMOVE:
+		g_userIsResizing = false;
+		{
+			RECT clientRect;
+			GetClientRect(hwnd, &clientRect);
+			float scale = static_cast<float>(clientRect.right - clientRect.left) / MIN_CLIENT_WIDTH;
+			auto activeCursors = getActiveCursorsForView(state.view);
+			recreateScaledCursors(scale, activeCursors);
+		}
+		break;
 	case WM_ENTERMENULOOP:
 	case WM_INITMENU:
 	case WM_INITMENUPOPUP:

@@ -8,8 +8,10 @@
 #include <vector>
 #include <cstdint>
 #include <span>
+#include <unordered_set>
 
 #include "cursor.h"
+#include "game.h"
 
 //=============================================================================
 
@@ -18,6 +20,7 @@ std::array<LoadedCursor, 9> g_cursors;
 CursorType g_activeCursorType = CURSOR_DEFAULT;
 uint64_t g_cursorLastFrameTime = 0;
 bool g_cursorsInitialized = false;
+HCURSOR g_transparentCursor = nullptr;
 
 //=============================================================================
 
@@ -295,6 +298,48 @@ HCURSOR createWindowsCursor(const std::vector<uint8_t> &rgbaData, int width, int
     return hCursor;
 }
 
+/*
+===============================================================================
+Function Name: getTransparentCursor
+
+Description:
+    - Returns a singleton transparent 1x1 cursor used for hiding the cursor
+      during animations. Created only once.
+===============================================================================
+*/
+HCURSOR getTransparentCursor()
+{
+    if (g_transparentCursor)
+        return g_transparentCursor;
+    // RGBA for transparent 1x1 pixel
+    std::vector<uint8_t> transparent = {0, 0, 0, 0};
+    g_transparentCursor = createWindowsCursor(transparent, 1, 1);
+    return g_transparentCursor;
+}
+
+//
+// Scale RGBA data to a new size
+//
+std::vector<uint8_t> scaleRGBA(const std::vector<uint8_t> &src, int srcW, int srcH, int dstW, int dstH)
+{
+    std::vector<uint8_t> dst(dstW * dstH * 4);
+    for (int y = 0; y < dstH; ++y)
+    {
+        int srcY = y * srcH / dstH;
+        for (int x = 0; x < dstW; ++x)
+        {
+            int srcX = x * srcW / dstW;
+            int srcIdx = (srcY * srcW + srcX) * 4;
+            int dstIdx = (y * dstW + x) * 4;
+            dst[dstIdx + 0] = src[srcIdx + 0];
+            dst[dstIdx + 1] = src[srcIdx + 1];
+            dst[dstIdx + 2] = src[srcIdx + 2];
+            dst[dstIdx + 3] = src[srcIdx + 3];
+        }
+    }
+    return dst;
+}
+
 //
 // Initialize cursors from ROB.GJD file
 //
@@ -375,6 +420,34 @@ bool initCursors(const std::string_view &robPath)
 }
 
 //
+// Recreate scaled cursors
+//
+void recreateScaledCursors(float scale, const std::unordered_set<CursorType> &which)
+{
+    for (auto cursorType : which)
+    {
+        auto &cursor = g_cursors[cursorType];
+        for (HCURSOR handle : cursor.winHandles)
+            if (handle)
+                DestroyCursor(handle);
+        cursor.winHandles.clear();
+        int origW = cursor.image.width, origH = cursor.image.height;
+        int scaledW = origW * scale > 1 ? static_cast<int>(origW * scale) : 1;
+        int scaledH = origH * scale > 1 ? static_cast<int>(origH * scale) : 1;
+        cursor.winHandles.resize(cursor.rgbaFrames.size());
+        for (size_t f = 0; f < cursor.rgbaFrames.size(); ++f)
+        {
+            std::vector<uint8_t> scaled;
+            if (scale == 1.0f)
+                scaled = cursor.rgbaFrames[f];
+            else
+                scaled = scaleRGBA(cursor.rgbaFrames[f], origW, origH, scaledW, scaledH);
+            cursor.winHandles[f] = createWindowsCursor(scaled, scaledW, scaledH);
+        }
+    }
+}
+
+//
 // Update the current cursor animation frame based on elapsed time
 //
 void updateCursorAnimation()
@@ -409,6 +482,11 @@ HCURSOR getCurrentCursor()
     if (!g_cursorsInitialized)
     {
         return LoadCursor(NULL, IDC_ARROW);
+    }
+
+    if (state.animation.isPlaying)
+    {
+        return getTransparentCursor();
     }
 
     const LoadedCursor &cursor = g_cursors[g_activeCursorType];

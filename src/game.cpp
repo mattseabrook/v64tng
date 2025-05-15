@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 #include <string_view>
 #include <ranges>
@@ -14,6 +15,7 @@
 #include "gjd.h"
 #include "music.h"
 #include "config.h"
+#include "cursor.h"
 
 #include "fh.h"
 #include "dr.h"
@@ -193,6 +195,21 @@ void loadView()
 }
 
 //
+// Get the active cursor types for the current View
+//
+std::unordered_set<CursorType> getActiveCursorsForView(const View &view)
+{
+	std::unordered_set<CursorType> active;
+	// Navigations
+	for (const auto &nav : view.navigations)
+		active.insert(static_cast<CursorType>(nav.area.cursorType));
+	// Hotspots
+	for (const auto &hs : view.hotspots)
+		active.insert(static_cast<CursorType>(hs.area.cursorType));
+	return active;
+}
+
+//
 // Animate the VDX sequence
 //
 void updateAnimation()
@@ -303,6 +320,9 @@ void init()
 	{
 		std::cerr << "WARNING: Failed to initialize cursors, using system defaults\n";
 	}
+
+	auto activeCursors = getActiveCursorsForView(state.view);
+	recreateScaledCursors(scaleFactor, activeCursors);
 
 	state.previous_room = state.current_room;
 	state.ui.enabled = true;
