@@ -105,8 +105,8 @@ std::span<const uint8_t> getCursorBlob(std::span<const uint8_t> robBuffer, size_
 CursorImage unpackCursorBlob(std::span<const uint8_t> blobData, size_t blobIndex);
 std::vector<uint8_t> cursorFrameToRGBA(const CursorImage &img, size_t frameIdx, std::span<const uint8_t> palette);
 std::vector<uint8_t> scaleRGBA(const std::vector<uint8_t> &src, int srcW, int srcH, int dstW, int dstH);
-bool initCursors(const std::string_view &robPath);
-void recreateScaledCursors(float scale, const std::unordered_set<CursorType> &which);
+bool initCursors(const std::string_view &robPath, float scale);
+void recreateScaledCursors(float scale);
 void updateCursorAnimation();
 HCURSOR getCurrentCursor();
 HCURSOR getTransparentCursor();

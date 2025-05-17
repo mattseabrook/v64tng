@@ -322,7 +322,8 @@ HCURSOR getTransparentCursor()
 //
 std::vector<uint8_t> scaleRGBA(const std::vector<uint8_t> &src, int srcW, int srcH, int dstW, int dstH)
 {
-    std::vector<uint8_t> dst(dstW * dstH * 4);
+    std::vector<uint8_t> dst;
+    dst.reserve(dstW * dstH * 4);
     for (int y = 0; y < dstH; ++y)
     {
         int srcY = y * srcH / dstH;
@@ -330,11 +331,10 @@ std::vector<uint8_t> scaleRGBA(const std::vector<uint8_t> &src, int srcW, int sr
         {
             int srcX = x * srcW / dstW;
             int srcIdx = (srcY * srcW + srcX) * 4;
-            int dstIdx = (y * dstW + x) * 4;
-            dst[dstIdx + 0] = src[srcIdx + 0];
-            dst[dstIdx + 1] = src[srcIdx + 1];
-            dst[dstIdx + 2] = src[srcIdx + 2];
-            dst[dstIdx + 3] = src[srcIdx + 3];
+            dst.push_back(src[srcIdx + 0]);
+            dst.push_back(src[srcIdx + 1]);
+            dst.push_back(src[srcIdx + 2]);
+            dst.push_back(src[srcIdx + 3]);
         }
     }
     return dst;
@@ -343,77 +343,54 @@ std::vector<uint8_t> scaleRGBA(const std::vector<uint8_t> &src, int srcW, int sr
 //
 // Initialize cursors from ROB.GJD file
 //
-bool initCursors(const std::string_view &robPath)
+bool initCursors(const std::string_view &robPath, float scale)
 {
     if (g_cursorsInitialized)
         return true;
-
-    // Load ROB.GJD
     std::ifstream file(robPath.data(), std::ios::binary | std::ios::ate);
     if (!file)
     {
         std::cerr << "Failed to open " << robPath << '\n';
         return false;
     }
-
-    // Read entire file
     size_t fileSize = file.tellg();
     file.seekg(0);
     std::vector<uint8_t> robData(fileSize);
     file.read(reinterpret_cast<char *>(robData.data()), fileSize);
-
-    // Palette block starts at end of file
     const size_t paletteBlockOffset = fileSize - (CursorPaletteSizeBytes * NumCursorPalettes);
-
-    // Process each cursor
     for (size_t i = 0; i < CursorBlobs.size(); i++)
     {
-        try
+        auto blob = getCursorBlob(robData, i);
+        CursorImage img = unpackCursorBlob(blob, i);
+        const auto &meta = CursorBlobs[i];
+        const size_t palOff = paletteBlockOffset + meta.paletteIdx * CursorPaletteSizeBytes;
+        std::span<const uint8_t> pal(&robData[palOff], CursorPaletteSizeBytes);
+        g_cursors[i].image = img;
+        g_cursors[i].currentFrame = 0;
+        g_cursors[i].rgbaFrames.resize(img.frames);
+        g_cursors[i].winHandles.resize(img.frames);
+        int origW = img.width, origH = img.height;
+        int scaledW = origW * scale > 1 ? static_cast<int>(origW * scale) : 1;
+        int scaledH = origH * scale > 1 ? static_cast<int>(origH * scale) : 1;
+        for (size_t f = 0; f < img.frames; f++)
         {
-            // Get cursor blob data
-            auto blob = getCursorBlob(robData, i);
-
-            // Unpack the cursor image
-            CursorImage img = unpackCursorBlob(blob, i);
-
-            // Find the palette
-            const auto &meta = CursorBlobs[i];
-            const size_t palOff = paletteBlockOffset + meta.paletteIdx * CursorPaletteSizeBytes;
-            std::span<const uint8_t> pal(&robData[palOff], CursorPaletteSizeBytes);
-
-            // Store image data
-            g_cursors[i].image = img;
-            g_cursors[i].currentFrame = 0;
-
-            // Pre-generate all RGBA frames and cursor handles
-            g_cursors[i].rgbaFrames.resize(img.frames);
-            g_cursors[i].winHandles.resize(img.frames);
-
-            for (size_t f = 0; f < img.frames; f++)
+            g_cursors[i].rgbaFrames[f] = cursorFrameToRGBA(img, f, pal);
+            std::vector<uint8_t> scaled;
+            if (scale == 1.0f)
             {
-                // Convert frame to RGBA
-                g_cursors[i].rgbaFrames[f] = cursorFrameToRGBA(img, f, pal);
-
-                // Create Windows cursor
-                g_cursors[i].winHandles[f] = createWindowsCursor(
-                    g_cursors[i].rgbaFrames[f],
-                    img.width,
-                    img.height);
-
-                if (!g_cursors[i].winHandles[f])
-                {
-                    throw std::runtime_error("Failed to create Windows cursor");
-                }
+                scaled = g_cursors[i].rgbaFrames[f];
+            }
+            else
+            {
+                scaled = scaleRGBA(g_cursors[i].rgbaFrames[f], origW, origH, scaledW, scaledH);
+            }
+            g_cursors[i].winHandles[f] = createWindowsCursor(scaled, scaledW, scaledH);
+            if (!g_cursors[i].winHandles[f])
+            {
+                throw std::runtime_error("Failed to create Windows cursor");
             }
         }
-        catch (const std::exception &e)
-        {
-            std::cerr << "Error loading cursor " << i << ": " << e.what() << "\n";
-            cleanupCursors(); // Clean up already loaded cursors
-            return false;
-        }
     }
-
     g_cursorLastFrameTime = GetTickCount64();
     g_cursorsInitialized = true;
     return true;
@@ -422,14 +399,18 @@ bool initCursors(const std::string_view &robPath)
 //
 // Recreate scaled cursors
 //
-void recreateScaledCursors(float scale, const std::unordered_set<CursorType> &which)
+void recreateScaledCursors(float scale)
 {
-    for (auto cursorType : which)
+    for (size_t i = 0; i < g_cursors.size(); ++i)
     {
-        auto &cursor = g_cursors[cursorType];
+        auto &cursor = g_cursors[i];
         for (HCURSOR handle : cursor.winHandles)
+        {
             if (handle)
+            {
                 DestroyCursor(handle);
+            }
+        }
         cursor.winHandles.clear();
         int origW = cursor.image.width, origH = cursor.image.height;
         int scaledW = origW * scale > 1 ? static_cast<int>(origW * scale) : 1;
@@ -439,9 +420,13 @@ void recreateScaledCursors(float scale, const std::unordered_set<CursorType> &wh
         {
             std::vector<uint8_t> scaled;
             if (scale == 1.0f)
+            {
                 scaled = cursor.rgbaFrames[f];
+            }
             else
+            {
                 scaled = scaleRGBA(cursor.rgbaFrames[f], origW, origH, scaledW, scaledH);
+            }
             cursor.winHandles[f] = createWindowsCursor(scaled, scaledW, scaledH);
         }
     }
@@ -514,6 +499,11 @@ void cleanupCursors()
         }
         cursor.winHandles.clear();
         cursor.rgbaFrames.clear();
+    }
+    if (g_transparentCursor)
+    {
+        DestroyCursor(g_transparentCursor);
+        g_transparentCursor = nullptr;
     }
     g_cursorsInitialized = false;
 }

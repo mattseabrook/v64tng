@@ -316,13 +316,10 @@ void init()
 
 	loadView();
 
-	if (!initCursors("ROB.GJD"))
+	if (!initCursors("ROB.GJD", scaleFactor))
 	{
 		std::cerr << "WARNING: Failed to initialize cursors, using system defaults\n";
 	}
-
-	auto activeCursors = getActiveCursorsForView(state.view);
-	recreateScaledCursors(scaleFactor, activeCursors);
 
 	state.previous_room = state.current_room;
 	state.ui.enabled = true;

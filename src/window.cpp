@@ -133,8 +133,11 @@ LRESULT HandleSize(HWND hwnd, WPARAM wParam)
 	scaleFactor = static_cast<float>(newWidth) / MIN_CLIENT_WIDTH;
 	if (!g_userIsResizing)
 	{
-		auto activeCursors = getActiveCursorsForView(state.view);
-		recreateScaledCursors(scaleFactor, activeCursors);
+		if (g_cursorsInitialized)
+		{
+			recreateScaledCursors(scaleFactor); // Scale all cursors
+			forceUpdateCursor();
+		}
 	}
 	if (renderTarget)
 		renderTarget->Resize(D2D1::SizeU(newWidth, newHeight));
@@ -458,8 +461,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			RECT clientRect;
 			GetClientRect(hwnd, &clientRect);
 			float scale = static_cast<float>(clientRect.right - clientRect.left) / MIN_CLIENT_WIDTH;
-			auto activeCursors = getActiveCursorsForView(state.view);
-			recreateScaledCursors(scale, activeCursors);
+			if (g_cursorsInitialized)
+			{
+				recreateScaledCursors(scale); // Scale all cursors
+				forceUpdateCursor();
+			}
 		}
 		break;
 	case WM_ENTERMENULOOP:
@@ -654,9 +660,7 @@ void forceUpdateCursor()
 	GetCursorPos(&pt);
 	ScreenToClient(g_hwnd, &pt);
 	updateCursorBasedOnPosition(pt);
-	SetCursor(currentCursor);
-	PostMessage(g_hwnd, WM_SETCURSOR, reinterpret_cast<WPARAM>(g_hwnd), MAKELPARAM(HTCLIENT, 0));
-	PostMessage(g_hwnd, WM_MOUSEMOVE, 0, MAKELPARAM(pt.x, pt.y));
+	// Rely on updateCursorBasedOnPosition to set the cursor
 }
 
 /*
@@ -679,6 +683,14 @@ void updateCursorBasedOnPosition(POINT clientPos)
 		SetCursor(LoadCursor(nullptr, IDC_ARROW));
 		return;
 	}
+	if (state.animation.isPlaying)
+	{
+		// During animation, enforce transparent cursor and skip hotspot checks
+		currentCursor = getCurrentCursor(); // Returns transparent cursor when isPlaying
+		SetCursor(currentCursor);
+		return;
+	}
+	// Only calculate cursor type when no animation is playing
 	float normalizedX = static_cast<float>(clientPos.x) / state.ui.width * 100.0f;
 	float normalizedY = static_cast<float>(clientPos.y) / state.ui.height * 100.0f;
 	int highestZIndex = -1;
