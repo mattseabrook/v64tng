@@ -244,15 +244,12 @@ void updateAnimation()
 				{
 					state.transient_animation.isPlaying = false;
 					state.transient_frame_index = state.transient_animation.totalFrames - 1;
-					state.is_transient_playing = false;
-
-					// Resume main song if it exists
+					// Resume main song if applicable
 					if (!state.current_song.empty())
 					{
 						xmiPlay(state.current_song, false);
 					}
-
-					forceUpdateCursor();
+					forceUpdateCursor(); // Updates cursor based on mouse position
 				}
 				state.transient_animation.lastFrameTime = currentTime;
 

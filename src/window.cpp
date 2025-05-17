@@ -683,12 +683,13 @@ void updateCursorBasedOnPosition(POINT clientPos)
 		SetCursor(LoadCursor(nullptr, IDC_ARROW));
 		return;
 	}
-	if (state.animation.isPlaying)
+
+	// Check both animation states
+	if (state.animation.isPlaying || state.transient_animation.isPlaying)
 	{
-		// During animation, enforce transparent cursor and skip hotspot checks
-		currentCursor = getCurrentCursor(); // Returns transparent cursor when isPlaying
+		currentCursor = getCurrentCursor(); // Returns transparent cursor
 		SetCursor(currentCursor);
-		return;
+		return; // Skip hotspot checks during animation
 	}
 	// Only calculate cursor type when no animation is playing
 	float normalizedX = static_cast<float>(clientPos.x) / state.ui.width * 100.0f;

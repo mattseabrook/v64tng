@@ -466,21 +466,22 @@ HCURSOR getCurrentCursor()
 {
     if (!g_cursorsInitialized)
     {
-        return LoadCursor(NULL, IDC_ARROW);
+        return LoadCursor(NULL, IDC_ARROW); // Fallback cursor
     }
 
-    if (state.animation.isPlaying)
+    // Check both animation states
+    if (state.animation.isPlaying || state.transient_animation.isPlaying)
     {
-        return getTransparentCursor();
+        return getTransparentCursor(); // Hide cursor during any animation
     }
 
     const LoadedCursor &cursor = g_cursors[g_activeCursorType];
     if (cursor.winHandles.empty() || cursor.currentFrame >= cursor.winHandles.size())
     {
-        return LoadCursor(NULL, IDC_ARROW);
+        return LoadCursor(NULL, IDC_ARROW); // Fallback if cursor data is invalid
     }
 
-    return cursor.winHandles[cursor.currentFrame];
+    return cursor.winHandles[cursor.currentFrame]; // Default cursor (teeth/waving hand)
 }
 
 //
