@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Maze Map Extractor - Solid Red Overlay</title>
+    <style>
+        body {
+            background: #222;
+            color: #fff;
+        }
+
+        canvas {
+            display: block;
+            margin-bottom: 16px;
+            border: 2px solid #555;
+        }
+
+        #output {
+            white-space: pre;
+            background: #1a1a1a;
+            color: #0f0;
+            padding: 8px;
+            font-family: "Fira Mono", "Consolas", "Courier", monospace;
+            font-size: 13px;
+            line-height: 1.15;
+            overflow-x: auto;
+        }
+
+        .zero {
+            color: #ccc;
+        }
+
+        .one {
+            color: #0f0;
+        }
+
+        button {
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Maze Map Extractor (Solid Red Overlay)</h2>
+    <canvas id="mazeCanvas"></canvas>
+    <br>
+    <button id="generate">Generate Array</button>
+    <pre id="output"></pre>
+    <script>
+        // Change this to your image filename if needed:
+        const img = new Image();
+        img.src = 'maze.jpg'; // or your uploaded file name
+        img.onload = () => processMaze(img);
+
+        function processMaze(img) {
+            const canvas = document.getElementById('mazeCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+
+            // --- Wall thickness estimation ---
+            let widths = [];
+            for (let y = Math.floor(img.height / 3); y < Math.floor(img.height * 2 / 3); y += 2) {
+                let row = ctx.getImageData(0, y, img.width, 1).data;
+                let run = 0, lastBlack = false;
+                for (let x = 0; x < img.width; ++x) {
+                    const i = x * 4;
+                    const isBlack = row[i] < 64 && row[i + 1] < 64 && row[i + 2] < 64;
+                    if (isBlack) {
+                        if (lastBlack) run++;
+                        else run = 1;
+                    }
+                    if (!isBlack && lastBlack) {
+                        widths.push(run);
+                        run = 0;
+                    }
+                    lastBlack = isBlack;
+                }
+            }
+            let hist = {};
+            widths.forEach(w => { if (w > 2 && w < 40) hist[w] = (hist[w] || 0) + 1; });
+            let cellSize = Object.keys(hist).reduce((a, b) => hist[a] > hist[b] ? a : b, 8);
+            cellSize = parseInt(cellSize);
+
+            const cols = Math.floor(img.width / cellSize);
+            const rows = Math.floor(img.height / cellSize);
+
+            // --- Map extraction logic ---
+            function extractMap() {
+                let map = [];
+                for (let y = 0; y < rows; ++y) {
+                    let row = [];
+                    for (let x = 0; x < cols; ++x) {
+                        let imgData = ctx.getImageData(x * cellSize, y * cellSize, cellSize, cellSize).data;
+                        let black = 0, total = cellSize * cellSize;
+                        for (let i = 0; i < imgData.length; i += 4) {
+                            if (imgData[i] < 96 && imgData[i + 1] < 96 && imgData[i + 2] < 96) black++;
+                        }
+                        row.push(black / total > 0.5 ? 1 : 0);
+                    }
+                    map.push(row);
+                }
+                drawGridAndOverlay(map);
+                return map;
+            }
+
+            // --- Draw grid and overlay (NO NUMBERS, just solid red for 1) ---
+            function drawGridAndOverlay(map) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+
+                // Fill each cell that's a wall (1) with solid red
+                if (map) {
+                    for (let y = 0; y < rows; ++y) {
+                        for (let x = 0; x < cols; ++x) {
+                            if (map[y][x] === 1) {
+                                ctx.fillStyle = "rgba(255,0,0,0.85)";
+                                ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                            }
+                        }
+                    }
+                }
+
+                // Draw grid lines
+                ctx.strokeStyle = "red";
+                ctx.lineWidth = 1;
+                for (let x = 0; x <= cols; ++x) {
+                    ctx.beginPath();
+                    ctx.moveTo(x * cellSize, 0);
+                    ctx.lineTo(x * cellSize, rows * cellSize);
+                    ctx.stroke();
+                }
+                for (let y = 0; y <= rows; ++y) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y * cellSize);
+                    ctx.lineTo(cols * cellSize, y * cellSize);
+                    ctx.stroke();
+                }
+            }
+
+            // Initial grid overlay
+            drawGridAndOverlay(null);
+
+            // --- Generate array button ---
+            document.getElementById('generate').onclick = () => {
+                let map = extractMap();
+
+                // Color-coded C++ output
+                let code = `<span>constexpr int MAP_W = ${cols}, MAP_H = ${rows};</span>\n<span>std::vector&lt;std::vector&lt;uint8_t&gt;&gt; map = {</span>\n`;
+                for (let y = 0; y < rows; ++y) {
+                    code += "    {";
+                    for (let x = 0; x < cols; ++x) {
+                        if (map[y][x] === 1)
+                            code += `<span class="one">1</span>`;
+                        else
+                            code += `<span class="zero">0</span>`;
+                        if (x < cols - 1) code += ",";
+                    }
+                    code += "}";
+                    if (y < rows - 1) code += ",";
+                    code += "\n";
+                }
+                code += "<span>};</span>";
+                document.getElementById('output').innerHTML = code;
+            };
+        }
+    </script>
+</body>
+
+</html>

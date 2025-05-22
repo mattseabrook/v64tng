@@ -726,5 +726,15 @@ void updateCursorBasedOnPosition(POINT clientPos)
 //
 // Abstractions
 //
-void renderFrame() { renderFrameFuncs[renderer](); }
+void renderFrame()
+{
+	if (state.raycast.enabled)
+	{
+		renderFrameRaycast();
+	}
+	else
+	{
+		renderFrameFuncs[renderer]();
+	}
+}
 void cleanupWindow() { cleanupFuncs[renderer](); }

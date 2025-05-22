@@ -33,6 +33,7 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMoni
 void initHandlers();
 void initWindow();
 void renderFrame();
+void renderFrameRaycast();
 bool processEvents();
 void forceUpdateCursor();
 void updateCursorBasedOnPosition(POINT clientPos);

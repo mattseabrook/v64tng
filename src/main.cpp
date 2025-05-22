@@ -43,6 +43,7 @@
 
 #include "config.h"
 #include "game.h"
+#include "basement.h"
 #include "extract.h"
 #include "lzss.h"
 #include "rl.h"
@@ -408,6 +409,16 @@ int process_args(const std::vector<std::string> &args)
 			std::cerr << errorMsg;
 			return 1;
 		}
+	}
+	else if (args[1] == "-raycast")
+	{
+		// Enable raycasting mode - remove later
+		state.raycast.enabled = true;
+		state.raycast.map = &map; // From basement.h
+		state.currentFPS = 60.0;  // Set higher framerate for smoother experience
+
+		// Launch the game engine in raycasting mode
+		init();
 	}
 	else
 	{
