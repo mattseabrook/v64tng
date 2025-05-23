@@ -4,7 +4,26 @@ try {
     # Clean target
     if ($args[0] -eq "clean") {
         Write-Host "Cleaning build artifacts..." -ForegroundColor Yellow
-        Remove-Item -Recurse -Force -Path "build" -ErrorAction SilentlyContinue
+
+        # Remove all object files in build dir
+        if (Test-Path "build") {
+            Get-ChildItem -Path "build" -Filter *.o -File -Recurse | Remove-Item -Force -ErrorAction SilentlyContinue
+        }
+
+        # Remove executable and PDB in both working and build dirs
+        $artifacts = @("v64tng.exe", "v64tng.pdb", "build\v64tng.exe", "build\v64tng.pdb")
+        foreach ($a in $artifacts) {
+            if (Test-Path $a) { Remove-Item $a -Force -ErrorAction SilentlyContinue }
+        }
+
+        # Remove resource files
+        if (Test-Path "build\resource.res") { Remove-Item "build\resource.res" -Force -ErrorAction SilentlyContinue }
+
+        # Remove build dir itself
+        if (Test-Path "build") {
+            Remove-Item -Recurse -Force -Path "build" -ErrorAction SilentlyContinue
+        }
+
         Write-Host "Clean complete." -ForegroundColor Green
         exit 0
     }
@@ -64,7 +83,6 @@ try {
         "-I", "$PSScriptRoot/include",
         "-I", "C:\lib\libADLMIDI\include",
         "-I", "C:\VulkanSDK\1.3.296.0\Include",
-        "-I", "C:\path\to\ncnn\build_vs2022\install\include",
         "-I", "C:\lib\zlib-1.3.1",
         "-I", "C:\lib\lpng1644",
         "-I", "C:\lib\lpng1644\build_release"
@@ -237,12 +255,10 @@ try {
         "-L", "C:\lib\zlib-1.3.1\build_release\Release",
         "-L", "C:\lib\lpng1644\build_release\Release",
         "-L", "C:\VulkanSDK\1.3.296.0\Lib",
-        "-L", "C:\path\to\ncnn\build_vs2022\install\lib",
         "-L", "C:\lib\libADLMIDI\build_release\Release",
         "-l", "zlibstatic",
         "-l", "libpng16_static",
         "-l", "vulkan-1",
-        "-l", "ncnn",
         "-l", "ADLMIDI",
         "-l", "user32",
         "-l", "gdi32",
