@@ -10,6 +10,7 @@
 #include "config.h"
 #include "game.h"
 #include "menu.h"
+#include "map_overlay.h"
 
 //=============================================================================
 
@@ -452,6 +453,51 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return HandleMouseMove(lParam);
 	case WM_LBUTTONDOWN:
 		return HandleLButtonDown(lParam);
+	case WM_KEYDOWN:
+	{
+		if (!state.raycast.enabled)
+			break;
+		float &x = state.raycast.player.x, &y = state.raycast.player.y;
+		int px = int(x + 0.5f), py = int(y + 0.5f);
+		if (wParam == 'W' || wParam == VK_UP)
+		{
+			if ((*state.raycast.map)[py - 1][px] == 0)
+				y -= 1.0f;
+		}
+		else if (wParam == 'S' || wParam == VK_DOWN)
+		{
+			if ((*state.raycast.map)[py + 1][px] == 0)
+				y += 1.0f;
+		}
+		else if (wParam == 'A' || wParam == VK_LEFT)
+		{
+			if ((*state.raycast.map)[py][px - 1] == 0)
+				x -= 1.0f;
+		}
+		else if (wParam == 'D' || wParam == VK_RIGHT)
+		{
+			if ((*state.raycast.map)[py][px + 1] == 0)
+				x += 1.0f;
+		}
+		if (wParam == 'M' || wParam == 'm')
+		{
+			if (!g_mapOverlayVisible)
+			{
+				OpenMapOverlay(g_hwnd);
+				g_mapOverlayVisible = true;
+			}
+			else
+			{
+				CloseMapOverlay();
+				g_mapOverlayVisible = false;
+			}
+			break;
+		}
+
+		UpdateMapOverlay();
+		renderFrameRaycast();
+		break;
+	}
 	case WM_ENTERSIZEMOVE:
 		g_userIsResizing = true;
 		break;
@@ -463,7 +509,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			float scale = static_cast<float>(clientRect.right - clientRect.left) / MIN_CLIENT_WIDTH;
 			if (g_cursorsInitialized)
 			{
-				recreateScaledCursors(scale); // Scale all cursors
+				recreateScaledCursors(scale);
 				forceUpdateCursor();
 			}
 		}
@@ -685,7 +731,7 @@ void updateCursorBasedOnPosition(POINT clientPos)
 	}
 
 	// Check both animation states
-	if (state.animation.isPlaying || state.transient_animation.isPlaying)
+	if (state.raycast.enabled || state.animation.isPlaying || state.transient_animation.isPlaying)
 	{
 		currentCursor = getCurrentCursor(); // Returns transparent cursor
 		SetCursor(currentCursor);
