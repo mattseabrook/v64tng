@@ -217,6 +217,22 @@ void updateAnimation()
 	// Update cursor animation
 	updateCursorAnimation();
 
+	// Update raycaster movement continuously with FPS control
+	if (state.raycast.enabled)
+	{
+		static std::chrono::steady_clock::time_point lastRaycastUpdate = std::chrono::steady_clock::now();
+		auto currentTime = std::chrono::steady_clock::now();
+		auto elapsedTime = currentTime - lastRaycastUpdate;
+		auto frameDuration = std::chrono::microseconds(static_cast<long long>(1000000.0 / state.currentFPS));
+
+		if (elapsedTime >= frameDuration)
+		{
+			updateRaycasterMovement();
+			lastRaycastUpdate = currentTime;
+		}
+		return; // Skip regular animation processing in raycast mode
+	}
+
 	// Handle transient animations first
 	if (state.transient_animation.isPlaying && !state.transient_animation_name.empty())
 	{

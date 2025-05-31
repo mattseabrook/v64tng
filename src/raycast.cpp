@@ -4,18 +4,20 @@
 #include <algorithm>
 
 #include "raycast.h"
+#include "game.h"
+#include "basement.h"
 
 //
 // Function to render the raycast view
 //
 void renderRaycastView(
-    const std::vector<std::vector<uint8_t>> &map,
+    const std::vector<std::vector<uint8_t>> &p_map,
     const RaycastPlayer &player,
     uint8_t *framebuffer,
     int screenW, int screenH)
 {
-    const int mapW = static_cast<int>(map[0].size());
-    const int mapH = static_cast<int>(map.size());
+    const int mapW = static_cast<int>(state.raycast.map->at(0).size());
+    const int mapH = static_cast<int>(state.raycast.map->size());
     const float fov = player.fov;
     const float pi = 3.1415926535f;
 
@@ -29,8 +31,8 @@ void renderRaycastView(
 
         // DDA setup
         float posX = player.x, posY = player.y;
-        int mapX = int(posX);
-        int mapY = int(posY);
+        int mapX = int(posX + 0.5f);
+        int mapY = int(posY + 0.5f);
 
         float sideDistX, sideDistY;
         float deltaDistX = std::abs(1.0f / rayDirX);
@@ -79,7 +81,7 @@ void renderRaycastView(
             }
             if (mapX < 0 || mapY < 0 || mapX >= mapW || mapY >= mapH)
                 break;
-            if (map[mapY][mapX] > 0)
+            if (p_map[mapY][mapX] > 0)
                 hit = 1;
         }
 
@@ -97,9 +99,9 @@ void renderRaycastView(
         }
 
         // Projected wall height
-        int lineHeight = (int)(screenH / std::max(perpWallDist, 0.01f));
-        int drawStart = std::max(0, screenH / 2 - lineHeight / 2);
-        int drawEnd = std::min(screenH - 1, screenH / 2 + lineHeight / 2);
+        int lineHeight = (int)(screenH / (std::max)(perpWallDist, 0.01f));
+        int drawStart = (std::max)(0, screenH / 2 - lineHeight / 2);
+        int drawEnd = (std::min)(screenH - 1, screenH / 2 + lineHeight / 2);
 
         // Coloring: simple (grey wall, darken if y-side)
         uint8_t r = side ? 64 : 120;

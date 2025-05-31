@@ -35,7 +35,8 @@ char orientationChar(float angle)
 //
 std::string RenderMapString()
 {
-    constexpr int W = MAP_W, H = MAP_H;
+    const int W = static_cast<int>(state.raycast.map->at(0).size());
+    const int H = static_cast<int>(state.raycast.map->size());
     std::string s;
     int px = int(g_player->x + 0.5f), py = int(g_player->y + 0.5f);
 
@@ -68,9 +69,10 @@ LRESULT CALLBACK MapWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hwnd, &ps);
-        auto str = RenderMapString();
         SetBkMode(hdc, TRANSPARENT);
+        SetTextColor(hdc, RGB(0, 0, 0)); // Black text
         SelectObject(hdc, GetStockObject(ANSI_FIXED_FONT));
+        auto str = RenderMapString();
         TextOutA(hdc, 0, 0, str.c_str(), (int)str.length());
         EndPaint(hwnd, &ps);
         break;
@@ -98,20 +100,43 @@ void OpenMapOverlay(HWND parent)
     g_map = state.raycast.map;
     g_player = &state.raycast.player;
 
-    WNDCLASSA wc = {0};
+    WNDCLASSA wc = {};
     wc.lpfnWndProc = MapWndProc;
     wc.hInstance = GetModuleHandle(nullptr);
     wc.lpszClassName = "BasementMapOverlay";
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    RegisterClassA(&wc);
+    wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    // wc.style = CS_HREDRAW | CS_VREDRAW; // Optional: redraw if size changes
+
+    if (!RegisterClassA(&wc))
+    {
+        DWORD err = GetLastError();
+        if (err != ERROR_CLASS_ALREADY_EXISTS) // It's okay if it's already registered
+        {
+            char buf[256];
+            sprintf_s(buf, "RegisterClassA failed with error: %lu", err);
+            MessageBoxA(nullptr, buf, "Error", MB_OK | MB_ICONERROR);
+            return;
+        }
+    }
 
     g_hwndMapOverlay = CreateWindowA(
-        wc.lpszClassName, "ASCII Map Overlay",
+        "BasementMapOverlay", "ASCII Map Overlay",
         WS_OVERLAPPEDWINDOW,
-        100, 100, 900, 1200, parent, nullptr, wc.hInstance, nullptr);
+        100, 100, 900, 1200, parent, nullptr, GetModuleHandle(nullptr), nullptr);
+
+    if (!g_hwndMapOverlay)
+    {
+        DWORD err = GetLastError();
+        char buf[256];
+        sprintf_s(buf, "CreateWindowA failed with error: %lu", err);
+        MessageBoxA(nullptr, buf, "Error", MB_OK | MB_ICONERROR);
+        return;
+    }
 
     ShowWindow(g_hwndMapOverlay, SW_SHOW);
     UpdateWindow(g_hwndMapOverlay);
+    SetForegroundWindow(g_hwndMapOverlay);
 }
 
 //

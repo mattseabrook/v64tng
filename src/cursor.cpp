@@ -128,17 +128,13 @@ Parameters:
 CursorImage unpackCursorBlob(std::span<const uint8_t> blobData, size_t blobIndex)
 {
     auto decomp = decompressCursorBlob(blobData);
-    std::cout << "  Decompressed size: " << decomp.size() << " bytes\n";
+
     if (decomp.size() < 5)
         throw std::runtime_error("Decompressed data too small for header");
 
     uint8_t width = decomp[0];
     uint8_t height = decomp[1];
     uint8_t frames = decomp[2];
-    std::cout << "  Header: " << '\n'
-              << "width=" << static_cast<int>(width)
-              << ", height=" << static_cast<int>(height)
-              << ", frames=" << static_cast<int>(frames) << '\n';
     size_t pixelOffset = 5;
     size_t pixelSize = static_cast<size_t>(width) * height * frames;
 

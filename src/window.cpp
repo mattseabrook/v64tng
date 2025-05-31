@@ -1,6 +1,7 @@
 // window.cpp
 
 #include <Windows.h>
+#include <windowsx.h>
 
 #include "../resource.h"
 
@@ -28,6 +29,8 @@ HCURSOR currentCursor = nullptr;
 bool g_userIsResizing = false;
 static RendererType renderer;
 float scaleFactor = 1.0f;
+
+static bool g_keys[256] = {false}; // Move to raycast.cpp later
 
 //=============================================================================
 
@@ -301,8 +304,44 @@ Parameters:
 */
 LRESULT HandleMouseMove(LPARAM lParam)
 {
-	POINT clientPos{LOWORD(lParam), HIWORD(lParam)};
-	updateCursorBasedOnPosition(clientPos);
+	if (state.raycast.enabled)
+	{
+		static POINT lastPos = {0, 0};
+		static bool firstMove = true;
+
+		POINT pt;
+		GetCursorPos(&pt);
+		ScreenToClient(g_hwnd, &pt);
+
+		if (firstMove)
+		{
+			lastPos = pt;
+			firstMove = false;
+			return 0;
+		}
+
+		int dx = pt.x - lastPos.x;
+
+		float sensitivity = 0.005f;
+		state.raycast.player.angle += dx * sensitivity;
+		state.raycast.player.angle = fmodf(state.raycast.player.angle, 2.0f * 3.14159265f);
+		if (state.raycast.player.angle < 0)
+			state.raycast.player.angle += 2.0f * 3.14159265f;
+
+		POINT center = {state.ui.width / 2, state.ui.height / 2};
+		ClientToScreen(g_hwnd, &center);
+		SetCursorPos(center.x, center.y);
+
+		ScreenToClient(g_hwnd, &center);
+		lastPos = center;
+
+		// No rendering here - FPS control handles it
+	}
+	else
+	{
+		POINT clientPos = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+		updateCursorBasedOnPosition(clientPos);
+	}
 	return 0;
 }
 
@@ -368,6 +407,79 @@ LRESULT HandleLButtonDown(LPARAM lParam)
 		state.view.hotspots[targetIndex].action();
 	}
 	return 0;
+}
+
+/*
+===============================================================================
+Function Name: updateRaycasterMovement
+
+Description:
+	- Updates the player's position based on keyboard input in raycasting mode.
+	- Moves the player in the direction of the pressed keys (W, A, S, D or arrow keys).
+===============================================================================
+*/
+void updateRaycasterMovement()
+{
+	if (!state.raycast.enabled || state.raycast.map == nullptr || state.raycast.map->empty())
+		return;
+
+	int mapH = static_cast<int>(state.raycast.map->size());
+	int mapW = static_cast<int>(state.raycast.map->at(0).size());
+
+	float speed = 0.3f;
+	float x = state.raycast.player.x;
+	float y = state.raycast.player.y;
+	float angle = state.raycast.player.angle;
+
+	float dx = 0.0f, dy = 0.0f;
+
+	if (g_keys['W'] || g_keys[VK_UP])
+	{
+		dx += std::cos(angle) * speed;
+		dy += std::sin(angle) * speed;
+	}
+	if (g_keys['S'] || g_keys[VK_DOWN])
+	{
+		dx -= std::cos(angle) * speed;
+		dy -= std::sin(angle) * speed;
+	}
+	if (g_keys['A'] || g_keys[VK_LEFT])
+	{
+		dx += std::cos(angle - 1.5708f) * speed;
+		dy += std::sin(angle - 1.5708f) * speed;
+	}
+	if (g_keys['D'] || g_keys[VK_RIGHT])
+	{
+		dx += std::cos(angle + 1.5708f) * speed;
+		dy += std::sin(angle + 1.5708f) * speed;
+	}
+
+	if (dx != 0.0f || dy != 0.0f)
+	{
+		// Try movement in X direction first - use same rounding as raycaster
+		float new_x = x + dx;
+		int mapX = static_cast<int>(new_x + 0.5f);
+		int mapY = static_cast<int>(y + 0.5f);
+
+		if (mapX >= 0 && mapX < mapW && mapY >= 0 && mapY < mapH &&
+			(*state.raycast.map)[mapY][mapX] == 0)
+		{
+			state.raycast.player.x = new_x;
+		}
+
+		// Try movement in Y direction - use same rounding as raycaster
+		float new_y = y + dy;
+		mapX = static_cast<int>(state.raycast.player.x + 0.5f);
+		mapY = static_cast<int>(new_y + 0.5f);
+
+		if (mapX >= 0 && mapX < mapW && mapY >= 0 && mapY < mapH &&
+			(*state.raycast.map)[mapY][mapX] == 0)
+		{
+			state.raycast.player.y = new_y;
+		}
+	}
+
+	renderFrameRaycast();
 }
 
 /*
@@ -454,50 +566,24 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_LBUTTONDOWN:
 		return HandleLButtonDown(lParam);
 	case WM_KEYDOWN:
-	{
-		if (!state.raycast.enabled)
-			break;
-		float &x = state.raycast.player.x, &y = state.raycast.player.y;
-		int px = int(x + 0.5f), py = int(y + 0.5f);
-		if (wParam == 'W' || wParam == VK_UP)
+		if (state.raycast.enabled)
 		{
-			if ((*state.raycast.map)[py - 1][px] == 0)
-				y -= 1.0f;
-		}
-		else if (wParam == 'S' || wParam == VK_DOWN)
-		{
-			if ((*state.raycast.map)[py + 1][px] == 0)
-				y += 1.0f;
-		}
-		else if (wParam == 'A' || wParam == VK_LEFT)
-		{
-			if ((*state.raycast.map)[py][px - 1] == 0)
-				x -= 1.0f;
-		}
-		else if (wParam == 'D' || wParam == VK_RIGHT)
-		{
-			if ((*state.raycast.map)[py][px + 1] == 0)
-				x += 1.0f;
-		}
-		if (wParam == 'M' || wParam == 'm')
-		{
-			if (!g_mapOverlayVisible)
+			if (wParam == 'M' || wParam == 'm')
 			{
-				OpenMapOverlay(g_hwnd);
-				g_mapOverlayVisible = true;
+				OpenMapOverlay(hwnd);
 			}
 			else
 			{
-				CloseMapOverlay();
-				g_mapOverlayVisible = false;
+				g_keys[wParam] = true;
 			}
-			break;
 		}
-
-		UpdateMapOverlay();
-		renderFrameRaycast();
-		break;
-	}
+		return 0;
+	case WM_KEYUP:
+		if (state.raycast.enabled)
+		{
+			g_keys[wParam] = false;
+		}
+		return 0;
 	case WM_ENTERSIZEMOVE:
 		g_userIsResizing = true;
 		break;
