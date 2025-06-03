@@ -71,6 +71,7 @@ f_4fc
 f_4fd
 
 
+Library
 
 f_5ba
 f_5bb
@@ -277,10 +278,10 @@ const std::unordered_map<std::string, View> foyer = {
 		 {},
 		 // Navigation
 		 {
-			 {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bc"},	  // Left
-			 {{0.0f, 70.0f, 25.0f, 30.0f, CURSOR_FORWARD, 0}, "x"},		  // Music Room
-			 {{33.0f, 33.0f, 5.0f, 30.0f, CURSOR_FORWARD, 0}, "x"},		  // Library
-			 {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fd"}}}}, // Right
+			 {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bc"},			   // Left
+			 {{0.0f, 70.0f, 25.0f, 30.0f, CURSOR_FORWARD, 0}, "f_1bc,f1_5,f5_4"},  // Music Room
+			 {{33.0f, 33.0f, 5.0f, 30.0f, CURSOR_FORWARD, 0}, "f_1bc,f1_5,f_5fc"}, // Library
+			 {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fd"}}}},		   // Right
 	//
 	// front door, turning right
 	//
@@ -547,6 +548,34 @@ const std::unordered_map<std::string, View> foyer = {
 	f_3fd
 
 	*/
+
+	//
+	// Library, facing Music Room
+	//
+	{
+		"f_5fc",
+		{// Hotspots
+		 {},
+		 // Navigation
+		 {
+			 {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "x"},	  // Left
+			 {{0.0f, 0.0f, 0.0f, 0.0f, CURSOR_FORWARD, 0}, "x"},	  // Forward
+			 {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "x"}}}}, // Right
+
+	////////////////////////////////////////////////////////////////////////
+
+	//
+	// Foyer -> Music Room
+	//
+	{
+		"f5_4",
+		{// Hotspots
+		 {},
+		 // Navigation
+		 {
+			 {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "x"},	  // Left
+			 {{0.0f, 0.0f, 0.0f, 0.0f, CURSOR_FORWARD, 0}, "x"},	  // Forward
+			 {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "x"}}}}, // Right
 };
 
 // Further view prefixes ...

@@ -29,7 +29,7 @@ try {
     }
 
     # Determine build type
-    $buildType = "release"
+    $buildType = "Release"
     if ($args[0] -eq "debug") {
         $buildType = "debug"
         Write-Host "Debug build selected." -ForegroundColor Cyan
@@ -130,6 +130,20 @@ try {
         ) + $commonIncludes
     }
 
+    # Function to get dependencies from .d file
+    function Get-Dependencies {
+        param (
+            [string]$depFile
+        )
+        if (Test-Path $depFile) {
+            $content = Get-Content $depFile -Raw
+            # Remove the target part and split by spaces
+            $deps = $content -replace '^[^:]+:\s*', '' -split '\s+' | Where-Object { $_ }
+            return $deps
+        }
+        return @()
+    }
+
     # Track successfully compiled objects
     $compiledObjects = @()
     $startTime = Get-Date
@@ -141,7 +155,7 @@ try {
         $src = $sources[$i]
         $obj = $objects[$i]
         $baseName = [System.IO.Path]::GetFileNameWithoutExtension($src)
-        $header = Join-Path "$PSScriptRoot/include" "$baseName.h"
+        $depFile = Join-Path $buildDir "$baseName.d"
         
         # Show progress
         $completedFiles++
@@ -150,27 +164,35 @@ try {
         Write-Host "Processing $fileNumber $(Split-Path $src -Leaf)..." -ForegroundColor Yellow
         
         # Check if we need to compile
-        $needsCompile = $true
+        $needsCompile = $false
         
-        if (Test-Path $obj -PathType Leaf) {
+        if (-not (Test-Path $obj -PathType Leaf)) {
+            $needsCompile = $true
+            Write-Host "  Object file does not exist" -ForegroundColor Yellow
+        }
+        else {
             $objInfo = Get-Item $obj
             $srcInfo = Get-Item $src
             
-            # Compare timestamps
-            if ($srcInfo.LastWriteTime -le $objInfo.LastWriteTime) {
-                $needsCompile = $false
-                
-                # Check header if it exists
-                if (Test-Path $header -PathType Leaf) {
-                    $headerInfo = Get-Item $header
-                    if ($headerInfo.LastWriteTime -gt $objInfo.LastWriteTime) {
-                        $needsCompile = $true
-                        Write-Host "  Header is newer than object file" -ForegroundColor Yellow
+            # Check source file
+            if ($srcInfo.LastWriteTime -gt $objInfo.LastWriteTime) {
+                $needsCompile = $true
+                Write-Host "  Source is newer than object file" -ForegroundColor Yellow
+            }
+            
+            # Check dependencies from .d file
+            if (Test-Path $depFile -PathType Leaf) {
+                $deps = Get-Dependencies -depFile $depFile
+                foreach ($dep in $deps) {
+                    if (Test-Path $dep -PathType Leaf) {
+                        $depInfo = Get-Item $dep
+                        if ($depInfo.LastWriteTime -gt $objInfo.LastWriteTime) {
+                            $needsCompile = $true
+                            Write-Host "  Dependency $dep is newer than object file" -ForegroundColor Yellow
+                            break
+                        }
                     }
                 }
-            }
-            else {
-                Write-Host "  Source is newer than object file" -ForegroundColor Yellow
             }
             
             # Check file size
@@ -178,9 +200,6 @@ try {
                 $needsCompile = $true
                 Write-Host "  Object file has zero size" -ForegroundColor Red
             }
-        }
-        else {
-            Write-Host "  Object file does not exist" -ForegroundColor Yellow
         }
         
         if ($needsCompile) {
@@ -190,7 +209,7 @@ try {
             }
             
             Write-Host "  Compiling $(Split-Path $src -Leaf)..." -ForegroundColor Cyan
-            & clang++ -c $src -o $obj @clangFlags
+            & clang++ -c $src -o $obj @clangFlags -MMD
             
             if ($LASTEXITCODE -ne 0) {
                 Write-Host "  Compilation failed for $(Split-Path $src -Leaf)!" -ForegroundColor Red

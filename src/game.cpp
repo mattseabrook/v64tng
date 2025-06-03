@@ -31,9 +31,13 @@ GameState state;
 // View Prefixes
 //
 const std::unordered_map<std::string_view, const std::unordered_map<std::string, View> *> viewPrefixes = {
-	{"f_", &foyer},		// Foyer - Stationary Animations
-	{"f1", &foyer},		// Foyer - Connector Animations
-	{"f2", &foyer},		// Foyer - Connector Animations
+	{"f_", &foyer}, // Foyer - Stationary Animations
+	{"f1", &foyer}, // Foyer - Connector Animations
+	{"f2", &foyer},
+	{"f3", &foyer},
+	{"f4", &foyer},
+	{"f5", &foyer},
+	{"f6", &foyer},
 	{"dr", &diningRoom} // Dining Room
 						// ...
 };
