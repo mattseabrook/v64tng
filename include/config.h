@@ -15,7 +15,7 @@ extern const int MIN_CLIENT_HEIGHT;
 
 //=============================================================================
 
-constexpr const char* default_config = R"({
+constexpr const char *default_config = R"({
     "fullscreen": false,
     "width": 640,
     "renderer": "Direct2D",
@@ -26,13 +26,14 @@ constexpr const char* default_config = R"({
     "pcmVolume": 100,
     "midiEnabled": true,
     "midiMode": "opl3",
+    "midiBank": 0,
     "midiVolume": 100,
     "devMode": false
 })";
 
 //=============================================================================
 
-void load_config(const std::string& filename);
-void save_config(const std::string& filename);
+void load_config(const std::string &filename);
+void save_config(const std::string &filename);
 
 #endif // CONFIG_H

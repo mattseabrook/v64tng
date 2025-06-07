@@ -16,8 +16,11 @@ void renderRaycastView(
     uint8_t *framebuffer,
     int screenW, int screenH)
 {
-    const int mapW = static_cast<int>(state.raycast.map->at(0).size());
-    const int mapH = static_cast<int>(state.raycast.map->size());
+    if (p_map.empty() || p_map[0].empty())
+        return;
+
+    const int mapW = static_cast<int>(p_map[0].size());
+    const int mapH = static_cast<int>(p_map.size());
     const float fov = player.fov;
     const float pi = 3.1415926535f;
 

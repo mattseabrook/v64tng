@@ -156,6 +156,7 @@ struct GameState
 	std::string transient_song;		   // Transient song (if any)
 	double main_song_position = 0.0;   // Position to resume from
 	std::string music_mode;			   // Playback mode: "opl2", "dual_opl2", "opl3"
+	int midi_bank = 0;				   // ADLMIDI built-in bank index
 	std::thread music_thread;		   // Thread for non-blocking music playback
 	bool music_playing = false;		   // Flag to indicate if music is playing
 	bool hasPlayedFirstSong = false;   // Tracks if any song has played yet

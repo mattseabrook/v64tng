@@ -19,8 +19,34 @@
 #include <Mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
 
+//
 // MIDI Library
+//
 #include <adlmidi.h>
+//------------------------------------------------------------------------------
+// Choose the most widely available emulator IDs for OPL2 and OPL3.  Older
+// versions of libADLMIDI may not define the newer YMFM constants, so fall back
+// to alternatives when needed.
+//------------------------------------------------------------------------------
+#if defined(ADLMIDI_EMU_YMFM_OPL2)
+#define V64TNG_EMU_OPL2 ADLMIDI_EMU_YMFM_OPL2
+#elif defined(ADLMIDI_EMU_MAME_OPL2)
+#define V64TNG_EMU_OPL2 ADLMIDI_EMU_MAME_OPL2
+#elif defined(ADLMIDI_EMU_DOSBOX)
+#define V64TNG_EMU_OPL2 ADLMIDI_EMU_DOSBOX
+#else
+#define V64TNG_EMU_OPL2 ADLMIDI_EMU_OPAL
+#endif
+
+#if defined(ADLMIDI_EMU_YMFM_OPL3)
+#define V64TNG_EMU_OPL3 ADLMIDI_EMU_YMFM_OPL3
+#elif defined(ADLMIDI_EMU_NUKED)
+#define V64TNG_EMU_OPL3 ADLMIDI_EMU_NUKED
+#elif defined(ADLMIDI_EMU_DOSBOX)
+#define V64TNG_EMU_OPL3 ADLMIDI_EMU_DOSBOX
+#else
+#define V64TNG_EMU_OPL3 ADLMIDI_EMU_OPAL
+#endif
 
 #include "game.h"
 #include "music.h"
@@ -478,27 +504,35 @@ void PlayMIDI(const std::vector<uint8_t> &midiData, bool isTransient)
 	}
 
 	// Configure emulation mode
-	if (state.music_mode == "opl2")
+	if (state.music_mode == "opl2" || state.music_mode == "opl")
 	{
+		adl_switchEmulator(player, V64TNG_EMU_OPL2);
 		adl_setNumChips(player, 1);
 		adl_setNumFourOpsChn(player, 0);
 	}
 	else if (state.music_mode == "dual_opl2")
 	{
+		adl_switchEmulator(player, V64TNG_EMU_OPL2);
 		adl_setNumChips(player, 2);
 		adl_setNumFourOpsChn(player, 0);
 	}
 	else if (state.music_mode == "opl3")
 	{
+		adl_switchEmulator(player, V64TNG_EMU_OPL3);
 		adl_setNumChips(player, 1);
 		adl_setNumFourOpsChn(player, 6);
 	}
 	else
 	{
 		std::cerr << "WARNING: Unknown music mode '" << state.music_mode << "', defaulting to opl3." << std::endl;
+		adl_switchEmulator(player, V64TNG_EMU_OPL3);
 		adl_setNumChips(player, 1);
 		adl_setNumFourOpsChn(player, 6);
 	}
+
+	// Apply bank selection and emulator changes
+	adl_setBank(player, state.midi_bank);
+	adl_reset(player);
 
 	if (adl_openData(player, midiData.data(), static_cast<unsigned long>(midiData.size())) < 0)
 	{
@@ -662,6 +696,7 @@ void xmiPlay(const std::string &songName, bool isTransient)
 	int midi_volume = config.value("midiVolume", 100);
 	state.music_volume = std::clamp(midi_volume / 100.0f, 0.0f, 1.0f);
 	state.music_mode = config.value("midiMode", "opl3");
+	state.midi_bank = config.value("midiBank", 0);
 
 	if (midi_enabled)
 	{
