@@ -1,6 +1,8 @@
 #include <Windows.h>
 #include "resource.h"
 
+IDB_SYSINFO_BG RCDATA "SystemInformation.png"
+
 IDI_ICON1 ICON "icon.ico"
 
 IDD_ABOUT_DIALOG DIALOGEX 0, 0, 200, 100

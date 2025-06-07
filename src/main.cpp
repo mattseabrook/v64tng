@@ -42,6 +42,7 @@
 #include <io.h>
 
 #include "config.h"
+#include "system.h"
 #include "game.h"
 #include "basement.h"
 #include "extract.h"
@@ -68,96 +69,65 @@ struct ConsoleGuard
 
 	bool setup()
 	{
-		// Try to attach to existing console first
 		attached = AttachConsole(ATTACH_PARENT_PROCESS);
-
-		// If no parent console exists, create a new one
 		if (!attached)
 		{
 			allocated = AllocConsole();
-
-			// If console allocation failed, try alternative approaches
 			if (!allocated)
-			{
-				// Fallback: Create a hidden console window
-				HWND hwnd = GetConsoleWindow();
-				if (hwnd)
-					ShowWindow(hwnd, SW_HIDE);
-
-				// Try alternate method if AllocConsole fails
-				FILE *dummy;
-				if (freopen_s(&dummy, "CONOUT$", "w", stdout) != 0 ||
-					freopen_s(&dummy, "CONOUT$", "w", stderr) != 0 ||
-					freopen_s(&dummy, "CONIN$", "r", stdin) != 0)
-				{
-					return false;
-				}
-				return true;
-			}
+				return false;
 		}
 
-		// Successfully attached or allocated
 		FILE *dummy;
-		if (freopen_s(&dummy, "CONOUT$", "w", stdout) != 0 ||
-			freopen_s(&dummy, "CONOUT$", "w", stderr) != 0 ||
-			freopen_s(&dummy, "CONIN$", "r", stdin) != 0)
-		{
-			return false;
-		}
+		freopen_s(&dummy, "CONOUT$", "w", stdout);
+		freopen_s(&dummy, "CONOUT$", "w", stderr);
+		freopen_s(&dummy, "CONIN$", "r", stdin);
 
-		// Configure console for non-blocking operation
 		configureConsole();
 		return true;
 	}
 
 	void configureConsole()
 	{
-		// Get the current console input handle
 		HANDLE hInput = GetStdHandle(STD_INPUT_HANDLE);
 		if (hInput != INVALID_HANDLE_VALUE)
 		{
-			// Set console input mode to discard all input
-			SetConsoleMode(hInput, 0);
+			// Disable input and QuickEdit to prevent hangs
+			DWORD mode = 0;
+			GetConsoleMode(hInput, &mode);
+			SetConsoleMode(hInput, mode & ~(ENABLE_QUICK_EDIT_MODE | ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT));
+			FlushConsoleInputBuffer(hInput);
 		}
 
-		// Get the current console output handle
 		HANDLE hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
 		if (hOutput != INVALID_HANDLE_VALUE)
 		{
-			// Enable virtual terminal processing for ANSI color support
 			DWORD mode = 0;
-			if (GetConsoleMode(hOutput, &mode))
-			{
-				SetConsoleMode(hOutput, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-			}
+			GetConsoleMode(hOutput, &mode);
+			SetConsoleMode(hOutput, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 		}
-
-		// Prevent QuickEdit mode that can cause hangs
-		SetConsoleMode(hInput, 0);
 	}
 
 	~ConsoleGuard()
 	{
-		// Flush all buffers before cleanup
 		fflush(stdout);
 		fflush(stderr);
 
-		// Detach from console rather than freeing it
 		if (allocated)
 		{
-			// Clear any remaining input events
 			HANDLE hInput = GetStdHandle(STD_INPUT_HANDLE);
 			if (hInput != INVALID_HANDLE_VALUE)
-			{
 				FlushConsoleInputBuffer(hInput);
-			}
 
-			// Forcefully close standard streams
-			CloseHandle(reinterpret_cast<HANDLE>(_get_osfhandle(_fileno(stdin))));
-			CloseHandle(reinterpret_cast<HANDLE>(_get_osfhandle(_fileno(stdout))));
-			CloseHandle(reinterpret_cast<HANDLE>(_get_osfhandle(_fileno(stderr))));
+			// Explicitly close streams
+			fclose(stdin);
+			fclose(stdout);
+			fclose(stderr);
 
-			// Detach from console without freeing
+			FreeConsole();
+		}
+		else if (attached)
+		{
+			// Detach cleanly if we attached
 			FreeConsole();
 		}
 	}
@@ -213,14 +183,6 @@ std::vector<std::string> get_args_windows()
 //
 int process_args(const std::vector<std::string> &args)
 {
-	std::cout << "v64tng.exe - GROOVIE 2025\n";
-
-	if (args.size() <= 1)
-	{
-		std::cout << "Goodbye World!\n";
-		return 0;
-	}
-
 	//
 	// Extract cursors from the user-specified *.ROB file (ROB.GJD for 7th Guest)
 	//
@@ -430,11 +392,9 @@ int process_args(const std::vector<std::string> &args)
 	return 0;
 }
 
-/*
- ====================
-	 MAIN ENTRY POINT
- ====================
- */
+////////////////////////////////////////////////////////////////////////
+// MAIN ENTRY POINT
+////////////////////////////////////////////////////////////////////////
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
 {
@@ -442,30 +402,30 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
 
 	std::vector<std::string> args = get_args_windows();
 
-	if (args.size() > 1 && args[1] == "!")
+	if (args.size() == 1)
+	{
+		ShowSystemInfoWindow();
+		return 0;
+	}
+	else if (args.size() > 1 && args[1] == "!")
 	{
 		init(); // Start game engine
 		return 0;
 	}
-
-	// For all other cases, set up console and process arguments
-	ConsoleGuard guard;
-	if (!guard.setup())
+	else
 	{
-		MessageBoxW(NULL, L"Failed to initialize console.", L"Error", MB_OK | MB_ICONERROR);
-		return 1;
+		// For all other cases, set up console and process arguments
+		ConsoleGuard guard;
+		if (!guard.setup())
+		{
+			MessageBoxW(NULL, L"Failed to initialize console.", L"Error", MB_OK | MB_ICONERROR);
+			return 1;
+		}
+
+		int ret = process_args(args);
+		FreeConsole();	  // Close the console
+		ExitProcess(ret); // Exit with the return code from process_args
 	}
-
-	// return process_args(args);
-	int ret = process_args(args);
-
-	if (!args.empty() && args[1] != "!")
-	{
-		FreeConsole();	  // close the window immediately
-		ExitProcess(ret); // skip any SDL/CRT teardown that might block
-	}
-
-	return ret;
 }
 #else
 // Standard entry point for non-Windows platforms
