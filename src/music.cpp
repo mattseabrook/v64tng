@@ -755,3 +755,47 @@ void xmiPlay(const std::string &songName, bool isTransient)
 		state.music_thread = std::thread(play_music);
 	}
 }
+
+/*
+===============================================================================
+Function Name: pushMainSong
+
+Description:
+	- Pushes the current main song onto the stack and sets a new main song.
+	  This allows for restoring the previous main song later.
+
+Parameters:
+	- const std::string &songName: The name of the new main song to be played.
+===============================================================================
+*/
+void pushMainSong(const std::string &songName)
+{
+	if (!state.current_song.empty())
+	{
+		state.song_stack.emplace_back(state.current_song, state.main_song_position);
+	}
+	state.current_song = songName;
+	state.main_song_position = 0.0;
+	xmiPlay(songName, false);
+}
+
+/*
+===============================================================================
+Function Name: popMainSong
+
+Description:
+	- Pops the last main song from the stack and resumes playing it.
+	  If the stack is empty, it does nothing.
+===============================================================================
+*/
+void popMainSong()
+{
+	if (!state.song_stack.empty())
+	{
+		auto entry = state.song_stack.back();
+		state.song_stack.pop_back();
+		state.current_song = entry.first;
+		state.main_song_position = entry.second;
+		xmiPlay(state.current_song, false);
+	}
+}
