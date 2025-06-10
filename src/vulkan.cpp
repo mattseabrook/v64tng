@@ -2,7 +2,9 @@
 
 #include <stdexcept>
 #include <vector>
+#include <span>
 #include <cstring>
+#include <cstdint>
 
 #include <vulkan/vulkan.h>
 
@@ -17,6 +19,43 @@
 // Vulkan context structure to hold Vulkan-related resources
 //
 static VulkanContext ctx;
+
+// Persistent buffers used when preparing texture data
+static std::vector<uint8_t> bgraBuffer;
+static std::vector<uint8_t> previousFrameData;
+static bool forceFullUpdate = true;
+
+// Helper functions to avoid old-style casts from Vulkan macros
+constexpr uint32_t makeVersion(uint32_t major, uint32_t minor, uint32_t patch)
+{
+	return (major << 22) | (minor << 12) | patch;
+}
+
+constexpr uint32_t makeAPIVersion(uint32_t variant,
+								  uint32_t major,
+								  uint32_t minor,
+								  uint32_t patch)
+{
+	return (variant << 29) | (major << 22) | (minor << 12) | patch;
+}
+
+// Locate a suitable memory type
+static uint32_t findMemoryType(uint32_t typeFilter,
+							   VkMemoryPropertyFlags properties)
+{
+	VkPhysicalDeviceMemoryProperties memProperties;
+	vkGetPhysicalDeviceMemoryProperties(ctx.physicalDevice, &memProperties);
+
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; ++i)
+	{
+		if ((typeFilter & (1u << i)) &&
+			(memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+		{
+			return i;
+		}
+	}
+	throw std::runtime_error("Failed to find suitable memory type");
+}
 
 /*
 ===============================================================================
@@ -258,10 +297,10 @@ void initializeVulkan()
 	VkApplicationInfo appInfo{};
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	appInfo.pApplicationName = "Vulkan Renderer";
-	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+	appInfo.applicationVersion = makeVersion(1, 0, 0);
 	appInfo.pEngineName = "v64tng";
-	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.apiVersion = VK_API_VERSION_1_0;
+	appInfo.engineVersion = makeVersion(1, 0, 0);
+	appInfo.apiVersion = makeAPIVersion(0, 1, 0, 0);
 
 	VkInstanceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -332,8 +371,7 @@ Parameters:
 */
 static void updateFrameTexture(std::span<const uint8_t> pixelData)
 {
-	auto changedRows = prepareBGRABuffer(pixelData, MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT,
-										 bgraBuffer, previousFrameData, forceFullUpdate);
+	auto changedRows = prepareBGRABuffer(pixelData, MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT, bgraBuffer, previousFrameData, forceFullUpdate);
 	if (changedRows.size() == static_cast<size_t>(MIN_CLIENT_HEIGHT))
 	{
 		uploadToTexture(bgraBuffer.data(), MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT);
