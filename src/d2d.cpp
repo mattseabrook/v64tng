@@ -6,10 +6,9 @@
 #include <windows.h>
 #include <wrl/client.h>
 #include <cstring>
-#include <immintrin.h>
 
 #include "d2d.h"
-
+#include "render.h"
 #include "config.h"
 #include "window.h"
 #include "raycast.h"
@@ -17,7 +16,9 @@
 
 //=============================================================================
 
+//
 // Globals
+//
 static Microsoft::WRL::ComPtr<ID2D1Factory> factory;        // Direct2D factory
 Microsoft::WRL::ComPtr<ID2D1HwndRenderTarget> renderTarget; // Render target
 static Microsoft::WRL::ComPtr<ID2D1Bitmap> bitmap;          // Persistent bitmap
@@ -25,11 +26,18 @@ static std::vector<uint8_t> bgraBuffer;                     // Persistent BGRA b
 static std::vector<uint8_t> previousFrameData;              // Store previous RGB data
 static bool forceFullUpdate = true;                         // Flag for full updates
 
-//=============================================================================
+/*
+===============================================================================
+Function Name: resizeBitmap
 
-//
-// Resize the Direct2D bitmap
-//
+Description:
+    - Resizes the Direct2D bitmap to the specified width and height.
+
+Parameters:
+    - width: New width of the bitmap
+    - height: New height of the bitmap
+===============================================================================
+*/
 void resizeBitmap(UINT width, UINT height)
 {
     if (bitmap)
@@ -49,41 +57,17 @@ void resizeBitmap(UINT width, UINT height)
     {
         throw std::runtime_error("Failed to create Direct2D bitmap");
     }
-    bgraBuffer.resize(width * height * 4);
-    previousFrameData.resize(width * height * 3);
-    forceFullUpdate = true;
+    resizeFrameBuffers(bgraBuffer, previousFrameData, forceFullUpdate, width, height);
 }
 
-//
-// Convert RGB to BGRA using SSE intrinsics
-//
-void convertRGBtoBGRA_SSE(const uint8_t *rgbData, uint8_t *bgraData, size_t pixelCount)
-{
-    static const __m128i shuffleMask = _mm_set_epi8(
-        static_cast<char>(0x80), 9, 10, 11,
-        static_cast<char>(0x80), 6, 7, 8,
-        static_cast<char>(0x80), 3, 4, 5,
-        static_cast<char>(0x80), 0, 1, 2);
+/*
+===============================================================================
+Function Name: initializeD2D
 
-    static const __m128i alphaMask = _mm_set_epi8(
-        static_cast<char>(255), 0, 0, 0,
-        static_cast<char>(255), 0, 0, 0,
-        static_cast<char>(255), 0, 0, 0,
-        static_cast<char>(255), 0, 0, 0);
-
-    size_t i = 0;
-    for (; i < pixelCount; i += 4)
-    {
-        __m128i rgb = _mm_loadu_si128(reinterpret_cast<const __m128i *>(rgbData + i * 3));
-        __m128i shuffled = _mm_shuffle_epi8(rgb, shuffleMask);
-        __m128i bgra = _mm_or_si128(shuffled, alphaMask);
-        _mm_storeu_si128(reinterpret_cast<__m128i *>(bgraData + i * 4), bgra);
-    }
-}
-
-//
-// Initialize Direct2D resources
-//
+Description:
+    - Initializes Direct2D factory and render target.
+===============================================================================
+*/
 void initializeD2D()
 {
     HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, factory.GetAddressOf());
@@ -106,13 +90,16 @@ void initializeD2D()
 
     resizeBitmap(MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT);
     scaleFactor = static_cast<float>(state.ui.width) / MIN_CLIENT_WIDTH;
-    previousFrameData.resize(MIN_CLIENT_WIDTH * MIN_CLIENT_HEIGHT * 3);
-    forceFullUpdate = true;
 }
 
-//
-// Render a frame using Direct2D
-//
+/*
+===============================================================================
+Function Name: renderFrameD2D
+
+Description:
+    - Renders the current frame using Direct2D.
+===============================================================================
+*/
 void renderFrameD2D()
 {
     if (!renderTarget || !bitmap)
@@ -150,36 +137,20 @@ void renderFrameD2D()
 
     std::span<const uint8_t> pixelData = vdx_to_render->chunks[frame_index].data;
 
-    if (forceFullUpdate)
+    auto changedRows = prepareBGRABuffer(pixelData, MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT,
+                                         bgraBuffer, previousFrameData, forceFullUpdate);
+    if (changedRows.size() == static_cast<size_t>(MIN_CLIENT_HEIGHT))
     {
-        // Full frame update with SIMD
-        convertRGBtoBGRA_SSE(pixelData.data(), bgraBuffer.data(), MIN_CLIENT_WIDTH * MIN_CLIENT_HEIGHT);
         bitmap->CopyFromMemory(nullptr, bgraBuffer.data(), MIN_CLIENT_WIDTH * 4);
-        forceFullUpdate = false;
     }
     else
     {
-        // Delta update with SIMD
-        std::vector<size_t> changedRows;
-        const size_t rowSize = MIN_CLIENT_WIDTH * 3; // RGB row size in bytes
-        for (size_t y = 0; y < static_cast<size_t>(MIN_CLIENT_HEIGHT); ++y)
-        {
-            if (memcmp(&pixelData[y * rowSize], &previousFrameData[y * rowSize], rowSize) != 0)
-            {
-                changedRows.push_back(y);
-            }
-        }
         for (size_t y : changedRows)
         {
-            // Convert one row with SIMD
-            convertRGBtoBGRA_SSE(&pixelData[y * rowSize], &bgraBuffer[y * MIN_CLIENT_WIDTH * 4], MIN_CLIENT_WIDTH);
             D2D1_RECT_U destRect = {0, static_cast<UINT32>(y), static_cast<UINT32>(MIN_CLIENT_WIDTH), static_cast<UINT32>(y + 1)};
             bitmap->CopyFromMemory(&destRect, &bgraBuffer[y * MIN_CLIENT_WIDTH * 4], MIN_CLIENT_WIDTH * 4);
         }
     }
-
-    // Update previous frame data
-    std::copy(pixelData.begin(), pixelData.end(), previousFrameData.begin());
 
     // Draw the frame
     renderTarget->BeginDraw();
@@ -215,9 +186,15 @@ void renderFrameD2D()
     }
 }
 
-//
-// Render a raycast frame using Direct2D
-//
+/*
+===============================================================================
+Function Name: renderFrameRaycast
+
+Description:
+    - Renders the raycast view into the Direct2D bitmap and draws
+    it to the render target.
+===============================================================================
+*/
 void renderFrameRaycast()
 {
     if (!renderTarget || !bitmap)
@@ -266,8 +243,14 @@ void renderFrameRaycast()
         throw std::runtime_error("Failed to draw raycast frame");
     }
 }
+/*
+===============================================================================
+Function Name: cleanupD2D
 
-// Cleanup Direct2D resources
+Description:
+    - Cleans up Direct2D resources and destroys the window.
+===============================================================================
+*/
 void cleanupD2D()
 {
     bitmap.Reset();

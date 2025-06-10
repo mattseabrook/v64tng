@@ -40,10 +40,11 @@ struct VDXFile
     uint16_t identifier;
     std::array<uint8_t, 6> unknown;
     std::vector<VDXChunk> chunks;
+    std::vector<uint8_t> audioData;
     bool parsed = false;
 };
 
 VDXFile parseVDXFile(std::string_view filename, std::span<const uint8_t> buffer);
-void parseVDXChunks(VDXFile& vdxFile);
+void parseVDXChunks(VDXFile &vdxFile);
 
 #endif // VDX_H

@@ -37,6 +37,7 @@ static bool g_keys[256] = {false}; // Move to raycast.cpp later
 // Maps
 static std::map<RendererType, void (*)()> initializeRenderer;
 static std::map<RendererType, void (*)()> renderFrameFuncs;
+static std::map<RendererType, void (*)()> renderRaycastFuncs;
 static std::map<RendererType, void (*)()> cleanupFuncs;
 
 ////////////////////////////////////////////////////////////////////////
@@ -633,15 +634,23 @@ LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam)
 	return CallNextHookEx(g_mouseHook, nCode, wParam, lParam);
 }
 
-//
-// Helper Functions
-//
+/*
+===============================================================================
+Function Name: initHandlers
+
+Description:
+	- Initializes the function pointers for different renderer types.
+	- Maps the renderer types to their respective initialization, rendering, and cleanup functions.
+===============================================================================
+*/
 void initHandlers()
 {
 	initializeRenderer[RendererType::VULKAN] = initializeVulkan;
 	initializeRenderer[RendererType::DIRECT2D] = initializeD2D;
 	renderFrameFuncs[RendererType::VULKAN] = renderFrameVk;
 	renderFrameFuncs[RendererType::DIRECT2D] = renderFrameD2D;
+	renderRaycastFuncs[RendererType::VULKAN] = renderFrameRaycastVk;
+	renderRaycastFuncs[RendererType::DIRECT2D] = renderFrameRaycast;
 	cleanupFuncs[RendererType::VULKAN] = cleanupVulkan;
 	cleanupFuncs[RendererType::DIRECT2D] = cleanupD2D;
 }

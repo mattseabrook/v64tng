@@ -3,35 +3,34 @@
 
 #include <vector>
 #include <string>
+
 #include <vulkan/vulkan.h>
 
-struct VulkanContext {
-    VkInstance instance;
-    VkPhysicalDevice physicalDevice;
-    VkDevice device;
-    VkQueue graphicsQueue;
-    VkCommandPool commandPool;
+//
+// VulkanContext structure to hold Vulkan-related resources
+//
+struct VulkanContext
+{
+    VkInstance instance{};
+    VkPhysicalDevice physicalDevice{};
+    VkDevice device{};
+    VkQueue graphicsQueue{};
+    VkCommandPool commandPool{};
 
-    VkImage textureImage;
-    VkDeviceMemory textureImageMemory;
-    VkImageView textureImageView;
-    VkSampler textureSampler;
+    VkImage textureImage{};
+    VkDeviceMemory textureImageMemory{};
+    VkImageView textureImageView{};
+    VkSampler textureSampler{};
 
-    VkPipelineLayout pipelineLayout;
-    VkPipeline graphicsPipeline;
-    VkRenderPass renderPass;
-
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexBufferMemory;
-    VkBuffer indexBuffer;
-    VkDeviceMemory indexBufferMemory;
-
-    uint32_t graphicsQueueFamily;
+    uint32_t graphicsQueueFamily = 0;
 };
 
+// Function prototypes for Vulkan rendering
+
 void initializeVulkan();
-void createVulkanTexture(const uint8_t* pixels, uint32_t width, uint32_t height);
+void resizeVulkanTexture(uint32_t width, uint32_t height);
 void renderFrameVk();
+void renderFrameRaycastVk();
 void cleanupVulkan();
 
 #endif

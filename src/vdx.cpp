@@ -29,7 +29,8 @@ Notes:
 	- None.
 ===============================================================================
 */
-VDXFile parseVDXFile(std::string_view filename, std::span<const uint8_t> buffer) {
+VDXFile parseVDXFile(std::string_view filename, std::span<const uint8_t> buffer)
+{
 	VDXFile vdxFile;
 	auto lastDot = filename.find_last_of('.');
 	vdxFile.filename = (lastDot == std::string_view::npos) ? std::string(filename) : std::string(filename.substr(0, lastDot));
@@ -38,7 +39,8 @@ VDXFile parseVDXFile(std::string_view filename, std::span<const uint8_t> buffer)
 	std::copy(buffer.begin() + 2, buffer.begin() + 8, vdxFile.unknown.begin());
 
 	size_t offset = 8;
-	while (offset < buffer.size()) {
+	while (offset < buffer.size())
+	{
 		VDXChunk chunk;
 		chunk.chunkType = buffer[offset];
 		chunk.unknown = buffer[offset + 1];
@@ -64,23 +66,38 @@ Parameters:
 	- vdxFile: Fully populated VDXFile object.
 ===============================================================================
 */
-void parseVDXChunks(VDXFile& vdxFile) {
+void parseVDXChunks(VDXFile &vdxFile)
+{
 	std::vector<RGBColor> palette;
 	size_t prevBitmapIndex{};
 
-	for (auto& chunk : vdxFile.chunks) {
-		if (chunk.lengthBits != 0) {
+	for (auto &chunk : vdxFile.chunks)
+	{
+		if (chunk.lengthBits != 0)
+		{
 			chunk.data = lzssDecompress(std::span(chunk.data), chunk.lengthMask, chunk.lengthBits);
 		}
-		switch (chunk.chunkType) {
+		switch (chunk.chunkType)
+		{
 		case 0x20:
 		case 0x25:
+		{
 			auto [palData, bitmapData] = chunk.chunkType == 0x20
-				? getBitmapData(chunk.data)
-				: getDeltaBitmapData(chunk.data, palette, vdxFile.chunks[prevBitmapIndex].data);
+											 ? getBitmapData(chunk.data)
+											 : getDeltaBitmapData(chunk.data, palette, vdxFile.chunks[prevBitmapIndex].data);
 			palette = std::move(palData);
 			chunk.data = std::move(bitmapData);
 			prevBitmapIndex = &chunk - vdxFile.chunks.data();
+		}
+		break;
+		case 0x80:
+			vdxFile.audioData.insert(vdxFile.audioData.end(), chunk.data.begin(), chunk.data.end());
+			break;
+		case 0x00:
+			if (!vdxFile.chunks.empty() && prevBitmapIndex < vdxFile.chunks.size())
+			{
+				chunk.data = vdxFile.chunks[prevBitmapIndex].data;
+			}
 			break;
 		}
 	}

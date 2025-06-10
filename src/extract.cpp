@@ -19,6 +19,7 @@
 #include "vdx.h"
 #include "cursor.h"
 #include "bitmap.h"
+#include "audio.h"
 
 /*
 ===============================================================================
@@ -380,6 +381,13 @@ void extractPNG(std::string_view filename, bool raw)
 	std::filesystem::path dirPath = std::filesystem::path{filename}.parent_path() / dirName;
 	std::filesystem::create_directory(dirPath);
 
+	if (!vdx.audioData.empty())
+	{
+		std::filesystem::path wavPath = dirPath / (std::filesystem::path{filename}.stem().string() + ".wav");
+		std::cout << "Writing: " << wavPath.string() << '\n';
+		saveWAV(wavPath.string(), vdx.audioData);
+	}
+
 	std::vector<uint8_t> lastFrame; // Store the last frame's RGB data
 
 	for (size_t i = 0, frameNum = 1; i < vdx.chunks.size(); ++i)
@@ -572,4 +580,30 @@ void savePNG(const std::string &filename, const std::vector<uint8_t> &imageData,
 
 	fclose(fp);
 	png_destroy_write_struct(&png_ptr, &info_ptr);
+}
+
+/*
+===============================================================================
+Function Name: saveWAV
+
+Description:
+		- Saves a *.WAV file from concatenated 0x80 audio chunks.
+
+Parameters:
+		- filename: The filename of the WAV file to be written
+		- audioData: Raw PCM data (8-bit, mono, 22050 Hz)
+===============================================================================
+*/
+void saveWAV(const std::string &filename, const std::vector<uint8_t> &audioData)
+{
+	WAVHeader header;
+	header.subchunk2Size = static_cast<uint32_t>(audioData.size());
+	header.chunkSize = 36 + header.subchunk2Size;
+
+	std::ofstream outFile(filename, std::ios::binary);
+	if (!outFile)
+		throw std::runtime_error("Failed to open " + filename);
+
+	outFile.write(reinterpret_cast<const char *>(&header), sizeof(header));
+	outFile.write(reinterpret_cast<const char *>(audioData.data()), audioData.size());
 }

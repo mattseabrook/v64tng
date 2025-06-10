@@ -508,30 +508,37 @@ void PlayMIDI(const std::vector<uint8_t> &midiData, bool isTransient)
 	{
 		adl_switchEmulator(player, V64TNG_EMU_OPL2);
 		adl_setNumChips(player, 1);
-		adl_setNumFourOpsChn(player, 0);
 	}
 	else if (state.music_mode == "dual_opl2")
 	{
 		adl_switchEmulator(player, V64TNG_EMU_OPL2);
 		adl_setNumChips(player, 2);
-		adl_setNumFourOpsChn(player, 0);
 	}
 	else if (state.music_mode == "opl3")
 	{
 		adl_switchEmulator(player, V64TNG_EMU_OPL3);
-		adl_setNumChips(player, 1);
-		adl_setNumFourOpsChn(player, 6);
+		adl_setNumChips(player, 2);
 	}
 	else
 	{
 		std::cerr << "WARNING: Unknown music mode '" << state.music_mode << "', defaulting to opl3." << std::endl;
 		adl_switchEmulator(player, V64TNG_EMU_OPL3);
 		adl_setNumChips(player, 1);
-		adl_setNumFourOpsChn(player, 6);
 	}
 
-	// Apply bank selection and emulator changes
+	// Apply bank selection and configure 4-op channels after bank change
 	adl_setBank(player, state.midi_bank);
+
+	if (state.music_mode == "opl3")
+	{
+		adl_setNumFourOpsChn(player, 6);
+	}
+	else
+	{
+		adl_setNumFourOpsChn(player, 0);
+	}
+
+	// Reset player to apply settings
 	adl_reset(player);
 
 	if (adl_openData(player, midiData.data(), static_cast<unsigned long>(midiData.size())) < 0)
