@@ -126,7 +126,9 @@ static void createVulkanTexture(uint32_t width, uint32_t height)
 	imageInfo.arrayLayers = 1;
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT |
+					  VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+					  VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
@@ -560,23 +562,26 @@ void presentFrame()
 	vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
 						 0, nullptr, 0, nullptr, 1, &barrier);
 
-	VkImageCopy copyRegion{};
-	copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	copyRegion.srcSubresource.mipLevel = 0;
-	copyRegion.srcSubresource.baseArrayLayer = 0;
-	copyRegion.srcSubresource.layerCount = 1;
-	copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	copyRegion.dstSubresource.mipLevel = 0;
-	copyRegion.dstSubresource.baseArrayLayer = 0;
-	copyRegion.dstSubresource.layerCount = 1;
-	copyRegion.extent.width = ctx.swapchainExtent.width;
-	copyRegion.extent.height = ctx.swapchainExtent.height;
-	copyRegion.extent.depth = 1;
+	VkImageBlit blitRegion{};
+	blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	blitRegion.srcSubresource.mipLevel = 0;
+	blitRegion.srcSubresource.baseArrayLayer = 0;
+	blitRegion.srcSubresource.layerCount = 1;
+	blitRegion.srcOffsets[1].x = MIN_CLIENT_WIDTH;
+	blitRegion.srcOffsets[1].y = MIN_CLIENT_HEIGHT;
+	blitRegion.srcOffsets[1].z = 1;
+	blitRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	blitRegion.dstSubresource.mipLevel = 0;
+	blitRegion.dstSubresource.baseArrayLayer = 0;
+	blitRegion.dstSubresource.layerCount = 1;
+	blitRegion.dstOffsets[1].x = static_cast<int32_t>(ctx.swapchainExtent.width);
+	blitRegion.dstOffsets[1].y = static_cast<int32_t>(ctx.swapchainExtent.height);
+	blitRegion.dstOffsets[1].z = 1;
 
-	vkCmdCopyImage(commandBuffer,
+	vkCmdBlitImage(commandBuffer,
 				   ctx.textureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 				   ctx.swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				   1, &copyRegion);
+				   1, &blitRegion, VK_FILTER_NEAREST);
 
 	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
