@@ -27,7 +27,9 @@ static std::vector<uint8_t> bgraBuffer;
 static std::vector<uint8_t> previousFrameData;
 static bool forceFullUpdate = true;
 
+//
 // Helper functions to avoid old-style casts from Vulkan macros
+//
 constexpr uint32_t makeVersion(uint32_t major, uint32_t minor, uint32_t patch)
 {
 	return (major << 22) | (minor << 12) | patch;
@@ -305,6 +307,51 @@ void resizeVulkanTexture(uint32_t width, uint32_t height)
 
 /*
 ===============================================================================
+Function Name: recreateSwapchain
+
+Description:
+	- Recreates the Vulkan swapchain with the specified dimensions.
+
+Parameters:
+	- width: New width of the swapchain.
+	- height: New height of the swapchain.
+===============================================================================
+*/
+void recreateSwapchain(uint32_t width, uint32_t height)
+{
+	if (ctx.swapchain)
+		vkDestroySwapchainKHR(ctx.device, ctx.swapchain, nullptr);
+
+	VkSurfaceCapabilitiesKHR surfaceCapabilities;
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(ctx.physicalDevice, ctx.surface, &surfaceCapabilities);
+
+	ctx.swapchainExtent = {width, height};
+
+	VkSwapchainCreateInfoKHR swapchainInfo{};
+	swapchainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	swapchainInfo.surface = ctx.surface;
+	swapchainInfo.minImageCount = 2;
+	swapchainInfo.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
+	swapchainInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+	swapchainInfo.imageExtent = ctx.swapchainExtent;
+	swapchainInfo.imageArrayLayers = 1;
+	swapchainInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	swapchainInfo.preTransform = surfaceCapabilities.currentTransform;
+	swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	swapchainInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+	swapchainInfo.clipped = VK_TRUE;
+	vkCreateSwapchainKHR(ctx.device, &swapchainInfo, nullptr, &ctx.swapchain);
+
+	uint32_t imageCount = 0;
+	vkGetSwapchainImagesKHR(ctx.device, ctx.swapchain, &imageCount, nullptr);
+	ctx.swapchainImages.resize(imageCount);
+	vkGetSwapchainImagesKHR(ctx.device, ctx.swapchain, &imageCount, ctx.swapchainImages.data());
+	ctx.swapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
+}
+
+/*
+===============================================================================
 Function Name: initializeVulkan
 
 Description:
@@ -574,8 +621,13 @@ void presentFrame()
 	blitRegion.dstSubresource.mipLevel = 0;
 	blitRegion.dstSubresource.baseArrayLayer = 0;
 	blitRegion.dstSubresource.layerCount = 1;
+	float scaledHeight = MIN_CLIENT_HEIGHT * scaleFactor;
+	int32_t offsetY = static_cast<int32_t>((ctx.swapchainExtent.height - scaledHeight) * 0.5f);
+	blitRegion.dstOffsets[0].x = 0;
+	blitRegion.dstOffsets[0].y = offsetY;
+	blitRegion.dstOffsets[0].z = 0;
 	blitRegion.dstOffsets[1].x = static_cast<int32_t>(ctx.swapchainExtent.width);
-	blitRegion.dstOffsets[1].y = static_cast<int32_t>(ctx.swapchainExtent.height);
+	blitRegion.dstOffsets[1].y = offsetY + static_cast<int32_t>(scaledHeight);
 	blitRegion.dstOffsets[1].z = 1;
 
 	vkCmdBlitImage(commandBuffer,

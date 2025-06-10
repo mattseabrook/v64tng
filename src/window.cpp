@@ -146,6 +146,8 @@ LRESULT HandleSize(HWND hwnd, WPARAM wParam)
 	}
 	if (renderTarget)
 		renderTarget->Resize(D2D1::SizeU(newWidth, newHeight));
+	if (renderer == RendererType::VULKAN)
+		recreateSwapchain(static_cast<uint32_t>(newWidth), static_cast<uint32_t>(newHeight));
 	if (state.ui.width != newWidth || state.ui.height != newHeight)
 	{
 		state.ui.width = newWidth;

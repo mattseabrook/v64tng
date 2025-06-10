@@ -25,16 +25,16 @@
   - [Cursors](#cursors)
   - [LZSS](#lzss)
 - [Usage](#usage)
-  - [Starting the Game Engine](#starting-the-game-engine)
-  - [-r: Information on .RL Files](#-r-information-on-rl-files)
-  - [-p: Extracting PNG from .VDX Files](#-p-extracting-png-from-vdx-files)
-    - [Optional Arguments](#optional-arguments)
-  - [-g: Extracting .VDX from .GJD Files](#-g-extracting-vdx-from-gjd-files)
-  - [-x: Extract or Play a specific XMI file from XML.RL/GJD](#-x-extract-or-play-a-specific-xmi-file-from-xmlrlgjd)
+  - [`-c <FILE>`](#-c-file)
+  - [`-g <RL_FILE>`](#-g-rl_file)
+  - [`-p <VDX_FILE> [raw] [alpha] [video]`](#-p-vdx_file-raw-alpha-video)
+  - [`-r <RL_FILE>`](#-r-rl_file)
+  - [`-v <FILE>`](#-v-file)
+  - [`-x <SONG> [play|extract]`](#-x-song-playextract)
 - [Developers](#developers)
   - [Pre-requisites](#pre-requisites)
-- [CHANGELOG](#changelog)
-  - [2025-01-05](#2025-01-05)
+  - [`-raycast`](#-raycast)
+  - [`-l compress|decompress <FILE>`](#-l-compressdecompress-file)
 
 # Disclaimer
 
@@ -364,78 +364,103 @@ During decompression, the function `lzssDecompress` reads and processes each byt
 
 # Usage
 
-Below is the detailed usage guide for the command line interface.
-
-## Starting the Game Engine
-
-If you wish to start the game engine normally:
+Running `v64tng.exe` with no arguments opens a small system information window. To start the
+game itself, launch the executable with an exclamation mark:
 
 ```cmd
-v64tng.exe
+v64tng.exe !
 ```
 
-## -r: Information on .RL Files
+The program also provides several command line utilities.
 
-To get information about a specific .RL file:
+## `-c <FILE>`
+Extracts all cursor animations from the `ROB.GJD` file. Each cursor
+is written as a sequence of numbered PNG images.
 
 ```cmd
-v64tng.exe -r [RL_FILE]
+v64tng.exe -c CURSORS.ROB
 ```
 
-**Example:** `v64tng.exe -i DR.RL`
-
-## -p: Extracting PNG from .VDX Files
-
-To extract PNG images from a specific .VDX file, use the following command:
+## `-g <RL_FILE>`
+Extracts every `.VDX` referenced by the given `.RL` file. The matching `.GJD`
+archive must be located alongside the `.RL` file.
 
 ```cmd
-v64tng.exe -p [VDX_FILE] [OPTIONAL_ARGUMENTS]
+v64tng.exe -g DR.RL
 ```
 
-### Optional Arguments
-
-- `raw`: To extract in raw format.
-- `alpha`: This flag activates a visible alpha channel that is set to: `RGBColor colorKey = { 255, 0, 255 }; // Fuscia`.
-
-**Example**: `v64tng.exe -p dr_00f.vdx raw alpha`
-
-Note that these optionals do not need to be used concurrently. 
-
-## -g: Extracting .VDX from .GJD Files
-
-To extract .VDX files from a specific .GJD file:
+## `-p <VDX_FILE> [raw] [alpha] [video]`
+Extracts frames from a VDX file. Frames are saved as PNG images by default.
+`raw` dumps the pixel data without conversion. The `alpha` flag enables a
+visible magenta transparency key for development. Adding `video` generates a
+MKV movie from the extracted frames.
 
 ```cmd
-v64tng.exe -g [GJD_FILE]
+v64tng.exe -p f_1bb.vdx raw alpha video
 ```
 
-**Example**: `v64tng.exe -x DR.GJD`
-
-## -x: Extract or Play a specific XMI file from XML.RL/GJD
-
-To extract PNG images from a specific .VDX file, use the following command:
+## `-r <RL_FILE>`
+Displays the contents of an RL index file, listing each entry's offset and
+length inside the associated GJD archive.
 
 ```cmd
-v64tng.exe -x agu16 play|extract
+v64tng.exe -r DR.RL
+```
+
+## `-v <FILE>`
+Shows detailed information about a VDX resource or about how data is organised
+within a GJD archive.
+
+```cmd
+v64tng.exe -v f_1bc.vdx
+```
+
+## `-x <SONG> [play|extract]`
+Looks up a song by name inside `XMI.RL` and either plays it or writes the raw XMI
+file to disk. The song name should be given without the `.XMI` extension.
+
+```cmd
+v64tng.exe -x agu16 play
 ```
 
 # Developers
 
+The current build system is a PowerShell script called `build.ps1`. It uses
+`clang++` and the LLVM linker to build the project on Windows. Invoke the script
+from a developer command prompt:
+
+```powershell
+./build.ps1         # Release build (default)
+./build.ps1 debug   # Debug build with symbols
+./build.ps1 clean   # Remove all build artifacts
+```
+
+The script expects several third‑party libraries to exist in fixed locations.
+Only Windows builds are supported at this time.
+
 ## Pre-requisites
 
-| Name       | Description                                                                    |
-| ---------- | ------------------------------------------------------------------------------ |
-| zlib       | Compression required by `libpng`.                                              |
-| libpng     | Used to save the `0x20` and `0x25` bitmap frames to `*.PNG` format (lossless). |
-| Vulkan SDK | Graphics rendering.                                                            |
-| GLFW       | Required by `Vulkan` for Window Management.                                    |
-| GLM        | Linear Algebra library required by `Vulkan`                                    |
+| Component              | Purpose                                |
+| ---------------------- | -------------------------------------- |
+| LLVM `clang++` & `lld` | C++23 compiler and linker              |
+| Windows SDK            | Provides `rc.exe` and system headers   |
+| Vulkan SDK 1.3.296.0   | Graphics API headers and libraries     |
+| zlib 1.3.1             | Compression library used by libpng     |
+| libpng 1.6.44          | Saves bitmap frames as PNG             |
+| ADLMIDI                | MIDI playback library for FM Synthesis |
 
-# CHANGELOG
+## `-raycast`
+Starts the engine in a development raycasting mode.
 
-## 2025-01-05
+```cmd
+v64tng.exe -raycast
+```
 
-- `VULKAN` was moved out of `window.h` and `window.cpp`, and were moved into dedicated `vulkan.h`, `vulkan.cpp` respectively.
-- `window.cpp` becomes an abstraction to windowing and rendering items
-- DirectX `D2D` implementation completed
-- Many items added to the `config.json` Game Engine configuration file, including `renderer`, `display`, `width`, `x`, and `y`.
+## `-l compress|decompress <FILE>`
+Tests the LZSS routines. Provide the action and a file to process. Compressed
+output uses the `.lzss` extension while decompressed data is written with
+`.decomp`.
+
+```cmd
+v64tng.exe -l decompress frame.bin
+```
