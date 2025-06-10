@@ -17,6 +17,15 @@ struct VulkanContext
     VkQueue graphicsQueue{};
     VkCommandPool commandPool{};
 
+    VkSurfaceKHR surface{};
+    VkSwapchainKHR swapchain{};
+    std::vector<VkImage> swapchainImages;
+    VkFormat swapchainFormat{};
+    VkExtent2D swapchainExtent{};
+    VkSemaphore imageAvailableSemaphore{};
+    VkSemaphore renderFinishedSemaphore{};
+    VkFence inFlightFence{};
+
     VkImage textureImage{};
     VkDeviceMemory textureImageMemory{};
     VkImageView textureImageView{};
@@ -31,6 +40,7 @@ void initializeVulkan();
 void resizeVulkanTexture(uint32_t width, uint32_t height);
 void renderFrameVk();
 void renderFrameRaycastVk();
+void presentFrame();
 void cleanupVulkan();
 
 #endif

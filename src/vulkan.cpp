@@ -1,5 +1,6 @@
 // vulkan.cpp
 
+#include <windows.h>
 #include <stdexcept>
 #include <vector>
 #include <span>
@@ -7,6 +8,7 @@
 #include <cstdint>
 
 #include <vulkan/vulkan.h>
+#include <vulkan/vulkan_win32.h>
 
 #include "vulkan.h"
 #include "game.h"
@@ -246,6 +248,21 @@ static void uploadToTexture(const uint8_t *data, uint32_t width, uint32_t height
 	vkCmdCopyBufferToImage(cmd, stagingBuffer, ctx.textureImage,
 						   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
+	VkImageMemoryBarrier barrier{};
+	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	barrier.image = ctx.textureImage;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+						 0, nullptr, 0, nullptr, 1, &barrier);
+
 	vkEndCommandBuffer(cmd);
 
 	VkSubmitInfo submitInfo{};
@@ -306,7 +323,9 @@ void initializeVulkan()
 	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	createInfo.pApplicationInfo = &appInfo;
 
-	std::vector<const char *> extensions = {VK_KHR_SURFACE_EXTENSION_NAME};
+	std::vector<const char *> extensions = {
+		VK_KHR_SURFACE_EXTENSION_NAME,
+		VK_KHR_WIN32_SURFACE_EXTENSION_NAME};
 	createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
 	createInfo.ppEnabledExtensionNames = extensions.data();
 
@@ -342,9 +361,58 @@ void initializeVulkan()
 	deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	deviceInfo.queueCreateInfoCount = 1;
 	deviceInfo.pQueueCreateInfos = &queueCreateInfo;
+	const char *deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+	deviceInfo.enabledExtensionCount = 1;
+	deviceInfo.ppEnabledExtensionNames = deviceExtensions;
 
 	vkCreateDevice(ctx.physicalDevice, &deviceInfo, nullptr, &ctx.device);
 	vkGetDeviceQueue(ctx.device, ctx.graphicsQueueFamily, 0, &ctx.graphicsQueue);
+
+	VkWin32SurfaceCreateInfoKHR surfaceInfo{};
+	surfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+	surfaceInfo.hwnd = g_hwnd;
+	surfaceInfo.hinstance = GetModuleHandle(nullptr);
+	vkCreateWin32SurfaceKHR(ctx.instance, &surfaceInfo, nullptr, &ctx.surface);
+
+	VkBool32 supported;
+	vkGetPhysicalDeviceSurfaceSupportKHR(ctx.physicalDevice, ctx.graphicsQueueFamily, ctx.surface, &supported);
+
+	VkSurfaceCapabilitiesKHR surfaceCapabilities;
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(ctx.physicalDevice, ctx.surface, &surfaceCapabilities);
+
+	ctx.swapchainExtent = surfaceCapabilities.currentExtent;
+
+	VkSwapchainCreateInfoKHR swapchainInfo{};
+	swapchainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	swapchainInfo.surface = ctx.surface;
+	swapchainInfo.minImageCount = 2;
+	swapchainInfo.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
+	swapchainInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+	swapchainInfo.imageExtent = ctx.swapchainExtent;
+	swapchainInfo.imageArrayLayers = 1;
+	swapchainInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	swapchainInfo.preTransform = surfaceCapabilities.currentTransform;
+	swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	swapchainInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+	swapchainInfo.clipped = VK_TRUE;
+	vkCreateSwapchainKHR(ctx.device, &swapchainInfo, nullptr, &ctx.swapchain);
+
+	uint32_t imageCount = 0;
+	vkGetSwapchainImagesKHR(ctx.device, ctx.swapchain, &imageCount, nullptr);
+	ctx.swapchainImages.resize(imageCount);
+	vkGetSwapchainImagesKHR(ctx.device, ctx.swapchain, &imageCount, ctx.swapchainImages.data());
+	ctx.swapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
+
+	VkSemaphoreCreateInfo semaphoreInfo{};
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	vkCreateSemaphore(ctx.device, &semaphoreInfo, nullptr, &ctx.imageAvailableSemaphore);
+	vkCreateSemaphore(ctx.device, &semaphoreInfo, nullptr, &ctx.renderFinishedSemaphore);
+
+	VkFenceCreateInfo fenceInfo{};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+	vkCreateFence(ctx.device, &fenceInfo, nullptr, &ctx.inFlightFence);
 
 	VkCommandPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -424,6 +492,7 @@ void renderFrameVk()
 	}
 
 	updateFrameTexture(vdx_to_render->chunks[frame_index].data);
+	presentFrame();
 }
 
 /*
@@ -443,6 +512,104 @@ void renderFrameRaycastVk()
 
 	renderRaycastView(map, player, bgraBuffer.data(), MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT);
 	uploadToTexture(bgraBuffer.data(), MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT);
+	presentFrame();
+}
+
+/*
+==============================================================================
+Function Name: presentFrame
+
+Description:
+		- Presents the prepared texture image to the swapchain.
+==============================================================================
+*/
+void presentFrame()
+{
+	vkWaitForFences(ctx.device, 1, &ctx.inFlightFence, VK_TRUE, UINT64_MAX);
+	vkResetFences(ctx.device, 1, &ctx.inFlightFence);
+
+	uint32_t imageIndex;
+	vkAcquireNextImageKHR(ctx.device, ctx.swapchain, UINT64_MAX, ctx.imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+
+	VkCommandBufferAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.commandPool = ctx.commandPool;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandBufferCount = 1;
+
+	VkCommandBuffer commandBuffer;
+	vkAllocateCommandBuffers(ctx.device, &allocInfo, &commandBuffer);
+
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+	VkImageMemoryBarrier barrier{};
+	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	barrier.image = ctx.swapchainImages[imageIndex];
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+						 0, nullptr, 0, nullptr, 1, &barrier);
+
+	VkImageCopy copyRegion{};
+	copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	copyRegion.srcSubresource.mipLevel = 0;
+	copyRegion.srcSubresource.baseArrayLayer = 0;
+	copyRegion.srcSubresource.layerCount = 1;
+	copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	copyRegion.dstSubresource.mipLevel = 0;
+	copyRegion.dstSubresource.baseArrayLayer = 0;
+	copyRegion.dstSubresource.layerCount = 1;
+	copyRegion.extent.width = ctx.swapchainExtent.width;
+	copyRegion.extent.height = ctx.swapchainExtent.height;
+	copyRegion.extent.depth = 1;
+
+	vkCmdCopyImage(commandBuffer,
+				   ctx.textureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				   ctx.swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				   1, &copyRegion);
+
+	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+						 0, nullptr, 0, nullptr, 1, &barrier);
+
+	vkEndCommandBuffer(commandBuffer);
+
+	VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = &ctx.imageAvailableSemaphore;
+	submitInfo.pWaitDstStageMask = &waitStage;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &ctx.renderFinishedSemaphore;
+
+	vkQueueSubmit(ctx.graphicsQueue, 1, &submitInfo, ctx.inFlightFence);
+
+	VkPresentInfoKHR presentInfo{};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = &ctx.renderFinishedSemaphore;
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = &ctx.swapchain;
+	presentInfo.pImageIndices = &imageIndex;
+	vkQueuePresentKHR(ctx.graphicsQueue, &presentInfo);
+
+	vkFreeCommandBuffers(ctx.device, ctx.commandPool, 1, &commandBuffer);
 }
 
 /*
@@ -456,6 +623,16 @@ Description:
 void cleanupVulkan()
 {
 	destroyTexture();
+	if (ctx.swapchain)
+		vkDestroySwapchainKHR(ctx.device, ctx.swapchain, nullptr);
+	if (ctx.surface)
+		vkDestroySurfaceKHR(ctx.instance, ctx.surface, nullptr);
+	if (ctx.imageAvailableSemaphore)
+		vkDestroySemaphore(ctx.device, ctx.imageAvailableSemaphore, nullptr);
+	if (ctx.renderFinishedSemaphore)
+		vkDestroySemaphore(ctx.device, ctx.renderFinishedSemaphore, nullptr);
+	if (ctx.inFlightFence)
+		vkDestroyFence(ctx.device, ctx.inFlightFence, nullptr);
 	if (ctx.commandPool)
 		vkDestroyCommandPool(ctx.device, ctx.commandPool, nullptr);
 	if (ctx.device)
