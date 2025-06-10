@@ -125,7 +125,7 @@ Parameters:
     - palette: A span of uint8_t representing the color palette.
 ===============================================================================
 */
-CursorImage unpackCursorBlob(std::span<const uint8_t> blobData, size_t blobIndex)
+CursorImage unpackCursorBlob(std::span<const uint8_t> blobData)
 {
     auto decomp = decompressCursorBlob(blobData);
 
@@ -141,7 +141,7 @@ CursorImage unpackCursorBlob(std::span<const uint8_t> blobData, size_t blobIndex
     if (decomp.size() < pixelOffset + pixelSize)
         throw std::runtime_error("Decompressed data too small for pixels");
 
-    CursorImage img{width, height, frames};
+    CursorImage img{width, height, frames, {}};
     img.pixels.assign(decomp.begin() + pixelOffset, decomp.begin() + pixelOffset + pixelSize);
     return img;
 }
@@ -201,7 +201,7 @@ HCURSOR createWindowsCursor(const std::vector<uint8_t> &rgbaData, int width, int
     const int HOTSPOT_Y = height / 2;
 
     // Create icon/cursor compatible bitmap structures
-    BITMAPV5HEADER bi = {0};
+    BITMAPV5HEADER bi{};
     bi.bV5Size = sizeof(BITMAPV5HEADER);
     bi.bV5Width = width;
     bi.bV5Height = -height; // Negative height for top-down DIB
@@ -216,7 +216,7 @@ HCURSOR createWindowsCursor(const std::vector<uint8_t> &rgbaData, int width, int
     // Create DIB with device context
     HDC hdc = GetDC(NULL);
     void *bits = nullptr;
-    HBITMAP color = CreateDIBSection(hdc, (BITMAPINFO *)&bi, DIB_RGB_COLORS, &bits, NULL, 0);
+    HBITMAP color = CreateDIBSection(hdc, reinterpret_cast<BITMAPINFO *>(&bi), DIB_RGB_COLORS, &bits, NULL, 0);
 
     if (!color || !bits)
     {
@@ -225,7 +225,7 @@ HCURSOR createWindowsCursor(const std::vector<uint8_t> &rgbaData, int width, int
     }
 
     // Copy RGBA data into DIB section, converting from RGBA to BGRA
-    BYTE *dst = (BYTE *)bits;
+    BYTE *dst = static_cast<BYTE *>(bits);
     for (int y = 0; y < height; y++)
     {
         for (int x = 0; x < width; x++)
@@ -247,8 +247,8 @@ HCURSOR createWindowsCursor(const std::vector<uint8_t> &rgbaData, int width, int
     // Fill mask bitmap based on alpha values
     HDC hdcMask = CreateCompatibleDC(hdc);
     HDC hdcColor = CreateCompatibleDC(hdc);
-    HBITMAP oldMask = (HBITMAP)SelectObject(hdcMask, mask);
-    HBITMAP oldColor = (HBITMAP)SelectObject(hdcColor, color);
+    HBITMAP oldMask = static_cast<HBITMAP>(SelectObject(hdcMask, mask));
+    HBITMAP oldColor = static_cast<HBITMAP>(SelectObject(hdcColor, color));
 
     // Set mask based on alpha channel (transparent where alpha > 0)
     for (int y = 0; y < height; y++)
@@ -272,7 +272,7 @@ HCURSOR createWindowsCursor(const std::vector<uint8_t> &rgbaData, int width, int
     }
 
     // Create the icon info
-    ICONINFO ii = {0};
+    ICONINFO ii{};
     ii.fIcon = FALSE; // This is a cursor
     ii.xHotspot = HOTSPOT_X;
     ii.yHotspot = HOTSPOT_Y;
@@ -357,7 +357,7 @@ bool initCursors(const std::string_view &robPath, float scale)
     for (size_t i = 0; i < CursorBlobs.size(); i++)
     {
         auto blob = getCursorBlob(robData, i);
-        CursorImage img = unpackCursorBlob(blob, i);
+        CursorImage img = unpackCursorBlob(blob);
         const auto &meta = CursorBlobs[i];
         const size_t palOff = paletteBlockOffset + meta.paletteIdx * CursorPaletteSizeBytes;
         std::span<const uint8_t> pal(&robData[palOff], CursorPaletteSizeBytes);

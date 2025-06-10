@@ -22,7 +22,10 @@
 //
 // MIDI Library
 //
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmacro-redefined"
 #include <adlmidi.h>
+#pragma clang diagnostic pop
 //------------------------------------------------------------------------------
 // Choose the most widely available emulator IDs for OPL2 and OPL3.  Older
 // versions of libADLMIDI may not define the newer YMFM constants, so fall back
@@ -429,8 +432,8 @@ void PlayMIDI(const std::vector<uint8_t> &midiData, bool isTransient)
 		return;
 	}
 
-	hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
-						  __uuidof(IMMDeviceEnumerator), reinterpret_cast<void **>(&pEnumerator));
+	hr = CoCreateInstance(CLSID_MMDeviceEnumerator, nullptr, CLSCTX_ALL,
+						  IID_IMMDeviceEnumerator, reinterpret_cast<void **>(&pEnumerator));
 	if (FAILED(hr))
 	{
 		std::cerr << "ERROR: CoCreateInstance failed, hr=0x" << std::hex << hr << std::endl;
@@ -447,7 +450,7 @@ void PlayMIDI(const std::vector<uint8_t> &midiData, bool isTransient)
 		return;
 	}
 
-	hr = pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void **>(&pAudioClient));
+	hr = pDevice->Activate(IID_IAudioClient, CLSCTX_ALL, nullptr, reinterpret_cast<void **>(&pAudioClient));
 	if (FAILED(hr))
 	{
 		std::cerr << "ERROR: Activate audio client failed, hr=0x" << std::hex << hr << std::endl;
@@ -568,7 +571,7 @@ void PlayMIDI(const std::vector<uint8_t> &midiData, bool isTransient)
 	// Initialize audio playback
 	//
 #ifdef _WIN32
-	hr = pAudioClient->GetService(__uuidof(IAudioRenderClient), reinterpret_cast<void **>(&pRenderClient));
+	hr = pAudioClient->GetService(IID_IAudioRenderClient, reinterpret_cast<void **>(&pRenderClient));
 	if (FAILED(hr))
 	{
 		std::cerr << "ERROR: GetService for IAudioRenderClient failed, hr=0x" << std::hex << hr << std::endl;

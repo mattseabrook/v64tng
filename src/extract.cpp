@@ -265,10 +265,9 @@ Description:
 
 Parameters:
 	- robFilename : path to ROB.GJD
-	- format      : caller‑validated string ("png" for now)
 ===============================================================================
 */
-void extractCursors(const std::string_view &robFilename, const std::string &format)
+void extractCursors(const std::string_view &robFilename)
 {
 	// Open the ROB.GJD file
 	std::ifstream file{robFilename.data(), std::ios::binary | std::ios::ate};
@@ -318,7 +317,7 @@ void extractCursors(const std::string_view &robFilename, const std::string &form
 		{
 			// Extract and unpack the blob
 			auto blob = getCursorBlob(buffer, i);
-			CursorImage img = unpackCursorBlob(blob, i);
+			CursorImage img = unpackCursorBlob(blob);
 
 			// Validate dimensions
 			if (img.width == 0 || img.height == 0)

@@ -244,7 +244,7 @@ LRESULT HandleSetCursor(LPARAM lParam)
 	}
 
 	// For non-client areas (resize handles, etc.), let Windows handle it
-	return DefWindowProc(g_hwnd, WM_SETCURSOR, (WPARAM)g_hwnd, lParam);
+	return DefWindowProc(g_hwnd, WM_SETCURSOR, reinterpret_cast<WPARAM>(g_hwnd), lParam);
 }
 
 /*

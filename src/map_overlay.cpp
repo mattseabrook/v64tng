@@ -77,7 +77,7 @@ LRESULT CALLBACK MapWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         SetTextColor(hdc, RGB(0, 0, 0)); // Black text
         SelectObject(hdc, GetStockObject(ANSI_FIXED_FONT));
         auto str = RenderMapString();
-        TextOutA(hdc, 0, 0, str.c_str(), (int)str.length());
+        TextOutA(hdc, 0, 0, str.c_str(), static_cast<int>(str.length()));
         EndPaint(hwnd, &ps);
         break;
     }

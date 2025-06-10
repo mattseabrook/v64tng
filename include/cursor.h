@@ -102,7 +102,7 @@ inline constexpr double CURSOR_FPS = 24.0;
 // Function prototypes
 std::vector<uint8_t> decompressCursorBlob(std::span<const uint8_t> compressed);
 std::span<const uint8_t> getCursorBlob(std::span<const uint8_t> robBuffer, size_t blobIndex);
-CursorImage unpackCursorBlob(std::span<const uint8_t> blobData, size_t blobIndex);
+CursorImage unpackCursorBlob(std::span<const uint8_t> blobData);
 std::vector<uint8_t> cursorFrameToRGBA(const CursorImage &img, size_t frameIdx, std::span<const uint8_t> palette);
 std::vector<uint8_t> scaleRGBA(const std::vector<uint8_t> &src, int srcW, int srcH, int dstW, int dstH);
 bool initCursors(const std::string_view &robPath, float scale);

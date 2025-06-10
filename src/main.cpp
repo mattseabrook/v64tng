@@ -186,18 +186,9 @@ int process_args(const std::vector<std::string> &args)
 	//
 	// Extract cursors from the user-specified *.ROB file (ROB.GJD for 7th Guest)
 	//
-	if (args[1] == "-c" && args.size() >= 4)
+	if (args[1] == "-c" && args.size() >= 3)
 	{
-		const std::string &fmt = args[3];
-		if (fmt != "png" && fmt != "ico" && fmt != "ani")
-		{
-			std::cerr << "ERROR: format must be png, ico or ani\n";
-			return 1;
-		}
-		if (fmt != "png")
-			std::cout << "NOTE: only png export implemented; " << fmt << " coming later.\n";
-
-		extractCursors(args[2], fmt);
+		extractCursors(args[2]);
 	}
 	//
 	// Extract all of the *.VDX files from the user-specified *.RL/GJD file pair

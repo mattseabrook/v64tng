@@ -54,7 +54,7 @@ bool LoadPNGResourceToMemory(int resourceId, std::vector<unsigned char> &outBuff
         return false;
     void *pData = LockResource(hRes);
     DWORD dataSize = SizeofResource(nullptr, res);
-    outBuffer.assign((unsigned char *)pData, (unsigned char *)pData + dataSize);
+    outBuffer.assign(static_cast<unsigned char *>(pData), static_cast<unsigned char *>(pData) + dataSize);
     return true;
 }
 
@@ -232,7 +232,7 @@ LRESULT CALLBACK SystemInfoWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                     if (hBmp && bits)
                     {
                         // RGB to BGR fix
-                        unsigned char *dst = (unsigned char *)bits;
+                        auto *dst = static_cast<unsigned char *>(bits);
                         for (size_t i = 0; i < rgb.size(); i += 3)
                         {
                             dst[i + 0] = rgb[i + 2]; // B

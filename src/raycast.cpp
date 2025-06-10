@@ -22,7 +22,6 @@ void renderRaycastView(
     const int mapW = static_cast<int>(p_map[0].size());
     const int mapH = static_cast<int>(p_map.size());
     const float fov = player.fov;
-    const float pi = 3.1415926535f;
 
     for (int x = 0; x < screenW; ++x)
     {
@@ -102,7 +101,7 @@ void renderRaycastView(
         }
 
         // Projected wall height
-        int lineHeight = (int)(screenH / (std::max)(perpWallDist, 0.01f));
+        int lineHeight = static_cast<int>(screenH / (std::max)(perpWallDist, 0.01f));
         int drawStart = (std::max)(0, screenH / 2 - lineHeight / 2);
         int drawEnd = (std::min)(screenH - 1, screenH / 2 + lineHeight / 2);
 
