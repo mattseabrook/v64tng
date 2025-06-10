@@ -348,7 +348,7 @@ const std::unordered_map<std::string, View> foyer = {
 				  state.current_view = "f2_d,DR:dr_tbc;static";
 				  state.animation_sequence.clear();
 				  loadView();
-				  pushMainSong("gu63");
+				  pushMainSong("gu15");
 			  }}},
 		 // Navigation
 		 {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2ba"},	   // Left
@@ -395,7 +395,7 @@ const std::unordered_map<std::string, View> foyer = {
 			state.current_view = "f2_d,DR:dr_tbc;static";
 			state.animation_sequence.clear();
 			loadView();
-			pushMainSong("gu63");
+			pushMainSong("gu15");
 		}}},
 	  // Navigation
 	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2ba"},		// Left
@@ -429,7 +429,7 @@ const std::unordered_map<std::string, View> foyer = {
 			state.current_view = "f2_d,DR:dr_tbc;static";
 			state.animation_sequence.clear();
 			loadView();
-			pushMainSong("gu63");
+			pushMainSong("gu15");
 		}}},
 	  // Navigation
 	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2ba"},		// Left

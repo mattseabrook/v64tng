@@ -482,7 +482,7 @@ void updateRaycasterMovement()
 		}
 	}
 
-	renderFrameRaycast();
+	renderRaycastFuncs[renderer]();
 }
 
 /*
@@ -873,7 +873,7 @@ void renderFrame()
 {
 	if (state.raycast.enabled)
 	{
-		renderFrameRaycast();
+		renderRaycastFuncs[renderer]();
 	}
 	else
 	{

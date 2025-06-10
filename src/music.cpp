@@ -784,8 +784,7 @@ void pushMainSong(const std::string &songName)
 Function Name: popMainSong
 
 Description:
-	- Pops the last main song from the stack and resumes playing it.
-	  If the stack is empty, it does nothing.
+
 ===============================================================================
 */
 void popMainSong()

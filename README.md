@@ -280,11 +280,11 @@ Here is the table of how the original songs are packed in `XMI.GJD`:
 | gu6           | 31877  | 5608         |                        | Heart-beat, rain, thunder etc                               |
 | gu8           | 37486  | 1022         |                        | Stauf's dialog after solving Library telescope puzzle       |
 | gu9           | 38509  | 2308         |                        | Martine and Edward in Dining Room after solving cake puzzle |
-| gu11a         | 40818  | 406          |                        |                                                             |
-| gu11b         | 41225  | 402          |                        |                                                             |
-| gu12          | 41628  | 1762         |                        |                                                             |
-| gu15          | 43391  | 1532         |                        |                                                             |
-| gu16          | 44924  | 12764        |                        |                                                             |
+| gu11a         | 40818  | 406          |                        | Seems to be part of the Dining Room song                    |
+| gu11b         | 41225  | 402          |                        | Same as above                                               |
+| gu12          | 41628  | 1762         |                        | Puzzle Zoom-In song                                         |
+| gu15          | 43391  | 1532         |                        | Basement music                                              |
+| gu16          | 44924  | 12764        |                        | - Common House Music used in a lot of areas                 |
 | gu16b         | 57689  | 2794         |                        |                                                             |
 | gu17          | 60484  | 968          |                        |                                                             |
 | gu18          | 61453  | 3754         |                        |                                                             |
