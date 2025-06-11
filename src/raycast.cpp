@@ -164,4 +164,23 @@ void renderRaycastView(
             framebuffer[idx + 3] = 255;
         }
     }
+
+    // Draw a simple red dot crosshair at the center of the framebuffer
+    int cx = screenW / 2;
+    int cy = screenH / 2;
+    for (int dy = -1; dy <= 1; ++dy)
+    {
+        for (int dx = -1; dx <= 1; ++dx)
+        {
+            int px = cx + dx;
+            int py = cy + dy;
+            if (px < 0 || py < 0 || px >= screenW || py >= screenH)
+                continue;
+            int index = (py * screenW + px) * 4;
+            framebuffer[index + 0] = 0;   // B
+            framebuffer[index + 1] = 0;   // G
+            framebuffer[index + 2] = 255; // R
+            framebuffer[index + 3] = 255; // A
+        }
+    }
 }

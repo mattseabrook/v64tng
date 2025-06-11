@@ -58,6 +58,7 @@ LRESULT CALLBACK AboutDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM 
     {
     case WM_INITDIALOG:
     {
+        g_menuActive = true;
         HWND hParent = GetParent(hDlg);
         if (hParent)
         {
@@ -78,10 +79,15 @@ LRESULT CALLBACK AboutDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM 
     case WM_COMMAND:
         if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
         {
+            g_menuActive = false;
             EndDialog(hDlg, LOWORD(wParam));
             return TRUE;
         }
         break;
+    case WM_CLOSE:
+        g_menuActive = false;
+        EndDialog(hDlg, IDCANCEL);
+        return TRUE;
     }
     return FALSE;
 }

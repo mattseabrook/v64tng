@@ -20,6 +20,7 @@ struct DisplayInfo
 extern HWND g_hwnd;
 extern float scaleFactor;
 extern HCURSOR currentCursor;
+extern bool g_menuActive;
 
 //=============================================================================
 
