@@ -59,6 +59,7 @@ LRESULT CALLBACK AboutDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM 
     case WM_INITDIALOG:
     {
         g_menuActive = true;
+        KillTimer(g_hwnd, 0x7C0B);
         HWND hParent = GetParent(hDlg);
         if (hParent)
         {
