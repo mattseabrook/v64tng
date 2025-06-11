@@ -57,7 +57,24 @@ LRESULT CALLBACK AboutDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM 
     switch (message)
     {
     case WM_INITDIALOG:
+    {
+        HWND hParent = GetParent(hDlg);
+        if (hParent)
+        {
+            RECT dlgRect, parentClient;
+            GetWindowRect(hDlg, &dlgRect);
+            GetClientRect(hParent, &parentClient);
+            POINT pt = {parentClient.left, parentClient.top};
+            ClientToScreen(hParent, &pt);
+            OffsetRect(&parentClient, pt.x, pt.y);
+            int x = parentClient.left + ((parentClient.right - parentClient.left) - (dlgRect.right - dlgRect.left)) / 2;
+            int y = parentClient.top + ((parentClient.bottom - parentClient.top) - (dlgRect.bottom - dlgRect.top)) / 2;
+            SetWindowPos(hDlg, HWND_TOP, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+        }
+        HICON hIcon = static_cast<HICON>(LoadImage(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
+        SendDlgItemMessage(hDlg, IDC_ABOUT_ICON, STM_SETICON, reinterpret_cast<WPARAM>(hIcon), 0);
         return TRUE;
+    }
     case WM_COMMAND:
         if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
         {
