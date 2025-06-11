@@ -285,8 +285,8 @@ try {
         "-l", "shell32",
         "-l", "d2d1",
         "-l", "ole32",
-        "-l", "oleaut32",
         "-l", "uuid",
+        "-l", "winmm",
         "-Xlinker", "/SUBSYSTEM:WINDOWS"
     )
 

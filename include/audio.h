@@ -3,6 +3,7 @@
 #define AUDIO_H
 
 #include <cstdint>
+#include <vector>
 
 //
 // WAVHeader structure used when writing extracted 0x80 audio
@@ -25,5 +26,9 @@ struct WAVHeader
     char subchunk2ID[4] = {'d', 'a', 't', 'a'};
     uint32_t subchunk2Size = 0;
 };
+
+// Function prototypes
+
+void wavPlay(const std::vector<uint8_t> &audioData);
 
 #endif // AUDIO_H

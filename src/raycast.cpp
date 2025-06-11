@@ -23,6 +23,12 @@ void renderRaycastView(
     const int mapH = static_cast<int>(p_map.size());
     const float fov = player.fov;
 
+    // Pre-calculate screen-space values for radial lighting
+    const float halfW = screenW * 0.5f;
+    const float halfH = screenH * 0.5f;
+    const float maxScreenRadius = std::sqrt(halfW * halfW + halfH * halfH);
+    const float torchRange = 16.0f; // World units for torch falloff
+
     for (int x = 0; x < screenW; ++x)
     {
         float camX = 2.0f * x / screenW - 1.0f; // -1 to 1
@@ -110,38 +116,52 @@ void renderRaycastView(
         uint8_t g = side ? 64 : 120;
         uint8_t b = side ? 64 : 120;
 
-        // Draw
+        // Light falloff for walls based on distance
+        float lightFactor = (std::max)(0.0f, 1.0f - perpWallDist / torchRange);
+
+        // Draw with radial torch lighting
         for (int y = 0; y < screenH; ++y)
         {
             int idx = (y * screenW + x) * 4;
+
+            float dx = static_cast<float>(x) - halfW;
+            float dy = static_cast<float>(y) - halfH;
+            float screenDist = std::sqrt(dx * dx + dy * dy);
+            float screenFactor = (std::max)(0.0f, 1.0f - screenDist / maxScreenRadius);
+
+            uint8_t rr, gg, bb;
+
             if (y < drawStart)
             {
-                // Ceiling: grey gradient that darkens toward the center
+                // Ceiling gradient
                 float ratio = static_cast<float>(y) / (screenH * 0.5f);
                 ratio = (std::min)(ratio, 1.0f);
                 uint8_t shade = static_cast<uint8_t>(120.0f * (1.0f - ratio));
-                framebuffer[idx + 0] = shade;
-                framebuffer[idx + 1] = shade;
-                framebuffer[idx + 2] = shade;
-                framebuffer[idx + 3] = 255;
+                rr = shade;
+                gg = shade;
+                bb = shade;
             }
             else if (y <= drawEnd)
             {
-                framebuffer[idx + 0] = r;
-                framebuffer[idx + 1] = g;
-                framebuffer[idx + 2] = b;
-                framebuffer[idx + 3] = 255;
+                rr = static_cast<uint8_t>(r * lightFactor);
+                gg = static_cast<uint8_t>(g * lightFactor);
+                bb = static_cast<uint8_t>(b * lightFactor);
             }
             else
             {
-                // Floor: dark brown gradient that fades to black toward the center
+                // Floor gradient
                 float ratio = static_cast<float>(y - screenH * 0.5f) / (screenH * 0.5f);
                 ratio = (std::min)((std::max)(ratio, 0.0f), 1.0f);
-                framebuffer[idx + 0] = static_cast<uint8_t>(60.0f * ratio);
-                framebuffer[idx + 1] = static_cast<uint8_t>(40.0f * ratio);
-                framebuffer[idx + 2] = static_cast<uint8_t>(20.0f * ratio);
-                framebuffer[idx + 3] = 255;
+                rr = static_cast<uint8_t>(60.0f * ratio);
+                gg = static_cast<uint8_t>(40.0f * ratio);
+                bb = static_cast<uint8_t>(20.0f * ratio);
             }
+
+            float finalFactor = screenFactor;
+            framebuffer[idx + 0] = static_cast<uint8_t>(rr * finalFactor);
+            framebuffer[idx + 1] = static_cast<uint8_t>(gg * finalFactor);
+            framebuffer[idx + 2] = static_cast<uint8_t>(bb * finalFactor);
+            framebuffer[idx + 3] = 255;
         }
     }
 }
