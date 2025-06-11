@@ -116,10 +116,13 @@ void renderRaycastView(
             int idx = (y * screenW + x) * 4;
             if (y < drawStart)
             {
-                // Ceiling (blueish)
-                framebuffer[idx + 0] = 72;
-                framebuffer[idx + 1] = 80;
-                framebuffer[idx + 2] = 112;
+                // Ceiling: grey gradient that darkens toward the center
+                float ratio = static_cast<float>(y) / (screenH * 0.5f);
+                ratio = (std::min)(ratio, 1.0f);
+                uint8_t shade = static_cast<uint8_t>(120.0f * (1.0f - ratio));
+                framebuffer[idx + 0] = shade;
+                framebuffer[idx + 1] = shade;
+                framebuffer[idx + 2] = shade;
                 framebuffer[idx + 3] = 255;
             }
             else if (y <= drawEnd)
@@ -131,10 +134,12 @@ void renderRaycastView(
             }
             else
             {
-                // Floor (darker)
-                framebuffer[idx + 0] = 40;
-                framebuffer[idx + 1] = 44;
-                framebuffer[idx + 2] = 44;
+                // Floor: dark brown gradient that fades to black toward the center
+                float ratio = static_cast<float>(y - screenH * 0.5f) / (screenH * 0.5f);
+                ratio = (std::min)((std::max)(ratio, 0.0f), 1.0f);
+                framebuffer[idx + 0] = static_cast<uint8_t>(60.0f * ratio);
+                framebuffer[idx + 1] = static_cast<uint8_t>(40.0f * ratio);
+                framebuffer[idx + 2] = static_cast<uint8_t>(20.0f * ratio);
                 framebuffer[idx + 3] = 255;
             }
         }
