@@ -20,7 +20,8 @@ void renderRaycastView(
     const std::vector<std::vector<uint8_t>> &map,
     const RaycastPlayer &player,
     uint8_t *framebuffer, // BGRA/RGBA output
-    int screenW, int screenH);
+    int screenW, int screenH,
+    int supersample = 1);
 
 //
 // Utility for degrees to radians

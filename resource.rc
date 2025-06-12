@@ -10,7 +10,7 @@ STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About v64tng"
 FONT 8, "MS Sans Serif"
 BEGIN
-    CONTROL         "", IDC_ABOUT_ICON, "STATIC", SS_ICON | WS_CHILD | WS_VISIBLE, 68, 10, 64, 64
-    LTEXT           "v64tng.exe - v0.1 (c) Matthew Seabrook.\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.", IDC_STATIC, 10, 80, 180, 60
+    CONTROL         "", IDC_ABOUT_ICON, "STATIC", SS_ICON | WS_CHILD | WS_VISIBLE, 90, 10, 64, 64
+    LTEXT           "v64tng.exe - v0.1 (c) Matthew Seabrook.\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.", IDC_STATIC, 10, 40, 180, 60
     DEFPUSHBUTTON   "OK", IDOK, 75, 150, 50, 14
 END

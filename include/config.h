@@ -28,6 +28,7 @@ constexpr const char *default_config = R"({
     "midiMode": "opl3",
     "midiBank": 0,
     "midiVolume": 100,
+    "mlookSensitivity": 50,
     "devMode": false
 })";
 

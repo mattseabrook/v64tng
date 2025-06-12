@@ -325,7 +325,8 @@ LRESULT HandleMouseMove(LPARAM lParam)
 
 		int dx = pt.x - lastPos.x;
 
-		float sensitivity = 0.005f;
+		int mlook = config.contains("mlookSensitivity") ? static_cast<int>(config["mlookSensitivity"]) : 50;
+		float sensitivity = 0.005f * mlook / 50.0f;
 		state.raycast.player.angle += dx * sensitivity;
 		state.raycast.player.angle = fmodf(state.raycast.player.angle, 2.0f * 3.14159265f);
 		if (state.raycast.player.angle < 0)
@@ -429,12 +430,43 @@ void updateRaycasterMovement()
 	int mapH = static_cast<int>(state.raycast.map->size());
 	int mapW = static_cast<int>(state.raycast.map->at(0).size());
 
-	float speed = 0.3f;
+	constexpr float RUN_SPEED = 0.3f;
+	constexpr float WALK_SPEED = RUN_SPEED * 0.7f; // 30% slower
+
+	static bool runToggle = false;
+	static bool prevShift = false;
+
 	float x = state.raycast.player.x;
 	float y = state.raycast.player.y;
 	float angle = state.raycast.player.angle;
 
 	float dx = 0.0f, dy = 0.0f;
+
+	bool moving = false;
+
+	if (g_keys['W'] || g_keys[VK_UP])
+	{
+		moving = true;
+	}
+	if (g_keys['S'] || g_keys[VK_DOWN])
+	{
+		moving = true;
+	}
+	if (g_keys['A'] || g_keys[VK_LEFT])
+	{
+		moving = true;
+	}
+	if (g_keys['D'] || g_keys[VK_RIGHT])
+	{
+		moving = true;
+	}
+
+	bool shift = g_keys[VK_SHIFT];
+	if (shift && !prevShift && moving)
+		runToggle = !runToggle;
+	prevShift = shift;
+
+	float speed = (shift || runToggle) ? RUN_SPEED : WALK_SPEED;
 
 	if (g_keys['W'] || g_keys[VK_UP])
 	{
