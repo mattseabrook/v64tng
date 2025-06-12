@@ -18,7 +18,7 @@ extern const int MIN_CLIENT_HEIGHT;
 constexpr const char *default_config = R"({
     "fullscreen": false,
     "width": 640,
-    "renderer": "Direct2D",
+    "renderer": "DirectX",
     "display": 1,
     "x": 100,
     "y": 100,

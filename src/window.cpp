@@ -680,13 +680,13 @@ Description:
 void initHandlers()
 {
 	initializeRenderer[RendererType::VULKAN] = initializeVulkan;
-	initializeRenderer[RendererType::DIRECT2D] = initializeD2D;
+	initializeRenderer[RendererType::DIRECTX] = initializeD2D;
 	renderFrameFuncs[RendererType::VULKAN] = renderFrameVk;
-	renderFrameFuncs[RendererType::DIRECT2D] = renderFrameD2D;
+	renderFrameFuncs[RendererType::DIRECTX] = renderFrameD2D;
 	renderRaycastFuncs[RendererType::VULKAN] = renderFrameRaycastVk;
-	renderRaycastFuncs[RendererType::DIRECT2D] = renderFrameRaycast;
+	renderRaycastFuncs[RendererType::DIRECTX] = renderFrameRaycast;
 	cleanupFuncs[RendererType::VULKAN] = cleanupVulkan;
-	cleanupFuncs[RendererType::DIRECT2D] = cleanupD2D;
+	cleanupFuncs[RendererType::DIRECTX] = cleanupD2D;
 }
 
 /*
@@ -727,7 +727,7 @@ Description:
 	- Initializes the window and its properties.
 	- Sets the window size, position, and display settings based on the configuration.
 	- Registers the window class and creates the window.
-	- Initializes the renderer based on the selected type (VULKAN or DIRECT2D).
+	- Initializes the renderer based on the selected type (VULKAN or DIRECTX).
 ===============================================================================
 */
 void initWindow()
@@ -791,7 +791,7 @@ void initWindow()
 	}
 	if (!config["fullscreen"])
 		initMenu(g_hwnd);
-	renderer = (config["renderer"] == "VULKAN") ? RendererType::VULKAN : RendererType::DIRECT2D;
+	renderer = (config["renderer"] == "VULKAN") ? RendererType::VULKAN : RendererType::DIRECTX;
 	initializeRenderer[renderer]();
 	ShowWindow(g_hwnd, SW_SHOW);
 	g_mouseHook = SetWindowsHookEx(WH_MOUSE, MouseHookProc, NULL, GetCurrentThreadId());

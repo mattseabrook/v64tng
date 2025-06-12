@@ -7,7 +7,7 @@
 enum class RendererType
 {
     VULKAN,
-    DIRECT2D
+    DIRECTX
 };
 
 struct DisplayInfo
