@@ -156,9 +156,9 @@ void renderRaycastView(
                     // Floor gradient
                     float ratio = static_cast<float>(y - screenH * 0.5f) / (screenH * 0.5f);
                     ratio = (std::min)((std::max)(ratio, 0.0f), 1.0f);
-                    rr = static_cast<uint8_t>(60.0f * ratio);
-                    gg = static_cast<uint8_t>(40.0f * ratio);
-                    bb = static_cast<uint8_t>(20.0f * ratio);
+                    rr = static_cast<uint8_t>(90.0f * ratio); // Red component for pale dark brown
+                    gg = static_cast<uint8_t>(70.0f * ratio); // Green component for pale dark brown
+                    bb = static_cast<uint8_t>(50.0f * ratio); // Blue component for pale dark brown
                 }
 
                 float finalFactor = screenFactor;
