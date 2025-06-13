@@ -28,7 +28,7 @@ RaycastHit castRay(const std::vector<std::vector<uint8_t>> &tileMap,
                    float rayDirY)
 {
     int mapW = tileMap[0].size(), mapH = tileMap.size();
-    int mapX = static_cast<int>(posX + 0.5f), mapY = static_cast<int>(posY + 0.5f);
+    int mapX = static_cast<int>(posX), mapY = static_cast<int>(posY);
     float deltaDistX = std::abs(1.0f / rayDirX), deltaDistY = std::abs(1.0f / rayDirY);
     float sideDistX, sideDistY;
     int stepX, stepY, side = 0;
@@ -170,10 +170,10 @@ void drawCrosshair(uint8_t *fb, int w, int h)
             if (px >= 0 && px < w && py >= 0 && py < h)
             {
                 int idx = (py * w + px) * 4;
-                fb[idx] = 0;       // B
-                fb[idx + 1] = 0;   // G
+                fb[idx] = 255;     // B
+                fb[idx + 1] = 255; // G
                 fb[idx + 2] = 255; // R
-                fb[idx + 3] = 255; // A
+                fb[idx + 3] = 128; // A
             }
         }
     }
@@ -295,7 +295,7 @@ void updateRaycasterMovement()
         return;
     int mapW = state.raycast.map->at(0).size(), mapH = state.raycast.map->size();
     float x = state.raycast.player.x, y = state.raycast.player.y, angle = state.raycast.player.angle;
-    float speed = g_keys[VK_SHIFT] ? 0.3f : 0.21f;
+    float speed = g_keys[VK_SHIFT] ? state.raycast.player.runSpeed : state.raycast.player.walkSpeed;
     float dx = 0, dy = 0;
     if (g_keys['W'] || g_keys[VK_UP])
     {

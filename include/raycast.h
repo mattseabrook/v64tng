@@ -21,9 +21,11 @@ struct RaycastHit
 //
 struct RaycastPlayer
 {
-    float x, y;  // Player position (in map units)
-    float angle; // Player view angle (in radians)
-    float fov;   // Field of view (in radians)
+    float x, y;      // Player position (in map units)
+    float angle;     // Player view angle (in radians)
+    float fov;       // Field of view (in radians)
+    float walkSpeed; // Walking speed
+    float runSpeed;  // Running speed
 };
 
 //
