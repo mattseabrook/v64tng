@@ -470,8 +470,17 @@ void initializeVulkan()
 
 	vkCreateCommandPool(ctx.device, &poolInfo, nullptr, &ctx.commandPool);
 
-	resizeVulkanTexture(MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT);
-	scaleFactor = static_cast<float>(state.ui.width) / MIN_CLIENT_WIDTH;
+	if (state.raycast.enabled)
+	{
+		resizeVulkanTexture(static_cast<uint32_t>(state.ui.width),
+							static_cast<uint32_t>(state.ui.height));
+		scaleFactor = 1.0f;
+	}
+	else
+	{
+		resizeVulkanTexture(MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT);
+		scaleFactor = static_cast<float>(state.ui.width) / MIN_CLIENT_WIDTH;
+	}
 }
 
 /*
@@ -559,14 +568,17 @@ void renderFrameRaycastVk()
 	const auto &tileMap = *state.raycast.map;
 	const RaycastPlayer &player = state.raycast.player;
 
+	const uint32_t rw = static_cast<uint32_t>(state.ui.width);
+	const uint32_t rh = static_cast<uint32_t>(state.ui.height);
+
 	renderRaycastView(
 		tileMap,
 		player,
 		bgraBuffer.data(),
-		MIN_CLIENT_WIDTH,
-		MIN_CLIENT_HEIGHT,
+		static_cast<int>(rw),
+		static_cast<int>(rh),
 		config.value("raycastSupersample", 1));
-	uploadToTexture(bgraBuffer.data(), MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT);
+	uploadToTexture(bgraBuffer.data(), rw, rh);
 	presentFrame();
 }
 
@@ -620,21 +632,35 @@ void presentFrame()
 	blitRegion.srcSubresource.mipLevel = 0;
 	blitRegion.srcSubresource.baseArrayLayer = 0;
 	blitRegion.srcSubresource.layerCount = 1;
-	blitRegion.srcOffsets[1].x = MIN_CLIENT_WIDTH;
-	blitRegion.srcOffsets[1].y = MIN_CLIENT_HEIGHT;
+	uint32_t texW = state.raycast.enabled ? static_cast<uint32_t>(state.ui.width) : MIN_CLIENT_WIDTH;
+	uint32_t texH = state.raycast.enabled ? static_cast<uint32_t>(state.ui.height) : MIN_CLIENT_HEIGHT;
+	blitRegion.srcOffsets[1].x = texW;
+	blitRegion.srcOffsets[1].y = texH;
 	blitRegion.srcOffsets[1].z = 1;
 	blitRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	blitRegion.dstSubresource.mipLevel = 0;
 	blitRegion.dstSubresource.baseArrayLayer = 0;
 	blitRegion.dstSubresource.layerCount = 1;
-	float scaledHeight = MIN_CLIENT_HEIGHT * scaleFactor;
-	int32_t offsetY = static_cast<int32_t>((ctx.swapchainExtent.height - scaledHeight) * 0.5f);
-	blitRegion.dstOffsets[0].x = 0;
-	blitRegion.dstOffsets[0].y = offsetY;
-	blitRegion.dstOffsets[0].z = 0;
-	blitRegion.dstOffsets[1].x = static_cast<int32_t>(ctx.swapchainExtent.width);
-	blitRegion.dstOffsets[1].y = offsetY + static_cast<int32_t>(scaledHeight);
-	blitRegion.dstOffsets[1].z = 1;
+	if (state.raycast.enabled)
+	{
+		blitRegion.dstOffsets[0].x = 0;
+		blitRegion.dstOffsets[0].y = 0;
+		blitRegion.dstOffsets[0].z = 0;
+		blitRegion.dstOffsets[1].x = static_cast<int32_t>(ctx.swapchainExtent.width);
+		blitRegion.dstOffsets[1].y = static_cast<int32_t>(ctx.swapchainExtent.height);
+		blitRegion.dstOffsets[1].z = 1;
+	}
+	else
+	{
+		float scaledHeight = MIN_CLIENT_HEIGHT * scaleFactor;
+		int32_t offsetY = static_cast<int32_t>((ctx.swapchainExtent.height - scaledHeight) * 0.5f);
+		blitRegion.dstOffsets[0].x = 0;
+		blitRegion.dstOffsets[0].y = offsetY;
+		blitRegion.dstOffsets[0].z = 0;
+		blitRegion.dstOffsets[1].x = static_cast<int32_t>(ctx.swapchainExtent.width);
+		blitRegion.dstOffsets[1].y = offsetY + static_cast<int32_t>(scaledHeight);
+		blitRegion.dstOffsets[1].z = 1;
+	}
 
 	vkCmdBlitImage(commandBuffer,
 				   ctx.textureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,

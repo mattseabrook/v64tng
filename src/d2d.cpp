@@ -88,8 +88,17 @@ void initializeD2D()
         throw std::runtime_error("Failed to create Direct2D render target");
     }
 
-    resizeBitmap(MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT);
-    scaleFactor = static_cast<float>(state.ui.width) / MIN_CLIENT_WIDTH;
+    if (state.raycast.enabled)
+    {
+        resizeBitmap(static_cast<UINT>(state.ui.width),
+                     static_cast<UINT>(state.ui.height));
+        scaleFactor = 1.0f;
+    }
+    else
+    {
+        resizeBitmap(MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT);
+        scaleFactor = static_cast<float>(state.ui.width) / MIN_CLIENT_WIDTH;
+    }
 }
 
 /*
@@ -211,30 +220,28 @@ void renderFrameRaycast()
         tileMap,
         player,
         bgraBuffer.data(),
-        MIN_CLIENT_WIDTH,
-        MIN_CLIENT_HEIGHT,
+        state.ui.width,
+        state.ui.height,
         config.value("raycastSupersample", 1));
 
     // Copy to D2D bitmap
-    bitmap->CopyFromMemory(nullptr, bgraBuffer.data(), MIN_CLIENT_WIDTH * 4);
+    bitmap->CopyFromMemory(nullptr, bgraBuffer.data(), state.ui.width * 4);
 
     // Draw the frame
     renderTarget->BeginDraw();
     renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
 
-    const float scaledHeight = MIN_CLIENT_HEIGHT * scaleFactor;
-    const float offsetY = (state.ui.height - scaledHeight) * 0.5f;
-
     D2D1_RECT_F destRect = D2D1::RectF(
         0.0f,
-        offsetY,
+        0.0f,
         static_cast<float>(state.ui.width),
-        offsetY + scaledHeight);
+        static_cast<float>(state.ui.height));
 
     D2D1_RECT_F sourceRect = D2D1::RectF(
-        0.0f, 0.0f,
-        static_cast<float>(MIN_CLIENT_WIDTH),
-        static_cast<float>(MIN_CLIENT_HEIGHT));
+        0.0f,
+        0.0f,
+        static_cast<float>(state.ui.width),
+        static_cast<float>(state.ui.height));
 
     renderTarget->DrawBitmap(
         bitmap.Get(),

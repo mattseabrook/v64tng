@@ -134,7 +134,10 @@ LRESULT HandleSize(HWND hwnd, WPARAM wParam)
 	GetClientRect(hwnd, &clientRect);
 	int newWidth = clientRect.right - clientRect.left;
 	int newHeight = clientRect.bottom - clientRect.top;
-	scaleFactor = static_cast<float>(newWidth) / MIN_CLIENT_WIDTH;
+	if (state.raycast.enabled)
+		scaleFactor = 1.0f;
+	else
+		scaleFactor = static_cast<float>(newWidth) / MIN_CLIENT_WIDTH;
 	if (!g_userIsResizing)
 	{
 		if (g_cursorsInitialized)
@@ -492,7 +495,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
 			RECT clientRect;
 			GetClientRect(hwnd, &clientRect);
-			float scale = static_cast<float>(clientRect.right - clientRect.left) / MIN_CLIENT_WIDTH;
+			float scale = state.raycast.enabled
+							  ? 1.0f
+							  : static_cast<float>(clientRect.right - clientRect.left) / MIN_CLIENT_WIDTH;
 			if (g_cursorsInitialized)
 			{
 				recreateScaledCursors(scale);
