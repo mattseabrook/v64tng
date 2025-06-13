@@ -36,7 +36,6 @@ void initWindow();
 void renderFrame();
 bool processEvents();
 void forceUpdateCursor();
-void updateRaycasterMovement();
 void updateCursorBasedOnPosition(POINT clientPos);
 void cleanupWindow();
 

@@ -16,6 +16,7 @@
 #include "music.h"
 #include "config.h"
 #include "cursor.h"
+#include "raycast.h"
 
 #include "fh.h"
 #include "dr.h"
@@ -38,6 +39,7 @@ const std::unordered_map<std::string_view, const std::unordered_map<std::string,
 	{"f4", &foyer},
 	{"f5", &foyer},
 	{"f6", &foyer},
+
 	{"dr", &diningRoom} // Dining Room
 						// ...
 };

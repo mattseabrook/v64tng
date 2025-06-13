@@ -559,7 +559,13 @@ void renderFrameRaycastVk()
 	const auto &map = *state.raycast.map;
 	const RaycastPlayer &player = state.raycast.player;
 
-	renderRaycastView(map, player, bgraBuffer.data(), MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT);
+	renderRaycastView(
+		map,
+		player,
+		bgraBuffer.data(),
+		MIN_CLIENT_WIDTH,
+		MIN_CLIENT_HEIGHT,
+		config.value("raycastSupersample", 1));
 	uploadToTexture(bgraBuffer.data(), MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT);
 	presentFrame();
 }

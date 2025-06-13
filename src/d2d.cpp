@@ -207,7 +207,13 @@ void renderFrameRaycast()
     const RaycastPlayer &player = state.raycast.player;
 
     // Render the raycast view into the BGRA buffer
-    renderRaycastView(map, player, bgraBuffer.data(), MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT);
+    renderRaycastView(
+        map,
+        player,
+        bgraBuffer.data(),
+        MIN_CLIENT_WIDTH,
+        MIN_CLIENT_HEIGHT,
+        config.value("raycastSupersample", 1));
 
     // Copy to D2D bitmap
     bitmap->CopyFromMemory(nullptr, bgraBuffer.data(), MIN_CLIENT_WIDTH * 4);
