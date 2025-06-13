@@ -144,7 +144,7 @@ struct GameState
 			// Player state in the raycasting world
 			28.5f, 134.0f,	 // Starting position (bottom center of basement)
 			deg2rad(270.0f), // Initial angle (facing north)
-			deg2rad(120.0f)	 // Field of view (120 degrees)
+			deg2rad(90.0f)	 // Field of view (90 degrees)
 		};
 		std::vector<std::vector<uint8_t>> *map = nullptr; // Current map data
 	} raycast;

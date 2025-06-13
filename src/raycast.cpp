@@ -207,7 +207,7 @@ void renderRaycastView(const std::vector<std::vector<uint8_t>> &p_map,
         for (int ss = 0; ss < supersample; ++ss)
         {
             float camX = 2.0f * (x + (ss + 0.5f) / supersample) / screenW - 1.0f;
-            float rayAngle = player.angle + camX * (player.fov / 2.0f);
+            float rayAngle = player.angle + camX * (state.raycast.player.fov / 2.0f);
             float rayDirX = std::cos(rayAngle);
             float rayDirY = std::sin(rayAngle);
 
