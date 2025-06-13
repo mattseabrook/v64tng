@@ -53,11 +53,11 @@ void accumulateColumn(int x,
                       std::vector<float> &acc_b);
 void drawCrosshair(uint8_t *fb, int w, int h);
 void renderChunk(const std::vector<std::vector<uint8_t>> &tileMap,
-                 const RaycastPlayer &p,
-                 uint8_t *fb,
-                 int w,
-                 int h,
-                 int ss,
+                 const RaycastPlayer &player,
+                 uint8_t *framebuffer,
+                 int screenWidth,
+                 int screenHeight,
+                 int supersample,
                  int startX,
                  int endX);
 void renderRaycastView(const std::vector<std::vector<uint8_t>> &tileMap,

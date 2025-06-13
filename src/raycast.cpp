@@ -181,38 +181,40 @@ void drawCrosshair(uint8_t *fb, int w, int h)
 
 // Render a chunk of the screen with threading
 void renderChunk(const std::vector<std::vector<uint8_t>> &tileMap,
-                 const RaycastPlayer &p,
-                 uint8_t *fb,
-                 int w,
-                 int h,
-                 int ss,
+                 const RaycastPlayer &player,
+                 uint8_t *framebuffer,
+                 int screenWidth,
+                 int screenHeight,
+                 int supersample,
                  int startX,
                  int endX)
 {
-    float halfW = w * 0.5f, halfH = h * 0.5f;
-    float maxRadius = std::sqrt(halfW * halfW + halfH * halfH);
+    float halfWidth = screenWidth * 0.5f;
+    float halfHeight = screenHeight * 0.5f;
+    float maxRadius = std::sqrt(halfWidth * halfWidth + halfHeight * halfHeight);
     float torchRange = 16.0f;
 
     for (int x = startX; x < endX; ++x)
     {
-        std::vector<float> acc_r(h, 0.0f), acc_g(h, 0.0f), acc_b(h, 0.0f);
-        for (int s = 0; s < ss; ++s)
+        std::vector<float> accumR(screenHeight, 0.0f), accumG(screenHeight, 0.0f), accumB(screenHeight, 0.0f);
+        for (int sampleIdx = 0; sampleIdx < supersample; ++sampleIdx)
         {
-            float camX = 2.0f * (x + (s + 0.5f) / ss) / w - 1.0f;
-            float angle = p.angle + camX * (p.fov / 2.0f);
-            float rayDirX = std::cos(angle), rayDirY = std::sin(angle);
-            RaycastHit hit = castRay(tileMap, p.x, p.y, rayDirX, rayDirY);
-            hit.distance *= std::cos(angle - p.angle); // Fisheye correction
-            accumulateColumn(x, hit, h, halfW, halfH, maxRadius, torchRange, acc_r, acc_g, acc_b);
+            float camX = 2.0f * (x + (sampleIdx + 0.5f) / supersample) / screenWidth - 1.0f;
+            float rayAngle = player.angle + camX * (state.raycast.player.fov / 2.0f);
+            float rayDirX = std::cos(rayAngle);
+            float rayDirY = std::sin(rayAngle);
+            RaycastHit hit = castRay(tileMap, player.x, player.y, rayDirX, rayDirY);
+            // hit.distance *= std::cos(rayAngle - player.angle); // Fisheye correction
+            accumulateColumn(x, hit, screenHeight, halfWidth, halfHeight, maxRadius, torchRange, accumR, accumG, accumB);
         }
         std::lock_guard lock(mutex);
-        for (int y = 0; y < h; ++y)
+        for (int y = 0; y < screenHeight; ++y)
         {
-            int idx = (y * w + x) * 4;
-            fb[idx] = static_cast<uint8_t>(std::min(acc_b[y] / ss, 255.0f));     // B
-            fb[idx + 1] = static_cast<uint8_t>(std::min(acc_g[y] / ss, 255.0f)); // G
-            fb[idx + 2] = static_cast<uint8_t>(std::min(acc_r[y] / ss, 255.0f)); // R
-            fb[idx + 3] = 255;                                                   // A
+            int idx = (y * screenWidth + x) * 4;
+            framebuffer[idx] = static_cast<uint8_t>(std::min(accumB[y] / supersample, 255.0f));     // Blue
+            framebuffer[idx + 1] = static_cast<uint8_t>(std::min(accumG[y] / supersample, 255.0f)); // Green
+            framebuffer[idx + 2] = static_cast<uint8_t>(std::min(accumR[y] / supersample, 255.0f)); // Red
+            framebuffer[idx + 3] = 255;                                                             // Alpha
         }
     }
 }
