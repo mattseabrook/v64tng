@@ -203,12 +203,12 @@ void renderFrameRaycast()
     }
 
     // Get the map and player from state
-    const auto &map = *state.raycast.map;
+    const auto &tileMap = *state.raycast.map;
     const RaycastPlayer &player = state.raycast.player;
 
     // Render the raycast view into the BGRA buffer
     renderRaycastView(
-        map,
+        tileMap,
         player,
         bgraBuffer.data(),
         MIN_CLIENT_WIDTH,

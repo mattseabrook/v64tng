@@ -21,9 +21,13 @@ bool g_keys[256] = {false};
 std::mutex mutex;
 
 // Cast ray with DDA algorithm
-RaycastHit castRay(const auto &map, float posX, float posY, float rayDirX, float rayDirY)
+RaycastHit castRay(const std::vector<std::vector<uint8_t>> &tileMap,
+                   float posX,
+                   float posY,
+                   float rayDirX,
+                   float rayDirY)
 {
-    int mapW = map[0].size(), mapH = map.size();
+    int mapW = tileMap[0].size(), mapH = tileMap.size();
     int mapX = static_cast<int>(posX + 0.5f), mapY = static_cast<int>(posY + 0.5f);
     float deltaDistX = std::abs(1.0f / rayDirX), deltaDistY = std::abs(1.0f / rayDirY);
     float sideDistX, sideDistY;
@@ -48,7 +52,7 @@ RaycastHit castRay(const auto &map, float posX, float posY, float rayDirX, float
         }
         if (mapX < 0 || mapY < 0 || mapX >= mapW || mapY >= mapH)
             return {32.0f, side};
-        if (map[mapY][mapX])
+        if (tileMap[mapY][mapX])
             break;
     }
     return {side ? sideDistY - deltaDistY : sideDistX - deltaDistX, side};
@@ -57,7 +61,6 @@ RaycastHit castRay(const auto &map, float posX, float posY, float rayDirX, float
 // Render a column with vertical smoothing
 void accumulateColumn(int x,
                       const RaycastHit &hit,
-                      int screenW,
                       int screenH,
                       float halfW,
                       float halfH,
@@ -177,7 +180,14 @@ void drawCrosshair(uint8_t *fb, int w, int h)
 }
 
 // Render a chunk of the screen with threading
-void renderChunk(const auto &map, const RaycastPlayer &p, uint8_t *fb, int w, int h, int ss, int startX, int endX)
+void renderChunk(const std::vector<std::vector<uint8_t>> &tileMap,
+                 const RaycastPlayer &p,
+                 uint8_t *fb,
+                 int w,
+                 int h,
+                 int ss,
+                 int startX,
+                 int endX)
 {
     float halfW = w * 0.5f, halfH = h * 0.5f;
     float maxRadius = std::sqrt(halfW * halfW + halfH * halfH);
@@ -191,9 +201,9 @@ void renderChunk(const auto &map, const RaycastPlayer &p, uint8_t *fb, int w, in
             float camX = 2.0f * (x + (s + 0.5f) / ss) / w - 1.0f;
             float angle = p.angle + camX * (p.fov / 2.0f);
             float rayDirX = std::cos(angle), rayDirY = std::sin(angle);
-            RaycastHit hit = castRay(map, p.x, p.y, rayDirX, rayDirY);
+            RaycastHit hit = castRay(tileMap, p.x, p.y, rayDirX, rayDirY);
             hit.distance *= std::cos(angle - p.angle); // Fisheye correction
-            accumulateColumn(x, hit, w, h, halfW, halfH, maxRadius, torchRange, acc_r, acc_g, acc_b);
+            accumulateColumn(x, hit, h, halfW, halfH, maxRadius, torchRange, acc_r, acc_g, acc_b);
         }
         std::lock_guard lock(mutex);
         for (int y = 0; y < h; ++y)
@@ -208,14 +218,14 @@ void renderChunk(const auto &map, const RaycastPlayer &p, uint8_t *fb, int w, in
 }
 
 // Main raycast rendering function
-void renderRaycastView(const auto &map,
+void renderRaycastView(const std::vector<std::vector<uint8_t>> &tileMap,
                        const RaycastPlayer &p,
                        uint8_t *fb,
                        int w,
                        int h,
                        int ss)
 {
-    if (map.empty() || map[0].empty())
+    if (tileMap.empty() || tileMap[0].empty())
         return;
     int nThreads = std::thread::hardware_concurrency();
     int chunk = w / nThreads;
@@ -224,8 +234,8 @@ void renderRaycastView(const auto &map,
     {
         int s = i * chunk;
         int e = (i + 1 == nThreads) ? w : s + chunk;
-        threads.emplace_back([=, &map, &p, &fb]
-                             { renderChunk(map, p, fb, w, h, ss, s, e); });
+        threads.emplace_back([=, &tileMap, &p, &fb]
+                             { renderChunk(tileMap, p, fb, w, h, ss, s, e); });
     }
     // Wait for threads to finish
     threads.clear(); // Joins all threads
@@ -235,23 +245,33 @@ void renderRaycastView(const auto &map,
 // Mouse handling for raycast mode
 void handleRaycastMouseMove()
 {
-    static POINT last{0, 0};
-    static bool first = true;
-    POINT pt;
-    GetCursorPos(&pt);
-    ScreenToClient(g_hwnd, &pt);
-    if (first)
+    static POINT lastPos{0, 0};
+    static bool firstMove = true;
+    POINT currentPos;
+    GetCursorPos(&currentPos);
+    ScreenToClient(g_hwnd, &currentPos);
+
+    if (firstMove)
     {
-        last = pt;
-        first = false;
+        lastPos = currentPos;
+        firstMove = false;
         return;
     }
-    float sens = 0.005f * (config.contains("mlookSensitivity") ? static_cast<int>(config["mlookSensitivity"]) : 50) / 50.0f;
-    state.raycast.player.angle = std::fmodf(state.raycast.player.angle + (pt.x - last.x) * sens + 2.0f * 3.14159265f, 2.0f * 3.14159265f);
+
+    int deltaX = currentPos.x - lastPos.x;
+    float mlookSensitivity = config.contains("mlookSensitivity") ? static_cast<float>(config["mlookSensitivity"]) : 50.0f;
+    float sensitivity = 0.001f * (mlookSensitivity / 50.0f); // Reduced sensitivity
+    state.raycast.player.angle += deltaX * sensitivity;
+    state.raycast.player.angle = std::fmodf(state.raycast.player.angle, 2.0f * 3.14159265f);
+    if (state.raycast.player.angle < 0) // Keep angle positive
+        state.raycast.player.angle += 2.0f * 3.14159265f;
+
+    // Reset cursor to center
     POINT center{state.ui.width / 2, state.ui.height / 2};
     ClientToScreen(g_hwnd, &center);
     SetCursorPos(center.x, center.y);
-    last = center;
+    ScreenToClient(g_hwnd, &center); // Convert back to client coords
+    lastPos = center;
 }
 
 // Keyboard input handling

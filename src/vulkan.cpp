@@ -556,11 +556,11 @@ Description:
 */
 void renderFrameRaycastVk()
 {
-	const auto &map = *state.raycast.map;
+	const auto &tileMap = *state.raycast.map;
 	const RaycastPlayer &player = state.raycast.player;
 
 	renderRaycastView(
-		map,
+		tileMap,
 		player,
 		bgraBuffer.data(),
 		MIN_CLIENT_WIDTH,

@@ -36,10 +36,13 @@ constexpr float deg2rad(float deg) { return deg * 3.14159265358979323846f / 180.
 //
 // Function Prototypes
 //
-RaycastHit castRay(const auto &map, float posX, float posY, float rayDirX, float rayDirY);
+RaycastHit castRay(const std::vector<std::vector<uint8_t>> &tileMap,
+                   float posX,
+                   float posY,
+                   float rayDirX,
+                   float rayDirY);
 void accumulateColumn(int x,
                       const RaycastHit &hit,
-                      int screenW,
                       int screenH,
                       float halfW,
                       float halfH,
@@ -49,8 +52,15 @@ void accumulateColumn(int x,
                       std::vector<float> &acc_g,
                       std::vector<float> &acc_b);
 void drawCrosshair(uint8_t *fb, int w, int h);
-void renderChunk(const auto &map, const RaycastPlayer &p, uint8_t *fb, int w, int h, int ss, int startX, int endX);
-void renderRaycastView(const auto &map,
+void renderChunk(const std::vector<std::vector<uint8_t>> &tileMap,
+                 const RaycastPlayer &p,
+                 uint8_t *fb,
+                 int w,
+                 int h,
+                 int ss,
+                 int startX,
+                 int endX);
+void renderRaycastView(const std::vector<std::vector<uint8_t>> &tileMap,
                        const RaycastPlayer &p,
                        uint8_t *fb,
                        int w,
