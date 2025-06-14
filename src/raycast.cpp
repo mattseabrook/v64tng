@@ -293,10 +293,7 @@ void handleRaycastMouseMove()
     // Only process if there's actual movement
     if (deltaX != 0 || deltaY != 0)
     {
-        // ONLY CHANGE: Increased base sensitivity from 0.001f to 0.003f
-        float sensitivity = (config["mlookSensitivity"].get<float>() / 100.0f) * 0.003f;
-
-        // Apply mouse delta to player angle
+        float sensitivity = (config["mlookSensitivity"].get<float>() / 50.0f) * 0.005f;
         state.raycast.player.angle += deltaX * sensitivity;
 
         // Normalize angle to [0, 2π]
@@ -414,7 +411,7 @@ void updateRaycasterMovement()
             state.raycast.player.x = newX;
         if (canMoveY)
             state.raycast.player.y = newY;
-            
+
         // Trigger redraw only when movement occurs
         renderFrame();
     }
