@@ -415,4 +415,6 @@ void updateRaycasterMovement()
         if (canMoveY)
             state.raycast.player.y = newY;
     }
+
+    renderFrame();
 }
