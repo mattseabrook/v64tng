@@ -286,11 +286,10 @@ void handleRaycastMouseMove()
     if (!ClientToScreen(g_hwnd, &clientCenter))
         return;
 
-    // Calculate mouse delta
+    // Calculate mouse delta from the center
     int deltaX = cursorPos.x - clientCenter.x;
     int deltaY = cursorPos.y - clientCenter.y;
 
-    // Only process if there's actual movement
     if (deltaX != 0 || deltaY != 0)
     {
         float sensitivity = (config["mlookSensitivity"].get<float>() / 50.0f) * 0.005f;
@@ -302,11 +301,8 @@ void handleRaycastMouseMove()
         while (state.raycast.player.angle < 0.0f)
             state.raycast.player.angle += 2.0f * 3.14159265f;
 
-        // Reset cursor to center
+        // Reset cursor to center immediately
         SetCursorPos(clientCenter.x, clientCenter.y);
-
-        // Trigger a render update
-        renderFrame();
     }
 }
 
