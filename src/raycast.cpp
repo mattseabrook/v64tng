@@ -268,33 +268,49 @@ void renderRaycastView(const std::vector<std::vector<uint8_t>> &tileMap,
 // Mouse handling for raycast mode
 void handleRaycastMouseMove()
 {
-    static POINT lastPos{0, 0};
-    static bool firstMove = true;
-    POINT currentPos;
-    GetCursorPos(&currentPos);
-    ScreenToClient(g_hwnd, &currentPos);
-
-    if (firstMove)
-    {
-        lastPos = currentPos;
-        firstMove = false;
+    if (!state.raycast.enabled)
         return;
+
+    POINT cursorPos;
+    if (!GetCursorPos(&cursorPos))
+        return;
+
+    RECT clientRect;
+    if (!GetClientRect(g_hwnd, &clientRect))
+        return;
+
+    POINT clientCenter = {
+        (clientRect.right - clientRect.left) / 2,
+        (clientRect.bottom - clientRect.top) / 2};
+
+    if (!ClientToScreen(g_hwnd, &clientCenter))
+        return;
+
+    // Calculate mouse delta
+    int deltaX = cursorPos.x - clientCenter.x;
+    int deltaY = cursorPos.y - clientCenter.y;
+
+    // Only process if there's actual movement
+    if (deltaX != 0 || deltaY != 0)
+    {
+        // ONLY CHANGE: Increased base sensitivity from 0.001f to 0.003f
+        float sensitivity = (config["mlookSensitivity"].get<float>() / 100.0f) * 0.003f;
+
+        // Apply mouse delta to player angle
+        state.raycast.player.angle += deltaX * sensitivity;
+
+        // Normalize angle to [0, 2π]
+        while (state.raycast.player.angle >= 2.0f * 3.14159265f)
+            state.raycast.player.angle -= 2.0f * 3.14159265f;
+        while (state.raycast.player.angle < 0.0f)
+            state.raycast.player.angle += 2.0f * 3.14159265f;
+
+        // Reset cursor to center
+        SetCursorPos(clientCenter.x, clientCenter.y);
+
+        // Trigger a render update
+        renderFrame();
     }
-
-    int deltaX = currentPos.x - lastPos.x;
-    float mlookSensitivity = config.contains("mlookSensitivity") ? static_cast<float>(config["mlookSensitivity"]) : 50.0f;
-    float sensitivity = 0.001f * (mlookSensitivity / 50.0f); // Reduced sensitivity
-    state.raycast.player.angle += deltaX * sensitivity;
-    state.raycast.player.angle = std::fmodf(state.raycast.player.angle, 2.0f * 3.14159265f);
-    if (state.raycast.player.angle < 0) // Keep angle positive
-        state.raycast.player.angle += 2.0f * 3.14159265f;
-
-    // Reset cursor to center
-    POINT center{state.ui.width / 2, state.ui.height / 2};
-    ClientToScreen(g_hwnd, &center);
-    SetCursorPos(center.x, center.y);
-    ScreenToClient(g_hwnd, &center); // Convert back to client coords
-    lastPos = center;
 }
 
 // Keyboard input handling
@@ -309,7 +325,7 @@ void raycastKeyUp(WPARAM k)
         g_keys[k] = false;
 }
 
-// Update player movement
+// Update player movement - REVERTED TO ORIGINAL WORKING VERSION
 void updateRaycasterMovement()
 {
     if (!state.raycast.enabled || !state.raycast.map || state.raycast.map->empty())
@@ -354,7 +370,6 @@ void updateRaycasterMovement()
         int checkX = static_cast<int>(newX);
         int checkY = static_cast<int>(y);
 
-        // Check the cell and adjacent cells based on movement direction
         if (dx > 0) // Moving right
         {
             float rightEdge = newX + COLLISION_RADIUS;
@@ -400,6 +415,4 @@ void updateRaycasterMovement()
         if (canMoveY)
             state.raycast.player.y = newY;
     }
-
-    renderFrame();
 }
