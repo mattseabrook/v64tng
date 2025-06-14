@@ -150,6 +150,13 @@ LRESULT HandleSize(HWND hwnd, WPARAM wParam)
 		renderTarget->Resize(D2D1::SizeU(newWidth, newHeight));
 	if (renderer == RendererType::VULKAN)
 		recreateSwapchain(static_cast<uint32_t>(newWidth), static_cast<uint32_t>(newHeight));
+	if (state.raycast.enabled)
+	{
+		if (renderer == RendererType::DIRECTX)
+			resizeBitmap(static_cast<UINT>(newWidth), static_cast<UINT>(newHeight));
+		else if (renderer == RendererType::VULKAN)
+			resizeVulkanTexture(static_cast<uint32_t>(newWidth), static_cast<uint32_t>(newHeight));
+	}
 	if (state.ui.width != newWidth || state.ui.height != newHeight)
 	{
 		state.ui.width = newWidth;

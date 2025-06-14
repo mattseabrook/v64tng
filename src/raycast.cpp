@@ -414,7 +414,8 @@ void updateRaycasterMovement()
             state.raycast.player.x = newX;
         if (canMoveY)
             state.raycast.player.y = newY;
+            
+        // Trigger redraw only when movement occurs
+        renderFrame();
     }
-
-    renderFrame();
 }
