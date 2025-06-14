@@ -21,6 +21,7 @@ bool g_keys[256] = {false};
 std::mutex mutex;
 
 // Cast ray with DDA algorithm
+// Cast ray with DDA algorithm
 RaycastHit castRay(const std::vector<std::vector<uint8_t>> &tileMap,
                    float posX,
                    float posY,
@@ -33,8 +34,28 @@ RaycastHit castRay(const std::vector<std::vector<uint8_t>> &tileMap,
     float sideDistX, sideDistY;
     int stepX, stepY, side = 0;
 
-    stepX = rayDirX < 0 ? (sideDistX = (posX - mapX) * deltaDistX, -1) : (sideDistX = (mapX + 1.0f - posX) * deltaDistX, 1);
-    stepY = rayDirY < 0 ? (sideDistY = (posY - mapY) * deltaDistY, -1) : (sideDistY = (mapY + 1.0f - posY) * deltaDistY, 1);
+    // Fixed DDA initialization
+    if (rayDirX < 0)
+    {
+        stepX = -1;
+        sideDistX = (posX - mapX) * deltaDistX;
+    }
+    else
+    {
+        stepX = 1;
+        sideDistX = (mapX + 1.0f - posX) * deltaDistX;
+    }
+
+    if (rayDirY < 0)
+    {
+        stepY = -1;
+        sideDistY = (posY - mapY) * deltaDistY;
+    }
+    else
+    {
+        stepY = 1;
+        sideDistY = (mapY + 1.0f - posY) * deltaDistY;
+    }
 
     while (true)
     {
@@ -293,10 +314,12 @@ void updateRaycasterMovement()
 {
     if (!state.raycast.enabled || !state.raycast.map || state.raycast.map->empty())
         return;
+
     int mapW = state.raycast.map->at(0).size(), mapH = state.raycast.map->size();
     float x = state.raycast.player.x, y = state.raycast.player.y, angle = state.raycast.player.angle;
     float speed = g_keys[VK_SHIFT] ? state.raycast.player.runSpeed : state.raycast.player.walkSpeed;
     float dx = 0, dy = 0;
+
     if (g_keys['W'] || g_keys[VK_UP])
     {
         dx += std::cos(angle) * speed;
@@ -309,25 +332,74 @@ void updateRaycasterMovement()
     }
     if (g_keys['A'] || g_keys[VK_LEFT])
     {
-        dx += std::cos(angle - 1.5708f) * speed;
-        dy += std::sin(angle - 1.5708f) * speed;
+        dx += std::sin(angle) * speed;
+        dy -= std::cos(angle) * speed;
     }
     if (g_keys['D'] || g_keys[VK_RIGHT])
     {
-        dx += std::cos(angle + 1.5708f) * speed;
-        dy += std::sin(angle + 1.5708f) * speed;
+        dx -= std::sin(angle) * speed;
+        dy += std::cos(angle) * speed;
     }
+
     if (dx || dy)
     {
-        float nx = x + dx;
-        int mx = static_cast<int>(nx + 0.5f), my = static_cast<int>(y + 0.5f);
-        if (mx >= 0 && mx < mapW && my >= 0 && my < mapH && !(*state.raycast.map)[my][mx])
-            state.raycast.player.x = nx;
-        float ny = y + dy;
-        mx = static_cast<int>(state.raycast.player.x + 0.5f);
-        my = static_cast<int>(ny + 0.5f);
-        if (mx >= 0 && mx < mapW && my >= 0 && my < mapH && !(*state.raycast.map)[my][mx])
-            state.raycast.player.y = ny;
+        // Player collision radius to prevent getting too close to walls
+        const float COLLISION_RADIUS = 0.3f;
+
+        float newX = x + dx;
+        float newY = y + dy;
+
+        // Check X movement with collision buffer
+        bool canMoveX = true;
+        int checkX = static_cast<int>(newX);
+        int checkY = static_cast<int>(y);
+
+        // Check the cell and adjacent cells based on movement direction
+        if (dx > 0) // Moving right
+        {
+            float rightEdge = newX + COLLISION_RADIUS;
+            int rightCell = static_cast<int>(rightEdge);
+            if (rightCell >= mapW || (rightCell >= 0 && checkY >= 0 && checkY < mapH &&
+                                      state.raycast.map->at(checkY)[rightCell]))
+                canMoveX = false;
+        }
+        else if (dx < 0) // Moving left
+        {
+            float leftEdge = newX - COLLISION_RADIUS;
+            int leftCell = static_cast<int>(leftEdge);
+            if (leftCell < 0 || (leftCell < mapW && checkY >= 0 && checkY < mapH &&
+                                 state.raycast.map->at(checkY)[leftCell]))
+                canMoveX = false;
+        }
+
+        // Check Y movement with collision buffer
+        bool canMoveY = true;
+        checkX = static_cast<int>(x);
+        checkY = static_cast<int>(newY);
+
+        if (dy > 0) // Moving down
+        {
+            float bottomEdge = newY + COLLISION_RADIUS;
+            int bottomCell = static_cast<int>(bottomEdge);
+            if (bottomCell >= mapH || (bottomCell >= 0 && checkX >= 0 && checkX < mapW &&
+                                       state.raycast.map->at(bottomCell)[checkX]))
+                canMoveY = false;
+        }
+        else if (dy < 0) // Moving up
+        {
+            float topEdge = newY - COLLISION_RADIUS;
+            int topCell = static_cast<int>(topEdge);
+            if (topCell < 0 || (topCell < mapH && checkX >= 0 && checkX < mapW &&
+                                state.raycast.map->at(topCell)[checkX]))
+                canMoveY = false;
+        }
+
+        // Apply movement
+        if (canMoveX)
+            state.raycast.player.x = newX;
+        if (canMoveY)
+            state.raycast.player.y = newY;
     }
+
     renderFrame();
 }
