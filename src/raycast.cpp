@@ -303,6 +303,8 @@ void handleRaycastMouseMove()
 
         // Reset cursor to center immediately
         SetCursorPos(clientCenter.x, clientCenter.y);
+
+        state.dirtyFrame = true;
     }
 }
 
@@ -408,7 +410,6 @@ void updateRaycasterMovement()
         if (canMoveY)
             state.raycast.player.y = newY;
 
-        // Trigger redraw only when movement occurs
-        renderFrame();
+        state.dirtyFrame = true;
     }
 }

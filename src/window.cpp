@@ -220,7 +220,7 @@ LRESULT HandlePaint(HWND hwnd)
 {
 	PAINTSTRUCT ps;
 	BeginPaint(hwnd, &ps);
-	renderFrame();
+	maybeRenderFrame(true);
 	EndPaint(hwnd, &ps);
 	return 0;
 }

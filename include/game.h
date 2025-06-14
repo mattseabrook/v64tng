@@ -120,9 +120,8 @@ struct GameState
 	std::string previous_view = "f_1bc;static"; // Avoid re-rendering
 
 	//
-	// Graphics
+	// 2D & FMV Graphics
 	//
-	double currentFPS = 24.0;			  // Current target FPS, adjustable during gameplay
 	std::vector<VDXFile> VDXFiles;		  // Vector of VDXFile objects
 	size_t currentFrameIndex = 30;		  // Normally 0 - hard-coded to 30 for testing
 	VDXFile *currentVDX = nullptr;		  // Reference to current VDXFile object
@@ -135,6 +134,13 @@ struct GameState
 	size_t animation_queue_index = 0;			 // Current position in the animation sequence
 
 	View view; // Current view object
+
+	//
+	// Rendering state
+	//
+	std::chrono::steady_clock::time_point lastRenderTime{};
+	bool dirtyFrame = true;
+	double currentFPS = 24.0; // Current target FPS, adjustable during gameplay
 
 	//
 	// Raycasting
@@ -181,6 +187,7 @@ void loadView();
 std::unordered_set<CursorType> getActiveCursorsForView(const View &view);
 void updateAnimation();
 void playTransientAnimation(const std::string &animation_name);
+void maybeRenderFrame(bool force = false);
 void init();
 
 #endif // GAME_H

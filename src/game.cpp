@@ -197,7 +197,7 @@ void loadView()
 	state.animation.lastFrameTime = std::chrono::steady_clock::now();
 	state.previous_view = state.current_view;
 
-	renderFrame();
+	state.dirtyFrame = true;
 }
 
 //
@@ -275,7 +275,7 @@ void updateAnimation()
 				}
 				state.transient_animation.lastFrameTime = currentTime;
 
-				renderFrame();
+				state.dirtyFrame = true;
 			}
 		}
 	}
@@ -307,7 +307,7 @@ void updateAnimation()
 			}
 			state.animation.lastFrameTime = currentTime;
 
-			renderFrame();
+			state.dirtyFrame = true;
 		}
 	}
 }
@@ -325,6 +325,22 @@ void playTransientAnimation(const std::string &animation_name)
 }
 
 //
+// Render a frame if enough time has elapsed or a redraw was requested
+//
+void maybeRenderFrame(bool force)
+{
+	auto frameDuration = std::chrono::microseconds(
+		static_cast<long long>(1000000.0 / state.currentFPS));
+	auto now = std::chrono::steady_clock::now();
+	if (force || state.dirtyFrame || now - state.lastRenderTime >= frameDuration)
+	{
+		renderFrame();
+		state.lastRenderTime = now;
+		state.dirtyFrame = false;
+	}
+}
+
+//
 // Start the game engine
 //
 void init()
@@ -334,6 +350,7 @@ void init()
 	xmiPlay("gu61");
 
 	loadView();
+	maybeRenderFrame(true);
 
 	if (!initCursors("ROB.GJD", scaleFactor))
 	{
@@ -355,6 +372,7 @@ void init()
 		}
 
 		updateAnimation();
+		maybeRenderFrame(true);
 	}
 
 	save_config("config.json");
