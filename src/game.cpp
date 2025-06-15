@@ -8,6 +8,7 @@
 #include <ranges>
 #include <algorithm>
 #include <chrono>
+#include <thread>
 #include <sstream>
 
 #include "game.h"
@@ -329,15 +330,22 @@ void playTransientAnimation(const std::string &animation_name)
 //
 void maybeRenderFrame(bool force)
 {
-	auto frameDuration = std::chrono::microseconds(
+	using namespace std::chrono;
+
+	auto frameDuration = microseconds(
 		static_cast<long long>(1000000.0 / state.currentFPS));
-	auto now = std::chrono::steady_clock::now();
-	if (force || state.dirtyFrame || now - state.lastRenderTime >= frameDuration)
-	{
-		renderFrame();
-		state.lastRenderTime = now;
-		state.dirtyFrame = false;
-	}
+	auto now = steady_clock::now();
+	auto timeSinceLast = now - state.lastRenderTime;
+
+	if (!force && timeSinceLast < frameDuration && !state.dirtyFrame)
+		return;
+
+	if (timeSinceLast < frameDuration)
+		std::this_thread::sleep_for(frameDuration - timeSinceLast);
+
+	renderFrame();
+	state.lastRenderTime = steady_clock::now();
+	state.dirtyFrame = false;
 }
 
 //
@@ -369,10 +377,11 @@ void init()
 		{
 			state.animation_sequence.clear();
 			loadView();
+			maybeRenderFrame(true); // show new view immediately
 		}
 
 		updateAnimation();
-		maybeRenderFrame(true);
+		maybeRenderFrame();
 	}
 
 	save_config("config.json");
