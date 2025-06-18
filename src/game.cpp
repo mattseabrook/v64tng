@@ -82,6 +82,18 @@ void loadView()
 		return;
 	}
 
+	if (state.current_view == state.previous_view && state.transient_animation.isPlaying)
+	{
+		return; // Don’t interrupt an active transient
+	}
+	// Only clear transient if it’s not playing
+	if (!state.transient_animation.isPlaying)
+	{
+		state.transient_animation_name.clear();
+		state.transient_animation.isPlaying = false;
+		state.transient_frame_index = 0;
+	}
+
 	// Reset transient animation state
 	state.transient_animation_name.clear();
 	state.transient_animation.isPlaying = false;
@@ -260,7 +272,8 @@ void updateAnimation()
 
 			auto currentTime = std::chrono::steady_clock::now();
 			auto elapsedTime = currentTime - state.transient_animation.lastFrameTime;
-			if (elapsedTime >= state.transient_animation.getFrameDuration(state.currentFPS))
+			auto frameDuration = state.transient_animation.getFrameDuration(state.currentFPS);
+			if (elapsedTime >= frameDuration)
 			{
 				state.transient_frame_index++;
 				if (state.transient_frame_index >= state.transient_animation.totalFrames)
@@ -274,7 +287,7 @@ void updateAnimation()
 					}
 					forceUpdateCursor(); // Updates cursor based on mouse position
 				}
-				state.transient_animation.lastFrameTime = currentTime;
+				state.transient_animation.lastFrameTime += frameDuration;
 
 				state.dirtyFrame = true;
 			}

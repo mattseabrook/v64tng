@@ -497,7 +497,10 @@ Parameters:
 */
 static void updateFrameTexture(std::span<const uint8_t> pixelData)
 {
-	auto changedRows = prepareBGRABuffer(pixelData, MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT, bgraBuffer, previousFrameData, forceFullUpdate);
+	// Force full update for transient animations to avoid change detection issues
+	bool forceUpdate = forceFullUpdate || !state.transient_animation_name.empty();
+
+	auto changedRows = prepareBGRABuffer(pixelData, MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT, bgraBuffer, previousFrameData, forceUpdate);
 	if (changedRows.size() == static_cast<size_t>(MIN_CLIENT_HEIGHT))
 	{
 		uploadToTexture(bgraBuffer.data(), MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT);
@@ -526,6 +529,7 @@ void renderFrameVk()
 	const VDXFile *vdx_to_render = nullptr;
 	size_t frame_index = 0;
 
+	// Prioritize transient animation (even if stopped, use its last frame)
 	if (!state.transient_animation_name.empty())
 	{
 		auto it = std::ranges::find(state.VDXFiles, state.transient_animation_name, &VDXFile::filename);
@@ -534,11 +538,8 @@ void renderFrameVk()
 			vdx_to_render = &(*it);
 			frame_index = state.transient_frame_index;
 		}
-		else
-		{
-			throw std::runtime_error("Transient animation VDX not found: " + state.transient_animation_name);
-		}
 	}
+	// Fallback to current VDX if no transient is active
 	else if (state.currentVDX)
 	{
 		vdx_to_render = state.currentVDX;
@@ -546,10 +547,11 @@ void renderFrameVk()
 	}
 	else
 	{
-		return;
+		return; // Nothing to render
 	}
 
-	updateFrameTexture(vdx_to_render->chunks[frame_index].data);
+	std::span<const uint8_t> pixelData = vdx_to_render->chunks[frame_index].data;
+	updateFrameTexture(pixelData);
 	presentFrame();
 }
 
