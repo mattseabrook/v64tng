@@ -183,7 +183,6 @@ extern GameState state;
 // Function prototypes
 const View *getView(const std::string &current_view);
 void loadView();
-std::unordered_set<CursorType> getActiveCursorsForView(const View &view);
 void updateAnimation();
 void playTransientAnimation(const std::string &animation_name);
 void maybeRenderFrame(bool force = false);

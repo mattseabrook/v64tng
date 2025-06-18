@@ -370,10 +370,23 @@ void raycastKeyUp(WPARAM k)
         g_keys[k] = false;
 }
 
-// Update player movement - REVERTED TO ORIGINAL WORKING VERSION
+//
+// Update raycaster movement based on keyboard input
+//
 void updateRaycasterMovement()
 {
-    if (!state.raycast.enabled || !state.raycast.map || state.raycast.map->empty())
+    if (!state.raycast.enabled)
+        return;
+
+    static std::chrono::steady_clock::time_point lastRaycastUpdate = std::chrono::steady_clock::now();
+    auto currentTime = std::chrono::steady_clock::now();
+    auto elapsedTime = currentTime - lastRaycastUpdate;
+    auto frameDuration = std::chrono::microseconds(static_cast<long long>(1000000.0 / state.currentFPS));
+
+    if (elapsedTime < frameDuration)
+        return; // Not enough time has passed
+
+    if (!state.raycast.map || state.raycast.map->empty())
         return;
 
     int mapW = state.raycast.map->at(0).size(), mapH = state.raycast.map->size();
@@ -462,4 +475,6 @@ void updateRaycasterMovement()
 
         state.dirtyFrame = true;
     }
+
+    lastRaycastUpdate = currentTime;
 }

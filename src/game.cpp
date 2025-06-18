@@ -254,47 +254,18 @@ void loadView()
 	state.dirtyFrame = true;
 }
 
-//
-// Get the active cursor types for the current View
-//
-std::unordered_set<CursorType> getActiveCursorsForView(const View &view)
+/*
+===============================================================================
+Function Name: handleTransientAnimation
+
+Description:
+	- Handles the playback of transient animations.
+	- Checks if a transient animation is active and updates the frame index
+===============================================================================
+*/
+void handleTransientAnimation()
 {
-	std::unordered_set<CursorType> active;
-	// Navigations
-	for (const auto &nav : view.navigations)
-		active.insert(static_cast<CursorType>(nav.area.cursorType));
-	// Hotspots
-	for (const auto &hs : view.hotspots)
-		active.insert(static_cast<CursorType>(hs.area.cursorType));
-	return active;
-}
-
-//
-// Animate the VDX sequence
-//
-void updateAnimation()
-{
-	// Update cursor animation
-	updateCursorAnimation();
-
-	// Update raycaster movement continuously with FPS control
-	if (state.raycast.enabled)
-	{
-		static std::chrono::steady_clock::time_point lastRaycastUpdate = std::chrono::steady_clock::now();
-		auto currentTime = std::chrono::steady_clock::now();
-		auto elapsedTime = currentTime - lastRaycastUpdate;
-		auto frameDuration = std::chrono::microseconds(static_cast<long long>(1000000.0 / state.currentFPS));
-
-		if (elapsedTime >= frameDuration)
-		{
-			updateRaycasterMovement();
-			lastRaycastUpdate = currentTime;
-		}
-		return; // Skip regular animation processing in raycast mode
-	}
-
-	// Handle transient animations first
-	if (state.transient_animation.isPlaying && !state.transient_animation_name.empty())
+	if (!state.transient_animation_name.empty())
 	{
 		auto it = std::ranges::find(state.VDXFiles, state.transient_animation_name, &VDXFile::filename);
 		if (it != state.VDXFiles.end())
@@ -334,8 +305,20 @@ void updateAnimation()
 			}
 		}
 	}
-	// Handle regular animations
-	else if (state.animation.isPlaying && state.currentVDX)
+}
+
+/*
+===============================================================================
+Function Name: handleRegularAnimation
+
+Description:
+	- Handles the playback of regular animations.
+	- Checks if a regular animation is active and updates the frame index.
+===============================================================================
+*/
+void handleRegularAnimation()
+{
+	if (state.currentVDX)
 	{
 		auto currentTime = std::chrono::steady_clock::now();
 		auto elapsedTime = currentTime - state.animation.lastFrameTime;
@@ -364,6 +347,33 @@ void updateAnimation()
 
 			state.dirtyFrame = true;
 		}
+	}
+}
+
+//
+// Animate the VDX sequence
+//
+void updateAnimation()
+{
+	// Update cursor animation
+	updateCursorAnimation();
+
+	// Update raycaster movement continuously with FPS control
+	if (state.raycast.enabled)
+	{
+		updateRaycasterMovement();
+		return; // Skip regular animation processing in raycast mode
+	}
+
+	// Handle transient animations first
+	if (state.transient_animation.isPlaying && !state.transient_animation_name.empty())
+	{
+		handleTransientAnimation();
+	}
+	// Handle regular animations
+	else if (state.animation.isPlaying && state.currentVDX)
+	{
+		handleRegularAnimation();
 	}
 }
 
