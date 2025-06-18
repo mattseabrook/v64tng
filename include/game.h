@@ -149,11 +149,11 @@ struct GameState
 	{
 		bool enabled = false;
 		RaycastPlayer player = {
-			0.0f, 0.0f,									// Starting position
-			0.0f,										// Initial angle
-			deg2rad(config.value("raycastFov", 90.0f)), // Field of view (in radians)
-			0.2f,										// Walk speed
-			0.4f										// Run speed
+			0.0f, 0.0f,		// Starting position
+			0.0f,			// Initial angle
+			deg2rad(90.0f), // Field of view (in radians)
+			0.2f,			// Walk speed
+			0.4f			// Run speed
 		};
 		std::vector<std::vector<uint8_t>> *map = nullptr; // Current map data
 	} raycast;
