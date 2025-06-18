@@ -20,7 +20,54 @@
 bool g_keys[256] = {false};
 std::mutex mutex;
 
-// Cast ray with DDA algorithm
+//
+// Initialize player position and orientation from the map
+//
+bool initializePlayerFromMap(const std::vector<std::vector<uint8_t>> &tileMap, RaycastPlayer &player)
+{
+    if (tileMap.empty() || tileMap[0].empty())
+        return false;
+
+    int mapH = tileMap.size();
+    int mapW = tileMap[0].size();
+
+    // Search for player start position markers (0xF0-0xF3)
+    for (int y = 0; y < mapH; ++y)
+    {
+        for (int x = 0; x < mapW; ++x)
+        {
+            uint8_t tile = tileMap[y][x];
+            if (tile >= 0xF0 && tile <= 0xF3)
+            {
+                // Set player position to center of the tile
+                player.x = static_cast<float>(x) + 0.5f;
+                player.y = static_cast<float>(y) + 0.5f;
+
+                // Set player orientation based on the marker
+                switch (tile)
+                {
+                case 0xF0: // North
+                    player.angle = deg2rad(270.0f);
+                    break;
+                case 0xF1: // East
+                    player.angle = deg2rad(0.0f);
+                    break;
+                case 0xF2: // South
+                    player.angle = deg2rad(90.0f);
+                    break;
+                case 0xF3: // West
+                    player.angle = deg2rad(180.0f);
+                    break;
+                }
+
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 // Cast ray with DDA algorithm
 RaycastHit castRay(const std::vector<std::vector<uint8_t>> &tileMap,
                    float posX,
@@ -73,7 +120,10 @@ RaycastHit castRay(const std::vector<std::vector<uint8_t>> &tileMap,
         }
         if (mapX < 0 || mapY < 0 || mapX >= mapW || mapY >= mapH)
             return {32.0f, side};
-        if (tileMap[mapY][mapX])
+
+        // Check for walls
+        uint8_t tile = tileMap[mapY][mapX];
+        if (tile >= 0x01 && (tile < 0xF0 || tile > 0xF3))
             break;
     }
     return {side ? sideDistY - deltaDistY : sideDistX - deltaDistX, side};

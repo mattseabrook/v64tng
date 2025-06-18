@@ -38,6 +38,7 @@ constexpr float deg2rad(float deg) { return deg * 3.14159265358979323846f / 180.
 //
 // Function Prototypes
 //
+bool initializePlayerFromMap(const std::vector<std::vector<uint8_t>> &tileMap, RaycastPlayer &player);
 RaycastHit castRay(const std::vector<std::vector<uint8_t>> &tileMap,
                    float posX,
                    float posY,

@@ -29,6 +29,7 @@ constexpr const char *default_config = R"({
     "midiBank": 0,
     "midiVolume": 100,
     "mlookSensitivity": 50,
+    "raycastFov": 90,
     "raycastSupersample": 4,
     "devMode": false
 })";

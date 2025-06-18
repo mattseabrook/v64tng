@@ -372,6 +372,12 @@ int process_args(const std::vector<std::string> &args)
 		float fovDeg = config.contains("raycastFov") ? static_cast<float>(config["raycastFov"]) : 90.0f;
 		state.raycast.player.fov = deg2rad(fovDeg);
 
+		if (!initializePlayerFromMap(*state.raycast.map, state.raycast.player))
+		{
+			MessageBoxA(nullptr, "No player start position found in the map!", "Error", MB_ICONERROR | MB_OK);
+			PostQuitMessage(0);
+		}
+
 		// Launch the game engine in raycasting mode
 		init();
 	}
