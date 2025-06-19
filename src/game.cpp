@@ -77,6 +77,31 @@ const View *getView(const std::string &current_view)
 
 /*
 ===============================================================================
+Function Name: getActiveCursorsForView
+
+Description:
+	- Retrieves a set of active cursor types for the current view.
+	- Combines cursor types from both navigations and hotspots in the view.
+
+Parameters:
+	- view: The View object to check for active cursors.
+===============================================================================
+
+static std::unordered_set<CursorType> getActiveCursorsForView(const View &view)
+{
+	std::unordered_set<CursorType> active;
+	// Navigations
+	for (const auto &nav : view.navigations)
+		active.insert(static_cast<CursorType>(nav.area.cursorType));
+	// Hotspots
+	for (const auto &hs : view.hotspots)
+		active.insert(static_cast<CursorType>(hs.area.cursorType));
+	return active;
+}
+*/
+
+/*
+===============================================================================
 Function Name: ensureRoomLoaded
 
 Description:

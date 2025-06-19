@@ -481,21 +481,6 @@ HCURSOR getCurrentCursor()
 }
 
 //
-// Get the active cursor types for the current View
-//
-std::unordered_set<CursorType> getActiveCursorsForView(const View &view)
-{
-    std::unordered_set<CursorType> active;
-    // Navigations
-    for (const auto &nav : view.navigations)
-        active.insert(static_cast<CursorType>(nav.area.cursorType));
-    // Hotspots
-    for (const auto &hs : view.hotspots)
-        active.insert(static_cast<CursorType>(hs.area.cursorType));
-    return active;
-}
-
-//
 // Clean up all loaded cursors
 //
 void cleanupCursors()

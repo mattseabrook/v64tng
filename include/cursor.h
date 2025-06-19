@@ -12,8 +12,6 @@
 #include <unordered_set>
 #include <Windows.h>
 
-#include "game.h"
-
 /*
 ===============================================================================
 
@@ -111,7 +109,6 @@ bool initCursors(const std::string_view &robPath, float scale);
 void recreateScaledCursors(float scale);
 void updateCursorAnimation();
 HCURSOR getCurrentCursor();
-std::unordered_set<CursorType> getActiveCursorsForView(const View &view);
 HCURSOR getTransparentCursor();
 HCURSOR createWindowsCursor(const std::vector<uint8_t> &rgbaData, int width, int height);
 void cleanupCursors();
