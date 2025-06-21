@@ -500,9 +500,9 @@ const std::unordered_map<std::string, View> foyer = {
 	 {// Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "x"},		// Left
-	   {{0.0f, 0.0f, 0.0f, 0.0f, CURSOR_FORWARD, 0}, "x"},		// Forward
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "x"}}}}, // Right
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3bd"},		// Left
+	   {{40.0f, 10.0f, 60.0f, 60.0f, CURSOR_FORWARD, 0}, "f3_2"},	// Forward to Dining Room door
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fa"}}}}, // Right
 	//
 	// Kitchen, turning left
 	//
@@ -522,18 +522,23 @@ const std::unordered_map<std::string, View> foyer = {
 	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3bb"},		// Left
 	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fc"}}}}, // Right
 	//
-	// Kitchen, facing south
+	// x
 	//
 	{"f_3bd",
 	 {// Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2bd"},		// Left
-	   {{0.0f, 0.0f, 0.0f, 0.0f, CURSOR_FORWARD, 0}, "f3_2"},		// Forward
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fa"}}}}, // Right
-
-	/* f_3fa */
-
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3bc"},		// Left
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fd"}}}}, // Right
+	//
+	// x
+	//
+	{"f_3fa",
+	 {// Hotspots
+	  {},
+	  // Navigation
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3ba"},		// Left
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fb"}}}}, // Right
 	//
 	// Turning right towards Kitchen
 	//
@@ -553,14 +558,15 @@ const std::unordered_map<std::string, View> foyer = {
 	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3bc"},		// Left
 	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fd"}}}}, // Right
 	//
-	// Clock, turning right towards foyer
+	// Clock, turning right towards Foyer
 	//
 	{"f_3fd",
 	 {// Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3bd"},	// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "x"}}}}, // Right
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3bd"},		// Left
+	   {{40.0f, 10.0f, 60.0f, 60.0f, CURSOR_FORWARD, 0}, "f3_2"},	// Forward to Dining Room door
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fa"}}}}, // Right
 
 	////////////////////////////////////////////////////////////////////////
 
@@ -571,8 +577,8 @@ const std::unordered_map<std::string, View> foyer = {
 	 {// Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bd"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fa"}}}}, // Right
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2bd"},		// Left
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fa"}}}}, // Right
 
 	//
 	// Library, facing Music Room
