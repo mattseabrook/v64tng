@@ -140,7 +140,7 @@ struct GameState
 	//
 	std::chrono::steady_clock::time_point lastRenderTime{};
 	bool dirtyFrame = true;
-	double currentFPS = 24.0; // Current target FPS, adjustable during gameplay
+	double currentFPS = 30.0; // Current target FPS, adjustable during gameplay
 
 	//
 	// Raycasting

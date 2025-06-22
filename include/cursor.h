@@ -95,7 +95,7 @@ extern std::array<LoadedCursor, 9> g_cursors;
 extern CursorType g_activeCursorType;
 extern uint64_t g_cursorLastFrameTime;
 extern bool g_cursorsInitialized;
-inline constexpr double CURSOR_FPS = 24.0;
+inline constexpr double CURSOR_FPS = 15.0;
 
 //=============================================================================
 

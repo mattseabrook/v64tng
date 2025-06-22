@@ -499,7 +499,7 @@ void createVideoFromImages(const std::string &filenameParam)
 	// Build FFmpeg command
 	std::string inputFilePattern = filenameWithoutExtension + "_%04d.png";
 	std::string outputFilePath = (pngDirPath / (filenameWithoutExtension + ".mkv")).string();
-	std::string ffmpegCommand = "ffmpeg -framerate 24 -i \"" +
+	std::string ffmpegCommand = "ffmpeg -framerate 30 -i \"" +
 								(pngDirPath / inputFilePattern).string() +
 								"\" -c:v libx265 -crf 0 -pix_fmt rgb24 \"" +
 								outputFilePath + "\"";
