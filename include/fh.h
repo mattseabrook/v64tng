@@ -31,8 +31,6 @@ f1_rm - Unused animation of the fountain in the foyer
 
 f2_		// Likely an animation not related to game play or navigation
 
-
-
 f3_0
 
 f3_clt
@@ -40,14 +38,13 @@ f3_cmb
 f3_cmf
 f3_d
 
-f4_5
 f4_d
-
 
 f5_4
 f5_d
 
 f6_1
+
 
 foy_spa
 foy_spb
@@ -57,18 +54,6 @@ foy_spe
 foy_spf
 foy_spg
 foy_sph
-
-
-Music Room:
-
-f_4ba
-f_4bb
-f_4bc
-f_4bd
-f_4fa
-f_4fb
-f_4fc
-f_4fd
 
 
 f_a_d
@@ -276,11 +261,11 @@ const std::unordered_map<std::string, View> foyer = {
 		 {},
 		 // Navigation
 		 {
-			 {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bb"},	   // Left
-			 {{33.0f, 0.0f, 33.0f, 85.0f, CURSOR_FORWARD, 0}, "f1_6"},	   // Forward
-			 {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fc"},	   // Right
-			 {{0.0f, 50.0f, 17.0f, 30.0f, CURSOR_FORWARD, 1}, "f1_2"},	   // Dining Room
-			 {{80.0f, 50.0f, 20.0f, 30.0f, CURSOR_FORWARD, 0}, "f1_5"}}}}, // Music Room
+			 {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bb"},			// Left
+			 {{33.0f, 0.0f, 33.0f, 85.0f, CURSOR_FORWARD, 0}, "f1_6"},			// Forward
+			 {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fc"},			// Right
+			 {{0.0f, 50.0f, 17.0f, 30.0f, CURSOR_FORWARD, 1}, "f1_2"},			// Dining Room
+			 {{80.0f, 50.0f, 20.0f, 30.0f, CURSOR_FORWARD, 0}, "f1_5,f5_4"}}}}, // Music Room
 	//
 	// front door, turning left
 	//
@@ -315,11 +300,11 @@ const std::unordered_map<std::string, View> foyer = {
 		 {},
 		 // Navigation
 		 {
-			 {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bb"},	   // Left
-			 {{33.0f, 0.0f, 33.0f, 85.0f, CURSOR_FORWARD, 0}, "f1_6"},	   // Forward
-			 {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fc"},	   // Right
-			 {{0.0f, 50.0f, 17.0f, 30.0f, CURSOR_FORWARD, 0}, "f1_2"},	   // Dining Room
-			 {{80.0f, 50.0f, 20.0f, 30.0f, CURSOR_FORWARD, 0}, "f1_5"}}}}, // Music Room
+			 {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bb"},			// Left
+			 {{33.0f, 0.0f, 33.0f, 85.0f, CURSOR_FORWARD, 0}, "f1_6"},			// Forward
+			 {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fc"},			// Right
+			 {{0.0f, 50.0f, 17.0f, 30.0f, CURSOR_FORWARD, 0}, "f1_2"},			// Dining Room
+			 {{80.0f, 50.0f, 20.0f, 30.0f, CURSOR_FORWARD, 0}, "f1_5,f5_4"}}}}, // Music Room
 	//
 	// Stairs, turning right
 	//
@@ -594,6 +579,103 @@ const std::unordered_map<std::string, View> foyer = {
 	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fa"}}}}, // Right
 
 	////////////////////////////////////////////////////////////////////////
+	// f_4
+	////////////////////////////////////////////////////////////////////////
+
+	//
+	// Music Room, turning left towards the stairs
+	//
+	{"f_4ba",
+	 {// Hotspots
+	  {},
+	  // Navigation
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4bd"},		// Left
+	   {{40.0f, 30.0f, 20.0f, 40.0f, CURSOR_FORWARD, 0}, "f4_5"},	// Forward - Library Door
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fa"}}}}, // Right
+
+	//
+	// Music Room, turning left
+	//
+	{"f_4bb",
+	 {// Hotspots
+	  {},
+	  // Navigation
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4ba"},		// Left
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fb"}}}}, // Right
+	//
+	// Turning left towards Music Room
+	//
+	{"f_4bc",
+	 {// Hotspots
+	  {},
+	  // Navigation
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4bb"},		// Left
+	   {{40.0f, 30.0f, 20.0f, 40.0f, CURSOR_FORWARD, 0}, "x"},		// Forward - Enter the Music Room
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fc"}}}}, // Right
+	//
+	// Music Room, turning left towards Library
+	//
+	{"f_4bd",
+	 {// Hotspots
+	  {},
+	  // Navigation
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4bc"},				  // Left
+	   {{80.0f, 30.0f, 10.0f, 90.0f, CURSOR_FORWARD, 0}, "f_4fd,f4_5,f_5bd"}, // f5
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fd"}}}},			  // Right
+	//
+	// Music Room, turning right towards stairs
+	//
+	{"f_4fa",
+	 {// Hotspots
+	  {},
+	  // Navigation
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4ba"},		// Left
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fb"}}}}, // Right
+	//
+	// Turning right towards Music Room
+	//
+	{"f_4fb",
+	 {// Hotspots
+	  {},
+	  // Navigation
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4bb"},		// Left
+	   {{40.0f, 30.0f, 20.0f, 40.0f, CURSOR_FORWARD, 0}, "x"},		// Forward - Enter the Music Room
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fc"}}}}, // Right
+	//
+	// Music Room, turning right
+	//
+	{"f_4fc",
+	 {// Hotspots
+	  {},
+	  // Navigation
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4bc"},				  // Left
+	   {{40.0f, 30.0f, 20.0f, 40.0f, CURSOR_FORWARD, 0}, "f_4fd,f4_5,f_5bd"}, // f5
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fd"}}}},			  // Right
+	//
+	// Music Room, facing the front door
+	//
+	{"f_4fd",
+	 {// Hotspots
+	  {},
+	  // Navigation
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4bd"},		// Left
+	   {{40.0f, 30.0f, 20.0f, 40.0f, CURSOR_FORWARD, 0}, "f4_5"},	// Forward - Library Door
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fa"}}}}, // Right
+
+	////////////////////////////////////////////////////////////////////////
+
+	//
+	// Music Room -> Library (Foyer)
+	//
+	{"f4_5",
+	 {// Hotspots
+	  {},
+	  // Navigation
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_5bd"},		// Left
+	   {{40.0f, 33.0f, 20.0f, 33.0f, CURSOR_FORWARD, 0}, "f5_1"},	// f1
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_5fa"}}}}, // Right
+
+	////////////////////////////////////////////////////////////////////////
 	// f_5
 	////////////////////////////////////////////////////////////////////////
 
@@ -636,7 +718,7 @@ const std::unordered_map<std::string, View> foyer = {
 	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_5bc"},		// Left
 	   {{0.0f, 0.0f, 0.0f, 0.0f, CURSOR_FORWARD, 0}, "x"},			// Forward - Enter Library
 	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_5fd"}}}}, // Right
-																	//
+	//
 	// Library, turning right towards the stairs
 	//
 	{"f_5fa",
@@ -694,9 +776,9 @@ const std::unordered_map<std::string, View> foyer = {
 	 {// Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "x"},		// Left
-	   {{0.0f, 0.0f, 0.0f, 0.0f, CURSOR_FORWARD, 0}, "x"},		// Forward
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "x"}}}}, // Right
+	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4bb"},		// Left
+	   {{0.0f, 0.0f, 0.0f, 0.0f, CURSOR_FORWARD, 0}, "x"},			// Forward - Enter Music Room
+	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fc"}}}}, // Right
 };
 
 // Further view prefixes ...
