@@ -354,9 +354,9 @@ LRESULT HandleLButtonDown(LPARAM lParam)
 		Navigation,
 		Hotspot
 	} targetType = TargetType::None;
-	for (size_t i = 0; i < state.view.navigations.size(); ++i)
+	for (size_t i = 0; i < state.view->navigations.size(); ++i)
 	{
-		const auto &nav = state.view.navigations[i];
+		const auto &nav = state.view->navigations[i];
 		const auto &area = nav.area;
 		if (normalizedX >= area.x && normalizedX <= (area.x + area.width) &&
 			normalizedY >= area.y && normalizedY <= (area.y + area.height) &&
@@ -367,9 +367,9 @@ LRESULT HandleLButtonDown(LPARAM lParam)
 			targetType = TargetType::Navigation;
 		}
 	}
-	for (size_t i = 0; i < state.view.hotspots.size(); ++i)
+	for (size_t i = 0; i < state.view->hotspots.size(); ++i)
 	{
-		const auto &hotspot = state.view.hotspots[i];
+		const auto &hotspot = state.view->hotspots[i];
 		const auto &area = hotspot.area;
 		if (normalizedX >= area.x && normalizedX <= (area.x + area.width) &&
 			normalizedY >= area.y && normalizedY <= (area.y + area.height) &&
@@ -382,12 +382,12 @@ LRESULT HandleLButtonDown(LPARAM lParam)
 	}
 	if (targetType == TargetType::Navigation)
 	{
-		state.current_view = state.view.navigations[targetIndex].next_view;
+		state.current_view = state.view->navigations[targetIndex].next_view;
 		state.animation_sequence.clear();
 	}
-	else if (targetType == TargetType::Hotspot && state.view.hotspots[targetIndex].action)
+	else if (targetType == TargetType::Hotspot && state.view->hotspots[targetIndex].action)
 	{
-		state.view.hotspots[targetIndex].action();
+		state.view->hotspots[targetIndex].action();
 	}
 	return 0;
 }
@@ -748,7 +748,7 @@ void updateCursorBasedOnPosition(POINT clientPos)
 	float normalizedY = static_cast<float>(clientPos.y) / state.ui.height * 100.0f;
 	int highestZIndex = -1;
 	uint8_t newCursorType = CURSOR_DEFAULT;
-	for (const auto &nav : state.view.navigations)
+	for (const auto &nav : state.view->navigations)
 	{
 		const auto &area = nav.area;
 		if (normalizedX >= area.x && normalizedX <= (area.x + area.width) &&
@@ -759,7 +759,7 @@ void updateCursorBasedOnPosition(POINT clientPos)
 			newCursorType = area.cursorType;
 		}
 	}
-	for (const auto &hotspot : state.view.hotspots)
+	for (const auto &hotspot : state.view->hotspots)
 	{
 		const auto &area = hotspot.area;
 		if (normalizedX >= area.x && normalizedX <= (area.x + area.width) &&

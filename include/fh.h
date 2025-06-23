@@ -3,7 +3,7 @@
 #ifndef FH_H
 #define FH_H
 
-#include <unordered_map>
+#include <vector>
 
 #include "game.h"
 #include "music.h"
@@ -223,16 +223,16 @@ h_prmorp
 Prefix map for Foyer assets
 
 */
-const std::unordered_map<std::string, View> foyer = {
-	////////////////////////////////////////////////////////////////////////
+const std::vector<ViewGroup> foyer = {
+	//////////////////////////////////////////////////////////////////////////
 	// f_1 - In front of the stairs
-	////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////
 
 	//
 	// Turning left towards front door
 	//
 	{
-		"f_1ba",
+		{"f_1ba"},
 		{// Hotspots
 		 {
 			 {{45.0f, 0.0f, 10.0f, 10.0f, CURSOR_FMV, 0}, []() { /* Intro Movie */ }}},
@@ -244,139 +244,135 @@ const std::unordered_map<std::string, View> foyer = {
 	// Stairs, turning left
 	//
 	{
-		"f_1bb",
-		{// Hotspots
+		{"f_1bb", "f_1fa"}, // Grouped: identical hotspots and navigations
+		{					// Hotspots
 		 {},
 		 // Navigation
-		 {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1ba"},		   // Left
-		  {{83.0f, 45.0f, 17.0f, 35.0f, CURSOR_FORWARD, 1}, "f_1fb,f1_2"}, // Dining Room
-		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fb"}}}},	   // Right
+		 {
+			 {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1ba"},		  // Left
+			 {{83.0f, 45.0f, 17.0f, 35.0f, CURSOR_FORWARD, 1}, "f_1fb,f1_2"}, // Dining Room
+			 {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fb"}		  // Right
+		 }}},
 	//
 	// turning left towards Stairs *first view
 	//
 	{
-		"f_1bc",
-		{// Hotspots
+		{"f_1bc", "f_1fb"}, // Grouped: identical hotspots and navigations
+		{					// Hotspots
 		 {},
 		 // Navigation
-		 {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bb"},			 // Left
-		  {{33.0f, 0.0f, 33.0f, 85.0f, CURSOR_FORWARD, 0}, "f1_6"},			 // Forward
-		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fc"},			 // Right
-		  {{0.0f, 50.0f, 17.0f, 30.0f, CURSOR_FORWARD, 1}, "f1_2"},			 // Dining Room
-		  {{80.0f, 50.0f, 20.0f, 30.0f, CURSOR_FORWARD, 0}, "f1_5,f5_4"}}}}, // Music Room
+		 {
+			 {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bb"},		// Left
+			 {{33.0f, 0.0f, 33.0f, 85.0f, CURSOR_FORWARD, 0}, "f1_6"},		// Forward
+			 {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fc"},		// Right
+			 {{0.0f, 50.0f, 17.0f, 30.0f, CURSOR_FORWARD, 1}, "f1_2"},		// Dining Room
+			 {{80.0f, 50.0f, 20.0f, 30.0f, CURSOR_FORWARD, 0}, "f1_5,f5_4"} // Music Room
+		 }}},
 	//
 	// front door, turning left
 	//
 	{
-		"f_1bd",
+		{"f_1bd"},
 		{// Hotspots
 		 {},
 		 // Navigation
-		 {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bc"},				// Left
-		  {{0.0f, 70.0f, 25.0f, 30.0f, CURSOR_FORWARD, 0}, "f_1bc,f1_5,f5_4"},	// Music Room
-		  {{28.0f, 35.0f, 5.0f, 50.0f, CURSOR_FORWARD, 0}, "f_1bc,f1_5,f_5fc"}, // Library
-		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fd"}}}},			// Right
-	//
-	// front door, turning right
-	//
-	{
-		"f_1fa",
-		{// Hotspots
-		 {},
-		 // Navigation
-		 {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1ba"},		   // Left
-		  {{83.0f, 45.0f, 17.0f, 35.0f, CURSOR_FORWARD, 1}, "f_1fb,f1_2"}, // Dining Room
-		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fb"}}}},	   // Right
-	//
-	// turning right towards stairs
-	//
-	{
-		"f_1fb",
-		{// Hotspots
-		 {},
-		 // Navigation
-		 {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bb"},			 // Left
-		  {{33.0f, 0.0f, 33.0f, 85.0f, CURSOR_FORWARD, 0}, "f1_6"},			 // Forward
-		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fc"},			 // Right
-		  {{0.0f, 50.0f, 17.0f, 30.0f, CURSOR_FORWARD, 0}, "f1_2"},			 // Dining Room
-		  {{80.0f, 50.0f, 20.0f, 30.0f, CURSOR_FORWARD, 0}, "f1_5,f5_4"}}}}, // Music Room
+		 {
+			 {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bc"},			   // Left
+			 {{0.0f, 70.0f, 25.0f, 30.0f, CURSOR_FORWARD, 0}, "f_1bc,f1_5,f5_4"},  // Music Room
+			 {{28.0f, 35.0f, 5.0f, 50.0f, CURSOR_FORWARD, 0}, "f_1bc,f1_5,f_5fc"}, // Library
+			 {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fd"}			   // Right
+		 }}},
 	//
 	// Stairs, turning right
 	//
 	{
-		"f_1fc",
+		{"f_1fc"},
 		{// Hotspots
 		 {},
 		 // Navigation
-		 {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bc"},				   // Left
-		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fd"},				   // Right
-		  {{28.0f, 35.0f, 5.0f, 50.0f, CURSOR_FORWARD, 0}, "f_1bc,f1_5,f_5fc"}}}}, // Library
+		 {
+			 {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bc"},			  // Left
+			 {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fd"},			  // Right
+			 {{28.0f, 35.0f, 5.0f, 50.0f, CURSOR_FORWARD, 0}, "f_1bc,f1_5,f_5fc"} // Library
+		 }}},
 	//
 	// turning right towards front door
 	//
 	{
-		"f_1fd",
+		{"f_1fd"},
 		{// Hotspots
-		 {{{45.0f, 0.0f, 10.0f, 10.0f, CURSOR_FMV, 0}, []() { /* Spider Puzzle or Intro Movie */ }}},
+		 {
+			 {{45.0f, 0.0f, 10.0f, 10.0f, CURSOR_FMV, 0}, []() { /* Spider Puzzle or Intro Movie */ }}},
 		 // Navigation
-		 {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bd"},	   // Left
-		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fa"}}}}, // Right
+		 {
+			 {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bd"},  // Left
+			 {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fa"} // Right
+		 }}},
 
-	////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////
 
 	//
 	// Stairs -> Dining Room Door
 	//
 	{
-		"f1_2",
+		{"f1_2"},
 		{// Hotspots
-		 {{{33.0f, 0.0f, 33.0f, 100.0f, CURSOR_FORWARD, 0}, []()
-		   {
-			   state.current_view = "f2_d,DR:dr_tbc;static";
-			   state.animation_sequence.clear();
-			   loadView();
-			   pushMainSong("gu15");
-		   }}},
+		 {
+			 {{33.0f, 0.0f, 33.0f, 100.0f, CURSOR_FORWARD, 0}, []()
+			  {
+				  state.current_view = "f2_d,DR:dr_tbc;static";
+				  state.animation_sequence.clear();
+				  loadView();
+				  pushMainSong("gu15");
+			  }}},
 		 // Navigation
-		 {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2ba"},	   // Left
-		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fb"}}}}, // Right
+		 {
+			 {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2ba"},  // Left
+			 {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fb"} // Right
+		 }}},
 	//
 	// Stairs -> Library Door
 	//
-	{"f1_5",
+	{{"f1_5"},
 	 {// Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "x"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "x"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "x"},  // Left
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "x"} // Right
+	  }}},
 	//
 	// Up the stairs
 	//
-	{"f1_6",
+	{{"f1_6"},
 	 {// Hotspots
 	  {{{45.0f, 0.0f, 10.0f, 10.0f, CURSOR_EASTER_EGG, 0}, []() { /* Hands Painting */ }}},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "x"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "x"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "x"},  // Left
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "x"} // Right
+	  }}},
 
-	////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////
 	// f_2 - In front of Dining Room door
-	////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////
 
 	//
 	// Dining Room, turning left
 	//
-	{"f_2ba",
+	{{"f_2ba"},
 	 {// Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2bd"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fa"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2bd"},  // Left
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fa"} // Right
+	  }}},
 	//
 	// Turning left towards the Dining Room
 	//
-	{"f_2bb",
-	 {// Hotspots
+	{{"f_2bb", "f_2fa"}, // Grouped: identical hotspots and navigations
+	 {					 // Hotspots
 	  {{{33.0f, 0.0f, 33.0f, 100.0f, CURSOR_FORWARD, 0}, []()
 		{
 			state.current_view = "f2_d,DR:dr_tbc;static";
@@ -385,394 +381,284 @@ const std::unordered_map<std::string, View> foyer = {
 			pushMainSong("gu15");
 		}}},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2ba"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fb"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2ba"},  // Left
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fb"} // Right
+	  }}},
 	//
 	// Stairs, turning left to Kitchen
 	//
-	{"f_2bc",
-	 {// Hotspots
+	{{"f_2bc", "f_2fb"}, // Grouped: identical hotspots and navigations
+	 {					 // Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2bb"},		// Left
-	   {{45.0f, 10.0f, 15.0f, 60.0f, CURSOR_FORWARD, 0}, "f2_3"},	// f3
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fc"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2bb"},	 // Left
+		  {{45.0f, 10.0f, 15.0f, 60.0f, CURSOR_FORWARD, 0}, "f2_3"}, // f3
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fc"}	 // Right
+	  }}},
 	//
 	// Turning left towards Stairs
 	//
-	{"f_2bd",
-	 {// Hotspots
+	{{"f_2bd", "f_2fc"}, // Grouped: identical hotspots and navigations
+	 {					 // Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2bc"},		// Left
-	   {{70.0f, 40.0f, 20.0f, 40.0f, CURSOR_FORWARD, 0}, "f2_1"},	// f1
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fd"}}}}, // Right
-	//
-	// Turning right towards Dining Room
-	//
-	{"f_2fa",
-	 {// Hotspots
-	  {{{33.0f, 0.0f, 33.0f, 100.0f, CURSOR_FORWARD, 0}, []()
-		{
-			state.current_view = "f2_d,DR:dr_tbc;static";
-			state.animation_sequence.clear();
-			loadView();
-			pushMainSong("gu15");
-		}}},
-	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2ba"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fb"}}}}, // Right
-	//
-	// Dining Room, turning right to Kitchen
-	//
-	{"f_2fb",
-	 {// Hotspots
-	  {},
-	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2bb"},		// Left
-	   {{45.0f, 10.0f, 15.0f, 60.0f, CURSOR_FORWARD, 0}, "f2_3"},	// Forward
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fc"}}}}, // Right
-	//
-	// Turning right towards Stairs (facing kitchen)
-	//
-	{"f_2fc",
-	 {// Hotspots
-	  {},
-	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2bc"},		// Left
-	   {{70.0f, 40.0f, 20.0f, 40.0f, CURSOR_FORWARD, 0}, "f2_1"},	// f1
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fd"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2bc"},	 // Left
+		  {{70.0f, 40.0f, 20.0f, 40.0f, CURSOR_FORWARD, 0}, "f2_1"}, // f1
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fd"}	 // Right
+	  }}},
 	//
 	// Stairs, turning right
 	//
-	{"f_2fd",
+	{{"f_2fd"},
 	 {// Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2bd"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fa"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2bd"},  // Left
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fa"} // Right
+	  }}},
 
-	////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////
 
 	//
 	// Dining Room -> Front Door
 	//
-	{"f2_1",
+	{{"f2_1"},
 	 {// Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bd"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fa"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bd"},  // Left
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fa"} // Right
+	  }}},
 	//
 	// Fully transition to Dining Room ( DR.RL/GJD )
 	//
-	{"f2_d", {{}, {}}},
+	{{"f2_d"}, {{}, {}}},
 	//
 	// Dining Room -> Infront of Kitchen
 	//
-	{"f2_3",
+	{{"f2_3"},
 	 {// Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3bb"},		// Left
-	   {{33.0f, 0.0f, 33.0f, 100.0f, CURSOR_FORWARD, 0}, "x"},		// Kitchen
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fc"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3bb"},  // Left
+		  {{33.0f, 0.0f, 33.0f, 100.0f, CURSOR_FORWARD, 0}, "x"},  // Kitchen
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fc"} // Right
+	  }}},
 
-	////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////
 	// f_3
-	////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////
 
 	//
 	// Kitchen, facing Dining Room
 	//
-	{"f_3ba",
-	 {// Hotspots
+	{{"f_3ba", "f_3fd"}, // Grouped: identical hotspots and navigations
+	 {					 // Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3bd"},		// Left
-	   {{40.0f, 10.0f, 60.0f, 60.0f, CURSOR_FORWARD, 0}, "f3_2"},	// Forward to Dining Room door
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fa"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3bd"},	 // Left
+		  {{40.0f, 10.0f, 60.0f, 60.0f, CURSOR_FORWARD, 0}, "f3_2"}, // Forward to Dining Room door
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fa"}	 // Right
+	  }}},
 	//
 	// Kitchen, turning left
 	//
-	{"f_3bb",
-	 {// Hotspots
+	{{"f_3bb", "f_3fa"}, // Grouped: identical hotspots and navigations
+	 {					 // Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3ba"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fb"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3ba"},  // Left
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fb"} // Right
+	  }}},
 	//
 	// Turning left towards Kitchen
 	//
-	{"f_3bc",
-	 {// Hotspots
+	{{"f_3bc", "f_3fb"}, // Grouped: identical hotspots and navigations
+	 {					 // Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3bb"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fc"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3bb"},  // Left
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fc"} // Right
+	  }}},
 	//
 	// x
 	//
-	{"f_3bd",
-	 {// Hotspots
+	{{"f_3bd", "f_3fc"}, // Grouped: identical hotspots and navigations
+	 {					 // Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3bc"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fd"}}}}, // Right
-	//
-	// x
-	//
-	{"f_3fa",
-	 {// Hotspots
-	  {},
-	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3ba"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fb"}}}}, // Right
-	//
-	// Turning right towards Kitchen
-	//
-	{"f_3fb",
-	 {// Hotspots
-	  {},
-	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3bb"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fc"}}}}, // Right
-	//
-	// Kitchen, turning right
-	//
-	{"f_3fc",
-	 {// Hotspots
-	  {},
-	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3bc"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fd"}}}}, // Right
-	//
-	// Clock, turning right towards Foyer
-	//
-	{"f_3fd",
-	 {// Hotspots
-	  {},
-	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3bd"},		// Left
-	   {{40.0f, 10.0f, 60.0f, 60.0f, CURSOR_FORWARD, 0}, "f3_2"},	// Forward to Dining Room door
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fa"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_3bc"},  // Left
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_3fd"} // Right
+	  }}},
 
-	////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////
 
 	//
 	// Kitchen -> Dining Room (Foyer)
 	//
-	{"f3_2",
+	{{"f3_2"},
 	 {// Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2bd"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fa"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_2bd"},  // Left
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_2fa"} // Right
+	  }}},
 
-	////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////
 	// f_4
-	////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////
 
 	//
 	// Music Room, turning left towards the stairs
 	//
-	{"f_4ba",
-	 {// Hotspots
+	{{"f_4ba", "f_4fd"}, // Grouped: identical hotspots and navigations
+	 {					 // Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4bd"},		// Left
-	   {{40.0f, 30.0f, 20.0f, 40.0f, CURSOR_FORWARD, 0}, "f4_5"},	// Forward - Library Door
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fa"}}}}, // Right
-
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4bd"},	 // Left
+		  {{40.0f, 30.0f, 20.0f, 40.0f, CURSOR_FORWARD, 0}, "f4_5"}, // Forward - Library Door
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fa"}	 // Right
+	  }}},
 	//
 	// Music Room, turning left
 	//
-	{"f_4bb",
-	 {// Hotspots
+	{{"f_4bb", "f_4fa"}, // Grouped: identical hotspots and navigations
+	 {					 // Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4ba"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fb"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4ba"},  // Left
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fb"} // Right
+	  }}},
 	//
 	// Turning left towards Music Room
 	//
-	{"f_4bc",
-	 {// Hotspots
+	{{"f_4bc", "f_4fb"}, // Grouped: identical hotspots and navigations
+	 {					 // Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4bb"},		// Left
-	   {{40.0f, 30.0f, 20.0f, 40.0f, CURSOR_FORWARD, 0}, "x"},		// Forward - Enter the Music Room
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fc"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4bb"},  // Left
+		  {{40.0f, 30.0f, 20.0f, 40.0f, CURSOR_FORWARD, 0}, "x"},  // Forward - Enter the Music Room
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fc"} // Right
+	  }}},
 	//
 	// Music Room, turning left towards Library
 	//
-	{"f_4bd",
-	 {// Hotspots
+	{{"f_4bd", "f_4fc"}, // Grouped: identical hotspots and navigations
+	 {					 // Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4bc"},				 // Left
-	   {{80.0f, 0.0f, 10.0f, 90.0f, CURSOR_FORWARD, 0}, "f_4fd,f4_5,f_5bd"}, // f5
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fd"}}}},			 // Right
-	//
-	// Music Room, turning right towards stairs
-	//
-	{"f_4fa",
-	 {// Hotspots
-	  {},
-	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4ba"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fb"}}}}, // Right
-	//
-	// Turning right towards Music Room
-	//
-	{"f_4fb",
-	 {// Hotspots
-	  {},
-	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4bb"},		// Left
-	   {{40.0f, 30.0f, 20.0f, 40.0f, CURSOR_FORWARD, 0}, "x"},		// Forward - Enter the Music Room
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fc"}}}}, // Right
-	//
-	// Music Room, turning right
-	//
-	{"f_4fc",
-	 {// Hotspots
-	  {},
-	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4bc"},				 // Left
-	   {{80.0f, 0.0f, 10.0f, 90.0f, CURSOR_FORWARD, 0}, "f_4fd,f4_5,f_5bd"}, // f5
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fd"}}}},			 // Right
-	//
-	// Music Room, facing the front door
-	//
-	{"f_4fd",
-	 {// Hotspots
-	  {},
-	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4bd"},		// Left
-	   {{40.0f, 30.0f, 20.0f, 40.0f, CURSOR_FORWARD, 0}, "f4_5"},	// Forward - Library Door
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fa"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4bc"},				// Left
+		  {{80.0f, 0.0f, 10.0f, 90.0f, CURSOR_FORWARD, 0}, "f_4fd,f4_5,f_5bd"}, // f5
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fd"}				// Right
+	  }}},
 
-	////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////
 
 	//
 	// Music Room -> Library (Foyer)
 	//
-	{"f4_5",
+	{{"f4_5"},
 	 {// Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_5bd"},		// Left
-	   {{40.0f, 33.0f, 20.0f, 33.0f, CURSOR_FORWARD, 0}, "f5_1"},	// f1
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_5fa"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_5bd"},	 // Left
+		  {{40.0f, 33.0f, 20.0f, 33.0f, CURSOR_FORWARD, 0}, "f5_1"}, // f1
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_5fa"}	 // Right
+	  }}},
 
-	////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////
 	// f_5
-	////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////
 
 	//
 	// Library, facing front door
 	//
-	{"f_5ba",
-	 {// Hotspots
+	{{"f_5ba", "f_5fd"}, // Grouped: identical hotspots and navigations
+	 {					 // Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_5bd"},		// Left
-	   {{40.0f, 30.0f, 20.0f, 40.0f, CURSOR_FORWARD, 0}, "f5_1"},	// f1
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_5fa"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_5bd"},	 // Left
+		  {{40.0f, 30.0f, 20.0f, 40.0f, CURSOR_FORWARD, 0}, "f5_1"}, // f1
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_5fa"}	 // Right
+	  }}},
 	//
 	// Library, facing stairs
 	//
-	{"f_5bb",
-	 {// Hotspots
+	{{"f_5bb", "f_5fa"}, // Grouped: identical hotspots and navigations
+	 {					 // Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_5ba"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_5fb"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_5ba"},  // Left
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_5fb"} // Right
+	  }}},
 	//
 	// Library, turning left
 	//
-	{"f_5bc",
-	 {// Hotspots
+	{{"f_5bc", "f_5fb"}, // Grouped: identical hotspots and navigations
+	 {					 // Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_5bb"},		// Left
-	   {{25.0f, 0.0f, 30.0f, 70.0f, CURSOR_FORWARD, 0}, "f5_4"},	// f4
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_5fc"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_5bb"},	// Left
+		  {{25.0f, 0.0f, 30.0f, 70.0f, CURSOR_FORWARD, 0}, "f5_4"}, // f4
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_5fc"}	// Right
+	  }}},
 	//
 	// Turning left towards the Library
 	//
-	{"f_5bd",
-	 {// Hotspots
+	{{"f_5bd", "f_5fc"}, // Grouped: identical hotspots and navigations
+	 {					 // Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_5bc"},		// Left
-	   {{0.0f, 0.0f, 0.0f, 0.0f, CURSOR_FORWARD, 0}, "x"},			// Forward - Enter Library
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_5fd"}}}}, // Right
-	//
-	// Library, turning right towards the stairs
-	//
-	{"f_5fa",
-	 {// Hotspots
-	  {},
-	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_5ba"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_5fb"}}}}, // Right
-	//
-	// Library, turning right towards Music Room
-	//
-	{"f_5fb",
-	 {// Hotspots
-	  {},
-	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_5bb"},		// Left
-	   {{25.0f, 0.0f, 30.0f, 70.0f, CURSOR_FORWARD, 0}, "f5_4"},	// f4
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_5fc"}}}}, // Right
-	//
-	// Turning right towards Library
-	//
-	{"f_5fc",
-	 {// Hotspots
-	  {},
-	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_5bc"},		// Left
-	   {{0.0f, 0.0f, 0.0f, 0.0f, CURSOR_FORWARD, 0}, "x"},			// Forward - Enter Library
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_5fd"}}}}, // Right
-	//
-	// Library, turning right
-	//
-	{"f_5fd",
-	 {// Hotspots
-	  {},
-	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_5bd"},		// Left
-	   {{40.0f, 30.0f, 20.0f, 40.0f, CURSOR_FORWARD, 0}, "f5_1"},	// f1
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_5fa"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_5bc"},  // Left
+		  {{0.0f, 0.0f, 0.0f, 0.0f, CURSOR_FORWARD, 0}, "x"},	   // Forward - Enter Library
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_5fd"} // Right
+	  }}},
 
-	////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////
 
 	//
 	// Library -> Main View (Foyer)
 	//
-	{"f5_1",
+	{{"f5_1"},
 	 {// Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bd"},		// Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fa"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_1bd"},  // Left
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fa"} // Right
+	  }}},
 	//
 	// Foyer -> Music Room (Foyer)
 	//
-	{"f5_4",
+	{{"f5_4"},
 	 {// Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4bb"},		// Left
-	   {{0.0f, 0.0f, 0.0f, 0.0f, CURSOR_FORWARD, 0}, "x"},			// Forward - Enter Music Room
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fc"}}}}, // Right
-};
-
-// Further view prefixes ...
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "f_4bb"},  // Left
+		  {{0.0f, 0.0f, 0.0f, 0.0f, CURSOR_FORWARD, 0}, "x"},	   // Forward - Enter Music Room
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_4fc"} // Right
+	  }}}};
 
 //==============================================================================
 

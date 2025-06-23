@@ -93,6 +93,15 @@ struct View
 	std::vector<Navigation> navigations;
 };
 
+//
+// Structure for grouping views together
+//
+struct ViewGroup
+{
+	std::vector<const char *> names; // e.g., {"f_1bb", "f_1fa"}
+	View data;
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 //		Struct for managing game state
 ///////////////////////////////////////////////////////////////////////////////
@@ -133,7 +142,7 @@ struct GameState
 	std::vector<std::string> animation_sequence; // Stores the sequence of animations
 	size_t animation_queue_index = 0;			 // Current position in the animation sequence
 
-	View view; // Current view object
+	const View *view; // Current view object
 
 	//
 	// Rendering state
@@ -182,6 +191,7 @@ extern GameState state;
 
 // Function prototypes
 const View *getView(const std::string &current_view);
+void buildViewMap();
 void loadView();
 void updateAnimation();
 void handleTransientAnimation();

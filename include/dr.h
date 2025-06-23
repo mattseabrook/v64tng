@@ -3,7 +3,7 @@
 #ifndef DR_H
 #define DR_H
 
-#include <unordered_map>
+#include <vector>
 
 #include "game.h"
 #include "music.h"
@@ -135,7 +135,7 @@ dr_mtb.vdx		// Looks to be unused!
 Prefix map for Dining Room assets
 
 */
-const std::unordered_map<std::string, View> diningRoom = {
+const std::vector<ViewGroup> diningRoom = {
 	////////////////////////////////////////////////////////////////////////
 	// Dining Room Navigation animations
 	////////////////////////////////////////////////////////////////////////
@@ -143,20 +143,22 @@ const std::unordered_map<std::string, View> diningRoom = {
 	//
 	// Moving towards the table
 	//
-	{"dr_mi",
-	 {// Hotspots
-	  {{{15.0f, 65.0f, 80.0f, 15.0f, CURSOR_EASTER_EGG, 0}, []()
-		{
-			playTransientAnimation("dr_r");
-			xmiPlay("gu5", true);
-		}}},
-	  // Navigation
-	  {{{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "dr_mtf,dr_mo"}}}}, // Right
+	{
+		{"dr_mi"},
+		{// Hotspots
+		 {
+			 {{15.0f, 65.0f, 80.0f, 15.0f, CURSOR_EASTER_EGG, 0}, []()
+			  {
+				  playTransientAnimation("dr_r");
+				  xmiPlay("gu5", true);
+			  }}},
+		 // Navigation
+		 {{{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "dr_mtf,dr_mo"}}}},
 
 	//
 	// Moving towards the door
 	//
-	{"dr_mo",
+	{{"dr_mo", "dr_tba", "dr_tfc"},
 	 {// Hotspots
 	  {{{25.0f, 0.0f, 50.0f, 100.0f, CURSOR_FORWARD, 0}, []()
 		{
@@ -166,73 +168,34 @@ const std::unordered_map<std::string, View> diningRoom = {
 			popMainSong();
 		}}},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "dr_tbc"},		 // Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "dr_tfa"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "dr_tbc"},	// Left
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "dr_tfa"} // Right
+	  }}},
+
 	//
-	// Turning left back towards the door
+	// Main Dining Room view
 	//
-	{"dr_tba",
-	 {// Hotspots
-	  {{{25.0f, 0.0f, 50.0f, 100.0f, CURSOR_FORWARD, 0}, []()
-		{
-			state.current_view = "dr_d,FH:f_2bd;static";
-			state.animation_sequence.clear();
-			loadView();
-			popMainSong();
-		}}},
-	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "dr_tbc"},		 // Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "dr_tfa"}}}}, // Right
-	//
-	// Door, turning left
-	//
-	{"dr_tbc",
+	{{"dr_tbc", "dr_tfa"},
 	 {// Hotspots
 	  {},
 	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "dr_tba"},		 // Left
-	   {{33.0f, 0.0f, 33.0f, 100.0f, CURSOR_FORWARD, 0}, "dr_mi"},	 // Forward
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "dr_tfc"}}}}, // Right
-
-	//
-	// Door, turning right
-	//
-	{"dr_tfa",
-	 {// Hotspots
-	  {},
-	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "dr_tba"},		 // Left
-	   {{25.0f, 0.0f, 50.0f, 100.0f, CURSOR_FORWARD, 0}, "dr_mi"},	 // Forward
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "dr_tfc"}}}}, // Right
-
-	//
-	// Turning right back towards the door
-	//
-	{"dr_tfc",
-	 {// Hotspots
-	  {{{25.0f, 0.0f, 50.0f, 100.0f, CURSOR_FORWARD, 0}, []()
-		{
-			state.current_view = "dr_d,FH:f_2bd;static";
-			state.animation_sequence.clear();
-			loadView();
-			popMainSong();
-		}}},
-	  // Navigation
-	  {{{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "dr_tbc"},		 // Left
-	   {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "dr_tfa"}}}}, // Right
+	  {
+		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "dr_tba"},	  // Left
+		  {{33.0f, 0.0f, 33.0f, 100.0f, CURSOR_FORWARD, 0}, "dr_mi"}, // Forward
+		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "dr_tfc"}	  // Right
+	  }}},
 
 	////////////////////////////////////////////////////////////////////////
 
 	//
-	// Table, turning right
+	// x
 	//
-	{"dr_mtf", {{}, {}}},
-
-	//
-	// Dining Room -> Foyer (F2)
-	//
-	{"dr_d", {{}, {}}},
-};
+	{{"dr_mtf", "dr_d"},
+	 {// Hotspots
+	  {},
+	  // Navigation
+	  {}}}};
 
 #pragma clang diagnostic pop
 

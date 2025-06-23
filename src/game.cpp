@@ -11,7 +11,7 @@
 #include <thread>
 #include <sstream>
 
-// REMOVE LATER
+// REMOVE LATER (this is for output debugging in x64dbg - Line 229)
 #include <Windows.h>
 
 #include "game.h"
@@ -31,20 +31,31 @@ GameState state;
 //=====================================================
 
 //
-// View Prefixes
+// Lookup map for views
 //
-const std::unordered_map<std::string_view, const std::unordered_map<std::string, View> *> viewPrefixes = {
-	{"f_", &foyer}, // Foyer - Stationary Animations
-	{"f1", &foyer}, // Foyer - Connector Animations
-	{"f2", &foyer},
-	{"f3", &foyer},
-	{"f4", &foyer},
-	{"f5", &foyer},
-	{"f6", &foyer},
+std::unordered_map<std::string, const View *> view_map;
 
-	{"dr", &diningRoom} // Dining Room
-						// ...
-};
+//
+// Builds the view map from predefined view groups
+//
+void buildViewMap()
+{
+	const std::vector<const std::vector<ViewGroup> *> room_data = {
+		&foyer,
+		&diningRoom,
+		// Add other rooms here...
+	};
+	for (const auto *entries : room_data)
+	{
+		for (const auto &group : *entries)
+		{
+			for (const char *name : group.names)
+			{
+				view_map[name] = &group.data;
+			}
+		}
+	}
+}
 
 ////////////////////////////////////////////////////////////////////////
 // Utility Functions
@@ -64,44 +75,9 @@ Parameters:
 */
 const View *getView(const std::string &current_view)
 {
-	for (const auto &[prefix, view_map_ptr] : viewPrefixes)
-	{
-		if (current_view.starts_with(prefix))
-		{
-			auto it = view_map_ptr->find(current_view);
-			if (it != view_map_ptr->end())
-			{
-				return &it->second;
-			}
-		}
-	}
-	return nullptr;
+	auto it = view_map.find(current_view);
+	return (it != view_map.end()) ? it->second : nullptr;
 }
-
-/*
-===============================================================================
-Function Name: getActiveCursorsForView
-
-Description:
-	- Retrieves a set of active cursor types for the current view.
-	- Combines cursor types from both navigations and hotspots in the view.
-
-Parameters:
-	- view: The View object to check for active cursors.
-===============================================================================
-
-static std::unordered_set<CursorType> getActiveCursorsForView(const View &view)
-{
-	std::unordered_set<CursorType> active;
-	// Navigations
-	for (const auto &nav : view.navigations)
-		active.insert(static_cast<CursorType>(nav.area.cursorType));
-	// Hotspots
-	for (const auto &hs : view.hotspots)
-		active.insert(static_cast<CursorType>(hs.area.cursorType));
-	return active;
-}
-*/
 
 /*
 ===============================================================================
@@ -255,7 +231,7 @@ void loadView()
 	const View *view = getView(state.current_view);
 	if (!view)
 		throw std::runtime_error("View not found: " + state.current_view);
-	state.view = *view;
+	state.view = view;
 
 	auto it = std::ranges::find(state.VDXFiles, state.current_view, &VDXFile::filename);
 	if (it == state.VDXFiles.end())
@@ -451,6 +427,8 @@ void init()
 {
 	initWindow();
 
+	buildViewMap();
+
 	xmiPlay("gu61");
 
 	loadView();
@@ -473,7 +451,7 @@ void init()
 		{
 			state.animation_sequence.clear();
 			loadView();
-			maybeRenderFrame(true); // show new view immediately
+			maybeRenderFrame(true);
 		}
 
 		updateAnimation();
@@ -482,7 +460,7 @@ void init()
 
 	save_config("config.json");
 
-	// Stop and cleanup music playback
+	// Music cleanup
 	state.music_playing = false;
 	if (state.music_thread.joinable())
 	{
