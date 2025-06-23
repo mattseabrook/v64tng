@@ -17,18 +17,19 @@
 #include "raycast.h"
 #include "render.h"
 
-//
 // Vulkan context structure to hold Vulkan-related resources
-//
 static VulkanContext ctx;
 
-// Persistent buffers used when preparing texture data
 static std::vector<uint8_t> bgraBuffer;
 static std::vector<uint8_t> previousFrameData;
 static bool forceFullUpdate = true;
 
+//////////////////////////////////////////////////////////////////////////
+// Utility Functions
+//////////////////////////////////////////////////////////////////////////
+
 //
-// Helper functions to avoid old-style casts from Vulkan macros
+// Make a version number from major, minor, and patch components
 //
 constexpr uint32_t makeVersion(uint32_t major, uint32_t minor, uint32_t patch)
 {
@@ -43,7 +44,9 @@ constexpr uint32_t makeAPIVersion(uint32_t variant,
 	return (variant << 29) | (major << 22) | (minor << 12) | patch;
 }
 
+//
 // Locate a suitable memory type
+//
 static uint32_t findMemoryType(uint32_t typeFilter,
 							   VkMemoryPropertyFlags properties)
 {
@@ -59,47 +62,6 @@ static uint32_t findMemoryType(uint32_t typeFilter,
 		}
 	}
 	throw std::runtime_error("Failed to find suitable memory type");
-}
-
-/*
-===============================================================================
-Function Name: createBuffer
-
-Description:
-	- Creates a Vulkan buffer and allocates memory for it.
-
-Parameters:
-	- size: Size of the buffer in bytes.
-	- usage: Buffer usage flags (e.g., VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).
-	- properties: Memory property flags (e.g., VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT).
-	- buffer: Reference to the created buffer.
-	- bufferMemory: Reference to the allocated device memory for the buffer.
-===============================================================================
-*/
-static void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
-						 VkBuffer &buffer, VkDeviceMemory &bufferMemory)
-{
-	VkBufferCreateInfo bufferInfo{};
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferInfo.size = size;
-	bufferInfo.usage = usage;
-	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	if (vkCreateBuffer(ctx.device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create buffer");
-
-	VkMemoryRequirements memRequirements;
-	vkGetBufferMemoryRequirements(ctx.device, buffer, &memRequirements);
-
-	VkMemoryAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
-
-	if (vkAllocateMemory(ctx.device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
-		throw std::runtime_error("Failed to allocate buffer memory");
-
-	vkBindBufferMemory(ctx.device, buffer, bufferMemory, 0);
 }
 
 /*
@@ -127,12 +89,12 @@ static void createVulkanTexture(uint32_t width, uint32_t height)
 	imageInfo.mipLevels = 1;
 	imageInfo.arrayLayers = 1;
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
 	imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT |
-					  VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-					  VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+					  VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+					  VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageInfo.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 	vkCreateImage(ctx.device, &imageInfo, nullptr, &ctx.textureImage);
 
@@ -142,10 +104,18 @@ static void createVulkanTexture(uint32_t width, uint32_t height)
 	VkMemoryAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = memReq.size;
-	allocInfo.memoryTypeIndex = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	allocInfo.memoryTypeIndex = findMemoryType(
+		memReq.memoryTypeBits,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	vkAllocateMemory(ctx.device, &allocInfo, nullptr, &ctx.textureImageMemory);
 	vkBindImageMemory(ctx.device, ctx.textureImage, ctx.textureImageMemory, 0);
+
+	VkImageSubresource subresource{VK_IMAGE_ASPECT_COLOR_BIT, 0, 0};
+	VkSubresourceLayout layout{};
+	vkGetImageSubresourceLayout(ctx.device, ctx.textureImage, &subresource, &layout);
+	ctx.textureRowPitch = layout.rowPitch;
+	vkMapMemory(ctx.device, ctx.textureImageMemory, 0, VK_WHOLE_SIZE, 0, &ctx.mappedTextureData);
 
 	VkImageViewCreateInfo viewInfo{};
 	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -181,6 +151,8 @@ Description:
 */
 static void destroyTexture()
 {
+	if (ctx.mappedTextureData)
+		vkUnmapMemory(ctx.device, ctx.textureImageMemory);
 	if (ctx.textureSampler)
 		vkDestroySampler(ctx.device, ctx.textureSampler, nullptr);
 	if (ctx.textureImageView)
@@ -194,6 +166,8 @@ static void destroyTexture()
 	ctx.textureImageView = VK_NULL_HANDLE;
 	ctx.textureImage = VK_NULL_HANDLE;
 	ctx.textureImageMemory = VK_NULL_HANDLE;
+	ctx.mappedTextureData = nullptr;
+	ctx.textureRowPitch = 0;
 }
 
 /*
@@ -212,74 +186,14 @@ Parameters:
 */
 static void uploadToTexture(const uint8_t *data, uint32_t width, uint32_t height, uint32_t rowOffset = 0)
 {
-	VkDeviceSize imageSize = static_cast<VkDeviceSize>(width) * height * 4;
+	if (!ctx.mappedTextureData)
+		return;
 
-	VkBuffer stagingBuffer;
-	VkDeviceMemory stagingBufferMemory;
-	createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-				 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-				 stagingBuffer, stagingBufferMemory);
-
-	void *mapped;
-	vkMapMemory(ctx.device, stagingBufferMemory, 0, imageSize, 0, &mapped);
-	std::memcpy(mapped, data, static_cast<size_t>(imageSize));
-	vkUnmapMemory(ctx.device, stagingBufferMemory);
-
-	VkCommandBufferAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandPool = ctx.commandPool;
-	allocInfo.commandBufferCount = 1;
-
-	VkCommandBuffer cmd;
-	vkAllocateCommandBuffers(ctx.device, &allocInfo, &cmd);
-
-	VkCommandBufferBeginInfo beginInfo{};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	vkBeginCommandBuffer(cmd, &beginInfo);
-
-	VkBufferImageCopy region{};
-	region.bufferOffset = 0;
-	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	region.imageSubresource.mipLevel = 0;
-	region.imageSubresource.baseArrayLayer = 0;
-	region.imageSubresource.layerCount = 1;
-	region.imageOffset = {0, static_cast<int32_t>(rowOffset), 0};
-	region.imageExtent = {width, height, 1};
-
-	vkCmdCopyBufferToImage(cmd, stagingBuffer, ctx.textureImage,
-						   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-	VkImageMemoryBarrier barrier{};
-	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	barrier.image = ctx.textureImage;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
-	vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-						 0, nullptr, 0, nullptr, 1, &barrier);
-
-	vkEndCommandBuffer(cmd);
-
-	VkSubmitInfo submitInfo{};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &cmd;
-
-	vkQueueSubmit(ctx.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(ctx.graphicsQueue);
-
-	vkFreeCommandBuffers(ctx.device, ctx.commandPool, 1, &cmd);
-	vkDestroyBuffer(ctx.device, stagingBuffer, nullptr);
-	vkFreeMemory(ctx.device, stagingBufferMemory, nullptr);
+	uint8_t *dst = static_cast<uint8_t *>(ctx.mappedTextureData) + rowOffset * ctx.textureRowPitch;
+	for (uint32_t y = 0; y < height; ++y)
+	{
+		std::memcpy(dst + y * ctx.textureRowPitch, data + y * width * 4, width * 4);
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -629,6 +543,21 @@ void presentFrame()
 	vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
 						 0, nullptr, 0, nullptr, 1, &barrier);
 
+	VkImageMemoryBarrier texBarrier{};
+	texBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	texBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+	texBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	texBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+	texBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	texBarrier.image = ctx.textureImage;
+	texBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	texBarrier.subresourceRange.baseMipLevel = 0;
+	texBarrier.subresourceRange.levelCount = 1;
+	texBarrier.subresourceRange.baseArrayLayer = 0;
+	texBarrier.subresourceRange.layerCount = 1;
+	vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+						 0, nullptr, 0, nullptr, 1, &texBarrier);
+
 	VkImageBlit blitRegion{};
 	blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	blitRegion.srcSubresource.mipLevel = 0;
@@ -665,7 +594,7 @@ void presentFrame()
 	}
 
 	vkCmdBlitImage(commandBuffer,
-				   ctx.textureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				   ctx.textureImage, VK_IMAGE_LAYOUT_GENERAL,
 				   ctx.swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				   1, &blitRegion, VK_FILTER_NEAREST);
 

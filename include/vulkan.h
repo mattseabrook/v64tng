@@ -31,6 +31,9 @@ struct VulkanContext
     VkImageView textureImageView{};
     VkSampler textureSampler{};
 
+    void *mappedTextureData{};
+    VkDeviceSize textureRowPitch{};
+
     uint32_t graphicsQueueFamily = 0;
 };
 
