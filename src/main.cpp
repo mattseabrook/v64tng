@@ -399,6 +399,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
 {
 	load_config("config.json");
 
+	DetectCPUFeatures();
+
 	std::vector<std::string> args = get_args_windows();
 
 	if (args.size() == 1)
@@ -431,6 +433,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
 int main(int argc, char *argv[])
 {
 	load_config("config.json");
+
+	DetectCPUFeatures();
 
 	std::vector<std::string> args = get_args(argc, argv);
 

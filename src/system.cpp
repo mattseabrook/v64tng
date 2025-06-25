@@ -16,28 +16,47 @@
 // Forward declaration of window procedure
 LRESULT CALLBACK SystemInfoWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+// CPU feature detection structure
+CPUFeatures cpuFeatures;
+
 //
-// Helper function to generate CPU/GPU info text
+// Detect CPU features using CPUID instruction
+//
+void DetectCPUFeatures()
+{
+    int cpuInfo[4] = {0};
+
+    // Check features with function 1
+    __cpuid(cpuInfo, 1);
+    cpuFeatures.sse = (cpuInfo[3] & (1 << 25)) != 0;   // EDX bit 25
+    cpuFeatures.sse2 = (cpuInfo[3] & (1 << 26)) != 0;  // EDX bit 26
+    cpuFeatures.sse3 = (cpuInfo[2] & (1 << 0)) != 0;   // ECX bit 0
+    cpuFeatures.ssse3 = (cpuInfo[2] & (1 << 9)) != 0;  // ECX bit 9
+    cpuFeatures.sse41 = (cpuInfo[2] & (1 << 19)) != 0; // ECX bit 19
+    cpuFeatures.sse42 = (cpuInfo[2] & (1 << 20)) != 0; // ECX bit 20
+    cpuFeatures.avx = (cpuInfo[2] & (1 << 28)) != 0;   // ECX bit 28
+
+    // Check features with function 7
+    __cpuid(cpuInfo, 7);
+    cpuFeatures.avx2 = (cpuInfo[1] & (1 << 5)) != 0;    // EBX bit 5
+    cpuFeatures.avx512 = (cpuInfo[1] & (1 << 16)) != 0; // EBX bit 16
+}
+
+//
+// Generate CPU feature text for system information
 //
 std::string GenerateSystemInfoText()
 {
-    int cpuInfo[4] = {0};
-    __cpuid(cpuInfo, 1);
-    std::string text = "  SSE: " + std::string((cpuInfo[3] & (1 << 25)) ? "Yes" : "No") + "\n";
-    text += "  SSE2: " + std::string((cpuInfo[3] & (1 << 26)) ? "Yes" : "No") + "\n";
-    text += "  SSE3: " + std::string((cpuInfo[2] & (1 << 0)) ? "Yes" : "No") + "\n";
-    text += "  SSSE3: " + std::string((cpuInfo[2] & (1 << 9)) ? "Yes" : "No") + "\n";
-    text += "  SSE4.1: " + std::string((cpuInfo[2] & (1 << 19)) ? "Yes" : "No") + "\n";
-    text += "  SSE4.2: " + std::string((cpuInfo[2] & (1 << 20)) ? "Yes" : "No") + "\n";
-    text += "  AVX: " + std::string((cpuInfo[2] & (1 << 28)) ? "Yes" : "No") + "\n";
-
-    // Check for AVX2 (requires leaf 7)
-    __cpuid(cpuInfo, 7);
-    text += "  AVX2: " + std::string((cpuInfo[1] & (1 << 5)) ? "Yes" : "No") + "\n";
-
-    // Check for AVX-512 (basic check)
-    text += "  AVX-512: " + std::string((cpuInfo[1] & (1 << 16)) ? "Yes" : "No") + "\n";
-
+    std::string text;
+    text += "  SSE: " + std::string(cpuFeatures.sse ? "Yes" : "No") + "\n";
+    text += "  SSE2: " + std::string(cpuFeatures.sse2 ? "Yes" : "No") + "\n";
+    text += "  SSE3: " + std::string(cpuFeatures.sse3 ? "Yes" : "No") + "\n";
+    text += "  SSSE3: " + std::string(cpuFeatures.ssse3 ? "Yes" : "No") + "\n";
+    text += "  SSE4.1: " + std::string(cpuFeatures.sse41 ? "Yes" : "No") + "\n";
+    text += "  SSE4.2: " + std::string(cpuFeatures.sse42 ? "Yes" : "No") + "\n";
+    text += "  AVX: " + std::string(cpuFeatures.avx ? "Yes" : "No") + "\n";
+    text += "  AVX2: " + std::string(cpuFeatures.avx2 ? "Yes" : "No") + "\n";
+    text += "  AVX-512: " + std::string(cpuFeatures.avx512 ? "Yes" : "No") + "\n";
     return text;
 }
 

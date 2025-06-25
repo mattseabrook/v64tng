@@ -16,8 +16,23 @@
 
 ===============================================================================
 */
+struct CPUFeatures
+{
+    bool sse = false;
+    bool sse2 = false;
+    bool sse3 = false;
+    bool ssse3 = false;
+    bool sse41 = false;
+    bool sse42 = false;
+    bool avx = false;
+    bool avx2 = false;
+    bool avx512 = false;
+};
+
+extern CPUFeatures cpuFeatures;
 
 // Function prototypes
 void ShowSystemInfoWindow();
+void DetectCPUFeatures();
 
 #endif // SYSTEM_H
