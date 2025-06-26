@@ -30,6 +30,8 @@ HCURSOR currentCursor = nullptr;
 bool g_userIsResizing = false;
 static RendererType renderer;
 float scaleFactor = 1.0f;
+static DWORD g_windowedStyle = WS_OVERLAPPEDWINDOW;
+static WINDOWPLACEMENT g_windowedPlacement{sizeof(WINDOWPLACEMENT)};
 
 //=============================================================================
 
@@ -67,8 +69,11 @@ LRESULT HandleMove(HWND hwnd)
 	{
 		state.ui.x = windowRect.left - monitorInfo.rcMonitor.left;
 		state.ui.y = windowRect.top - monitorInfo.rcMonitor.top;
-		config["x"] = state.ui.x;
-		config["y"] = state.ui.y;
+		if (!config["fullscreen"].get<bool>())
+		{
+			config["x"] = state.ui.x;
+			config["y"] = state.ui.y;
+		}
 		for (const auto &display : state.ui.displays)
 			if (EqualRect(&display.bounds, &monitorInfo.rcMonitor))
 			{
@@ -160,8 +165,9 @@ LRESULT HandleSize(HWND hwnd, WPARAM wParam)
 	if (state.ui.width != newWidth || state.ui.height != newHeight)
 	{
 		state.ui.width = newWidth;
-		config["width"] = newWidth;
 		state.ui.height = newHeight;
+		if (!config["fullscreen"].get<bool>())
+			config["width"] = newWidth;
 		InvalidateRect(hwnd, NULL, FALSE);
 	}
 	return 0;
@@ -480,7 +486,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
 			if (wParam == 'M' || wParam == 'm')
 			{
-				OpenMapOverlay(hwnd);
+				if (g_mapOverlayVisible)
+					CloseMapOverlay();
+				else
+					OpenMapOverlay(hwnd);
 			}
 			else
 			{
@@ -494,6 +503,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			raycastKeyUp(wParam);
 		}
 		return 0;
+	case WM_SYSKEYDOWN:
+		if (wParam == VK_RETURN)
+		{
+			toggleFullscreen();
+			return 0;
+		}
+		break;
+	case WM_SYSCHAR:
+		if (wParam == VK_RETURN)
+			return 0;
+		break;
 	case WM_ENTERSIZEMOVE:
 		g_userIsResizing = true;
 		break;
@@ -598,6 +618,63 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMoni
 
 /*
 ===============================================================================
+Function Name: toggleFullscreen
+
+Description:
+	- Toggles the fullscreen mode of the application.
+ - If entering fullscreen, it saves the current window style and position,
+   sets the window to cover the entire screen, and removes the menu.
+===============================================================================
+*/
+void toggleFullscreen()
+{
+	bool entering = !config["fullscreen"].get<bool>();
+	config["fullscreen"] = entering;
+
+	if (entering)
+	{
+		g_windowedStyle = GetWindowLong(g_hwnd, GWL_STYLE);
+		g_windowedPlacement.length = sizeof(WINDOWPLACEMENT);
+		GetWindowPlacement(g_hwnd, &g_windowedPlacement);
+
+		const DisplayInfo *selectedDisplay = nullptr;
+		int targetDisplay = config["display"];
+		for (const auto &display : state.ui.displays)
+			if (display.number == targetDisplay || (!selectedDisplay && display.isPrimary))
+			{
+				selectedDisplay = &display;
+				if (display.number == targetDisplay)
+					break;
+			}
+		if (!selectedDisplay && !state.ui.displays.empty())
+			selectedDisplay = &state.ui.displays.front();
+
+		SetWindowLong(g_hwnd, GWL_STYLE, g_windowedStyle & ~WS_OVERLAPPEDWINDOW);
+		SetWindowPos(g_hwnd, HWND_TOP,
+					 selectedDisplay->bounds.left,
+					 selectedDisplay->bounds.top,
+					 selectedDisplay->bounds.right - selectedDisplay->bounds.left,
+					 selectedDisplay->bounds.bottom - selectedDisplay->bounds.top,
+					 SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+		ShowWindow(g_hwnd, SW_SHOW);
+		SetMenu(g_hwnd, NULL);
+	}
+	else
+	{
+		SetWindowLong(g_hwnd, GWL_STYLE, g_windowedStyle);
+		SetWindowPos(g_hwnd, NULL,
+					 g_windowedPlacement.rcNormalPosition.left,
+					 g_windowedPlacement.rcNormalPosition.top,
+					 g_windowedPlacement.rcNormalPosition.right - g_windowedPlacement.rcNormalPosition.left,
+					 g_windowedPlacement.rcNormalPosition.bottom - g_windowedPlacement.rcNormalPosition.top,
+					 SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+		ShowWindow(g_hwnd, SW_SHOWNORMAL);
+		initMenu(g_hwnd);
+	}
+}
+
+/*
+===============================================================================
 Function Name: initWindow
 
 Description:
@@ -654,10 +731,11 @@ void initWindow()
 	if (!RegisterClassEx(&wc))
 		throw std::runtime_error("Failed to register window class");
 	RECT rect{0, 0, state.ui.width, state.ui.height};
-	if (!config["fullscreen"])
-		AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, TRUE);
+	DWORD style = config["fullscreen"].get<bool>() ? WS_POPUP : WS_OVERLAPPEDWINDOW;
+	if (!config["fullscreen"].get<bool>())
+		AdjustWindowRect(&rect, style, TRUE);
 	g_hwnd = CreateWindowEx(0, wc.lpszClassName, std::wstring(windowTitle.begin(), windowTitle.end()).c_str(),
-							WS_OVERLAPPEDWINDOW, position.x, position.y, rect.right - rect.left, rect.bottom - rect.top,
+							style, position.x, position.y, rect.right - rect.left, rect.bottom - rect.top,
 							nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
 	if (!g_hwnd)
 		throw std::runtime_error("Failed to create window");

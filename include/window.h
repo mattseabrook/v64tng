@@ -37,6 +37,7 @@ void renderFrame();
 bool processEvents();
 void forceUpdateCursor();
 void updateCursorBasedOnPosition(POINT clientPos);
+void toggleFullscreen();
 void cleanupWindow();
 
 #endif // WINDOW_H

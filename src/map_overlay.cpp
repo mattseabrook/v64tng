@@ -150,8 +150,6 @@ void OpenMapOverlay(HWND parent)
         wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
         wc.style = CS_HREDRAW | CS_VREDRAW;
 
-        SetLastError(0);
-
         if (!RegisterClassExA(&wc))
         {
             DWORD err = GetLastError();
@@ -175,16 +173,14 @@ void OpenMapOverlay(HWND parent)
         y = bounds.top + 100;
     }
 
-    SetLastError(0);
-
     // Use the exact same class name and style
     g_hwndMapOverlay = CreateWindowExA(
-        WS_EX_APPWINDOW,      // No extended styles
+        0,                    // No extended styles
         "BasementMapOverlay", // Must match registered class name exactly
         "ASCII Map Overlay",
         WS_OVERLAPPEDWINDOW,
         x, y, 900, 1200,
-        parent, nullptr,
+        nullptr, nullptr,
         GetModuleHandle(nullptr), nullptr);
 
     if (!g_hwndMapOverlay)
