@@ -10,6 +10,8 @@
 #include <chrono>
 #include <thread>
 #include <sstream>
+#include <filesystem>
+#include <fstream>
 
 // REMOVE LATER (this is for output debugging in x64dbg - Line 229)
 #include <Windows.h>
@@ -18,6 +20,7 @@
 #include "window.h"
 #include "gjd.h"
 #include "music.h"
+#include "audio.h"
 #include "config.h"
 #include "cursor.h"
 #include "raycast.h"
@@ -397,6 +400,84 @@ void playTransientAnimation(const std::string &animation_name)
 	state.transient_frame_index = 0;
 }
 
+/*
+===============================================================================
+Function Name: PlayVDX
+
+Description:
+		- Plays a standalone VDX animation from disk.
+		- Skippable with the Space key.
+
+Parameters:
+		- filename: Name of the VDX file to play. Must reside in the
+		  current directory.
+===============================================================================
+*/
+void PlayVDX(const std::string &filename)
+{
+	if (!std::filesystem::exists(filename))
+	{
+		MessageBoxA(nullptr, (filename + " not found!").c_str(), "Error", MB_OK | MB_ICONERROR);
+		return;
+	}
+	// Open the file if it exists:
+	std::ifstream file(filename, std::ios::binary);
+	if (!file)
+	{
+		MessageBoxA(nullptr, ("Failed to open " + filename).c_str(), "Error", MB_OK | MB_ICONERROR);
+		return;
+	}
+
+	std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)), {});
+	VDXFile vdx = parseVDXFile(filename, std::span(buffer));
+	parseVDXChunks(vdx);
+
+	if (!vdx.audioData.empty())
+		wavPlay(vdx.audioData);
+
+	VDXFile *prevVDX = state.currentVDX;
+	size_t prevFrame = state.currentFrameIndex;
+	AnimationState prevAnim = state.animation;
+
+	state.currentVDX = &vdx;
+	state.currentFrameIndex = 0;
+	state.animation.isPlaying = true;
+	state.animation.totalFrames = vdx.chunks.size();
+	state.animation.lastFrameTime = std::chrono::steady_clock::now();
+
+	bool playing = true;
+	while (playing)
+	{
+		if (!processEvents())
+			break;
+
+		if (GetAsyncKeyState(VK_SPACE) & 0x8000)
+			break;
+
+		auto now = std::chrono::steady_clock::now();
+		auto elapsed = now - state.animation.lastFrameTime;
+		auto frameDuration = state.animation.getFrameDuration(state.currentFPS);
+		if (elapsed >= frameDuration)
+		{
+			state.currentFrameIndex++;
+			if (state.currentFrameIndex >= state.animation.totalFrames)
+			{
+				playing = false;
+				state.currentFrameIndex = state.animation.totalFrames - 1;
+			}
+			state.animation.lastFrameTime += frameDuration;
+			state.dirtyFrame = true;
+		}
+
+		maybeRenderFrame();
+	}
+
+	state.currentVDX = prevVDX;
+	state.currentFrameIndex = prevFrame;
+	state.animation = prevAnim;
+	state.dirtyFrame = true;
+}
+
 //
 // Render a frame if enough time has elapsed or a redraw was requested
 //
@@ -428,6 +509,10 @@ void init()
 	initWindow();
 
 	buildViewMap();
+
+	// Intro Videos
+	//PlayVDX("Vielogo.vdx");
+	PlayVDX("TRILOGO.VDX");
 
 	xmiPlay("gu61");
 
