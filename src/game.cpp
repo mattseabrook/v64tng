@@ -432,8 +432,12 @@ void PlayVDX(const std::string &filename)
 	VDXFile vdx = parseVDXFile(filename, std::span(buffer));
 	parseVDXChunks(vdx);
 
+	double prevFPS = state.currentFPS;
 	if (!vdx.audioData.empty())
+	{
+		state.currentFPS = 15.0;
 		wavPlay(vdx.audioData);
+	}
 
 	VDXFile *prevVDX = state.currentVDX;
 	size_t prevFrame = state.currentFrameIndex;
@@ -451,7 +455,7 @@ void PlayVDX(const std::string &filename)
 		if (!processEvents())
 			break;
 
-		if (GetAsyncKeyState(VK_SPACE) & 0x8000)
+		if (GetAsyncKeyState(VK_SPACE) & 1)
 			break;
 
 		auto now = std::chrono::steady_clock::now();
@@ -472,6 +476,8 @@ void PlayVDX(const std::string &filename)
 		maybeRenderFrame();
 	}
 
+	wavStop();
+	state.currentFPS = prevFPS;
 	state.currentVDX = prevVDX;
 	state.currentFrameIndex = prevFrame;
 	state.animation = prevAnim;
@@ -511,7 +517,7 @@ void init()
 	buildViewMap();
 
 	// Intro Videos
-	//PlayVDX("Vielogo.vdx");
+	PlayVDX("Vielogo.vdx");
 	PlayVDX("TRILOGO.VDX");
 
 	xmiPlay("gu61");

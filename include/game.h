@@ -181,6 +181,12 @@ struct GameState
 	bool is_transient_playing = false;						// Flag to check if transient is active
 	float music_volume = 1.0f;								// Volume (0.0 to 1.0)
 	std::vector<std::pair<std::string, double>> song_stack; // Previous songs
+
+	//
+	// PCM Audio
+	//
+	std::thread pcm_thread;	  // Thread for PCM playback
+	bool pcm_playing = false; // Flag to indicate PCM status
 };
 
 //=============================================================================

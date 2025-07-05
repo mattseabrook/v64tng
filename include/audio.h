@@ -30,5 +30,6 @@ struct WAVHeader
 // Function prototypes
 
 void wavPlay(const std::vector<uint8_t> &audioData);
+void wavStop();
 
 #endif // AUDIO_H
