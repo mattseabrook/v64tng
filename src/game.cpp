@@ -512,6 +512,9 @@ void maybeRenderFrame(bool force)
 //
 void init()
 {
+#ifdef _WIN32
+	timeBeginPeriod(1);
+#endif
 	initWindow();
 
 	buildViewMap();
@@ -560,4 +563,7 @@ void init()
 
 	cleanupCursors();
 	cleanupWindow();
+#ifdef _WIN32
+	timeEndPeriod(1);
+#endif
 }
