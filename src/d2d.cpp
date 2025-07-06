@@ -144,7 +144,7 @@ void renderFrameD2D()
         return; // Nothing to render
     }
 
-    std::span<const uint8_t> pixelData = vdx_to_render->chunks[frame_index].data;
+    std::span<const uint8_t> pixelData = vdx_to_render->frameData[frame_index];
 
     auto changedRows = prepareBGRABuffer(pixelData, MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT,
                                          bgraBuffer, previousFrameData, forceFullUpdate);

@@ -464,7 +464,7 @@ void renderFrameVk()
 		return; // Nothing to render
 	}
 
-	std::span<const uint8_t> pixelData = vdx_to_render->chunks[frame_index].data;
+	std::span<const uint8_t> pixelData = vdx_to_render->frameData[frame_index];
 	updateFrameTexture(pixelData);
 	presentFrame();
 }

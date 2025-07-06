@@ -69,7 +69,6 @@ Parameters:
 void parseVDXChunks(VDXFile &vdxFile)
 {
 	std::vector<RGBColor> palette;
-	size_t prevBitmapIndex{};
 
 	for (auto &chunk : vdxFile.chunks)
 	{
@@ -77,28 +76,33 @@ void parseVDXChunks(VDXFile &vdxFile)
 		{
 			chunk.data = lzssDecompress(std::span(chunk.data), chunk.lengthMask, chunk.lengthBits);
 		}
+
 		switch (chunk.chunkType)
 		{
 		case 0x20:
 		case 0x25:
 		{
-			auto [palData, bitmapData] = chunk.chunkType == 0x20
-											 ? getBitmapData(chunk.data)
-											 : getDeltaBitmapData(chunk.data, palette, vdxFile.chunks[prevBitmapIndex].data);
+			std::span<uint8_t> prevFrame = vdxFile.frameData.empty() ? std::span<uint8_t>{} : std::span<uint8_t>(vdxFile.frameData.back());
+			auto [palData, bitmapData] = chunk.chunkType == 0x20 ? getBitmapData(chunk.data)
+																 : getDeltaBitmapData(chunk.data, palette, prevFrame);
 			palette = std::move(palData);
-			chunk.data = std::move(bitmapData);
-			prevBitmapIndex = &chunk - vdxFile.chunks.data();
+			vdxFile.frameData.push_back(std::move(bitmapData));
 		}
 		break;
 		case 0x80:
 			vdxFile.audioData.insert(vdxFile.audioData.end(), chunk.data.begin(), chunk.data.end());
 			break;
 		case 0x00:
-			if (!vdxFile.chunks.empty() && prevBitmapIndex < vdxFile.chunks.size())
+			if (!vdxFile.frameData.empty())
 			{
-				chunk.data = vdxFile.chunks[prevBitmapIndex].data;
+				vdxFile.frameData.push_back(vdxFile.frameData.back());
 			}
 			break;
 		}
+
+		chunk.data.clear();
+		chunk.data.shrink_to_fit();
 	}
+
+	vdxFile.chunks.clear();
 }

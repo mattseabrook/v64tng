@@ -247,7 +247,7 @@ void loadView()
 		state.currentVDX->parsed = true;
 	}
 
-	state.animation.totalFrames = state.currentVDX->chunks.size();
+	state.animation.totalFrames = state.currentVDX->frameData.size();
 	if (is_static)
 	{
 		state.currentFrameIndex = state.animation.totalFrames ? state.animation.totalFrames - 1 : 0;
@@ -290,7 +290,7 @@ void handleTransientAnimation()
 
 			if (state.transient_animation.totalFrames == 0)
 			{
-				state.transient_animation.totalFrames = vdx.chunks.size();
+				state.transient_animation.totalFrames = vdx.frameData.size();
 			}
 
 			auto currentTime = std::chrono::steady_clock::now();
@@ -446,7 +446,7 @@ void PlayVDX(const std::string &filename)
 	state.currentVDX = &vdx;
 	state.currentFrameIndex = 0;
 	state.animation.isPlaying = true;
-	state.animation.totalFrames = vdx.chunks.size();
+	state.animation.totalFrames = vdx.frameData.size();
 	state.animation.lastFrameTime = std::chrono::steady_clock::now();
 
 	bool playing = true;

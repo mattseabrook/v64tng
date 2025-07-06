@@ -387,57 +387,30 @@ void extractPNG(std::string_view filename, bool raw)
 		saveWAV(wavPath.string(), vdx.audioData);
 	}
 
-	std::vector<uint8_t> lastFrame; // Store the last frame's RGB data
-
-	for (size_t i = 0, frameNum = 1; i < vdx.chunks.size(); ++i)
+	for (size_t i = 0, frameNum = 1; i < vdx.frameData.size(); ++i)
 	{
-		const auto &chunk = vdx.chunks[i];
+		const auto &frameData = vdx.frameData[i];
 
 		std::ostringstream frame;
 		frame << std::setfill('0') << std::setw(4) << frameNum;
 		std::string baseName = std::filesystem::path{filename}.stem().string();
 		std::filesystem::path outPath = dirPath / (baseName + "_" + frame.str());
 
-		if (chunk.chunkType == 0x20 || chunk.chunkType == 0x25)
+		if (raw)
 		{
-			// Save current frame (raw or PNG)
-			if (raw)
+			std::ofstream outFile{outPath.replace_extension(".raw"), std::ios::binary};
+			if (outFile)
 			{
-				std::ofstream outFile{outPath.replace_extension(".raw"), std::ios::binary};
-				if (outFile)
-				{
-					std::cout << "Writing: " << outPath.string() << '\n';
-					outFile.write(reinterpret_cast<const char *>(chunk.data.data()), chunk.data.size());
-				}
+				std::cout << "Writing: " << outPath.string() << '\n';
+				outFile.write(reinterpret_cast<const char *>(frameData.data()), frameData.size());
 			}
-			else
-			{
-				std::cout << "Writing: " << (outPath.replace_extension(".png")).string() << '\n';
-				savePNG(outPath.replace_extension(".png").string(), chunk.data, 640, 320);
-			}
-			lastFrame = chunk.data; // Update last frame
-			++frameNum;
 		}
-		else if (chunk.chunkType == 0x00 && !lastFrame.empty())
+		else
 		{
-			// Repeat last frame for "replay/skip" chunk
-			if (raw)
-			{
-				std::ofstream outFile{outPath.replace_extension(".raw"), std::ios::binary};
-				if (outFile)
-				{
-					std::cout << "Writing (repeat): " << outPath.string() << '\n';
-					outFile.write(reinterpret_cast<const char *>(lastFrame.data()), lastFrame.size());
-				}
-			}
-			else
-			{
-				std::cout << "Writing (repeat): " << (outPath.replace_extension(".png")).string() << '\n';
-				savePNG(outPath.replace_extension(".png").string(), lastFrame, 640, 320);
-			}
-			++frameNum;
+			std::cout << "Writing: " << (outPath.replace_extension(".png")).string() << '\n';
+			savePNG(outPath.replace_extension(".png").string(), frameData, 640, 320);
 		}
-		// else: skip all other chunk types
+		++frameNum;
 	}
 }
 
