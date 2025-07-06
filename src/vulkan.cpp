@@ -411,8 +411,8 @@ Parameters:
 */
 static void updateFrameTexture(std::span<const uint8_t> pixelData)
 {
-	// Force full update for transient animations to avoid change detection issues
-	bool forceUpdate = forceFullUpdate || !state.transient_animation_name.empty();
+	// Force full update when needed
+	bool forceUpdate = forceFullUpdate;
 
 	auto changedRows = prepareBGRABuffer(pixelData, MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT, bgraBuffer, previousFrameData, forceUpdate);
 	if (changedRows.size() == static_cast<size_t>(MIN_CLIENT_HEIGHT))
@@ -440,29 +440,12 @@ Description:
 */
 void renderFrameVk()
 {
-	const VDXFile *vdx_to_render = nullptr;
-	size_t frame_index = 0;
+	// Get current VDX and frame index
+	const VDXFile *vdx_to_render = state.currentVDX;
+	size_t frame_index = state.player.currentFrame;
 
-	// Prioritize transient animation (even if stopped, use its last frame)
-	if (!state.transient_animation_name.empty())
-	{
-		auto it = std::ranges::find(state.VDXFiles, state.transient_animation_name, &VDXFile::filename);
-		if (it != state.VDXFiles.end())
-		{
-			vdx_to_render = &(*it);
-			frame_index = state.transient_frame_index;
-		}
-	}
-	// Fallback to current VDX if no transient is active
-	else if (state.currentVDX)
-	{
-		vdx_to_render = state.currentVDX;
-		frame_index = state.currentFrameIndex;
-	}
-	else
-	{
+	if (!vdx_to_render)
 		return; // Nothing to render
-	}
 
 	std::span<const uint8_t> pixelData = vdx_to_render->frameData[frame_index];
 	updateFrameTexture(pixelData);

@@ -149,7 +149,7 @@ const std::vector<ViewGroup> diningRoom = {
 		 {
 			 {{15.0f, 65.0f, 80.0f, 15.0f, CURSOR_EASTER_EGG, 0}, []()
 			  {
-				  playTransientAnimation("dr_r");
+				  playVDX("dr_r", true); // Standalone animation
 				  xmiPlay("gu5", true);
 			  }}},
 		 // Navigation

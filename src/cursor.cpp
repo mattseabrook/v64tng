@@ -466,7 +466,7 @@ HCURSOR getCurrentCursor()
     }
 
     // Check both animation states
-    if (state.raycast.enabled || state.animation.isPlaying || state.transient_animation.isPlaying)
+    if (state.raycast.enabled || state.player.isPlaying)
     {
         return getTransparentCursor(); // Hide cursor during any animation
     }

@@ -33,21 +33,24 @@
 */
 
 //
-// Single animation system - handles all VDX playback
+// Unified animation system - handles all VDX playback modes
 //
-struct Animation
+struct AnimationPlayer
 {
-	bool playing = false;
-	std::chrono::steady_clock::time_point lastFrame;
-	size_t frameCount = 0;
+	bool isPlaying = false;
+	std::chrono::steady_clock::time_point lastFrameTime;
+	size_t totalFrames = 0;
 	size_t currentFrame = 0;
-	bool hasView = false; // true = use view data, false = standalone
+	bool hasViewData = false;
+	bool isSkippable = false;
+	VDXFile* backupVDX = nullptr;
 	
-	void stop() { playing = false; frameCount = 0; currentFrame = 0; }
-	std::chrono::microseconds frameDuration(double fps) const 
-	{ 
-		return std::chrono::microseconds(static_cast<long long>(1000000.0 / fps)); 
+	void reset() { isPlaying = false; totalFrames = currentFrame = 0; hasViewData = isSkippable = false; }
+	bool shouldAdvance(double fps) const {
+		auto elapsed = std::chrono::steady_clock::now() - lastFrameTime;
+		return elapsed >= std::chrono::microseconds(static_cast<long long>(1000000.0 / fps));
 	}
+	void markFrameRendered() { lastFrameTime = std::chrono::steady_clock::now(); }
 };
 
 //
@@ -130,7 +133,7 @@ struct GameState
 	//
 	std::vector<VDXFile> VDXFiles;		  // Vector of VDXFile objects
 	VDXFile *currentVDX = nullptr;		  // Reference to current VDXFile object
-	Animation anim;						  // Single animation system
+	AnimationPlayer player;				  // Unified animation system
 	std::vector<std::string> viewQueue;   // Queue of views to play
 	size_t queueIndex = 0;				  // Current position in queue
 	const View *view = nullptr;			  // Current view object (null for standalone)
@@ -191,8 +194,7 @@ const View *getView(const std::string &current_view);
 void buildViewMap();
 void loadView();
 void updateAnimation();
-void playAnimation(const std::string &name, bool standalone = false);
-void PlayVDX(const std::string &filename);
+void playVDX(const std::string &name, bool isStandalone = false, bool canSkip = false);
 void maybeRenderFrame(bool force = false);
 void init();
 
