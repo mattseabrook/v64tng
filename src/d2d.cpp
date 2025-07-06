@@ -116,12 +116,33 @@ void renderFrameD2D()
         throw std::runtime_error("Render target or bitmap not initialized");
     }
 
-    const    // Get current VDX and frame index
-    VDXFile *vdx_to_render = state.currentVDX;
-    size_t frame_index = state.player.currentFrame;
+    const VDXFile *vdx_to_render = nullptr;
+    size_t frame_index = 0;
 
-    if (!vdx_to_render)
+    // Prioritize transient animation (even if stopped, use its last frame)
+    if (!state.transient_animation_name.empty())
+    {
+        auto it = std::ranges::find(state.VDXFiles, state.transient_animation_name, &VDXFile::filename);
+        if (it != state.VDXFiles.end())
+        {
+            vdx_to_render = &(*it);
+            frame_index = state.transient_frame_index; // Current or last frame
+        }
+        else
+        {
+            throw std::runtime_error("Transient animation VDX not found: " + state.transient_animation_name);
+        }
+    }
+    // Fallback to current VDX if no transient is active
+    else if (state.currentVDX)
+    {
+        vdx_to_render = state.currentVDX;
+        frame_index = state.currentFrameIndex;
+    }
+    else
+    {
         return; // Nothing to render
+    }
 
     std::span<const uint8_t> pixelData = vdx_to_render->frameData[frame_index];
 

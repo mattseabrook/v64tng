@@ -33,24 +33,24 @@
 */
 
 //
-// Unified animation system - handles all VDX playback modes
+// Animation state structure
 //
-struct AnimationPlayer
+struct AnimationState
 {
 	bool isPlaying = false;
 	std::chrono::steady_clock::time_point lastFrameTime;
 	size_t totalFrames = 0;
-	size_t currentFrame = 0;
-	bool hasViewData = false;
-	bool isSkippable = false;
-	VDXFile* backupVDX = nullptr;
-	
-	void reset() { isPlaying = false; totalFrames = currentFrame = 0; hasViewData = isSkippable = false; }
-	bool shouldAdvance(double fps) const {
-		auto elapsed = std::chrono::steady_clock::now() - lastFrameTime;
-		return elapsed >= std::chrono::microseconds(static_cast<long long>(1000000.0 / fps));
+
+	void reset()
+	{
+		isPlaying = false;
+		totalFrames = 0;
 	}
-	void markFrameRendered() { lastFrameTime = std::chrono::steady_clock::now(); }
+
+	std::chrono::microseconds getFrameDuration(double currentFPS) const
+	{
+		return std::chrono::microseconds(static_cast<long long>(1000000.0 / currentFPS));
+	}
 };
 
 //
@@ -132,11 +132,17 @@ struct GameState
 	// 2D & FMV Graphics
 	//
 	std::vector<VDXFile> VDXFiles;		  // Vector of VDXFile objects
+	size_t currentFrameIndex = 30;		  // Normally 0 - hard-coded to 30 for testing
 	VDXFile *currentVDX = nullptr;		  // Reference to current VDXFile object
-	AnimationPlayer player;				  // Unified animation system
-	std::vector<std::string> viewQueue;   // Queue of views to play
-	size_t queueIndex = 0;				  // Current position in queue
-	const View *view = nullptr;			  // Current view object (null for standalone)
+	AnimationState animation;			  // Animation state management
+	std::string transient_animation_name; // e.g., "dr_r"
+	AnimationState transient_animation;	  // Playback state for transient
+	size_t transient_frame_index = 0;	  // Current frame of transient
+
+	std::vector<std::string> animation_sequence; // Stores the sequence of animations
+	size_t animation_queue_index = 0;			 // Current position in the animation sequence
+
+	const View *view; // Current view object
 
 	//
 	// Rendering state
@@ -194,7 +200,10 @@ const View *getView(const std::string &current_view);
 void buildViewMap();
 void loadView();
 void updateAnimation();
-void playVDX(const std::string &name, bool isStandalone = false, bool canSkip = false);
+void handleTransientAnimation();
+void handleRegularAnimation();
+void playTransientAnimation(const std::string &animation_name);
+void PlayVDX(const std::string &filename);
 void maybeRenderFrame(bool force = false);
 void init();
 

@@ -350,7 +350,7 @@ LRESULT HandleLButtonDown(LPARAM lParam)
 	POINT cursorPos{LOWORD(lParam), HIWORD(lParam)};
 	float normalizedX = static_cast<float>(cursorPos.x) / state.ui.width * 100.0f;
 	float normalizedY = static_cast<float>(cursorPos.y) / state.ui.height * 100.0f;
-	if (state.player.isPlaying || !state.currentVDX)
+	if (state.animation.isPlaying || !state.currentVDX)
 		return 0;
 	int highestZIndex = -1;
 	size_t targetIndex = 0;
@@ -389,7 +389,7 @@ LRESULT HandleLButtonDown(LPARAM lParam)
 	if (targetType == TargetType::Navigation)
 	{
 		state.current_view = state.view->navigations[targetIndex].next_view;
-		state.viewQueue.clear();
+		state.animation_sequence.clear();
 	}
 	else if (targetType == TargetType::Hotspot && state.view->hotspots[targetIndex].action)
 	{
@@ -814,8 +814,8 @@ void updateCursorBasedOnPosition(POINT clientPos)
 		return;
 	}
 
-	// Check animation state
-	if (state.raycast.enabled || state.player.isPlaying)
+	// Check both animation states
+	if (state.raycast.enabled || state.animation.isPlaying || state.transient_animation.isPlaying)
 	{
 		currentCursor = getCurrentCursor(); // Returns transparent cursor
 		SetCursor(currentCursor);
