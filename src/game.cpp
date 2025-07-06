@@ -514,6 +514,8 @@ void init()
 {
 #ifdef _WIN32
 	timeBeginPeriod(1);
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
+	SetPriorityClass(GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS);
 #endif
 	initWindow();
 
@@ -565,5 +567,7 @@ void init()
 	cleanupWindow();
 #ifdef _WIN32
 	timeEndPeriod(1);
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
+	SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
 #endif
 }
