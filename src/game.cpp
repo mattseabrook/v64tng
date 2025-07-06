@@ -484,9 +484,19 @@ void PlayVDX(const std::string &filename)
 	state.dirtyFrame = true;
 }
 
-//
-// Render a frame if enough time has elapsed or a redraw was requested
-//
+/*
+===============================================================================
+Function Name: maybeRenderFrame
+
+Description:
+		- Renders a frame if enough time has passed since the last render.
+		- If `force` is true, it will render immediately regardless of timing.
+
+Parameters:
+		- force: If true, forces a render regardless of timing.
+		  If false, waits for the appropriate frame duration.
+===============================================================================
+*/
 void maybeRenderFrame(bool force)
 {
 	using namespace std::chrono;
