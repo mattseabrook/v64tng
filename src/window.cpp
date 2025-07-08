@@ -538,6 +538,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return HandleMenuLoop(hwnd, uMsg, wParam, lParam);
 	case WM_EXITMENULOOP:
 		return HandleExitMenuLoop(hwnd);
+	case WM_CLOSE:
+		save_config("config.json");
+		return DefWindowProc(hwnd, uMsg, wParam, lParam);
 	case WM_DESTROY:
 		return HandleDestroy();
 	}

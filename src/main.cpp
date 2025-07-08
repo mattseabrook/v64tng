@@ -375,7 +375,8 @@ int process_args(const std::vector<std::string> &args)
 		if (!initializePlayerFromMap(*state.raycast.map, state.raycast.player))
 		{
 			MessageBoxA(nullptr, "No player start position found in the map!", "Error", MB_ICONERROR | MB_OK);
-			PostQuitMessage(0);
+			save_config("config.json");
+			return -1;
 		}
 
 		// Launch the game engine in raycasting mode

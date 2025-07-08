@@ -4,6 +4,7 @@
 
 #include "menu.h"
 #include "window.h"
+#include "config.h"
 
 /*
 ===============================================================================
@@ -117,6 +118,7 @@ LRESULT HandleMenuCommand(HWND hwnd, WPARAM wParam)
         MessageBox(hwnd, L"Save selected", L"File Menu", MB_OK);
         break;
     case static_cast<int>(MenuCommands::FILE_EXIT):
+        save_config("config.json");
         ::PostQuitMessage(0);
         break;
     case static_cast<int>(MenuCommands::HELP_ABOUT):
