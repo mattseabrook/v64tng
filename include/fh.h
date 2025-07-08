@@ -23,7 +23,7 @@
 
 View Identifier Table
 
-f1_     // Intro animation?
+f1_     // Intro animation
 
 f1_d - Unused animation of the front door opening
 f1_r - Unused animation of the fountain in the foyer
