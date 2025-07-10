@@ -49,7 +49,7 @@ try {
     $resourceRes = "$buildDir/resource.res"
     $resourceRc = "resource.rc"
     if ((Test-Path $resourceRc) -and ((-not (Test-Path $resourceRes)) -or 
-        ((Get-Item $resourceRc).LastWriteTime -gt (Get-Item $resourceRes).LastWriteTime))) {
+            ((Get-Item $resourceRc).LastWriteTime -gt (Get-Item $resourceRes).LastWriteTime))) {
         Write-Host "Compiling/Recompiling resource file..." -ForegroundColor Cyan
         & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\rc.exe" `
             /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um" `
@@ -82,10 +82,10 @@ try {
     $commonIncludes = @(
         "-I", "$PSScriptRoot/include",
         "-I", "C:\lib\libADLMIDI\include",
-        "-I", "C:\VulkanSDK\1.3.296.0\Include",
+        "-I", "C:\VulkanSDK\1.4.313.2\Include",
         "-I", "C:\lib\zlib-1.3.1",
-        "-I", "C:\lib\lpng1644",
-        "-I", "C:\lib\lpng1644\build_release"
+        "-I", "C:\lib\lpng1650",
+        "-I", "C:\lib\lpng1650\build"
     )
 
     if ($buildType -eq "debug") {
@@ -272,8 +272,8 @@ try {
     # Add remaining link arguments
     $linkArgs += @(
         "-L", "C:\lib\zlib-1.3.1\build_release\Release",
-        "-L", "C:\lib\lpng1644\build_release\Release",
-        "-L", "C:\VulkanSDK\1.3.296.0\Lib",
+        "-L", "C:\lib\lpng1650\build",
+        "-L", "C:\VulkanSDK\1.4.313.2\Lib",
         "-L", "C:\lib\libADLMIDI\build_release\Release",
         "-l", "zlibstatic",
         "-l", "libpng16_static",
