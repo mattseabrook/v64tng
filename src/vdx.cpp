@@ -83,8 +83,15 @@ void parseVDXChunks(VDXFile &vdxFile)
 		case 0x25:
 		{
 			std::span<uint8_t> prevFrame = vdxFile.frameData.empty() ? std::span<uint8_t>{} : std::span<uint8_t>(vdxFile.frameData.back());
+			if (chunk.chunkType == 0x20 && vdxFile.width == 0 && chunk.data.size() >= 4)
+			{
+				uint16_t numXTiles = readLittleEndian16(std::span<const uint8_t>(chunk.data.data(), 2));
+				uint16_t numYTiles = readLittleEndian16(std::span<const uint8_t>(chunk.data.data() + 2, 2));
+				vdxFile.width = numXTiles * 4;
+				vdxFile.height = numYTiles * 4;
+			}
 			auto [palData, bitmapData] = chunk.chunkType == 0x20 ? getBitmapData(chunk.data)
-																 : getDeltaBitmapData(chunk.data, palette, prevFrame);
+																 : getDeltaBitmapData(chunk.data, palette, prevFrame, vdxFile.width);
 			palette = std::move(palData);
 			vdxFile.frameData.push_back(std::move(bitmapData));
 		}

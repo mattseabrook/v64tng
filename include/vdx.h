@@ -22,7 +22,9 @@
 ===============================================================================
 */
 
+//
 // VDXChunk struct
+//
 struct VDXChunk
 {
     uint8_t chunkType;
@@ -33,12 +35,16 @@ struct VDXChunk
     std::vector<uint8_t> data;
 };
 
+//
 // VDXFile struct
+//
 struct VDXFile
 {
     std::string filename;
     uint16_t identifier;
     std::array<uint8_t, 6> unknown;
+    int width = 0;
+    int height = 0;
     std::vector<VDXChunk> chunks;
     std::vector<std::vector<uint8_t>> frameData;
     std::vector<uint8_t> audioData;

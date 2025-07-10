@@ -102,6 +102,8 @@ This chunk, as processed by the function `getBitmapData`, contains a compressed 
 | palette     | RGBColor[768] | RGB values required for a palette implied by colourDepth. |
 | image       | uint8_t[]     | Sequence of structures describing the image.              |
 
+The overall bitmap dimensions are derived from these tile counts. Width is `numXTiles * 4` pixels and height is `numYTiles * 4` pixels. Most assets measure 640x320 pixels (160x80 tiles), but `Vielogo.vdx` from the Windows release uses 640x480 pixels (160x120 tiles).
+
 The image is split into tiles, each measuring 4x4 pixels. Each tile structure within the image data is as follows:
 
 | Name      | Type     | Description                                                                                                                                               |

@@ -146,16 +146,18 @@ void VDXInfo(const std::string &filename)
 
 	// Output 0x20 Bitmap table
 	std::cout << "\n0x20 Bitmap\n\n";
-	const int nameWidth = 15;		// Fits "colourDepth" and "palette"
-	const int typeWidth = 16;		// Fits "RGBColor[768]"
-	const int valueWidth = 20;		// Fits values like "160 (0xa0)"
-	const int descWidth = 60;		// Description column width
+	const int nameWidth = 15;  // Fits "colourDepth" and "palette"
+	const int typeWidth = 16;  // Fits "RGBColor[768]"
+	const int valueWidth = 20; // Fits values like "160 (0xa0)"
+	const int descWidth = 60;  // Description column width
 
 	// Find first 0x20 chunk to extract values
 	uint16_t numXTiles = 0, numYTiles = 0, colourDepth = 0;
 	bool found0x20 = false;
-	for (const auto &chunk : vdx.chunks) {
-		if (chunk.chunkType == 0x20 && chunk.data.size() >= 6) {
+	for (const auto &chunk : vdx.chunks)
+	{
+		if (chunk.chunkType == 0x20 && chunk.data.size() >= 6)
+		{
 			numXTiles = readLittleEndian16(std::span<const uint8_t>(chunk.data.data(), 2));
 			numYTiles = readLittleEndian16(std::span<const uint8_t>(chunk.data.data() + 2, 2));
 			colourDepth = readLittleEndian16(std::span<const uint8_t>(chunk.data.data() + 4, 2));
@@ -174,28 +176,28 @@ void VDXInfo(const std::string &filename)
 	std::cout << std::string(nameWidth + typeWidth + valueWidth + descWidth + 3, '-') << '\n';
 
 	// Table rows with actual values
-	if (found0x20) {
+	if (found0x20)
+	{
 		std::cout << std::left << std::setfill(' ')
 				  << std::setw(nameWidth) << "numXTiles" << "\t"
 				  << std::setw(typeWidth) << "uint16_t" << "\t"
-				  << std::setw(valueWidth) << (std::to_string(numXTiles) + " (0x" + 
-				     (std::ostringstream{} << std::hex << numXTiles).str() + ")") << "\t"
+				  << std::setw(valueWidth) << (std::to_string(numXTiles) + " (0x" + (std::ostringstream{} << std::hex << numXTiles).str() + ")") << "\t"
 				  << "Number of tiles in the horizontal direction." << '\n';
 
 		std::cout << std::left << std::setfill(' ')
 				  << std::setw(nameWidth) << "numYTiles" << "\t"
 				  << std::setw(typeWidth) << "uint16_t" << "\t"
-				  << std::setw(valueWidth) << (std::to_string(numYTiles) + " (0x" + 
-				     (std::ostringstream{} << std::hex << numYTiles).str() + ")") << "\t"
+				  << std::setw(valueWidth) << (std::to_string(numYTiles) + " (0x" + (std::ostringstream{} << std::hex << numYTiles).str() + ")") << "\t"
 				  << "Number of tiles in the vertical direction." << '\n';
 
 		std::cout << std::left << std::setfill(' ')
 				  << std::setw(nameWidth) << "colourDepth" << "\t"
 				  << std::setw(typeWidth) << "uint16_t" << "\t"
-				  << std::setw(valueWidth) << (std::to_string(colourDepth) + " (0x" + 
-				     (std::ostringstream{} << std::hex << colourDepth).str() + ")") << "\t"
+				  << std::setw(valueWidth) << (std::to_string(colourDepth) + " (0x" + (std::ostringstream{} << std::hex << colourDepth).str() + ")") << "\t"
 				  << "Colour depth in bits. (In the code, only 8 is observed)." << '\n';
-	} else {
+	}
+	else
+	{
 		std::cout << std::left << std::setfill(' ')
 				  << std::setw(nameWidth) << "numXTiles" << "\t"
 				  << std::setw(typeWidth) << "uint16_t" << "\t"
@@ -228,7 +230,7 @@ void VDXInfo(const std::string &filename)
 			  << "Sequence of structures describing the image." << '\n';
 
 	// Output chunk table (same for both VDX and GJD)
-	const int chunkTypeWidth = 6;		// Fits "0x20"
+	const int chunkTypeWidth = 6;	// Fits "0x20"
 	const int unknownWidth = 8;		// Fits "0x77"
 	const int dataSizeWidth = 10;	// Fits "10073" (right-aligned decimal)
 	const int lengthMaskWidth = 10; // Fits "0x7F"
@@ -491,7 +493,7 @@ void extractPNG(std::string_view filename, bool raw)
 		else
 		{
 			std::cout << "Writing: " << (outPath.replace_extension(".png")).string() << '\n';
-			savePNG(outPath.replace_extension(".png").string(), frameData, 640, 320);
+			savePNG(outPath.replace_extension(".png").string(), frameData, vdx.width, vdx.height);
 		}
 		++frameNum;
 	}
