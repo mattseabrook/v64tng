@@ -144,8 +144,91 @@ void VDXInfo(const std::string &filename)
 		std::cout << std::dec << '\n';
 	}
 
+	// Output 0x20 Bitmap table
+	std::cout << "\n0x20 Bitmap\n\n";
+	const int nameWidth = 15;		// Fits "colourDepth" and "palette"
+	const int typeWidth = 16;		// Fits "RGBColor[768]"
+	const int valueWidth = 20;		// Fits values like "160 (0xa0)"
+	const int descWidth = 60;		// Description column width
+
+	// Find first 0x20 chunk to extract values
+	uint16_t numXTiles = 0, numYTiles = 0, colourDepth = 0;
+	bool found0x20 = false;
+	for (const auto &chunk : vdx.chunks) {
+		if (chunk.chunkType == 0x20 && chunk.data.size() >= 6) {
+			numXTiles = readLittleEndian16(std::span<const uint8_t>(chunk.data.data(), 2));
+			numYTiles = readLittleEndian16(std::span<const uint8_t>(chunk.data.data() + 2, 2));
+			colourDepth = readLittleEndian16(std::span<const uint8_t>(chunk.data.data() + 4, 2));
+			found0x20 = true;
+			break;
+		}
+	}
+
+	std::cout << std::left << std::setfill(' ')
+			  << std::setw(nameWidth) << "Name" << "\t"
+			  << std::setw(typeWidth) << "Type" << "\t"
+			  << std::setw(valueWidth) << "Value" << "\t"
+			  << "Description" << '\n';
+
+	// Divider line
+	std::cout << std::string(nameWidth + typeWidth + valueWidth + descWidth + 3, '-') << '\n';
+
+	// Table rows with actual values
+	if (found0x20) {
+		std::cout << std::left << std::setfill(' ')
+				  << std::setw(nameWidth) << "numXTiles" << "\t"
+				  << std::setw(typeWidth) << "uint16_t" << "\t"
+				  << std::setw(valueWidth) << (std::to_string(numXTiles) + " (0x" + 
+				     (std::ostringstream{} << std::hex << numXTiles).str() + ")") << "\t"
+				  << "Number of tiles in the horizontal direction." << '\n';
+
+		std::cout << std::left << std::setfill(' ')
+				  << std::setw(nameWidth) << "numYTiles" << "\t"
+				  << std::setw(typeWidth) << "uint16_t" << "\t"
+				  << std::setw(valueWidth) << (std::to_string(numYTiles) + " (0x" + 
+				     (std::ostringstream{} << std::hex << numYTiles).str() + ")") << "\t"
+				  << "Number of tiles in the vertical direction." << '\n';
+
+		std::cout << std::left << std::setfill(' ')
+				  << std::setw(nameWidth) << "colourDepth" << "\t"
+				  << std::setw(typeWidth) << "uint16_t" << "\t"
+				  << std::setw(valueWidth) << (std::to_string(colourDepth) + " (0x" + 
+				     (std::ostringstream{} << std::hex << colourDepth).str() + ")") << "\t"
+				  << "Colour depth in bits. (In the code, only 8 is observed)." << '\n';
+	} else {
+		std::cout << std::left << std::setfill(' ')
+				  << std::setw(nameWidth) << "numXTiles" << "\t"
+				  << std::setw(typeWidth) << "uint16_t" << "\t"
+				  << std::setw(valueWidth) << "N/A" << "\t"
+				  << "Number of tiles in the horizontal direction." << '\n';
+
+		std::cout << std::left << std::setfill(' ')
+				  << std::setw(nameWidth) << "numYTiles" << "\t"
+				  << std::setw(typeWidth) << "uint16_t" << "\t"
+				  << std::setw(valueWidth) << "N/A" << "\t"
+				  << "Number of tiles in the vertical direction." << '\n';
+
+		std::cout << std::left << std::setfill(' ')
+				  << std::setw(nameWidth) << "colourDepth" << "\t"
+				  << std::setw(typeWidth) << "uint16_t" << "\t"
+				  << std::setw(valueWidth) << "N/A" << "\t"
+				  << "Colour depth in bits. (In the code, only 8 is observed)." << '\n';
+	}
+
+	std::cout << std::left << std::setfill(' ')
+			  << std::setw(nameWidth) << "palette" << "\t"
+			  << std::setw(typeWidth) << "RGBColor[768]" << "\t"
+			  << std::setw(valueWidth) << "768 bytes" << "\t"
+			  << "RGB values required for a palette implied by colourDepth." << '\n';
+
+	std::cout << std::left << std::setfill(' ')
+			  << std::setw(nameWidth) << "image" << "\t"
+			  << std::setw(typeWidth) << "uint8_t[]" << "\t"
+			  << std::setw(valueWidth) << "Variable length" << "\t"
+			  << "Sequence of structures describing the image." << '\n';
+
 	// Output chunk table (same for both VDX and GJD)
-	const int typeWidth = 6;		// Fits "0x20"
+	const int chunkTypeWidth = 6;		// Fits "0x20"
 	const int unknownWidth = 8;		// Fits "0x77"
 	const int dataSizeWidth = 10;	// Fits "10073" (right-aligned decimal)
 	const int lengthMaskWidth = 10; // Fits "0x7F"
@@ -162,7 +245,7 @@ void VDXInfo(const std::string &filename)
 	std::cout << "\nChunk Information:\n";
 	// Column headers with space padding
 	std::cout << std::left << std::setfill(' ') // Ensure spaces, not zeros
-			  << std::setw(typeWidth) << "Type" << "| "
+			  << std::setw(chunkTypeWidth) << "Type" << "| "
 			  << std::setw(unknownWidth) << "Unknown" << "| "
 			  << std::setw(dataSizeWidth) << "Data Size" << "| "
 			  << std::setw(lengthMaskWidth) << "Length Mask" << "| "
@@ -170,14 +253,14 @@ void VDXInfo(const std::string &filename)
 
 	// Divider line
 	std::cout << std::string(
-					 typeWidth + unknownWidth + dataSizeWidth + lengthMaskWidth + lengthBitsWidth + 4, '-')
+					 chunkTypeWidth + unknownWidth + dataSizeWidth + lengthMaskWidth + lengthBitsWidth + 4, '-')
 			  << '\n';
 
 	// Chunk data
 	for (const auto &chunk : vdx.chunks)
 	{
 		std::cout << std::left << std::setfill(' ') // Spaces for padding
-				  << std::setw(typeWidth) << hex8(chunk.chunkType) << "| "
+				  << std::setw(chunkTypeWidth) << hex8(chunk.chunkType) << "| "
 				  << std::setw(unknownWidth) << hex8(chunk.unknown) << "| "
 				  << std::right << std::setw(dataSizeWidth) << chunk.dataSize << "| "
 				  << std::left << std::setw(lengthMaskWidth) << hex8(chunk.lengthMask) << "| "
