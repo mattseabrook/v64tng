@@ -486,6 +486,77 @@ void PlayVDX(const std::string &filename)
 
 /*
 ===============================================================================
+Function Name: PlayVDXFromMemory
+
+Description:
+		- Plays a VDX animation from memory.
+		- Skippable with the Space key.
+Parameters:
+		- vdx: Reference to the VDXFile object containing the animation data.
+===============================================================================
+*/
+void PlayVDXFromMemory(VDXFile &vdx)
+{
+	if (!vdx.parsed)
+	{
+		parseVDXChunks(vdx);
+		vdx.parsed = true;
+	}
+
+	double prevFPS = state.currentFPS;
+	if (!vdx.audioData.empty())
+	{
+		state.currentFPS = 15.0;
+		wavPlay(vdx.audioData);
+	}
+
+	VDXFile *prevVDX = state.currentVDX;
+	size_t prevFrame = state.currentFrameIndex;
+	AnimationState prevAnim = state.animation;
+
+	state.currentVDX = &vdx;
+	state.currentFrameIndex = 0;
+	state.animation.isPlaying = true;
+	state.animation.totalFrames = vdx.frameData.size();
+	state.animation.lastFrameTime = std::chrono::steady_clock::now();
+
+	bool playing = true;
+	while (playing)
+	{
+		if (!processEvents())
+			break;
+
+		if (GetAsyncKeyState(VK_SPACE) & 1)
+			break;
+
+		auto now = std::chrono::steady_clock::now();
+		auto elapsed = now - state.animation.lastFrameTime;
+		auto frameDuration = state.animation.getFrameDuration(state.currentFPS);
+		if (elapsed >= frameDuration)
+		{
+			state.currentFrameIndex++;
+			if (state.currentFrameIndex >= state.animation.totalFrames)
+			{
+				playing = false;
+				state.currentFrameIndex = state.animation.totalFrames - 1;
+			}
+			state.animation.lastFrameTime += frameDuration;
+			state.dirtyFrame = true;
+		}
+
+		maybeRenderFrame();
+	}
+
+	wavStop();
+	state.currentFPS = prevFPS;
+	state.currentVDX = prevVDX;
+	state.currentFrameIndex = prevFrame;
+	state.animation = prevAnim;
+	state.dirtyFrame = true;
+}
+
+/*
+===============================================================================
 Function Name: maybeRenderFrame
 
 Description:
@@ -532,8 +603,22 @@ void init()
 	buildViewMap();
 
 	// Intro Videos
-	PlayVDX("Vielogo.vdx");
-	PlayVDX("TRILOGO.VDX");
+	{
+		std::ifstream file("Vielogo.vdx", std::ios::binary);
+		if (file)
+		{
+			std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)), {});
+			VDXFile vdx = parseVDXFile("Vielogo.vdx", std::span(buffer));
+			parseVDXChunks(vdx);
+			const size_t cropSize = 640 * 80 * 3;
+			for (auto &frame : vdx.frameData)
+				if (frame.size() > cropSize)
+					frame.erase(frame.begin(), frame.begin() + cropSize);
+
+			PlayVDXFromMemory(vdx);
+		}
+		PlayVDX("TRILOGO.VDX");
+	}
 
 	xmiPlay("gu61");
 
