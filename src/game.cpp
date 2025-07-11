@@ -13,9 +13,6 @@
 #include <filesystem>
 #include <fstream>
 
-// REMOVE LATER (this is for output debugging in x64dbg - Line 229)
-#include <Windows.h>
-
 #include "game.h"
 #include "window.h"
 #include "gjd.h"
@@ -226,10 +223,6 @@ void loadView()
 
 	bool is_static = false;
 	parseViewToken(is_static);
-
-	// REMOVE LATER
-	std::string logMessage = "Current Room: " + state.current_room + ", View: " + state.current_view + "\n";
-	OutputDebugStringA(logMessage.c_str());
 
 	const View *view = getView(state.current_view);
 	if (!view)
