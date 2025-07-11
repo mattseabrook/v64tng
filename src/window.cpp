@@ -10,6 +10,7 @@
 #include "d2d.h"
 #include "config.h"
 #include "game.h"
+#include "audio.h"
 #include "menu.h"
 #include "map_overlay.h"
 #include "raycast.h"
@@ -415,6 +416,7 @@ Parameters:
 LRESULT HandleMenuLoop(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	g_menuActive = true;
+	wavPause();
 	SetCursor(LoadCursor(nullptr, IDC_ARROW));
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
@@ -433,6 +435,7 @@ Parameters:
 LRESULT HandleExitMenuLoop(HWND hwnd)
 {
 	SetTimer(hwnd, 0x7C0B, 50, NULL);
+	wavResume();
 	return DefWindowProc(hwnd, WM_EXITMENULOOP, 0, 0);
 }
 
@@ -516,9 +519,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_ENTERSIZEMOVE:
 		g_userIsResizing = true;
+		wavPause();
 		break;
 	case WM_EXITSIZEMOVE:
 		g_userIsResizing = false;
+		wavResume();
 		{
 			RECT clientRect;
 			GetClientRect(hwnd, &clientRect);
@@ -540,8 +545,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return HandleExitMenuLoop(hwnd);
 	case WM_CLOSE:
 		save_config("config.json");
+		wavStop();
+		// Do a better cleanup in the future
 		return DefWindowProc(hwnd, uMsg, wParam, lParam);
 	case WM_DESTROY:
+		wavStop(); // Remove later
 		return HandleDestroy();
 	}
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);

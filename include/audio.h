@@ -31,5 +31,7 @@ struct WAVHeader
 
 void wavPlay(const std::vector<uint8_t> &audioData);
 void wavStop();
+void wavPause();
+void wavResume();
 
 #endif // AUDIO_H

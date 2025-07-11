@@ -10,6 +10,11 @@
 #include <vector>
 #include <thread>
 
+#ifdef _WIN32
+#include <Windows.h>
+#include <mmeapi.h>
+#endif
+
 #include "vdx.h"
 #include "config.h"
 #include "cursor.h"
@@ -187,6 +192,9 @@ struct GameState
 	//
 	std::thread pcm_thread;	  // Thread for PCM playback
 	bool pcm_playing = false; // Flag to indicate PCM status
+#ifdef _WIN32
+	HWAVEOUT pcm_handle = NULL; // Handle to currently playing device
+#endif
 };
 
 //=============================================================================

@@ -64,6 +64,8 @@ void wavPlay(const std::vector<uint8_t> &audioData)
                                        if (waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR)
                                            return;
 
+                                       state.pcm_handle = hWaveOut;
+                                       
                                        WAVEHDR hdr{};
                                        hdr.lpData = reinterpret_cast<LPSTR>(buffer.data());
                                        hdr.dwBufferLength = static_cast<DWORD>(buffer.size());
@@ -86,6 +88,7 @@ void wavPlay(const std::vector<uint8_t> &audioData)
 
                                        waveOutUnprepareHeader(hWaveOut, &hdr, sizeof(hdr));
                                        waveOutClose(hWaveOut);
+                                       state.pcm_handle = NULL;
 #else
                                        (void)volume;
 #endif
@@ -100,4 +103,26 @@ void wavStop()
     state.pcm_playing = false;
     if (state.pcm_thread.joinable())
         state.pcm_thread.join();
+}
+
+//
+// Pause the currently playing WAV audio
+//
+void wavPause()
+{
+#ifdef _WIN32
+    if (state.pcm_handle)
+        waveOutPause(state.pcm_handle);
+#endif
+}
+
+//
+// Resume paused WAV audio
+//
+void wavResume()
+{
+#ifdef _WIN32
+    if (state.pcm_handle)
+        waveOutRestart(state.pcm_handle);
+#endif
 }

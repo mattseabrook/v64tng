@@ -588,9 +588,17 @@ void maybeRenderFrame(bool force)
 	state.dirtyFrame = false;
 }
 
-//
-// Start the game engine
-//
+/*
+===============================================================================
+Function Name: init
+
+Description:
+		- Initializes the game environment.
+		- Sets up the window, loads views, and plays intro videos.
+		- Starts the main game loop.
+		- Cleans up resources on exit.
+===============================================================================
+*/
 void init()
 {
 #ifdef _WIN32
@@ -651,13 +659,21 @@ void init()
 
 	save_config("config.json");
 
-	// Music cleanup
+	//
+	// Cleanup
+	//
+
+	// Music
 	state.music_playing = false;
 	if (state.music_thread.joinable())
 	{
 		state.music_thread.join();
 	}
 
+	// PCM
+	wavStop();
+
+	// Resources
 	cleanupCursors();
 	cleanupWindow();
 #ifdef _WIN32
