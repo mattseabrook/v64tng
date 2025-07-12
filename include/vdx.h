@@ -32,7 +32,7 @@ struct VDXChunk
     uint32_t dataSize;
     uint8_t lengthMask;
     uint8_t lengthBits;
-    std::span<const uint8_t> data; // Use span instead of vector for zero-copy
+    std::span<const uint8_t> data;
 };
 
 //
@@ -45,7 +45,7 @@ struct VDXFile
     std::array<uint8_t, 6> unknown;
     int width = 0;
     int height = 0;
-    std::vector<uint8_t> rawData; // Holds the original buffer for span references
+    std::vector<uint8_t> rawData;
     std::vector<VDXChunk> chunks;
     std::vector<std::vector<uint8_t>> frameData;
     std::vector<uint8_t> audioData;
