@@ -115,17 +115,21 @@ void VDXInfo(const std::string &filename)
 	{
 		// Parse raw chunks without VDX header
 		vdx.filename = filename;
+		vdx.rawData = std::move(buffer); // Store raw data for span references
+		std::span<const uint8_t> rawSpan{vdx.rawData};
+		
 		size_t offset = 0;
-		while (offset < buffer.size())
+		while (offset < rawSpan.size())
 		{
 			VDXChunk chunk;
-			chunk.chunkType = buffer[offset];
-			chunk.unknown = buffer[offset + 1];
-			chunk.dataSize = *reinterpret_cast<const uint32_t *>(&buffer[offset + 2]);
-			chunk.lengthMask = buffer[offset + 6];
-			chunk.lengthBits = buffer[offset + 7];
+			chunk.chunkType = rawSpan[offset];
+			chunk.unknown = rawSpan[offset + 1];
+			chunk.dataSize = *reinterpret_cast<const uint32_t *>(&rawSpan[offset + 2]);
+			chunk.lengthMask = rawSpan[offset + 6];
+			chunk.lengthBits = rawSpan[offset + 7];
 			offset += 8;
-			chunk.data.assign(buffer.begin() + offset, buffer.begin() + offset + chunk.dataSize);
+			// Create span directly into rawData instead of copying
+			chunk.data = rawSpan.subspan(offset, chunk.dataSize);
 			offset += chunk.dataSize;
 			vdx.chunks.push_back(std::move(chunk));
 		}
@@ -158,9 +162,9 @@ void VDXInfo(const std::string &filename)
 	{
 		if (chunk.chunkType == 0x20 && chunk.data.size() >= 6)
 		{
-			numXTiles = readLittleEndian16(std::span<const uint8_t>(chunk.data.data(), 2));
-			numYTiles = readLittleEndian16(std::span<const uint8_t>(chunk.data.data() + 2, 2));
-			colourDepth = readLittleEndian16(std::span<const uint8_t>(chunk.data.data() + 4, 2));
+			numXTiles = readLittleEndian16(chunk.data.subspan(0, 2));
+			numYTiles = readLittleEndian16(chunk.data.subspan(2, 2));
+			colourDepth = readLittleEndian16(chunk.data.subspan(4, 2));
 			found0x20 = true;
 			break;
 		}

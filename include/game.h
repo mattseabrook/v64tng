@@ -211,8 +211,6 @@ void updateAnimation();
 void handleTransientAnimation();
 void handleRegularAnimation();
 void playTransientAnimation(const std::string &animation_name);
-void PlayVDX(const std::string &filename);
-void PlayVDXFromMemory(VDXFile &vdx);
 void maybeRenderFrame(bool force = false);
 void init();
 

@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <span>
 
 //
 // WAVHeader structure used when writing extracted 0x80 audio
@@ -29,7 +30,7 @@ struct WAVHeader
 
 // Function prototypes
 
-void wavPlay(const std::vector<uint8_t> &audioData);
+void wavPlay(std::span<const uint8_t> audioData);
 void wavStop();
 void wavPause();
 void wavResume();

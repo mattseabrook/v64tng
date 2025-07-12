@@ -30,7 +30,7 @@ Return:
 ===============================================================================
 */
 std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getDeltaBitmapData(
-	std::span<uint8_t> buffer,
+	std::span<const uint8_t> buffer,
 	std::span<RGBColor> palette,
 	std::span<uint8_t> frameBuffer,
 	int width)
