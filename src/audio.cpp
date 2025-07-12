@@ -3,6 +3,7 @@
 #include <thread>
 #include <chrono>
 #include <algorithm>
+#include <span>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -21,10 +22,10 @@ Description:
     - Plays a WAV audio file using the system's audio output.
 
 Parameters:
-    - audioData: A vector containing the audio data to be played.
+    - audioData: A span containing the audio data to be played.
 ===============================================================================
 */
-void wavPlay(const std::vector<uint8_t> &audioData)
+void wavPlay(std::span<const uint8_t> audioData)
 {
     bool pcmEnabled = config.value("pcmEnabled", true);
     int pcmVolume = config.value("pcmVolume", 100);
@@ -37,7 +38,8 @@ void wavPlay(const std::vector<uint8_t> &audioData)
 
     float volume = std::clamp(pcmVolume / 100.0f, 0.0f, 1.0f);
 
-    std::vector<uint8_t> buffer = audioData; // Copy for playback thread
+    // Copy data only when necessary for the playback thread
+    std::vector<uint8_t> buffer{audioData.begin(), audioData.end()};
 
     state.pcm_playing = true;
     state.pcm_thread = std::thread([buffer = std::move(buffer), volume]() mutable
