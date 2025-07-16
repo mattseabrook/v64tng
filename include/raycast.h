@@ -73,5 +73,6 @@ void handleRaycastMouseMove();
 void raycastKeyDown(WPARAM key);
 void raycastKeyUp(WPARAM key);
 void updateRaycasterMovement();
+void initRaycaster();
 
 #endif // RAYCAST_H

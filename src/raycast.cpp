@@ -478,3 +478,31 @@ void updateRaycasterMovement()
 
     lastRaycastUpdate = currentTime;
 }
+
+/*
+===============================================================================
+Function Name: initRaycaster
+
+Description:
+        - Initializes the raycaster with default player position and settings.
+        - Sets the field of view based on configuration.
+===============================================================================
+*/
+void initRaycaster()
+{
+    state.raycast.enabled = true;
+    state.raycast.map = &map;
+    state.currentFPS = 60.0;
+    float fovDeg = config.contains("raycastFov") ? static_cast<float>(config["raycastFov"]) : 90.0f;
+    state.raycast.player.fov = deg2rad(fovDeg);
+
+    if (!initializePlayerFromMap(*state.raycast.map, state.raycast.player))
+    {
+#ifdef _WIN32
+        MessageBoxA(nullptr, "No player start position found in the map!", "Error", MB_ICONERROR | MB_OK);
+#endif
+    }
+
+    state.animation.reset();
+    state.transient_animation.reset();
+}

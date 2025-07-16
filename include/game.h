@@ -146,6 +146,7 @@ struct GameState
 
 	std::vector<std::string> animation_sequence; // Stores the sequence of animations
 	size_t animation_queue_index = 0;			 // Current position in the animation sequence
+	std::function<void()> pending_action;		 // Optional action after the current animation
 
 	const View *view; // Current view object
 

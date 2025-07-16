@@ -35,6 +35,12 @@ GameState state;
 //
 std::unordered_map<std::string, const View *> view_map;
 
+//
+// Lookup table for named actions
+//
+static std::unordered_map<std::string, std::function<void()>> action_map = {
+	{"raycast", initRaycaster}};
+
 ////////////////////////////////////////////////////////////////////////
 // Utility Functions
 ////////////////////////////////////////////////////////////////////////
@@ -73,9 +79,9 @@ const View *getView(const std::string &current_view)
 //
 // Parse animation token (room:view;mods)
 //
-static std::tuple<std::string, std::string, bool> parseToken(std::string_view token)
+static std::tuple<std::string, std::string, bool, std::string> parseToken(std::string_view token)
 {
-	std::string room, view;
+	std::string room, view, action;
 	bool is_static = false;
 
 	if (auto colon = token.find(':'); colon != std::string_view::npos)
@@ -86,12 +92,13 @@ static std::tuple<std::string, std::string, bool> parseToken(std::string_view to
 
 	if (auto semi = token.find(';'); semi != std::string_view::npos)
 	{
-		is_static = token.substr(semi + 1).find("static") != std::string_view::npos;
+		action = std::string(token.substr(semi + 1));
+		is_static = action.find("static") != std::string_view::npos;
 		token = token.substr(0, semi);
 	}
 
 	view = token;
-	return {room, view, is_static};
+	return {room, view, is_static, action};
 }
 
 //
@@ -211,7 +218,7 @@ void viewHandler()
 		// Setup first token
 		if (!state.animation_sequence.empty())
 		{
-			auto [room, view, is_static] = parseToken(state.animation_sequence[0]);
+			auto [room, view, is_static, action] = parseToken(state.animation_sequence[0]);
 			if (!room.empty() && state.current_room != room)
 			{
 				state.current_room = room;
@@ -221,6 +228,12 @@ void viewHandler()
 			}
 			state.current_view = view;
 			setupView(view, is_static, now);
+			state.pending_action = nullptr;
+			if (!action.empty())
+			{
+				if (auto it = action_map.find(action); it != action_map.end())
+					state.pending_action = it->second;
+			}
 		}
 	}
 
@@ -233,10 +246,19 @@ void viewHandler()
 			state.animation.isPlaying = false;
 			state.currentFrameIndex = state.animation.totalFrames - 1;
 
+			if (state.pending_action)
+			{
+				auto action = std::move(state.pending_action);
+				state.pending_action = nullptr;
+				action();
+				if (state.raycast.enabled)
+					return;
+			}
+
 			if (state.animation_queue_index < state.animation_sequence.size() - 1)
 			{
 				// Next in sequence
-				auto [room, view, is_static] = parseToken(state.animation_sequence[++state.animation_queue_index]);
+				auto [room, view, is_static, action] = parseToken(state.animation_sequence[++state.animation_queue_index]);
 				if (!room.empty() && state.current_room != room)
 				{
 					state.current_room = room;
@@ -246,11 +268,17 @@ void viewHandler()
 				}
 				state.current_view = view;
 				setupView(view, is_static, now);
+				state.pending_action = nullptr;
+				if (!action.empty())
+				{
+					if (auto it = action_map.find(action); it != action_map.end())
+						state.pending_action = it->second;
+				}
 			}
 			else
 			{
 				// Sequence complete - mark static
-				auto [_, view, __] = parseToken(state.animation_sequence.back());
+				auto [_, view, __, ___] = parseToken(state.animation_sequence.back());
 				state.current_view = view + ";static";
 				state.previous_view = state.current_view;
 				state.animation_sequence.clear();
