@@ -206,11 +206,7 @@ extern GameState state;
 // Function prototypes
 const View *getView(const std::string &current_view);
 void buildViewMap();
-void loadView();
-void updateAnimation();
-void handleTransientAnimation();
-void handleRegularAnimation();
-void playTransientAnimation(const std::string &animation_name);
+void viewHandler();
 void maybeRenderFrame(bool force = false);
 void init();
 

@@ -13,9 +13,6 @@
 #include <filesystem>
 #include <fstream>
 
-// REMOVE LATER (this is for output debugging in x64dbg - Line 229)
-#include <Windows.h>
-
 #include "game.h"
 #include "window.h"
 #include "gjd.h"
@@ -60,10 +57,6 @@ void buildViewMap()
 	}
 }
 
-////////////////////////////////////////////////////////////////////////
-// Utility Functions
-////////////////////////////////////////////////////////////////////////
-
 /*
 ===============================================================================
 Function Name: getView
@@ -84,199 +77,26 @@ const View *getView(const std::string &current_view)
 
 /*
 ===============================================================================
-Function Name: ensureRoomLoaded
+Function Name: viewHandler
 
 Description:
-	- Ensures that the current room's VDX files are loaded.
+	- Handles the current view and animation state.
+	- Updates the raycaster if enabled.
 ===============================================================================
 */
-static void ensureRoomLoaded()
+void viewHandler()
 {
-	if (state.VDXFiles.empty())
+	// Handle raycast mode first
+	if (state.raycast.enabled)
 	{
-		state.VDXFiles = parseGJDFile(state.current_room + ".RL");
-		state.previous_room = state.current_room;
-	}
-}
-
-/*
-===============================================================================
-Function Name: clearTransient
-
-Description:
-	- Clears the transient animation state.
-	- Resets the transient animation name and playback state.
-===============================================================================
-*/
-static void clearTransient()
-{
-	state.transient_animation_name.clear();
-	state.transient_animation.isPlaying = false;
-	state.transient_frame_index = 0;
-}
-
-/*
-===============================================================================
-Function Name: parseAnimationSequence
-
-Description:
-	- Parses the current animation sequence from the state.
-	- Splits the sequence by commas and stores each part
-	in the animation_sequence vector.
-===============================================================================
-*/
-static void parseAnimationSequence()
-{
-	std::string_view seq{state.current_view};
-	size_t pos = 0;
-	while (pos < seq.size())
-	{
-		size_t next = seq.find(',', pos);
-		auto part = seq.substr(pos, next == std::string_view::npos ? seq.size() - pos : next - pos);
-		if (!part.empty())
-			state.animation_sequence.emplace_back(part);
-		if (next == std::string_view::npos)
-			break;
-		pos = next + 1;
-	}
-	state.animation_queue_index = 0;
-}
-
-/*
-===============================================================================
-Function Name: parseViewToken
-
-Description:
-	- Parses the current view token from the animation sequence.
-	- Handles room transitions and modifiers (e.g., "static").
-
-Parameters:
-	- is_static: Reference to a boolean that will be set to true
-	if the "static" modifier is found.
-===============================================================================
-*/
-static void parseViewToken(bool &is_static)
-{
-	std::string_view token{state.animation_sequence[state.animation_queue_index]};
-	auto colon = token.find(':');
-	if (colon != std::string_view::npos && colon > 0)
-	{
-		std::string_view room = token.substr(0, colon);
-		if (state.current_room != room)
-		{
-			state.current_room.assign(room);
-			state.VDXFiles = parseGJDFile(state.current_room + ".RL");
-			state.previous_room = state.current_room;
-			state.animation.reset();
-		}
-		token.remove_prefix(colon + 1);
-	}
-
-	auto semi = token.find(';');
-	if (semi != std::string_view::npos)
-	{
-		std::string_view mods = token.substr(semi + 1);
-		while (!mods.empty())
-		{
-			size_t next = mods.find(';');
-			std::string_view mod = mods.substr(0, next);
-			if (mod == "static")
-				is_static = true;
-			if (next == std::string_view::npos)
-				break;
-			mods.remove_prefix(next + 1);
-		}
-		token = token.substr(0, semi);
-	}
-
-	state.current_view.assign(token);
-}
-
-//======================================================
-
-/*
-===============================================================================
-Function Name: loadView
-
-Description:
-	- Loads the current view based on the animation sequence.
-	- Parses the VDX files and sets up the animation state.
-===============================================================================
-*/
-void loadView()
-{
-	ensureRoomLoaded();
-
-	if ((state.animation.isPlaying || state.transient_animation.isPlaying) &&
-		state.current_view == state.previous_view)
-		return;
-
-	if (!state.transient_animation.isPlaying)
-		clearTransient();
-
-	if (state.animation_sequence.empty())
-		parseAnimationSequence();
-
-	if (state.animation_sequence.empty() ||
-		state.animation_queue_index >= state.animation_sequence.size())
-	{
-		state.currentVDX = nullptr;
+		updateRaycasterMovement();
 		return;
 	}
 
-	bool is_static = false;
-	parseViewToken(is_static);
-
-	// REMOVE LATER
-	std::string logMessage = "Current Room: " + state.current_room + ", View: " + state.current_view + "\n";
-	OutputDebugStringA(logMessage.c_str());
-
-	const View *view = getView(state.current_view);
-	if (!view)
-		throw std::runtime_error("View not found: " + state.current_view);
-	state.view = view;
-
-	auto it = std::ranges::find(state.VDXFiles, state.current_view, &VDXFile::filename);
-	if (it == state.VDXFiles.end())
-		throw std::runtime_error("VDX missing: " + state.current_view);
-
-	state.currentVDX = &*it;
-	if (!state.currentVDX->parsed)
-	{
-		parseVDXChunks(*state.currentVDX);
-		state.currentVDX->parsed = true;
-	}
-
-	state.animation.totalFrames = state.currentVDX->frameData.size();
-	if (is_static)
-	{
-		state.currentFrameIndex = state.animation.totalFrames ? state.animation.totalFrames - 1 : 0;
-		state.animation.isPlaying = false;
-		forceUpdateCursor();
-	}
-	else
-	{
-		state.currentFrameIndex = 0;
-		state.animation.isPlaying = state.animation.totalFrames > 0;
-	}
-
-	state.animation.lastFrameTime = std::chrono::steady_clock::now();
-	state.previous_view = state.current_view;
-	state.dirtyFrame = true;
-}
-
-/*
-===============================================================================
-Function Name: handleTransientAnimation
-
-Description:
-	- Handles the playback of transient animations.
-	- Checks if a transient animation is active and updates the frame index
-===============================================================================
-*/
-void handleTransientAnimation()
-{
-	if (!state.transient_animation_name.empty())
+	//
+	// Handle transient animation
+	//
+	if (!state.transient_animation_name.empty() && state.transient_animation.isPlaying)
 	{
 		auto it = std::ranges::find(state.VDXFiles, state.transient_animation_name, &VDXFile::filename);
 		if (it != state.VDXFiles.end())
@@ -287,12 +107,10 @@ void handleTransientAnimation()
 				parseVDXChunks(vdx);
 				vdx.parsed = true;
 			}
-
 			if (state.transient_animation.totalFrames == 0)
 			{
 				state.transient_animation.totalFrames = vdx.frameData.size();
 			}
-
 			auto currentTime = std::chrono::steady_clock::now();
 			auto elapsedTime = currentTime - state.transient_animation.lastFrameTime;
 			auto frameDuration = state.transient_animation.getFrameDuration(state.currentFPS);
@@ -303,101 +121,254 @@ void handleTransientAnimation()
 				{
 					state.transient_animation.isPlaying = false;
 					state.transient_frame_index = state.transient_animation.totalFrames - 1;
-					// Resume main song if applicable
 					if (!state.current_song.empty())
 					{
 						xmiPlay(state.current_song, false);
 					}
-					forceUpdateCursor(); // Updates cursor based on mouse position
-				}
-				state.transient_animation.lastFrameTime += frameDuration;
-
-				state.dirtyFrame = true;
-			}
-		}
-	}
-}
-
-/*
-===============================================================================
-Function Name: handleRegularAnimation
-
-Description:
-	- Handles the playback of regular animations.
-	- Checks if a regular animation is active and updates the frame index.
-===============================================================================
-*/
-void handleRegularAnimation()
-{
-	if (state.currentVDX)
-	{
-		auto currentTime = std::chrono::steady_clock::now();
-		auto elapsedTime = currentTime - state.animation.lastFrameTime;
-
-		if (elapsedTime >= state.animation.getFrameDuration(state.currentFPS))
-		{
-			state.currentFrameIndex++;
-			if (state.currentFrameIndex >= state.animation.totalFrames)
-			{
-				state.animation.isPlaying = false;
-				state.currentFrameIndex = state.animation.totalFrames - 1;
-				if (state.animation_queue_index < state.animation_sequence.size() - 1)
-				{
-					state.animation_queue_index++;
-					loadView();
+					forceUpdateCursor();
+					state.transient_animation_name.clear();
 				}
 				else
 				{
-					state.animation_sequence.clear();
-					state.animation_queue_index = 0;
-
-					forceUpdateCursor();
+					state.transient_animation.lastFrameTime += frameDuration;
+					state.dirtyFrame = true;
 				}
 			}
-			state.animation.lastFrameTime = currentTime;
-
-			state.dirtyFrame = true;
+		}
+		else
+		{
+			state.transient_animation.isPlaying = false;
+			state.transient_animation_name.clear();
 		}
 	}
-}
+	else
+	{
+		//
+		// Handle regular view loading and animation
+		//
+		if (state.current_view != state.previous_view || state.animation_sequence.empty())
+		{
+			if (state.VDXFiles.empty())
+			{
+				state.VDXFiles = parseGJDFile(state.current_room + ".RL");
+				state.previous_room = state.current_room;
+			}
 
-//
-// Animate the VDX sequence
-//
-void updateAnimation()
-{
-	// Update cursor animation
+			if (state.animation_sequence.empty())
+			{
+				std::string_view seq{state.current_view};
+				size_t pos = 0;
+				while (pos < seq.size())
+				{
+					size_t next = seq.find(',', pos);
+					auto part = seq.substr(pos, next == std::string_view::npos ? seq.size() - pos : next - pos);
+					if (!part.empty())
+						state.animation_sequence.emplace_back(part);
+					if (next == std::string_view::npos)
+						break;
+					pos = next + 1;
+				}
+				state.animation_queue_index = 0;
+			}
+
+			if (!state.animation_sequence.empty())
+			{
+				std::string_view token{state.animation_sequence[state.animation_queue_index]};
+				auto colon = token.find(':');
+				if (colon != std::string_view::npos && colon > 0)
+				{
+					std::string_view room = token.substr(0, colon);
+					if (state.current_room != room)
+					{
+						state.current_room.assign(room);
+						state.VDXFiles = parseGJDFile(state.current_room + ".RL");
+						state.previous_room = state.current_room;
+						state.animation.reset();
+					}
+					token.remove_prefix(colon + 1);
+				}
+
+				bool is_static = false;
+				auto semi = token.find(';');
+				if (semi != std::string_view::npos)
+				{
+					std::string_view mods = token.substr(semi + 1);
+					while (!mods.empty())
+					{
+						size_t next = mods.find(';');
+						std::string_view mod = mods.substr(0, next);
+						if (mod == "static")
+							is_static = true;
+						if (next == std::string_view::npos)
+							break;
+						mods.remove_prefix(next + 1);
+					}
+					token = token.substr(0, semi);
+				}
+				state.current_view.assign(token);
+
+				//
+				// Set up view
+				//
+				state.view = getView(state.current_view);
+				if (!state.view)
+					throw std::runtime_error("View not found: " + state.current_view);
+
+				auto it = std::ranges::find(state.VDXFiles, state.current_view, &VDXFile::filename);
+				if (it != state.VDXFiles.end())
+				{
+					state.currentVDX = &*it;
+					if (!state.currentVDX->parsed)
+					{
+						parseVDXChunks(*state.currentVDX);
+						state.currentVDX->parsed = true;
+					}
+					state.animation.totalFrames = state.currentVDX->frameData.size();
+					if (is_static)
+					{
+						state.currentFrameIndex = state.animation.totalFrames ? state.animation.totalFrames - 1 : 0;
+						state.animation.isPlaying = false;
+					}
+					else
+					{
+						state.currentFrameIndex = 0;
+						state.animation.isPlaying = state.animation.totalFrames > 0;
+					}
+					state.animation.lastFrameTime = std::chrono::steady_clock::now();
+					state.previous_view = state.current_view;
+					state.dirtyFrame = true;
+				}
+				else
+				{
+					throw std::runtime_error("VDX missing: " + state.current_view);
+				}
+			}
+		}
+
+		//
+		// Update regular animation
+		//
+		if (state.animation.isPlaying && state.currentVDX)
+		{
+			auto currentTime = std::chrono::steady_clock::now();
+			auto elapsedTime = currentTime - state.animation.lastFrameTime;
+			auto frameDuration = state.animation.getFrameDuration(state.currentFPS);
+			if (elapsedTime >= frameDuration)
+			{
+				state.currentFrameIndex++;
+				if (state.currentFrameIndex >= state.animation.totalFrames)
+				{
+					state.animation.isPlaying = false;
+					state.currentFrameIndex = state.animation.totalFrames - 1;
+					if (state.animation_queue_index < state.animation_sequence.size() - 1)
+					{
+						state.animation_queue_index++;
+						std::string_view token{state.animation_sequence[state.animation_queue_index]};
+						auto colon = token.find(':');
+						if (colon != std::string_view::npos && colon > 0)
+						{
+							std::string_view room = token.substr(0, colon);
+							if (state.current_room != room)
+							{
+								state.current_room.assign(room);
+								state.VDXFiles = parseGJDFile(state.current_room + ".RL");
+								state.previous_room = state.current_room;
+								state.animation.reset();
+							}
+							token.remove_prefix(colon + 1);
+						}
+
+						bool is_static = false;
+						auto semi = token.find(';');
+						if (semi != std::string_view::npos)
+						{
+							std::string_view mods = token.substr(semi + 1);
+							while (!mods.empty())
+							{
+								size_t next = mods.find(';');
+								std::string_view mod = mods.substr(0, next);
+								if (mod == "static")
+									is_static = true;
+								if (next == std::string_view::npos)
+									break;
+								mods.remove_prefix(next + 1);
+							}
+							token = token.substr(0, semi);
+						}
+						state.current_view.assign(token);
+
+						state.view = getView(state.current_view);
+						if (!state.view)
+							throw std::runtime_error("View not found: " + state.current_view);
+
+						auto it = std::ranges::find(state.VDXFiles, state.current_view, &VDXFile::filename);
+						if (it != state.VDXFiles.end())
+						{
+							state.currentVDX = &*it;
+							if (!state.currentVDX->parsed)
+							{
+								parseVDXChunks(*state.currentVDX);
+								state.currentVDX->parsed = true;
+							}
+							state.animation.totalFrames = state.currentVDX->frameData.size();
+							state.currentFrameIndex = 0;
+							state.animation.isPlaying = state.animation.totalFrames > 0;
+							state.animation.lastFrameTime = currentTime;
+							state.previous_view = state.current_view;
+							state.dirtyFrame = true;
+						}
+						else
+						{
+							throw std::runtime_error("VDX missing: " + state.current_view);
+						}
+					}
+					else
+					{
+						// Animation sequence is complete - set static frame and stop animation
+						std::string_view final_token{state.animation_sequence.back()};
+						auto colon = final_token.find(':');
+						if (colon != std::string_view::npos && colon > 0)
+							final_token.remove_prefix(colon + 1);
+						auto semi = final_token.find(';');
+						if (semi != std::string_view::npos)
+							final_token = final_token.substr(0, semi);
+						
+						// Mark the view as static to prevent re-animation
+						std::string static_view = std::string(final_token) + ";static";
+						state.current_view = static_view;
+						state.previous_view = state.current_view;
+						state.animation_sequence.clear();
+						state.animation_queue_index = 0;
+						
+						// Set static frame and stop animation
+						auto it = std::ranges::find(state.VDXFiles, std::string(final_token), &VDXFile::filename);
+						if (it != state.VDXFiles.end())
+						{
+							state.currentVDX = &*it;
+							if (!state.currentVDX->parsed)
+							{
+								parseVDXChunks(*state.currentVDX);
+								state.currentVDX->parsed = true;
+							}
+							state.animation.totalFrames = state.currentVDX->frameData.size();
+							state.currentFrameIndex = state.animation.totalFrames ? state.animation.totalFrames - 1 : 0;
+							state.animation.isPlaying = false;
+							state.animation.lastFrameTime = currentTime;
+							state.dirtyFrame = true;
+						}
+						forceUpdateCursor();
+					}
+				}
+				else
+				{
+					state.animation.lastFrameTime += frameDuration;
+					state.dirtyFrame = true;
+				}
+			}
+		}
+	}
+
 	updateCursorAnimation();
-
-	// Update raycaster movement continuously with FPS control
-	if (state.raycast.enabled)
-	{
-		updateRaycasterMovement();
-		return; // Skip regular animation processing in raycast mode
-	}
-
-	// Handle transient animations first
-	if (state.transient_animation.isPlaying && !state.transient_animation_name.empty())
-	{
-		handleTransientAnimation();
-	}
-	// Handle regular animations
-	else if (state.animation.isPlaying && state.currentVDX)
-	{
-		handleRegularAnimation();
-	}
-}
-
-//
-// Play a transient animation
-//
-void playTransientAnimation(const std::string &animation_name)
-{
-	state.transient_animation_name = animation_name; // e.g., "dr_r"
-	state.transient_animation.totalFrames = 0;
-	state.transient_animation.isPlaying = true;
-	state.transient_animation.lastFrameTime = std::chrono::steady_clock::now();
-	state.transient_frame_index = 0;
 }
 
 /*
@@ -475,7 +446,7 @@ void init()
 
 	xmiPlay("gu61");
 
-	loadView();
+	viewHandler();
 	maybeRenderFrame(true);
 
 	if (!initCursors("ROB.GJD", scaleFactor))
@@ -490,15 +461,7 @@ void init()
 	while (running)
 	{
 		running = processEvents();
-
-		if (state.current_view != state.previous_view)
-		{
-			state.animation_sequence.clear();
-			loadView();
-			maybeRenderFrame(true);
-		}
-
-		updateAnimation();
+		viewHandler();
 		maybeRenderFrame();
 	}
 
