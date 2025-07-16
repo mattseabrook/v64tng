@@ -46,27 +46,16 @@ std::vector<VDXFile> parseGJDFile(std::string_view rlFilename)
 
     std::string gjdFilename = std::string(rlFilename.substr(0, rlFilename.find_last_of('.'))) + ".GJD";
 
-    // Check if file exists and get size
-    if (!std::filesystem::exists(gjdFilename))
-    {
-        throw std::runtime_error("GJD file not found: " + gjdFilename);
-    }
-
     auto fileSize = std::filesystem::file_size(gjdFilename);
-    if (fileSize == 0)
+    if (fileSize == 0 || !std::filesystem::exists(gjdFilename))
     {
-        throw std::runtime_error("GJD file is empty: " + gjdFilename);
+        throw std::runtime_error("GJD file not found or is empty: " + gjdFilename);
     }
 
 #ifdef _WIN32
     // Windows memory mapping
     HANDLE hFile = CreateFileA(gjdFilename.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                                OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (hFile == INVALID_HANDLE_VALUE)
-    {
-        throw std::runtime_error("Failed to open GJD file: " + gjdFilename);
-    }
-
     HANDLE hMapFile = CreateFileMapping(hFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
     if (hMapFile == nullptr)
     {
@@ -86,25 +75,14 @@ std::vector<VDXFile> parseGJDFile(std::string_view rlFilename)
     std::vector<VDXFile> gjdData;
     gjdData.reserve(rlEntries.size());
 
-    try
+    for (const auto &entry : rlEntries)
     {
-        for (const auto &entry : rlEntries)
+        if (entry.offset + entry.length > fileSize)
         {
-            if (entry.offset + entry.length > fileSize)
-            {
-                throw std::runtime_error("Entry extends beyond file size for: " + entry.filename);
-            }
-            // Zero-copy: create span directly from memory mapped data
-            std::span<const uint8_t> vdxSpan{fileData + entry.offset, entry.length};
-            gjdData.push_back(parseVDXFile(entry.filename, vdxSpan));
+            throw std::runtime_error("Entry extends beyond file size for: " + entry.filename);
         }
-    }
-    catch (...)
-    {
-        UnmapViewOfFile(fileData);
-        CloseHandle(hMapFile);
-        CloseHandle(hFile);
-        throw;
+        std::span<const uint8_t> vdxSpan{fileData + entry.offset, entry.length};
+        gjdData.push_back(parseVDXFile(entry.filename, vdxSpan));
     }
 
     UnmapViewOfFile(fileData);

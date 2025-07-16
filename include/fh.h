@@ -322,7 +322,6 @@ const std::vector<ViewGroup> foyer = {
 			  {
 				  state.current_view = "f2_d,DR:dr_tbc;static";
 				  state.animation_sequence.clear();
-				  loadView();
 				  pushMainSong("gu15");
 			  }}},
 		 // Navigation
@@ -377,7 +376,6 @@ const std::vector<ViewGroup> foyer = {
 		{
 			state.current_view = "f2_d,DR:dr_tbc;static";
 			state.animation_sequence.clear();
-			loadView();
 			pushMainSong("gu15");
 		}}},
 	  // Navigation

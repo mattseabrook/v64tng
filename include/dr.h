@@ -149,7 +149,12 @@ const std::vector<ViewGroup> diningRoom = {
 		 {
 			 {{15.0f, 65.0f, 80.0f, 15.0f, CURSOR_EASTER_EGG, 0}, []()
 			  {
-				  playTransientAnimation("dr_r");
+				  state.transient_animation_name = "dr_r";
+				  state.transient_animation.totalFrames = 0;
+				  state.transient_animation.isPlaying = true;
+				  state.transient_animation.lastFrameTime = std::chrono::steady_clock::now();
+				  state.transient_frame_index = 0;
+
 				  xmiPlay("gu5", true);
 			  }}},
 		 // Navigation
@@ -164,7 +169,6 @@ const std::vector<ViewGroup> diningRoom = {
 		{
 			state.current_view = "dr_d,FH:f_2bd;static";
 			state.animation_sequence.clear();
-			loadView();
 			popMainSong();
 		}}},
 	  // Navigation
