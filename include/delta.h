@@ -38,7 +38,7 @@ inline constexpr std::array<uint8_t, 192> MapField = {
 //=============================================================================
 
 // Function prototypes
-std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getDeltaBitmapData(
+std::pair<std::span<RGBColor>, std::span<uint8_t>> getDeltaBitmapData(
 	std::span<const uint8_t> buffer,
 	std::span<RGBColor> palette,
 	std::span<uint8_t> frameBuffer,

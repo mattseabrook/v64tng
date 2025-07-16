@@ -4,6 +4,8 @@
 #include <tuple>
 #include <fstream>
 #include <filesystem>
+#include <algorithm>
+#include <thread>
 
 #include "vdx.h"
 #include "lzss.h"
@@ -42,7 +44,6 @@ VDXFile parseVDXFile(std::string_view filename, std::span<const uint8_t> buffer)
 	auto lastDot = filename.find_last_of('.');
 	vdxFile.filename = (lastDot == std::string_view::npos) ? std::string(filename) : std::string(filename.substr(0, lastDot));
 
-	// Store raw data for span references
 	vdxFile.rawData.assign(buffer.begin(), buffer.end());
 	std::span<const uint8_t> rawSpan{vdxFile.rawData};
 
@@ -59,7 +60,6 @@ VDXFile parseVDXFile(std::string_view filename, std::span<const uint8_t> buffer)
 		chunk.lengthMask = rawSpan[offset + 6];
 		chunk.lengthBits = rawSpan[offset + 7];
 		offset += 8;
-		// Zero-copy: point directly into rawData instead of copying
 		chunk.data = rawSpan.subspan(offset, chunk.dataSize);
 		offset += chunk.dataSize;
 		vdxFile.chunks.push_back(std::move(chunk));
@@ -80,22 +80,41 @@ Parameters:
 */
 void parseVDXChunks(VDXFile &vdxFile)
 {
-	std::vector<RGBColor> palette;
+	// Thread-local reuse buffers for decompression and palette (zero-allocation across calls)
+	static thread_local std::vector<uint8_t> decompBuffer;
+	static thread_local std::vector<RGBColor> palette(256);
 
+	// Pre-count frame-producing chunks to reserve frameData (less reallocs)
+	size_t frameCount = 0;
+	for (const auto &chunk : vdxFile.chunks)
+	{
+		if (chunk.chunkType == 0x20 || chunk.chunkType == 0x25 || chunk.chunkType == 0x00)
+		{
+			++frameCount;
+		}
+	}
+	vdxFile.frameData.reserve(frameCount);
+
+	// Reuse palette
+	palette.clear();
+	palette.resize(256);
+
+	// Process chunks
 	for (auto &chunk : vdxFile.chunks)
 	{
-		std::vector<uint8_t> processedData;
 		std::span<const uint8_t> dataToProcess;
-		
+
 		if (chunk.lengthBits != 0)
 		{
-			// Need to decompress - this requires a temporary buffer
-			processedData = lzssDecompress(chunk.data, chunk.lengthMask, chunk.lengthBits);
-			dataToProcess = std::span{processedData};
+			// Decompress: Resize reuse buffer to safe max (e.g., 2x compressed for typical ratios)
+			const size_t maxDecompSize = chunk.dataSize * 4; // Conservative; adjust based on known data
+			decompBuffer.resize(maxDecompSize);
+			const size_t decompSize = lzssDecompress(chunk.data, decompBuffer, chunk.lengthMask, chunk.lengthBits);
+			dataToProcess = std::span{decompBuffer.data(), decompSize};
 		}
 		else
 		{
-			// Use data directly from span - zero copy!
+			// Zero-copy for non-compressed
 			dataToProcess = chunk.data;
 		}
 
@@ -104,24 +123,70 @@ void parseVDXChunks(VDXFile &vdxFile)
 		case 0x20:
 		case 0x25:
 		{
-			std::span<uint8_t> prevFrame = vdxFile.frameData.empty() ? std::span<uint8_t>{} : std::span<uint8_t>(vdxFile.frameData.back());
+			// Get prev frame span (empty for first)
+			std::span<uint8_t> prevFrame;
+			if (!vdxFile.frameData.empty())
+			{
+				prevFrame = std::span<uint8_t>(vdxFile.frameData.back());
+			}
+
+			// Set dimensions from first static frame
 			if (chunk.chunkType == 0x20 && vdxFile.width == 0 && dataToProcess.size() >= 4)
 			{
-				uint16_t numXTiles = readLittleEndian16(dataToProcess.subspan(0, 2));
-				uint16_t numYTiles = readLittleEndian16(dataToProcess.subspan(2, 2));
+				const uint16_t numXTiles = readLittleEndian16(dataToProcess.subspan(0, 2));
+				const uint16_t numYTiles = readLittleEndian16(dataToProcess.subspan(2, 2));
 				vdxFile.width = numXTiles * 4;
 				vdxFile.height = numYTiles * 4;
 			}
-			auto [palData, bitmapData] = chunk.chunkType == 0x20 ? getBitmapData(dataToProcess)
-																 : getDeltaBitmapData(dataToProcess, palette, prevFrame, vdxFile.width);
-			palette = std::move(palData);
-			vdxFile.frameData.push_back(std::move(bitmapData));
+
+			// Preallocate new frame buffer with exact size
+			const size_t frameSize = static_cast<size_t>(vdxFile.width) * vdxFile.height * 3;
+			std::vector<uint8_t> newFrame;
+			newFrame.reserve(frameSize);
+
+			std::span<uint8_t> bitmapSpan;
+			std::span<RGBColor> palSpan;
+
+			if (chunk.chunkType == 0x20)
+			{
+				// Static: Process directly
+				std::tie(palSpan, bitmapSpan) = getBitmapData(dataToProcess);
+			}
+			else
+			{
+				// Delta: For delta, need mutable buffer; copy prev if exists
+				if (!prevFrame.empty())
+				{
+					newFrame.assign(prevFrame.begin(), prevFrame.end());
+				}
+				else
+				{
+					newFrame.resize(frameSize, 0); // Zero-init if no prev
+				}
+				std::span<uint8_t> mutableFrame{newFrame};
+				std::tie(palSpan, bitmapSpan) = getDeltaBitmapData(dataToProcess, palette, mutableFrame, vdxFile.width);
+			}
+
+			// Update palette (copy span to reused vector)
+			palette.assign(palSpan.begin(), palSpan.end());
+
+			// Add frame: Move if newFrame used, else copy span
+			if (!newFrame.empty())
+			{
+				vdxFile.frameData.push_back(std::move(newFrame));
+			}
+			else
+			{
+				vdxFile.frameData.emplace_back(bitmapSpan.begin(), bitmapSpan.end());
+			}
+			break;
 		}
-		break;
 		case 0x80:
+			// Audio: Append directly (minimal copy)
 			vdxFile.audioData.insert(vdxFile.audioData.end(), dataToProcess.begin(), dataToProcess.end());
 			break;
 		case 0x00:
+			// Duplicate last frame (copy necessary)
 			if (!vdxFile.frameData.empty())
 			{
 				vdxFile.frameData.push_back(vdxFile.frameData.back());
@@ -130,7 +195,7 @@ void parseVDXChunks(VDXFile &vdxFile)
 		}
 	}
 
-	// Clear chunks as they're no longer needed after processing
+	// Clear chunks after processing (free memory)
 	vdxFile.chunks.clear();
 }
 
@@ -150,14 +215,9 @@ Parameters:
 void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 {
 	VDXFile vdx;
-	VDXFile *vdxToUse = nullptr;
+	VDXFile *vdxToUse = preloadedVdx;
 
-	if (preloadedVdx != nullptr)
-	{
-		// Use the preloaded VDX
-		vdxToUse = preloadedVdx;
-	}
-	else
+	if (!vdxToUse)
 	{
 		// Load from file
 		if (!std::filesystem::exists(filename))
@@ -182,20 +242,20 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 		vdxToUse = &vdx;
 	}
 
-	// Ensure VDX is parsed
+	// Ensure parsed
 	if (!vdxToUse->parsed)
 	{
 		parseVDXChunks(*vdxToUse);
 		vdxToUse->parsed = true;
 	}
 
-	// Save current state
+	// Save state
 	double prevFPS = state.currentFPS;
 	VDXFile *prevVDX = state.currentVDX;
 	size_t prevFrame = state.currentFrameIndex;
 	AnimationState prevAnim = state.animation;
 
-	// Setup for playback
+	// Setup playback
 	if (!vdxToUse->audioData.empty())
 	{
 		state.currentFPS = 15.0;
@@ -208,7 +268,7 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 	state.animation.totalFrames = vdxToUse->frameData.size();
 	state.animation.lastFrameTime = std::chrono::steady_clock::now();
 
-	// Main playback loop
+	// Playback loop
 	bool playing = true;
 	while (playing)
 	{
@@ -238,7 +298,7 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 		maybeRenderFrame();
 	}
 
-	// Cleanup and restore state
+	// Restore
 	wavStop();
 	state.currentFPS = prevFPS;
 	state.currentVDX = prevVDX;

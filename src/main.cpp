@@ -204,62 +204,6 @@ int process_args(const std::vector<std::string> &args)
 		extractVDX(args[2]);
 	}
 	//
-	// Exposed LZSS compression/decompression functions to test with the last frame of a *.VDX file
-	//		-l  <compress|decompress>  <file>
-	//
-	else if (args[1] == "-l" && args.size() >= 4)
-	{
-		if (args.size() < 4)
-		{
-			constexpr std::string_view errorMsg =
-				"ERROR: action/file not specified.\n\n"
-				"Example: v64tng.exe -l decompress foo.lzss\n";
-			std::cerr << errorMsg;
-			return 1;
-		}
-
-		const bool doCompress = (args[2] == "compress");
-		const bool doDecompress = (args[2] == "decompress");
-		if (!doCompress && !doDecompress)
-		{
-			constexpr std::string_view errorMsg =
-				"ERROR: action must be either \"compress\" or \"decompress\".\n";
-			std::cerr << errorMsg;
-			return 1;
-		}
-
-		std::filesystem::path inPath(args[3]);
-		std::ifstream in(inPath, std::ios::binary | std::ios::ate);
-		if (!in)
-		{
-			std::cerr << "ERROR: Unable to open \"" << inPath.string() << "\"\n";
-			return 1;
-		}
-		std::vector<uint8_t> input(static_cast<std::size_t>(in.tellg()));
-		in.seekg(0, std::ios::beg);
-		in.read(reinterpret_cast<char *>(input.data()), input.size());
-		in.close();
-
-		// GROOVIE defaults (see Wiki / code)  lengthBits = 4  → mask = 0x0F
-		constexpr uint8_t LENGTH_BITS = 4;
-		constexpr uint8_t LENGTH_MASK = (1u << LENGTH_BITS) - 1u; // 0x0F
-
-		if (doCompress)
-		{
-			auto output = lzssCompress(input, LENGTH_MASK, LENGTH_BITS);
-			std::ofstream outFile(inPath.string() + ".lzss", std::ios::binary);
-			outFile.write(reinterpret_cast<const char *>(output.data()), output.size());
-		}
-		else
-		{ // decompress
-			auto output = lzssDecompress(
-				std::span<const uint8_t>(input.data(), input.size()),
-				LENGTH_MASK, LENGTH_BITS);
-			std::ofstream outFile(inPath.string() + ".decomp", std::ios::binary);
-			outFile.write(reinterpret_cast<const char *>(output.data()), output.size());
-		}
-	}
-	//
 	// Extract individual bitmap frames (RAW or PNG format,) or create an MKV movie, from a *.VDX file
 	//
 	else if (args[1] == "-p" && args.size() >= 3)

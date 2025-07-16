@@ -87,6 +87,56 @@ std::vector<uint8_t> lzssCompress(const std::vector<uint8_t> &inputData, uint8_t
 //
 // LZSS Decompression
 //
+size_t lzssDecompress(std::span<const uint8_t> compressedData, std::span<uint8_t> outputBuffer, uint8_t lengthMask, uint8_t lengthBits)
+{
+    const uint16_t N = 1 << (16 - lengthBits);
+    const uint16_t F = 1 << lengthBits;
+    const uint8_t THRESHOLD = 3;
+
+    std::vector<uint8_t> his_buf(N); // Local history.
+    size_t his_buf_pos = N - F;
+    size_t in_buf_pos = 0;
+    size_t out_pos = 0;
+
+    while (in_buf_pos < compressedData.size() && out_pos < outputBuffer.size())
+    {
+        uint8_t flags = compressedData[in_buf_pos++];
+        for (int i = 0; i < 8 && in_buf_pos < compressedData.size(); ++i, flags >>= 1)
+        {
+            if (flags & 1)
+            {
+                const uint8_t b = compressedData[in_buf_pos++];
+                if (out_pos < outputBuffer.size())
+                    outputBuffer[out_pos++] = b;
+                his_buf[his_buf_pos] = b;
+                his_buf_pos = (his_buf_pos + 1) & (N - 1);
+            }
+            else
+            {
+                if (in_buf_pos + 1 >= compressedData.size())
+                    break;
+                const uint16_t low_byte = compressedData[in_buf_pos++];
+                const uint16_t high_byte = compressedData[in_buf_pos++];
+                const uint16_t ofs_len = low_byte | (high_byte << 8);
+                if (ofs_len == 0)
+                    break;
+                const uint16_t offset = (his_buf_pos - (ofs_len >> lengthBits)) & (N - 1);
+                const uint16_t length = (ofs_len & lengthMask) + THRESHOLD;
+                for (uint16_t j = 0; j < length; ++j)
+                {
+                    const uint8_t b = his_buf[(offset + j) & (N - 1)];
+                    if (out_pos < outputBuffer.size())
+                        outputBuffer[out_pos++] = b;
+                    his_buf[his_buf_pos] = b;
+                    his_buf_pos = (his_buf_pos + 1) & (N - 1);
+                }
+            }
+        }
+    }
+    return out_pos; // Return decompressed size.
+}
+
+/*
 std::vector<uint8_t> lzssDecompress(std::span<const uint8_t> compressedData, uint8_t lengthMask, uint8_t lengthBits)
 {
     const uint16_t N = 1 << (16 - lengthBits);
@@ -134,3 +184,4 @@ std::vector<uint8_t> lzssDecompress(std::span<const uint8_t> compressedData, uin
     }
     return decompressedData;
 }
+*/
