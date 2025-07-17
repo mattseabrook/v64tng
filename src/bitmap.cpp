@@ -17,12 +17,14 @@ Description:
 
 Parameters:
 	- chunkData: Decompressed chunk data
+	- palette: Palette to fill (mutable span, size 256)
+	- outputFrame: Bitmap data to fill (mutable span, size w*h*3)
 
 Return:
-	- std::vector<uint8_t>: 8-bit RGB raw bitmap data structure
+	- void (fills palette and outputFrame in place)
 ===============================================================================
 */
-std::pair<std::span<RGBColor>, std::span<uint8_t>> getBitmapData(std::span<const uint8_t> chunkData)
+void getBitmapData(std::span<const uint8_t> chunkData, std::span<RGBColor> palette, std::span<uint8_t> outputFrame)
 {
 	const uint16_t numXTiles = readLittleEndian16(chunkData.subspan(0, 2));
 	const uint16_t numYTiles = readLittleEndian16(chunkData.subspan(2, 2));
@@ -31,23 +33,12 @@ std::pair<std::span<RGBColor>, std::span<uint8_t>> getBitmapData(std::span<const
 	const int width = numXTiles * 4;
 	const int height = numYTiles * 4;
 
-	// Thread-local palette storage for zero-allocation reuse
-	static thread_local std::vector<RGBColor> paletteStorage(256);
-
-	// Allocate output once.
-	std::vector<uint8_t> outputImageData(width * height * 3);
-	std::span<uint8_t> outputSpan{outputImageData};
-
-	// Fast palette construction from raw data
 	auto paletteData = chunkData.subspan(6);
-	std::span<RGBColor> palette{paletteStorage.data(), 256};
-	const size_t paletteSize = std::min(size_t(256), paletteData.size() / 3);
-	for (size_t i = 0; i < paletteSize; ++i)
+	for (size_t i = 0; i < 256 && i * 3 + 2 < paletteData.size(); ++i)
 	{
 		palette[i] = {paletteData[i * 3], paletteData[i * 3 + 1], paletteData[i * 3 + 2]};
 	}
 
-	// Image data span (zero-copy).
 	auto imageData = paletteData.subspan((1 << colourDepth) * 3);
 	size_t imgOffset = 0;
 
@@ -55,69 +46,26 @@ std::pair<std::span<RGBColor>, std::span<uint8_t>> getBitmapData(std::span<const
 	{
 		for (int tileX = 0; tileX < numXTiles; ++tileX)
 		{
+			if (imgOffset + 4 > imageData.size())
+				return;
 			const uint8_t colour1 = imageData[imgOffset++];
 			const uint8_t colour0 = imageData[imgOffset++];
 			const uint16_t colourMap = readLittleEndian16(imageData.subspan(imgOffset, 2));
 			imgOffset += 2;
 
-			// Process 16 pixels in a tight loop.
 			for (int i = 0; i < 16; ++i)
 			{
 				const int x = tileX * 4 + (i % 4);
 				const int y = tileY * 4 + (i / 4);
 				const size_t pixelIndex = (y * width + x) * 3;
 				const auto &pixelColor = palette[(colourMap & (0x8000 >> i)) ? colour1 : colour0];
-				outputSpan[pixelIndex] = pixelColor.r;
-				outputSpan[pixelIndex + 1] = pixelColor.g;
-				outputSpan[pixelIndex + 2] = pixelColor.b;
+				outputFrame[pixelIndex] = pixelColor.r;
+				outputFrame[pixelIndex + 1] = pixelColor.g;
+				outputFrame[pixelIndex + 2] = pixelColor.b;
 			}
 		}
 	}
-
-	return {palette, outputSpan};
 }
-
-/*
-std::tuple<std::vector<RGBColor>, std::vector<uint8_t>> getBitmapData(std::span<const uint8_t> chunkData) {
-	if (chunkData.size() < 6) throw std::runtime_error("Bitmap chunk too small");
-
-	auto numXTiles = readLittleEndian16(chunkData.subspan(0, 2));
-	auto numYTiles = readLittleEndian16(chunkData.subspan(2, 2));
-	auto colourDepth = readLittleEndian16(chunkData.subspan(4, 2));
-
-	const int width = numXTiles * 4, height = numYTiles * 4;
-	std::vector<uint8_t> outputImageData(width * height * 3);
-
-	auto paletteData = chunkData.subspan(6);
-	std::vector<RGBColor> palette(256);
-	for (size_t i = 0; i < 256 && i * 3 + 2 < paletteData.size(); ++i) {
-		palette[i] = { paletteData[i * 3], paletteData[i * 3 + 1], paletteData[i * 3 + 2] };
-	}
-
-	auto imageData = paletteData.subspan((1 << colourDepth) * 3);
-	size_t imgOffset = 0;
-	for (int tileY = 0; tileY < numYTiles; ++tileY) {
-		for (int tileX = 0; tileX < numXTiles; ++tileX) {
-			if (imgOffset + 4 > imageData.size()) throw std::runtime_error("Image data overrun");
-			uint8_t colour1 = imageData[imgOffset++];
-			uint8_t colour0 = imageData[imgOffset++];
-			uint16_t colourMap = readLittleEndian16(imageData.subspan(imgOffset, 2));
-			imgOffset += 2;
-
-			for (int i = 0; i < 16; ++i) {
-				int x = tileX * 4 + (i % 4);
-				int y = tileY * 4 + (i / 4);
-				size_t pixelIndex = (y * width + x) * 3;
-				auto& pixelColor = palette[(colourMap & (0x8000 >> i)) ? colour1 : colour0];
-				outputImageData[pixelIndex] = pixelColor.r;
-				outputImageData[pixelIndex + 1] = pixelColor.g;
-				outputImageData[pixelIndex + 2] = pixelColor.b;
-			}
-		}
-	}
-	return { std::move(palette), std::move(outputImageData) };
-}
-*/
 
 /*
 ===============================================================================

@@ -119,7 +119,7 @@ size_t lzssDecompress(std::span<const uint8_t> compressedData, std::span<uint8_t
                 const uint16_t high_byte = compressedData[in_buf_pos++];
                 const uint16_t ofs_len = low_byte | (high_byte << 8);
                 if (ofs_len == 0)
-                    break;
+                    return out_pos;  // End marker - terminate decompression
                 const uint16_t offset = (his_buf_pos - (ofs_len >> lengthBits)) & (N - 1);
                 const uint16_t length = (ofs_len & lengthMask) + THRESHOLD;
                 for (uint16_t j = 0; j < length; ++j)

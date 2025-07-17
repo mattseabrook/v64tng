@@ -106,8 +106,7 @@ void parseVDXChunks(VDXFile &vdxFile)
 
 		if (chunk.lengthBits != 0)
 		{
-			// Decompress: Resize reuse buffer to safe max (e.g., 2x compressed for typical ratios)
-			const size_t maxDecompSize = chunk.dataSize * 4; // Conservative; adjust based on known data
+			const size_t maxDecompSize = chunk.dataSize * 20;
 			decompBuffer.resize(maxDecompSize);
 			const size_t decompSize = lzssDecompress(chunk.data, decompBuffer, chunk.lengthMask, chunk.lengthBits);
 			dataToProcess = std::span{decompBuffer.data(), decompSize};
@@ -141,44 +140,31 @@ void parseVDXChunks(VDXFile &vdxFile)
 
 			// Preallocate new frame buffer with exact size
 			const size_t frameSize = static_cast<size_t>(vdxFile.width) * vdxFile.height * 3;
-			std::vector<uint8_t> newFrame;
-			newFrame.reserve(frameSize);
+			std::vector<uint8_t> newFrame(frameSize);
 
 			std::span<uint8_t> bitmapSpan;
 			std::span<RGBColor> palSpan;
 
 			if (chunk.chunkType == 0x20)
 			{
-				// Static: Process directly
-				std::tie(palSpan, bitmapSpan) = getBitmapData(dataToProcess);
+				// Static: Process in place
+				getBitmapData(dataToProcess, palette, std::span{newFrame});
+				// No need to update palette - it's already modified in place
 			}
 			else
 			{
-				// Delta: For delta, need mutable buffer; copy prev if exists
+				// Delta: Copy prev if exists, else zero
 				if (!prevFrame.empty())
 				{
-					newFrame.assign(prevFrame.begin(), prevFrame.end());
+					std::copy(prevFrame.begin(), prevFrame.end(), newFrame.begin());
 				}
-				else
-				{
-					newFrame.resize(frameSize, 0); // Zero-init if no prev
-				}
+				// else already zero from resize
 				std::span<uint8_t> mutableFrame{newFrame};
-				std::tie(palSpan, bitmapSpan) = getDeltaBitmapData(dataToProcess, palette, mutableFrame, vdxFile.width);
+				getDeltaBitmapData(dataToProcess, palette, mutableFrame, vdxFile.width);
 			}
 
-			// Update palette (copy span to reused vector)
-			palette.assign(palSpan.begin(), palSpan.end());
-
-			// Add frame: Move if newFrame used, else copy span
-			if (!newFrame.empty())
-			{
-				vdxFile.frameData.push_back(std::move(newFrame));
-			}
-			else
-			{
-				vdxFile.frameData.emplace_back(bitmapSpan.begin(), bitmapSpan.end());
-			}
+			// Add frame: Move the new frame
+			vdxFile.frameData.push_back(std::move(newFrame));
 			break;
 		}
 		case 0x80:
