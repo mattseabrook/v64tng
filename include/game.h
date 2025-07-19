@@ -24,15 +24,7 @@
 /*
 ===============================================================================
 
-	This header file defines the Game Engine Feature:
-
-		- Enum for room names
-		- Mapping room names to RL filenames
-		- Hotspot structure defining clickable areas
-		- Navigation points for moving between views
-		- View structure for each camera/viewpoint
-		- Struct for managing game state
-		- State-driven animation / FPS is controlled in the GameState struct
+	This header file defines the Game Engine Feature
 
 ===============================================================================
 */
@@ -136,13 +128,13 @@ struct GameState
 	//
 	// 2D & FMV Graphics
 	//
-	std::vector<VDXFile> VDXFiles;		  // Vector of VDXFile objects
+	VDXFile *currentVDX = nullptr;		  // Pointer to current VDXFile object
 	size_t currentFrameIndex = 30;		  // Normally 0 - hard-coded to 30 for testing
-	VDXFile *currentVDX = nullptr;		  // Reference to current VDXFile object
 	AnimationState animation;			  // Animation state management
 	std::string transient_animation_name; // e.g., "dr_r"
 	AnimationState transient_animation;	  // Playback state for transient
 	size_t transient_frame_index = 0;	  // Current frame of transient
+	VDXFile *transientVDX = nullptr;	  // Pointer to transient VDXFile object
 
 	std::vector<std::string> animation_sequence; // Stores the sequence of animations
 	size_t animation_queue_index = 0;			 // Current position in the animation sequence

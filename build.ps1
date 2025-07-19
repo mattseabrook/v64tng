@@ -97,6 +97,7 @@ try {
             "-O0",
             "-g",
             "-gcodeview",
+            "-mssse3",  
             "-Wall",
             "-Wextra",
             "-Wpedantic",
@@ -159,7 +160,6 @@ try {
         
         # Show progress
         $completedFiles++
-        $percentComplete = [math]::Round(($completedFiles / $totalFiles) * 100)
         $fileNumber = "[$completedFiles/$totalFiles]"
         Write-Host "Processing $fileNumber $(Split-Path $src -Leaf)..." -ForegroundColor Yellow
         
@@ -291,31 +291,42 @@ try {
     )
 
     if ($buildType -eq "debug") {
-        $linkArgs += @("-Wl,/DEBUG:FULL", "-Wl,/PDB:v64tng.pdb")
+        $outExe = "v64tng-debug.exe"
+        $outPdb = "v64tng-debug.pdb"
+        $linkArgs += @("-Wl,/DEBUG:FULL", "-Wl,/PDB:$outPdb")
     }
     else {
+        $outExe = "v64tng.exe"
+        $outPdb = "v64tng.pdb"
         $linkArgs += @("-Xlinker", "/OPT:REF")
     }
 
-    & clang++ @linkArgs
+    & clang++ @linkArgs "-o" $outExe
 
     # Handle post-build
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "Build successful! Executable: v64tng.exe" -ForegroundColor Green
-        
-        $destination = "C:\T7G\v64tng.exe"
-        if (Test-Path $destination) {
-            Remove-Item $destination -Force
-        }
-        Move-Item -Path "v64tng.exe" -Destination $destination -Force
-        
+        Write-Host "Build successful! Executable: $outExe" -ForegroundColor Green
+
+        $targetDir = "C:\T7G"
+
+        # Always nuke whatever exists first
+        @(
+            "$targetDir\v64tng.exe",
+            "$targetDir\v64tng.pdb",
+            "$targetDir\v64tng-debug.exe",
+            "$targetDir\v64tng-debug.pdb"
+        ) | ForEach-Object { if (Test-Path $_) { Remove-Item $_ -Force } }
+
+        # Copy the freshly built binaries
         if ($buildType -eq "debug") {
-            $pdbSource = "v64tng.pdb"
-            $pdbDest = "C:\T7G\v64tng.pdb"
-            if (Test-Path $pdbSource) {
-                Move-Item -Path $pdbSource -Destination $pdbDest -Force
-                Write-Host "PDB file moved to $pdbDest" -ForegroundColor Green
+            Move-Item -Path "v64tng-debug.exe" -Destination "$targetDir\v64tng-debug.exe" -Force
+            if (Test-Path "v64tng-debug.pdb") {
+                Move-Item -Path "v64tng-debug.pdb" -Destination "$targetDir\v64tng-debug.pdb" -Force
             }
+        }
+        else {
+            Move-Item -Path "v64tng.exe" -Destination "$targetDir\v64tng.exe" -Force
+            # Release builds may or may not emit a PDB depending on flags; ignore if absent
         }
     }
     else {

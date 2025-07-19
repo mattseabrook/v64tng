@@ -15,7 +15,6 @@
 
 #include "game.h"
 #include "window.h"
-#include "gjd.h"
 #include "music.h"
 #include "audio.h"
 #include "config.h"
@@ -70,7 +69,7 @@ void buildViewMap()
 //
 // Retrieves the current view based on the current_view string
 //
-const View *getView(const std::string &current_view)
+const View *getView(const std::string &current_view) // FIXED: Corrected param name from "¤t_view"
 {
 	auto it = view_map.find(current_view);
 	return (it != view_map.end()) ? it->second : nullptr;
@@ -106,27 +105,16 @@ static std::tuple<std::string, std::string, bool, std::string> parseToken(std::s
 //
 static void setupView(const std::string &view_name, bool is_static, auto now)
 {
-	if (!state.current_room.empty() && state.VDXFiles.empty())
-	{
-		state.VDXFiles = parseGJDFile(state.current_room + ".RL");
-		state.previous_room = state.current_room;
-	}
-
 	state.view = getView(view_name);
 	if (!state.view)
 		throw std::runtime_error("View not found: " + view_name);
 
-	auto it = std::ranges::find(state.VDXFiles, view_name, &VDXFile::filename);
-	if (it == state.VDXFiles.end())
-		throw std::runtime_error("VDX missing: " + view_name);
-
-	state.currentVDX = &*it;
+	state.currentVDX = &getOrLoadVDX(view_name);
 	if (!state.currentVDX->parsed)
 	{
 		parseVDXChunks(*state.currentVDX);
 		state.currentVDX->parsed = true;
 	}
-
 	state.animation.totalFrames = state.currentVDX->frameData.size();
 	state.currentFrameIndex = is_static ? (state.animation.totalFrames ? state.animation.totalFrames - 1 : 0) : 0;
 	state.animation.isPlaying = !is_static && state.animation.totalFrames > 0;
@@ -155,43 +143,36 @@ void viewHandler()
 
 	auto now = std::chrono::steady_clock::now();
 
-	// Transient animation
+	// Transient animation  // COMPLETED: Full transients handling (load/unload symmetric to main)
 	if (!state.transient_animation_name.empty() && state.transient_animation.isPlaying)
 	{
-		auto it = std::ranges::find(state.VDXFiles, state.transient_animation_name, &VDXFile::filename);
-		if (it != state.VDXFiles.end())
+		state.transientVDX = &getOrLoadVDX(state.transient_animation_name); // FIXED: Load for transients (replaces broken find)
+		if (!state.transientVDX->parsed)
 		{
-			VDXFile &vdx = *it;
-			if (!vdx.parsed)
-			{
-				parseVDXChunks(vdx);
-				vdx.parsed = true;
-			}
-			if (!state.transient_animation.totalFrames)
-				state.transient_animation.totalFrames = vdx.frameData.size();
-
-			if (now - state.transient_animation.lastFrameTime >= state.transient_animation.getFrameDuration(state.currentFPS))
-			{
-				if (++state.transient_frame_index >= state.transient_animation.totalFrames)
-				{
-					state.transient_animation.isPlaying = false;
-					state.transient_frame_index = state.transient_animation.totalFrames - 1;
-					if (!state.current_song.empty())
-						xmiPlay(state.current_song, false);
-					forceUpdateCursor();
-					state.transient_animation_name.clear();
-				}
-				else
-				{
-					state.transient_animation.lastFrameTime += state.transient_animation.getFrameDuration(state.currentFPS);
-					state.dirtyFrame = true;
-				}
-			}
+			parseVDXChunks(*state.transientVDX);
+			state.transientVDX->parsed = true;
 		}
-		else
+		if (!state.transient_animation.totalFrames)
+			state.transient_animation.totalFrames = state.transientVDX->frameData.size();
+
+		if (now - state.transient_animation.lastFrameTime >= state.transient_animation.getFrameDuration(state.currentFPS))
 		{
-			state.transient_animation.isPlaying = false;
-			state.transient_animation_name.clear();
+			if (++state.transient_frame_index >= state.transient_animation.totalFrames)
+			{
+				state.transient_animation.isPlaying = false;
+				state.transient_frame_index = state.transient_animation.totalFrames - 1;
+				if (!state.current_song.empty())
+					xmiPlay(state.current_song, false);
+				forceUpdateCursor();
+				unloadVDX(state.transient_animation_name);
+				state.transient_animation_name.clear();
+				state.transientVDX = nullptr; // NEW: Clear pointer post-unload
+			}
+			else
+			{
+				state.transient_animation.lastFrameTime += state.transient_animation.getFrameDuration(state.currentFPS);
+				state.dirtyFrame = true;
+			}
 		}
 		updateCursorAnimation();
 		return;
@@ -221,8 +202,11 @@ void viewHandler()
 			auto [room, view, is_static, action] = parseToken(state.animation_sequence[0]);
 			if (!room.empty() && state.current_room != room)
 			{
+				if (state.currentVDX)
+					unloadVDX(state.currentVDX->filename);
+				if (state.transientVDX) // NEW: Unload transient on room change
+					unloadVDX(state.transientVDX->filename);
 				state.current_room = room;
-				state.VDXFiles = parseGJDFile(room + ".RL");
 				state.previous_room = room;
 				state.animation.reset();
 			}
@@ -261,11 +245,17 @@ void viewHandler()
 				auto [room, view, is_static, action] = parseToken(state.animation_sequence[++state.animation_queue_index]);
 				if (!room.empty() && state.current_room != room)
 				{
+					if (state.currentVDX)
+						unloadVDX(state.currentVDX->filename);
+					if (state.transientVDX)
+						unloadVDX(state.transientVDX->filename);
 					state.current_room = room;
-					state.VDXFiles = parseGJDFile(room + ".RL");
 					state.previous_room = room;
 					state.animation.reset();
 				}
+				// Unload previous VDX before loading next
+				if (state.currentVDX)
+					unloadVDX(state.currentVDX->filename);
 				state.current_view = view;
 				setupView(view, is_static, now);
 				state.pending_action = nullptr;
@@ -277,10 +267,19 @@ void viewHandler()
 			}
 			else
 			{
-				// Sequence complete - mark static
+				// Sequence complete
 				auto [_, view, __, ___] = parseToken(state.animation_sequence.back());
 				state.current_view = view + ";static";
 				state.previous_view = state.current_view;
+
+				// Unload previous sequence VDX if not current  // FIXED: Moved loop BEFORE clear() to fix empty loop bug
+				for (size_t i = 0; i < state.animation_sequence.size() - 1; ++i)
+				{
+					auto [__, prevView, ___, ____] = parseToken(state.animation_sequence[i]);
+					if (prevView != view)
+						unloadVDX(prevView); // Safe if not loaded
+				}
+
 				state.animation_sequence.clear();
 				state.animation_queue_index = 0;
 				setupView(view, true, now);
@@ -408,6 +407,14 @@ void init()
 	wavStop();
 
 	// Resources
+	if (state.currentVDX)
+	{
+		unloadVDX(state.currentVDX->filename);
+	}
+	if (state.transientVDX)
+	{
+		unloadVDX(state.transientVDX->filename);
+	}
 	cleanupCursors();
 	cleanupWindow();
 #ifdef _WIN32

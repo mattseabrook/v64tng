@@ -122,10 +122,9 @@ void renderFrameD2D()
     // Prioritize transient animation (even if stopped, use its last frame)
     if (!state.transient_animation_name.empty())
     {
-        auto it = std::ranges::find(state.VDXFiles, state.transient_animation_name, &VDXFile::filename);
-        if (it != state.VDXFiles.end())
+        if (state.transientVDX)
         {
-            vdx_to_render = &(*it);
+            vdx_to_render = state.transientVDX;
             frame_index = state.transient_frame_index; // Current or last frame
         }
         else

@@ -55,5 +55,8 @@ struct VDXFile
 VDXFile parseVDXFile(std::string_view filename, std::span<const uint8_t> buffer);
 void parseVDXChunks(VDXFile &vdxFile);
 void vdxPlay(const std::string &filename, VDXFile *preloadedVdx = nullptr);
+VDXFile loadSingleVDX(const std::string &room, const std::string &vdxName);
+VDXFile &getOrLoadVDX(const std::string &name);
+void unloadVDX(const std::string &name);
 
 #endif // VDX_H

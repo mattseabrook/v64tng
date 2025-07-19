@@ -8,6 +8,7 @@
 #include <thread>
 
 #include "vdx.h"
+#include "rl.h"
 #include "lzss.h"
 #include "bitmap.h"
 #include "delta.h"
@@ -282,6 +283,8 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 		}
 
 		maybeRenderFrame();
+
+		vdxToUse->frameData[state.currentFrameIndex].clear();
 	}
 
 	// Restore
@@ -291,4 +294,101 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 	state.currentFrameIndex = prevFrame;
 	state.animation = prevAnim;
 	state.dirtyFrame = true;
+}
+
+/*
+===============================================================================
+Function Name: loadSingleVDX
+
+Description:
+	- Loads a single VDX file from the specified room and VDX name.
+
+Parameters:
+	- room: The room name (e.g., "FH")
+	- vdxName: The VDX file name (e.g., "f_1bc")
+
+Return:
+	- A VDXFile object containing the parsed VDX data.
+===============================================================================
+*/
+VDXFile loadSingleVDX(const std::string &room, const std::string &vdxName)
+{
+	auto indices = parseRLFile(room + ".RL");
+
+	auto it = std::find_if(indices.begin(), indices.end(),
+						   [&](const auto &e)
+						   {
+							   std::string rlClean = e.filename.substr(0, e.filename.find_first_of('.'));
+							   return rlClean == vdxName;
+						   });
+
+	if (it == indices.end())
+		throw std::runtime_error("VDX not found in RL: " + vdxName);
+
+	std::string gjdPath = room + ".GJD";
+	std::ifstream gjdFile(gjdPath, std::ios::binary);
+	if (!gjdFile)
+		throw std::runtime_error("Failed to open GJD: " + gjdPath);
+
+	gjdFile.seekg(it->offset);
+	std::vector<uint8_t> buffer(it->length);
+	gjdFile.read(reinterpret_cast<char *>(buffer.data()), it->length);
+
+	return parseVDXFile(vdxName, std::span(buffer));
+}
+
+/*
+===============================================================================
+Function Name: getOrLoadVDX
+
+Description:
+	- Gets or loads a VDX file by name, managing the current VDX state.
+	- If the VDX is already loaded, returns it directly.
+
+Parameters:
+	- name: The name of the VDX file to load or get.
+
+Return:
+	- A reference to the VDXFile object for the specified name.
+===============================================================================
+*/
+VDXFile &getOrLoadVDX(const std::string &name)
+{
+	if (state.currentVDX && state.currentVDX->filename == name)
+	{
+		return *state.currentVDX;
+	}
+	if (state.currentVDX)
+	{
+		unloadVDX(state.currentVDX->filename);
+	}
+	VDXFile vdx = loadSingleVDX(state.current_room, name);
+	parseVDXChunks(vdx);
+	state.currentVDX = new VDXFile(std::move(vdx));
+	return *state.currentVDX;
+}
+
+/*
+===============================================================================
+Function Name: unloadVDX
+
+Description:
+	- Unloads a VDX file by name, freeing its resources.
+	- If the current VDX matches the name, it clears its data and deletes the pointer.
+
+Parameters:
+	- name: The name of the VDX file to unload.
+===============================================================================
+*/
+void unloadVDX(const std::string &name)
+{
+	if (state.currentVDX && state.currentVDX->filename == name)
+	{
+		state.currentVDX->frameData.clear();
+		state.currentVDX->audioData.clear();
+		state.currentVDX->chunks.clear();
+		state.currentVDX->rawData.clear();
+		delete state.currentVDX;
+		state.currentVDX = nullptr;
+	}
 }

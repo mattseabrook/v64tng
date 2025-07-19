@@ -10,11 +10,13 @@
 //
 // Parse RL file to get the VDX file locations
 //
-std::vector<RLEntry> parseRLFile(std::string_view rlFilename) {
+std::vector<RLEntry> parseRLFile(std::string_view rlFilename)
+{
     std::vector<RLEntry> rlEntries;
 
     std::ifstream rlFile(rlFilename.data(), std::ios::binary);
-    if (!rlFile) {
+    if (!rlFile)
+    {
         throw std::runtime_error("Failed to open RL file: " + std::string(rlFilename));
     }
 
@@ -24,11 +26,12 @@ std::vector<RLEntry> parseRLFile(std::string_view rlFilename) {
     rlEntries.reserve(fileSize / 20);
 
     char block[20];
-    while (rlFile.read(block, sizeof(block))) {
+    while (rlFile.read(block, sizeof(block)))
+    {
         RLEntry entry;
         entry.filename.assign(block, block + 12);
-        entry.offset = *reinterpret_cast<const uint32_t*>(block + 12);
-        entry.length = *reinterpret_cast<const uint32_t*>(block + 16);
+        entry.offset = *reinterpret_cast<const uint32_t *>(block + 12);
+        entry.length = *reinterpret_cast<const uint32_t *>(block + 16);
         rlEntries.push_back(std::move(entry));
     }
     return rlEntries;
