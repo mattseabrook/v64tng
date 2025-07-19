@@ -351,7 +351,7 @@ LRESULT HandleLButtonDown(LPARAM lParam)
 	POINT cursorPos{LOWORD(lParam), HIWORD(lParam)};
 	float normalizedX = static_cast<float>(cursorPos.x) / state.ui.width * 100.0f;
 	float normalizedY = static_cast<float>(cursorPos.y) / state.ui.height * 100.0f;
-	if (state.animation.isPlaying || !state.currentVDX)
+	if (state.animation.isPlaying || state.transient_animation.isPlaying || !state.currentVDX)
 		return 0;
 	int highestZIndex = -1;
 	size_t targetIndex = 0;

@@ -163,10 +163,22 @@ void viewHandler()
 				state.transient_frame_index = state.transient_animation.totalFrames - 1;
 				if (!state.current_song.empty())
 					xmiPlay(state.current_song, false);
-				forceUpdateCursor();
+
 				unloadVDX(state.transient_animation_name);
 				state.transient_animation_name.clear();
-				state.transientVDX = nullptr; // NEW: Clear pointer post-unload
+				state.transientVDX = nullptr;
+				state.dirtyFrame = true; // Ensure re-render after transient
+
+				// FIXED: Refresh view to restore hotspots without restarting animation
+				auto [room, view, is_static, action] = parseToken(state.current_view);
+				state.view = getView(view);
+				if (!state.view)
+				{
+					throw std::runtime_error("View not found after transient: " + view);
+				}
+				// CRITICAL: Ensure animation is stopped to allow hotspot interaction
+				state.animation.isPlaying = false;
+				forceUpdateCursor(); // CRITICAL: Force cursor system to recognize new hotspots
 			}
 			else
 			{
@@ -181,7 +193,7 @@ void viewHandler()
 	// Load new view/sequence
 	if (state.current_view != state.previous_view || state.animation_sequence.empty())
 	{
-		// Parse sequence
+		// Clear and parse sequence
 		state.animation_sequence.clear();
 		std::string_view seq{state.current_view};
 		for (size_t pos = 0; pos < seq.size();)
@@ -217,6 +229,18 @@ void viewHandler()
 			{
 				if (auto it = action_map.find(action); it != action_map.end())
 					state.pending_action = it->second;
+			}
+
+			// If this is a single static view, complete the setup to prevent reloads
+			if (state.animation_queue_index == 0 && state.animation_sequence.size() == 1 && is_static)
+			{
+				// Sequence complete for static
+				auto [_, view_complete, __, ___] = parseToken(state.animation_sequence.back());
+				state.current_view = view_complete + ";static";
+				state.previous_view = state.current_view;
+				state.animation_sequence.clear();
+				state.animation_queue_index = 0;
+				// No additional setup needed
 			}
 		}
 	}
@@ -275,9 +299,9 @@ void viewHandler()
 				// Unload previous sequence VDX if not current  // FIXED: Moved loop BEFORE clear() to fix empty loop bug
 				for (size_t i = 0; i < state.animation_sequence.size() - 1; ++i)
 				{
-					auto [__, prevView, ___, ____] = parseToken(state.animation_sequence[i]);
-					if (prevView != view)
-						unloadVDX(prevView); // Safe if not loaded
+					auto [room_i, view_i, is_static_i, action_i] = parseToken(state.animation_sequence[i]);
+					if (view_i != view)
+						unloadVDX(view_i); // Safe if not loaded
 				}
 
 				state.animation_sequence.clear();
