@@ -5,7 +5,7 @@
 
 #include <vector>
 #include <cstdint>
-#include <Windows.h>
+#include <windows.h>
 
 //
 // Raycast hit information

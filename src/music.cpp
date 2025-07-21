@@ -15,8 +15,8 @@
 // Windows Multimedia
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <Audioclient.h>
-#include <Mmdeviceapi.h>
+#include <audioclient.h>
+#include <mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
 
 //

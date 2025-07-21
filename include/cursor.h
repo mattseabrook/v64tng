@@ -10,7 +10,7 @@
 #include <span>
 #include <stdexcept>
 #include <unordered_set>
-#include <Windows.h>
+#include <windows.h>
 
 /*
 ===============================================================================

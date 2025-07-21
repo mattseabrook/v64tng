@@ -11,7 +11,7 @@
 #include <thread>
 
 #ifdef _WIN32
-#include <Windows.h>
+#include <windows.h>
 #include <mmeapi.h>
 #endif
 

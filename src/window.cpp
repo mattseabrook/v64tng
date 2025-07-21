@@ -1,6 +1,6 @@
 // window.cpp
 
-#include <Windows.h>
+#include <windows.h>
 #include <windowsx.h>
 
 #include "../resource.h"

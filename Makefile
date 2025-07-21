@@ -62,8 +62,15 @@ $(OBJ_DIR)/%.o: src/%.cpp | $(OBJ_DIR)
 
 $(RESOURCE_RES): resource.rc | $(BUILD_DIR)
 	@echo "[RC] $<"
-	@$(RC) $< -O coff -o $@
-
+	@$(RC) -v --target=pe-x86-64 \
+	       --use-temp-file \
+	       --preprocessor="$(CROSS)-gcc" \
+	       --preprocessor-arg="-E" \
+	       --preprocessor-arg="-xc-header" \
+	       --preprocessor-arg="-DRC_INVOKED" \
+	       --preprocessor-arg="-I/usr/x86_64-w64-mingw32/include" \
+	       -i $< -o $@ -O coff
+	       	       	       	       
 $(BUILD_DIR) $(OBJ_DIR):
 	@mkdir -p $@
 

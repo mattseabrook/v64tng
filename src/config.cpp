@@ -6,7 +6,7 @@
 
 #include <fstream>
 #include <filesystem>
-#include <Windows.h>
+#include <windows.h>
 
 nlohmann::json config;
 std::string windowTitle = "v64tng";

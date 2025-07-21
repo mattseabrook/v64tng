@@ -3,7 +3,7 @@
 #ifndef MAP_OVERLAY_H
 #define MAP_OVERLAY_H
 
-#include <Windows.h>
+#include <windows.h>
 #include <vector>
 #include <string>
 
