@@ -24,12 +24,12 @@ void initMenu(HWND hwnd)
     HMENU hFileMenu = CreatePopupMenu();
     HMENU hHelpMenu = CreatePopupMenu();
 
-    AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::FILE_OPEN), L"Open");
+    AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_FILE_OPEN), L"Open");
     AppendMenu(hFileMenu, MF_SEPARATOR, 0, nullptr);
-    AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::FILE_SAVE), L"Save");
+    AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_FILE_SAVE), L"Save");
     AppendMenu(hFileMenu, MF_SEPARATOR, 0, nullptr);
-    AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::FILE_EXIT), L"Exit");
-    AppendMenu(hHelpMenu, MF_STRING, static_cast<UINT>(MenuCommands::HELP_ABOUT), L"About");
+    AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_FILE_EXIT), L"Exit");
+    AppendMenu(hHelpMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_HELP_ABOUT), L"About");
 
     AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hFileMenu), L"File");
     AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hHelpMenu), L"Help");
@@ -111,17 +111,17 @@ LRESULT HandleMenuCommand(HWND hwnd, WPARAM wParam)
 {
     switch (static_cast<int>(LOWORD(wParam)))
     {
-    case static_cast<int>(MenuCommands::FILE_OPEN):
+    case static_cast<int>(MenuCommands::MC_FILE_OPEN):
         MessageBox(hwnd, L"Open selected", L"File Menu", MB_OK);
         break;
-    case static_cast<int>(MenuCommands::FILE_SAVE):
+    case static_cast<int>(MenuCommands::MC_FILE_SAVE):
         MessageBox(hwnd, L"Save selected", L"File Menu", MB_OK);
         break;
-    case static_cast<int>(MenuCommands::FILE_EXIT):
+    case static_cast<int>(MenuCommands::MC_FILE_EXIT):
         save_config("config.json");
         ::PostQuitMessage(0);
         break;
-    case static_cast<int>(MenuCommands::HELP_ABOUT):
+    case static_cast<int>(MenuCommands::MC_HELP_ABOUT):
         DialogBox(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDD_ABOUT_DIALOG), hwnd, AboutDialogProc);
         break;
     }

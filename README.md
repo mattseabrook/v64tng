@@ -1,4 +1,4 @@
-`v64tng.exe` is a Windows x86_64 executable that is an attempt at re-creating the complete 7th Guest game engine from scratch. It is written in C++ 20 and uses `VULKAN` for graphics, `TBD` for audio, and `TBD` for input. The game engine is designed to work placed into the original game directory (*regardless of where you purchased it/what version you have*), and it is required to be used with the original game data files.
+`v64tng.exe` is a Windows x86_64 executable that is an attempt at re-creating the complete 7th Guest game engine from scratch. It is written in C++ 23 and uses `VULKAN` or `DirectX` for graphics, `TBD` for audio, and `TBD` for input. The game engine is designed to work placed into the original game directory (*regardless of where you purchased it/what version you have*), and it is required to be used with the original game data files.
 
 **Table-of-Contents**
 - [Disclaimer](#disclaimer)
@@ -32,9 +32,10 @@
   - [`-v <FILE>`](#-v-file)
   - [`-x <SONG> [play|extract]`](#-x-song-playextract)
 - [Developers](#developers)
-  - [Pre-requisites](#pre-requisites)
-  - [`-raycast`](#-raycast)
-  - [`-l compress|decompress <FILE>`](#-l-compressdecompress-file)
+  - [Windows SDK on Linux](#windows-sdk-on-linux)
+  - [Libraries](#libraries)
+  - [Legacy](#legacy)
+    - [`-raycast`](#-raycast)
 
 # Disclaimer
 
@@ -427,6 +428,24 @@ v64tng.exe -x agu16 play
 
 # Developers
 
+x
+
+## Windows SDK on Linux
+
+x
+
+```bash
+# Windows SDK
+yay -S xwin
+sudo xwin --accept-license splat --output /opt/winsdk
+```
+
+## Libraries
+
+Feel free to just run `build_windows_libs.sh all`, but remember that `VULKAN` lorem ipsum
+
+## Legacy
+
 The current build system is a PowerShell script called `build.ps1`. It uses
 `clang++` and the LLVM linker to build the project on Windows. Invoke the script
 from a developer command prompt:
@@ -440,29 +459,9 @@ from a developer command prompt:
 The script expects several third‑party libraries to exist in fixed locations.
 Only Windows builds are supported at this time.
 
-## Pre-requisites
-
-| Component              | Purpose                                |
-| ---------------------- | -------------------------------------- |
-| LLVM `clang++` & `lld` | C++23 compiler and linker              |
-| Windows SDK            | Provides `rc.exe` and system headers   |
-| Vulkan SDK 1.3.296.0   | Graphics API headers and libraries     |
-| zlib 1.3.1             | Compression library used by libpng     |
-| libpng 1.6.44          | Saves bitmap frames as PNG             |
-| ADLMIDI                | MIDI playback library for FM Synthesis |
-
-## `-raycast`
+### `-raycast`
 Starts the engine in a development raycasting mode.
 
 ```cmd
 v64tng.exe -raycast
-```
-
-## `-l compress|decompress <FILE>`
-Tests the LZSS routines. Provide the action and a file to process. Compressed
-output uses the `.lzss` extension while decompressed data is written with
-`.decomp`.
-
-```cmd
-v64tng.exe -l decompress frame.bin
 ```
