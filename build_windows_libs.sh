@@ -66,7 +66,7 @@ endif()
 
 # Library paths
 set(LIB_PATHS "")
-# Try xwin structure first
+# Try xwin structure first (x86_64), then traditional (x64)
 if(EXISTS "\${CRT_LIB}/x86_64")
     list(APPEND LIB_PATHS "-L\${CRT_LIB}/x86_64")
 elseif(EXISTS "\${CRT_LIB}/x64")
@@ -88,9 +88,9 @@ endif()
 string(REPLACE ";" " " INCLUDE_FLAGS "\${INCLUDE_PATHS}")
 string(REPLACE ";" " " LIB_FLAGS "\${LIB_PATHS}")
 
-# Compiler and linker flags
-set(CMAKE_C_FLAGS_INIT "-fuse-ld=lld \${INCLUDE_FLAGS} -D_MT")
-set(CMAKE_CXX_FLAGS_INIT "-fuse-ld=lld \${INCLUDE_FLAGS} -D_MT")
+# Compiler and linker flags - FORCE static runtime linking with clang-compatible flags
+set(CMAKE_C_FLAGS_INIT "-fuse-ld=lld \${INCLUDE_FLAGS} -D_MT -Wl,/DEFAULTLIB:libcmt.lib -Wl,/NODEFAULTLIB:msvcrt.lib")
+set(CMAKE_CXX_FLAGS_INIT "-fuse-ld=lld \${INCLUDE_FLAGS} -D_MT -Wl,/DEFAULTLIB:libcmt.lib -Wl,/NODEFAULTLIB:msvcrt.lib")
 
 # Force release mode flags to avoid debug runtime dependencies
 set(CMAKE_C_FLAGS_RELEASE_INIT "-O2 -DNDEBUG -D_MT")
@@ -109,28 +109,52 @@ set(CMAKE_CXX_FLAGS_DEBUG "")
 
 # CRITICAL: Add startup and standard libraries to linker flags for proper cross-compilation
 # This ensures CMake's compiler detection tests can link properly
+# Use FULL PATHS for all libs to avoid search/resolution issues in Clang MSVC mode
 set(WINDOWS_LIBS "")
-set(WINDOWS_LIBS "\${WINDOWS_LIBS} kernel32.lib user32.lib")
+set(WINDOWS_LIBS "\${WINDOWS_LIBS} \${LIB_FLAGS}")
+
+# Add kernel32 with full path (try x86_64 first, then x64)
+if(EXISTS "\${SDK_LIB}/um/x86_64/kernel32.lib")
+    set(WINDOWS_LIBS "\${WINDOWS_LIBS} \${SDK_LIB}/um/x86_64/kernel32.lib")
+elseif(EXISTS "\${SDK_LIB}/um/x64/kernel32.lib")
+    set(WINDOWS_LIBS "\${WINDOWS_LIBS} \${SDK_LIB}/um/x64/kernel32.lib")
+elseif(EXISTS "\${SDK_LIB}/\${SDK_VERSION}/um/x64/kernel32.lib")
+    set(WINDOWS_LIBS "\${WINDOWS_LIBS} \${SDK_LIB}/\${SDK_VERSION}/um/x64/kernel32.lib")
+endif()
+
+# Add user32 with full path (same as above)
+if(EXISTS "\${SDK_LIB}/um/x86_64/user32.lib")
+    set(WINDOWS_LIBS "\${WINDOWS_LIBS} \${SDK_LIB}/um/x86_64/user32.lib")
+elseif(EXISTS "\${SDK_LIB}/um/x64/user32.lib")
+    set(WINDOWS_LIBS "\${WINDOWS_LIBS} \${SDK_LIB}/um/x64/user32.lib")
+elseif(EXISTS "\${SDK_LIB}/\${SDK_VERSION}/um/x64/user32.lib")
+    set(WINDOWS_LIBS "\${WINDOWS_LIBS} \${SDK_LIB}/\${SDK_VERSION}/um/x64/user32.lib")
+endif()
 
 # Add CRT startup libraries with full paths
 if(EXISTS "\${CRT_LIB}/x86_64/libcmt.lib")
     set(WINDOWS_LIBS "\${WINDOWS_LIBS} \${CRT_LIB}/x86_64/libcmt.lib")
+elseif(EXISTS "\${CRT_LIB}/x64/libcmt.lib")
+    set(WINDOWS_LIBS "\${WINDOWS_LIBS} \${CRT_LIB}/x64/libcmt.lib")
 endif()
+
 if(EXISTS "\${SDK_LIB}/ucrt/x86_64/libucrt.lib")
     set(WINDOWS_LIBS "\${WINDOWS_LIBS} \${SDK_LIB}/ucrt/x86_64/libucrt.lib")
+elseif(EXISTS "\${SDK_LIB}/ucrt/x64/libucrt.lib")
+    set(WINDOWS_LIBS "\${WINDOWS_LIBS} \${SDK_LIB}/ucrt/x64/libucrt.lib")
 endif()
 
 # Apply these libraries to ALL linker flags so CMake detection works
-set(CMAKE_EXE_LINKER_FLAGS_INIT "\${LIB_FLAGS} \${WINDOWS_LIBS}")
-set(CMAKE_SHARED_LINKER_FLAGS_INIT "\${LIB_FLAGS} \${WINDOWS_LIBS}")
-set(CMAKE_MODULE_LINKER_FLAGS_INIT "\${LIB_FLAGS} \${WINDOWS_LIBS}")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "\${WINDOWS_LIBS}")
+set(CMAKE_SHARED_LINKER_FLAGS_INIT "\${WINDOWS_LIBS}")
+set(CMAKE_MODULE_LINKER_FLAGS_INIT "\${WINDOWS_LIBS}")
 
 # Also set standard libraries for good measure
 set(CMAKE_C_STANDARD_LIBRARIES "\${WINDOWS_LIBS}")
 set(CMAKE_CXX_STANDARD_LIBRARIES "\${WINDOWS_LIBS}")
 
 # Find root path  
-set(CMAKE_FIND_ROOT_PATH "$WINSDK_BASE")
+set(CMAKE_FIND_ROOT_PATH "$WINSDK_BASE" "$INSTALL_PREFIX")
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
@@ -173,7 +197,7 @@ build_zlib() {
     mkdir -p "$INSTALL_PREFIX/zlib/include"
     
     # Copy the static library
-    cp zlibstatic.lib "$INSTALL_PREFIX/zlib/lib/"
+    cp zlibstatic.lib "$INSTALL_PREFIX/zlib/lib/zlib.lib"
     
     # Copy the headers
     cp ../zlib.h "$INSTALL_PREFIX/zlib/include/"
@@ -221,8 +245,8 @@ build_libpng() {
     mkdir -p "$INSTALL_PREFIX/libpng/include"
     
     # Copy the static library (libpng names it differently)
-    cp libpng*.lib "$INSTALL_PREFIX/libpng/lib/" 2>/dev/null || cp png*.lib "$INSTALL_PREFIX/libpng/lib/"
-    
+    cp libpng*.lib "$INSTALL_PREFIX/libpng/lib/libpng.lib" 2>/dev/null || cp png*.lib "$INSTALL_PREFIX/libpng/lib/libpng.lib"
+
     # Copy the headers
     cp ../png.h "$INSTALL_PREFIX/libpng/include/"
     cp ../pngconf.h "$INSTALL_PREFIX/libpng/include/"
@@ -248,7 +272,7 @@ build_adlmidi() {
     cd build_windows
     
     create_toolchain_file
-    
+ 
     cmake .. \
         -DCMAKE_TOOLCHAIN_FILE=windows-cross.cmake \
         -DCMAKE_BUILD_TYPE=Release \
@@ -256,10 +280,15 @@ build_adlmidi() {
         -DBUILD_SHARED_LIBS=OFF \
         -DlibADLMIDI_STATIC=ON \
         -DlibADLMIDI_SHARED=OFF \
+        -DADLMIDI_STATIC_LIBRARY=ON \
         -DWITH_UNIT_TESTS=OFF \
         -DWITH_VLC_PLUGIN=OFF \
+        -DWITH_MIDIPLAY=OFF \
+        -DWITH_ADLMIDI2=OFF \
+        -DWITH_OLD_UTILS=OFF \
         -DCMAKE_POSITION_INDEPENDENT_CODE=OFF \
-        -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+        -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded \
+        -DFORCE_STATIC_LIBS=ON
     
     # Build only static library target to avoid potential issues
     make ADLMIDI_static -j$(nproc)
@@ -268,8 +297,8 @@ build_adlmidi() {
     mkdir -p "$INSTALL_PREFIX/ADLMIDI/lib"
     mkdir -p "$INSTALL_PREFIX/ADLMIDI/include"
     
-    # Copy the static library
-    cp *ADLMIDI*.lib "$INSTALL_PREFIX/ADLMIDI/lib/" 2>/dev/null || cp lib*ADLMIDI*.lib "$INSTALL_PREFIX/ADLMIDI/lib/"
+    # Copy the static library with standard name
+    cp *ADLMIDI*.lib "$INSTALL_PREFIX/ADLMIDI/lib/ADLMIDI.lib" 2>/dev/null || cp lib*ADLMIDI*.lib "$INSTALL_PREFIX/ADLMIDI/lib/ADLMIDI.lib"
     
     # Copy the headers
     cp ../include/adlmidi.h "$INSTALL_PREFIX/ADLMIDI/include/"

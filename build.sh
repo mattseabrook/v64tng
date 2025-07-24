@@ -8,19 +8,191 @@ set -e  # Exit on any error
 # Configuration
 TARGET_TRIPLE="x86_64-pc-windows-msvc"
 BUILD_DIR="build"
-TARGET_DIR="/home/$USER/T7G"  # Adjust as needed
-
-# Windows SDK paths (adjust these based on your setup)
-WINSDK_VERSION="10.0.22621.0"  # Adjust to your SDK version
-WINSDK_BASE="/opt/winsdk"      # Where you'll extract the Windows SDK
-WINSDK_INCLUDE="$WINSDK_BASE/Include/$WINSDK_VERSION"
-WINSDK_LIB="$WINSDK_BASE/Lib/$WINSDK_VERSION"
+TARGET_DIR="/mnt/T7G"
+WINSDK_BASE="/opt/winsdk"
+VULKAN_DIR="/opt/VulkanSDK/1.4.313.2"
 
 # Third-party library paths (these will be built for Windows target)
 ZLIB_DIR="/opt/windows-libs/zlib"
 LIBPNG_DIR="/opt/windows-libs/libpng"
 ADLMIDI_DIR="/opt/windows-libs/ADLMIDI"
-VULKAN_DIR="/opt/VulkanSDK/1.4.313.2"
+
+# Setup Windows SDK
+setup_winsdk() {
+    echo "=== Setting up Windows SDK ==="
+    
+    if [[ ! -d "$WINSDK_BASE" ]]; then
+        echo "Windows SDK not found at $WINSDK_BASE"
+        echo ""
+        echo "Installing Windows SDK using xwin..."
+        
+        # Check if xwin is installed
+        if ! command -v xwin &> /dev/null; then
+            echo "Installing xwin..."
+            cargo install xwin
+        fi
+        
+        # Create the directory and install SDK
+        sudo mkdir -p "$WINSDK_BASE"
+        sudo chown $USER:$USER "$WINSDK_BASE"
+        
+        xwin --accept-license splat --output "$WINSDK_BASE"
+        
+        if [[ $? -ne 0 ]]; then
+            echo "ERROR: Failed to install Windows SDK with xwin"
+            exit 1
+        fi
+    fi
+    
+    # Verify the SDK structure and detect actual layout
+    echo "Detecting Windows SDK structure..."
+    echo "Contents of $WINSDK_BASE:"
+    ls -la "$WINSDK_BASE/"
+    
+    # xwin creates different structure - let's detect it
+    local sdk_include_base=""
+    local sdk_lib_base=""
+    local ucrt_include_base=""
+    local ucrt_lib_base=""
+    
+    # Look for SDK includes
+    if [[ -d "$WINSDK_BASE/sdk/include" ]]; then
+        sdk_include_base="$WINSDK_BASE/sdk/include"
+    elif [[ -d "$WINSDK_BASE/Include" ]]; then
+        sdk_include_base="$WINSDK_BASE/Include"
+    fi
+    
+    # Look for SDK libs  
+    if [[ -d "$WINSDK_BASE/sdk/lib" ]]; then
+        sdk_lib_base="$WINSDK_BASE/sdk/lib"
+    elif [[ -d "$WINSDK_BASE/Lib" ]]; then
+        sdk_lib_base="$WINSDK_BASE/Lib"
+    fi
+    
+    # Look for CRT includes
+    if [[ -d "$WINSDK_BASE/crt/include" ]]; then
+        ucrt_include_base="$WINSDK_BASE/crt/include"
+    fi
+    
+    # Look for CRT libs
+    if [[ -d "$WINSDK_BASE/crt/lib" ]]; then
+        ucrt_lib_base="$WINSDK_BASE/crt/lib"
+    fi
+    
+    echo "Detected paths:"
+    echo "  SDK includes: $sdk_include_base"
+    echo "  SDK libs: $sdk_lib_base"  
+    echo "  CRT includes: $ucrt_include_base"
+    echo "  CRT libs: $ucrt_lib_base"
+    
+    # Find SDK version
+    local actual_sdk_version=""
+    if [[ -d "$sdk_include_base" ]]; then
+        # Look for version directories
+        for version_dir in "$sdk_include_base"/*/; do
+            if [[ -d "$version_dir" ]]; then
+                actual_sdk_version=$(basename "$version_dir")
+                echo "Found SDK version: $actual_sdk_version"
+                break
+            fi
+        done
+    fi
+    
+    # Update global variables with detected paths
+    if [[ -n "$actual_sdk_version" ]]; then
+        export DETECTED_SDK_VERSION="$actual_sdk_version"
+    else
+        export DETECTED_SDK_VERSION="10.0.26100.0"  # Fallback to known version
+    fi
+    
+    # Export detected paths
+    export DETECTED_SDK_INCLUDE="$sdk_include_base"
+    export DETECTED_SDK_LIB="$sdk_lib_base"
+    export DETECTED_CRT_INCLUDE="$ucrt_include_base"
+    export DETECTED_CRT_LIB="$ucrt_lib_base"
+    
+    # Verify critical paths exist with detected structure
+    local critical_paths=()
+    
+    # For includes, try both versioned and non-versioned paths
+    if [[ -n "$sdk_include_base" ]]; then
+        if [[ -n "$DETECTED_SDK_VERSION" && -d "$sdk_include_base/$DETECTED_SDK_VERSION" ]]; then
+            # Traditional Windows SDK structure
+            critical_paths+=(
+                "$sdk_include_base/$DETECTED_SDK_VERSION/um"
+                "$sdk_include_base/$DETECTED_SDK_VERSION/shared"
+            )
+        else
+            # xwin structure (flat)
+            critical_paths+=(
+                "$sdk_include_base/um"
+                "$sdk_include_base/shared"
+                "$sdk_include_base/ucrt"
+            )
+        fi
+    fi
+    
+    if [[ -n "$ucrt_include_base" ]]; then
+        critical_paths+=("$ucrt_include_base")
+    fi
+    
+    # For libraries, detect xwin vs traditional structure
+    if [[ -n "$sdk_lib_base" ]]; then
+        if [[ -d "$sdk_lib_base/um/x86_64" ]]; then
+            # xwin structure
+            critical_paths+=(
+                "$sdk_lib_base/um/x86_64"
+                "$sdk_lib_base/ucrt/x86_64"
+            )
+        elif [[ -n "$DETECTED_SDK_VERSION" && -d "$sdk_lib_base/$DETECTED_SDK_VERSION/um/x64" ]]; then
+            # Traditional structure
+            critical_paths+=("$sdk_lib_base/$DETECTED_SDK_VERSION/um/x64")
+        fi
+    fi
+    
+    if [[ -n "$ucrt_lib_base" ]]; then
+        if [[ -d "$ucrt_lib_base/x86_64" ]]; then
+            # xwin structure
+            critical_paths+=("$ucrt_lib_base/x86_64")
+        elif [[ -d "$ucrt_lib_base/x64" ]]; then
+            # Traditional structure
+            critical_paths+=("$ucrt_lib_base/x64")
+        fi
+    fi
+    
+    echo "Verifying critical paths..."
+    for path in "${critical_paths[@]}"; do
+        if [[ ! -d "$path" ]]; then
+            echo "ERROR: Critical SDK path missing: $path"
+            exit 1
+        else
+            echo "✓ Found: $path"
+        fi
+    done
+    
+    # Detect library architecture
+    local detected_lib_arch=""
+    if [[ -d "$ucrt_lib_base/x86_64" ]] || [[ -d "$sdk_lib_base/um/x86_64" ]]; then
+        detected_lib_arch="x86_64"
+    elif [[ -d "$ucrt_lib_base/x64" ]] || [[ -d "$sdk_lib_base/$DETECTED_SDK_VERSION/um/x64" ]]; then
+        detected_lib_arch="x64"
+    fi
+    
+    export DETECTED_LIB_ARCH="$detected_lib_arch"
+    
+    echo "Detected library architecture: $detected_lib_arch"
+    echo ""
+    echo "Final detected paths:"
+    echo "  SDK_INCLUDE: $DETECTED_SDK_INCLUDE"
+    echo "  SDK_LIB: $DETECTED_SDK_LIB"
+    echo "  CRT_INCLUDE: $DETECTED_CRT_INCLUDE"
+    echo "  CRT_LIB: $DETECTED_CRT_LIB"
+    echo "  SDK_VERSION: $DETECTED_SDK_VERSION"
+    echo "  LIB_ARCH: $DETECTED_LIB_ARCH"
+}
+
+# Call setups
+setup_winsdk
 
 # Clean target
 if [[ "$1" == "clean" ]]; then
@@ -50,9 +222,10 @@ RESOURCE_RC="resource.rc"
 if [[ -f "$RESOURCE_RC" ]] && ([[ ! -f "$RESOURCE_RES" ]] || [[ "$RESOURCE_RC" -nt "$RESOURCE_RES" ]]); then
     echo "Compiling resource file..."
     x86_64-w64-mingw32-windres \
-        -I "$WINSDK_INCLUDE/um" \
-        -I "$WINSDK_INCLUDE/shared" \
-        -I "$WINSDK_INCLUDE/ucrt" \
+        -I "$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/um" \
+        -I "$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/shared" \
+        -I "$DETECTED_SDK_INCLUDE/ucrt" \
+        -I "$DETECTED_CRT_INCLUDE" \
         -o "$RESOURCE_RES" "$RESOURCE_RC"
 fi
 
@@ -77,9 +250,11 @@ COMMON_INCLUDES=(
     "-I" "$LIBPNG_DIR/include"
     "-I" "$ADLMIDI_DIR/include"
     "-I" "$VULKAN_DIR/Include"
-    "-I" "$WINSDK_INCLUDE/ucrt"
-    "-I" "$WINSDK_INCLUDE/um"
-    "-I" "$WINSDK_INCLUDE/shared"
+    "-I" "$DETECTED_SDK_INCLUDE/ucrt"
+    "-I" "$DETECTED_CRT_INCLUDE"
+    "-I" "$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/um"
+    "-I" "$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/shared"
+    "-I" "$WINSDK_BASE/sdk/include/winrt"
 )
 
 COMMON_FLAGS=(
@@ -206,10 +381,11 @@ LINK_ARGS+=(
     "-L" "$LIBPNG_DIR/lib"
     "-L" "$ADLMIDI_DIR/lib"
     "-L" "$VULKAN_DIR/Lib"
-    "-L" "$WINSDK_LIB/um/x64"
-    "-L" "$WINSDK_LIB/ucrt/x64"
-    "-lzlibstatic"
-    "-llibpng16_static"
+    "-L" "$DETECTED_SDK_LIB/um/$DETECTED_LIB_ARCH"
+    "-L" "$DETECTED_SDK_LIB/ucrt/$DETECTED_LIB_ARCH"
+    "-L" "$DETECTED_CRT_LIB/$DETECTED_LIB_ARCH"
+    "-lzlib"
+    "-llibpng"
     "-lADLMIDI"
     "-lvulkan-1"
     "-luser32"
