@@ -273,22 +273,18 @@ build_adlmidi() {
     
     create_toolchain_file
  
-    cmake .. \
-        -DCMAKE_TOOLCHAIN_FILE=windows-cross.cmake \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX/ADLMIDI" \
-        -DBUILD_SHARED_LIBS=OFF \
-        -DlibADLMIDI_STATIC=ON \
-        -DlibADLMIDI_SHARED=OFF \
-        -DADLMIDI_STATIC_LIBRARY=ON \
-        -DWITH_UNIT_TESTS=OFF \
-        -DWITH_VLC_PLUGIN=OFF \
-        -DWITH_MIDIPLAY=OFF \
-        -DWITH_ADLMIDI2=OFF \
-        -DWITH_OLD_UTILS=OFF \
-        -DCMAKE_POSITION_INDEPENDENT_CODE=OFF \
-        -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded \
-        -DFORCE_STATIC_LIBS=ON
+cmake .. \
+  -DCMAKE_TOOLCHAIN_FILE=windows-cross.cmake \
+  -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX/ADLMIDI" \
+  -DBUILD_SHARED_LIBS=OFF \
+  -DlibADLMIDI_STATIC=ON \
+  -DlibADLMIDI_SHARED=OFF \
+  -DWITH_UNIT_TESTS=OFF -DWITH_MIDIPLAY=OFF -DWITH_VLC_PLUGIN=OFF \
+  -DWITH_OLD_UTILS=OFF -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_C_FLAGS_RELEASE="-D_MT -DNDEBUG -O2" \
+  -DCMAKE_CXX_FLAGS_RELEASE="-D_MT -DNDEBUG -O2" \
+  -DCMAKE_C_FLAGS_DEBUG="-D_MT -O0 -g" \
+  -DCMAKE_CXX_FLAGS_DEBUG="-D_MT -O0 -g"
     
     # Build only static library target to avoid potential issues
     make ADLMIDI_static -j$(nproc)

@@ -1,6 +1,5 @@
 # Ignore build
 /build/
-/build-win/
 build.log
 /obj/
 
