@@ -102,7 +102,7 @@ setup_winsdk() {
     if [[ -n "$actual_sdk_version" ]]; then
         export DETECTED_SDK_VERSION="$actual_sdk_version"
     else
-        export DETECTED_SDK_VERSION="10.0.26100.0"  # Fallback to known version
+        export DETECTED_SDK_VERSION="10.0.26100"  # Fallback to known version
     fi
     
     # Export detected paths
@@ -243,26 +243,68 @@ for src in "${SOURCES[@]}"; do
     OBJECTS+=("$BUILD_DIR/$obj_name")
 done
 
-# Common compiler flags
-COMMON_INCLUDES=(
-    "-I" "./include"
-    "-I" "$ZLIB_DIR/include"
-    "-I" "$LIBPNG_DIR/include"
-    "-I" "$ADLMIDI_DIR/include"
-    "-I" "$VULKAN_DIR/Include"
-    "-I" "$DETECTED_SDK_INCLUDE/ucrt"
-    "-I" "$DETECTED_CRT_INCLUDE"
-    "-I" "$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/um"
-    "-I" "$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/shared"
-    "-I" "$WINSDK_BASE/sdk/include/winrt"
+SYSTEM_INCLUDES=(
+    "-imsvc/opt/msvc/include"
+)
+
+# Add CRT include (for stdlib.h, etc.)
+if [[ -n "$DETECTED_CRT_INCLUDE" ]]; then
+    SYSTEM_INCLUDES+=("-imsvc$DETECTED_CRT_INCLUDE")
+fi
+
+# Add SDK includes based on detected structure
+if [[ -n "$DETECTED_SDK_INCLUDE" ]]; then
+    if [[ -d "$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION" ]]; then
+        # Traditional versioned structure
+        SYSTEM_INCLUDES+=(
+            "-imsvc$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/ucrt"
+            "-imsvc$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/um" 
+            "-imsvc$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/shared"
+            "-imsvc$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/winrt"
+        )
+    else
+        # xwin flat structure
+        SYSTEM_INCLUDES+=(
+            "-imsvc$DETECTED_SDK_INCLUDE/ucrt"
+            "-imsvc$DETECTED_SDK_INCLUDE/um"
+            "-imsvc$DETECTED_SDK_INCLUDE/shared" 
+            "-imsvc$DETECTED_SDK_INCLUDE/winrt"
+        )
+    fi
+fi
+
+# Add cppwinrt if it exists
+if [[ -d "$DETECTED_SDK_INCLUDE/cppwinrt" ]]; then
+    SYSTEM_INCLUDES+=("-imsvc$DETECTED_SDK_INCLUDE/cppwinrt")
+fi
+
+USER_INCLUDES=(
+    "-I./include"
+    "-I$ZLIB_DIR/include"
+    "-I$LIBPNG_DIR/include"
+    "-I$ADLMIDI_DIR/include"
+    "-I$VULKAN_DIR/Include"
 )
 
 COMMON_FLAGS=(
     "--target=$TARGET_TRIPLE"
-    "-fuse-ld=lld"
+    "-fuse-ld=lld-link"
     "-DUNICODE"
     "-D_UNICODE"
-    "-std=c++23"
+    "/std:c++latest"
+    "/EHsc"
+    "-fexceptions"
+    "-fcxx-exceptions"
+    "-msse2"
+    "-msse3"
+    "-mssse3"
+    "-msse4.1"
+    "-msse4.2"
+    "-D__SSE2__"
+    "-D__SSSE3__"
+    "-fms-compatibility"
+    "-fms-compatibility-version=19.37"
+    "-D_MT"
     "-Wall"
     "-Wextra"
     "-Wpedantic"
@@ -272,15 +314,18 @@ COMMON_FLAGS=(
     "-Wcast-align"
     "-Wunused"
     "-Woverloaded-virtual"
-    "-fms-compatibility"
-    "-fms-compatibility-version=19.37"
-    "-mssse3"
+    "-Wno-unknown-argument"
+    "-Wno-unused-command-line-argument"
+    "-Wno-c++98-compat"
+    "-Wno-c++98-compat-pedantic"
+    "-Wno-nonportable-system-include-path"
 )
 
 if [[ "$BUILD_TYPE" == "Debug" ]]; then
     CLANG_FLAGS=(
         "${COMMON_FLAGS[@]}"
-        "${COMMON_INCLUDES[@]}"
+        "${SYSTEM_INCLUDES[@]}"
+        "${USER_INCLUDES[@]}"
         "-O0"
         "-g"
         "-gcodeview"
@@ -288,10 +333,10 @@ if [[ "$BUILD_TYPE" == "Debug" ]]; then
 else
     CLANG_FLAGS=(
         "${COMMON_FLAGS[@]}"
-        "${COMMON_INCLUDES[@]}"
+        "${SYSTEM_INCLUDES[@]}"
+        "${USER_INCLUDES[@]}"
         "-O3"
         "-DNDEBUG"
-        "-flto=thin"
         "-fno-rtti"
     )
 fi
@@ -324,32 +369,35 @@ needs_compile() {
     return 1
 }
 
-# Compile source files
-echo "Compiling source files..."
-COMPILED_OBJECTS=()
+# Debug: Print the flags to verify they're correct
+echo "Debug: CLANG_FLAGS:"
+printf '%s\n' "${CLANG_FLAGS[@]}"
+echo ""
+
+echo "Compiling source files sequentially for debugging..."
 START_TIME=$(date +%s)
 
-for i in "${!SOURCES[@]}"; do
-    src="${SOURCES[$i]}"
-    obj="${OBJECTS[$i]}"
-    
-    echo "Processing [$(($i + 1))/${#SOURCES[@]}] $(basename "$src")..."
+# Compile each source file sequentially first
+for src in "${SOURCES[@]}"; do
+    obj="$BUILD_DIR/$(basename "${src%.cpp}").o"
     
     if needs_compile "$src" "$obj"; then
-        echo "  Compiling $(basename "$src")..."
-        clang++ -c "$src" -o "$obj" "${CLANG_FLAGS[@]}" -MMD
+        echo "Compiling $(basename "$src")..."
+        
+        # Run compilation with explicit flags - show full command
+        echo "Command: clang-cl -c $src -o $obj ${CLANG_FLAGS[*]}"
+        clang-cl -v -c "$src" -o "$obj" "${CLANG_FLAGS[@]}" 2>&1
         
         if [[ ! -f "$obj" ]]; then
-            echo "ERROR: Object file wasn't created!"
+            echo "ERROR: Object file for $(basename "$src") wasn't created!"
+            echo "Trying with -v flag to see include search paths..."
+            clang-cl -v -c "$src" -o "$obj" "${CLANG_FLAGS[@]}" 2>&1 | head -20
             exit 1
         fi
-        
-        echo "  Compiled $(basename "$src") - Size: $(stat -c%s "$obj") bytes"
+        echo "Compiled $(basename "$src") - Size: $(stat -c%s "$obj") bytes"
     else
-        echo "  Object file is up to date - Size: $(stat -c%s "$obj") bytes"
+        echo "Object for $(basename "$src") up to date - Size: $(stat -c%s "$obj") bytes"
     fi
-    
-    COMPILED_OBJECTS+=("$obj")
 done
 
 END_TIME=$(date +%s)
@@ -369,49 +417,51 @@ echo "All object files verified."
 # Link executable
 echo "Linking executable..."
 
-LINK_ARGS=(
+# Compiler arguments
+COMPILER_ARGS=(
     "--target=$TARGET_TRIPLE"
-    "-fuse-ld=lld"
+    "-fuse-ld=lld-link"
     "${OBJECTS[@]}"
 )
 
-# Add resource file if it exists
-[[ -f "$RESOURCE_RES" ]] && LINK_ARGS+=("$RESOURCE_RES")
+# Add resource
+[[ -f "$RESOURCE_RES" ]] && COMPILER_ARGS+=("$RESOURCE_RES")
 
-# Library paths and libraries
-LINK_ARGS+=(
-    "-L" "$ZLIB_DIR/lib"
-    "-L" "$LIBPNG_DIR/lib"
-    "-L" "$ADLMIDI_DIR/lib"
-    "-L" "$VULKAN_DIR/Lib"
-    "-L" "$DETECTED_SDK_LIB/um/$DETECTED_LIB_ARCH"
-    "-L" "$DETECTED_SDK_LIB/ucrt/$DETECTED_LIB_ARCH"
-    "-L" "$DETECTED_CRT_LIB/$DETECTED_LIB_ARCH"
-    "-lzlib"
-    "-llibpng"
-    "-lADLMIDI"
-    "-lvulkan-1"
-    "-luser32"
-    "-lgdi32"
-    "-lshlwapi"
-    "-lshell32"
-    "-ld2d1"
-    "-lole32"
-    "-luuid"
-    "-lwinmm"
-    "/opt/windows-libs/clang_rt.builtins-x86_64.lib"
-    "-Wl,/SUBSYSTEM:WINDOWS"
+# Linker arguments (passed after /link)
+LINKER_ARGS=(
+    "/subsystem:windows"
+    "/defaultlib:libcmt.lib"
+    "/nodefaultlib:msvcrt.lib"
+    "/libpath:$ZLIB_DIR/lib"
+    "/libpath:$LIBPNG_DIR/lib"
+    "/libpath:$ADLMIDI_DIR/lib"
+    "/libpath:$VULKAN_DIR/Lib"
+    "/libpath:$DETECTED_SDK_LIB/um/$DETECTED_LIB_ARCH"
+    "/libpath:$DETECTED_SDK_LIB/ucrt/$DETECTED_LIB_ARCH"
+    "/libpath:$DETECTED_CRT_LIB/$DETECTED_LIB_ARCH"
+    "zlib.lib"
+    "libpng.lib"
+    "ADLMIDI.lib"
+    "vulkan-1.lib"
+    "user32.lib"
+    "gdi32.lib"
+    "shlwapi.lib"
+    "shell32.lib"
+    "d2d1.lib"
+    "ole32.lib"
+    "uuid.lib"
+    "winmm.lib"
 )
 
 if [[ "$BUILD_TYPE" == "Debug" ]]; then
     OUTPUT_EXE="v64tng-debug.exe"
-    LINK_ARGS+=("-Wl,/DEBUG:FULL")
+    LINKER_ARGS+=("/debug:full")
 else
     OUTPUT_EXE="v64tng.exe"
-    LINK_ARGS+=("-Wl,/OPT:REF")
+    LINKER_ARGS+=("/opt:ref")
 fi
 
-clang++ "${LINK_ARGS[@]}" -o "$OUTPUT_EXE"
+clang-cl "${COMPILER_ARGS[@]}" -o "$OUTPUT_EXE" /link "${LINKER_ARGS[@]}"
 
 if [[ $? -eq 0 ]]; then
     echo "Build successful! Executable: $OUTPUT_EXE"

@@ -438,6 +438,9 @@ x
 # Windows SDK
 yay -S xwin
 sudo xwin --accept-license splat --output /opt/winsdk
+
+#
+sudo pacman -S parallel
 ```
 
 ## Libraries

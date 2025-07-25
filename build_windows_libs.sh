@@ -28,13 +28,24 @@ create_toolchain_file() {
 set(CMAKE_SYSTEM_NAME Windows)
 set(CMAKE_SYSTEM_PROCESSOR AMD64)
 
-set(CMAKE_C_COMPILER clang)
-set(CMAKE_CXX_COMPILER clang++)
+set(CMAKE_C_COMPILER clang-cl)
+set(CMAKE_CXX_COMPILER clang-cl)
 # Don't set RC compiler to avoid mingw usage - we don't need resources for static libs
 # set(CMAKE_RC_COMPILER x86_64-w64-mingw32-windres)
 
 set(CMAKE_C_COMPILER_TARGET x86_64-pc-windows-msvc)
 set(CMAKE_CXX_COMPILER_TARGET x86_64-pc-windows-msvc)
+
+# Use llvm-lib instead of llvm-ar for MSVC compatibility
+set(CMAKE_AR llvm-lib)
+# Don't set CMAKE_RANLIB when using llvm-lib
+# set(CMAKE_RANLIB llvm-ranlib)
+
+# Force MSVC-style archiver commands since we're using llvm-lib
+set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> /OUT:<TARGET> <OBJECTS>")
+set(CMAKE_C_ARCHIVE_FINISH "")
+set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> /OUT:<TARGET> <OBJECTS>")  
+set(CMAKE_CXX_ARCHIVE_FINISH "")
 
 # Detected Windows SDK paths
 set(SDK_INCLUDE "$sdk_include")
@@ -46,55 +57,55 @@ set(SDK_VERSION "$sdk_version")
 # Include paths
 set(INCLUDE_PATHS "")
 if(EXISTS "\${CRT_INCLUDE}")
-    list(APPEND INCLUDE_PATHS "-I\${CRT_INCLUDE}")
+    list(APPEND INCLUDE_PATHS "/I\${CRT_INCLUDE}")
 endif()
 # Try both versioned (traditional) and flat (xwin) structures
 if(EXISTS "\${SDK_INCLUDE}/\${SDK_VERSION}/um")
-    list(APPEND INCLUDE_PATHS "-I\${SDK_INCLUDE}/\${SDK_VERSION}/um")
+    list(APPEND INCLUDE_PATHS "/I\${SDK_INCLUDE}/\${SDK_VERSION}/um")
 elseif(EXISTS "\${SDK_INCLUDE}/um")
-    list(APPEND INCLUDE_PATHS "-I\${SDK_INCLUDE}/um")
+    list(APPEND INCLUDE_PATHS "/I\${SDK_INCLUDE}/um")
 endif()
 if(EXISTS "\${SDK_INCLUDE}/\${SDK_VERSION}/shared")
-    list(APPEND INCLUDE_PATHS "-I\${SDK_INCLUDE}/\${SDK_VERSION}/shared")
+    list(APPEND INCLUDE_PATHS "/I\${SDK_INCLUDE}/\${SDK_VERSION}/shared")
 elseif(EXISTS "\${SDK_INCLUDE}/shared")
-    list(APPEND INCLUDE_PATHS "-I\${SDK_INCLUDE}/shared")
+    list(APPEND INCLUDE_PATHS "/I\${SDK_INCLUDE}/shared")
 endif()
 # Add UCRT include path (xwin puts it in sdk/include/ucrt)
 if(EXISTS "\${SDK_INCLUDE}/ucrt")
-    list(APPEND INCLUDE_PATHS "-I\${SDK_INCLUDE}/ucrt")
+    list(APPEND INCLUDE_PATHS "/I\${SDK_INCLUDE}/ucrt")
 endif()
 
 # Library paths
 set(LIB_PATHS "")
 # Try xwin structure first (x86_64), then traditional (x64)
 if(EXISTS "\${CRT_LIB}/x86_64")
-    list(APPEND LIB_PATHS "-L\${CRT_LIB}/x86_64")
+    list(APPEND LIB_PATHS "/libpath:\${CRT_LIB}/x86_64")
 elseif(EXISTS "\${CRT_LIB}/x64")
-    list(APPEND LIB_PATHS "-L\${CRT_LIB}/x64")
+    list(APPEND LIB_PATHS "/libpath:\${CRT_LIB}/x64")
 endif()
 
 if(EXISTS "\${SDK_LIB}/um/x86_64")
-    list(APPEND LIB_PATHS "-L\${SDK_LIB}/um/x86_64")
+    list(APPEND LIB_PATHS "/libpath:\${SDK_LIB}/um/x86_64")
 elseif(EXISTS "\${SDK_LIB}/\${SDK_VERSION}/um/x64")
-    list(APPEND LIB_PATHS "-L\${SDK_LIB}/\${SDK_VERSION}/um/x64")
+    list(APPEND LIB_PATHS "/libpath:\${SDK_LIB}/\${SDK_VERSION}/um/x64")
 endif()
 
 # Add UCRT library path (xwin puts it in sdk/lib/ucrt)
 if(EXISTS "\${SDK_LIB}/ucrt/x86_64")
-    list(APPEND LIB_PATHS "-L\${SDK_LIB}/ucrt/x86_64")
+    list(APPEND LIB_PATHS "/libpath:\${SDK_LIB}/ucrt/x86_64")
 endif()
 
 # Join the paths with spaces
 string(REPLACE ";" " " INCLUDE_FLAGS "\${INCLUDE_PATHS}")
 string(REPLACE ";" " " LIB_FLAGS "\${LIB_PATHS}")
 
-set(CMAKE_EXE_LINKER_FLAGS   "\${CMAKE_EXE_LINKER_FLAGS} \${LIB_FLAGS} /opt/windows-libs/clang_rt.builtins-x86_64.lib")
-set(CMAKE_SHARED_LINKER_FLAGS "\${CMAKE_SHARED_LINKER_FLAGS} \${LIB_FLAGS} /opt/windows-libs/clang_rt.builtins-x86_64.lib")
-set(CMAKE_MODULE_LINKER_FLAGS "\${CMAKE_MODULE_LINKER_FLAGS} \${LIB_FLAGS} /opt/windows-libs/clang_rt.builtins-x86_64.lib")
+set(CMAKE_EXE_LINKER_FLAGS   "\${CMAKE_EXE_LINKER_FLAGS} \${LIB_FLAGS} /DEFAULTLIB:libcmt.lib /NODEFAULTLIB:msvcrt.lib /opt/windows-libs/clang_rt.builtins-x86_64.lib")
+set(CMAKE_SHARED_LINKER_FLAGS "\${CMAKE_SHARED_LINKER_FLAGS} \${LIB_FLAGS} /DEFAULTLIB:libcmt.lib /NODEFAULTLIB:msvcrt.lib /opt/windows-libs/clang_rt.builtins-x86_64.lib")
+set(CMAKE_MODULE_LINKER_FLAGS "\${CMAKE_MODULE_LINKER_FLAGS} \${LIB_FLAGS} /DEFAULTLIB:libcmt.lib /NODEFAULTLIB:msvcrt.lib /opt/windows-libs/clang_rt.builtins-x86_64.lib")
 
 # Compiler and linker flags - FORCE static runtime linking with clang-compatible flags
-set(CMAKE_C_FLAGS_INIT "-fuse-ld=lld \${INCLUDE_FLAGS} -D_MT -Wl,/DEFAULTLIB:libcmt.lib -Wl,/NODEFAULTLIB:msvcrt.lib -fms-compatibility -fms-compatibility-version=19.37 -mssse3")
-set(CMAKE_CXX_FLAGS_INIT "-fuse-ld=lld \${INCLUDE_FLAGS} -D_MT -Wl,/DEFAULTLIB:libcmt.lib -Wl,/NODEFAULTLIB:msvcrt.lib -fms-compatibility -fms-compatibility-version=19.37 -mssse3")
+set(CMAKE_C_FLAGS_INIT "-fuse-ld=lld-link \${INCLUDE_FLAGS} /D_MT -fms-compatibility -fms-compatibility-version=19.37")
+set(CMAKE_CXX_FLAGS_INIT "-fuse-ld=lld-link \${INCLUDE_FLAGS} /D_MT -fms-compatibility -fms-compatibility-version=19.37")
 
 # Force release mode flags to avoid debug runtime dependencies
 set(CMAKE_C_FLAGS_RELEASE_INIT "-O2 -DNDEBUG -D_MT")
@@ -149,9 +160,9 @@ elseif(EXISTS "\${SDK_LIB}/ucrt/x64/libucrt.lib")
 endif()
 
 # Apply these libraries to ALL linker flags so CMake detection works
-set(CMAKE_EXE_LINKER_FLAGS_INIT "\${WINDOWS_LIBS}")
-set(CMAKE_SHARED_LINKER_FLAGS_INIT "\${WINDOWS_LIBS}")
-set(CMAKE_MODULE_LINKER_FLAGS_INIT "\${WINDOWS_LIBS}")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "\${WINDOWS_LIBS} /DEFAULTLIB:libcmt.lib /NODEFAULTLIB:msvcrt.lib")
+set(CMAKE_SHARED_LINKER_FLAGS_INIT "\${WINDOWS_LIBS} /DEFAULTLIB:libcmt.lib /NODEFAULTLIB:msvcrt.lib")
+set(CMAKE_MODULE_LINKER_FLAGS_INIT "\${WINDOWS_LIBS} /DEFAULTLIB:libcmt.lib /NODEFAULTLIB:msvcrt.lib")
 
 # Also set standard libraries for good measure
 set(CMAKE_C_STANDARD_LIBRARIES "\${WINDOWS_LIBS}")
@@ -237,6 +248,10 @@ build_libpng() {
         -DPNG_STATIC=ON \
         -DPNG_SHARED=OFF \
         -DPNG_TESTS=OFF \
+        -DPNG_ARM_NEON=off \
+        -DPNG_INTEL_SSE=off \
+        -DPNG_MIPS_MSA=off \
+        -DPNG_POWERPC_VSX=off \
         -DZLIB_ROOT="$INSTALL_PREFIX/zlib" \
         -DCMAKE_POSITION_INDEPENDENT_CODE=OFF \
         -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded \
@@ -379,11 +394,11 @@ EOF
     echo "Using include flags: ${include_flags[@]}"
     echo "Using library flags: ${lib_flags[@]}"
     
-    clang --target=x86_64-pc-windows-msvc \
-        -fuse-ld=lld \
-        "${include_flags[@]}" \
-        "${lib_flags[@]}" \
-        test_cross.c -o test_cross.exe
+clang-cl --target=x86_64-pc-windows-msvc \
+    -fuse-ld=lld-link \
+    "${include_flags[@]/#-I#/I}" \  # Replace -I with /I in array
+    "${lib_flags[@]/#-L#/libpath:}" \  # Replace -L with /libpath:
+    test_cross.c -o test_cross.exe
     
     if [[ $? -eq 0 ]] && [[ -f "test_cross.exe" ]]; then
         echo "✓ Cross-compilation test successful!"
@@ -396,11 +411,11 @@ EOF
         
         # Try again with verbose output
         echo "Trying again with verbose output..."
-        clang --target=x86_64-pc-windows-msvc \
-            -fuse-ld=lld \
+        clang-cl --target=x86_64-pc-windows-msvc \
+            -fuse-ld=lld-link \
             -v \
-            "${include_flags[@]}" \
-            "${lib_flags[@]}" \
+            "${include_flags[@]/#-I#/I}" \  # Replace -I with /I in array
+            "${lib_flags[@]/#-L#/libpath:}" \  # Replace -L with /libpath:
             test_cross.c -o test_cross.exe
         
         rm -f test_cross.c test_cross.exe
