@@ -374,6 +374,24 @@ echo "Debug: CLANG_FLAGS:"
 printf '%s\n' "${CLANG_FLAGS[@]}"
 echo ""
 
+# Set environment variables for clang-cl to find headers (same as library builds)
+include_paths=""
+[[ -d "$DETECTED_CRT_INCLUDE" ]] && include_paths+="$DETECTED_CRT_INCLUDE;"
+[[ -d "$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/um" ]] && include_paths+="$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/um;"
+[[ -d "$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/shared" ]] && include_paths+="$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/shared;"
+[[ -d "$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/ucrt" ]] && include_paths+="$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/ucrt;"
+
+lib_paths=""
+[[ -d "$DETECTED_CRT_LIB/$DETECTED_LIB_ARCH" ]] && lib_paths+="$DETECTED_CRT_LIB/$DETECTED_LIB_ARCH;"
+[[ -d "$DETECTED_SDK_LIB/um/$DETECTED_LIB_ARCH" ]] && lib_paths+="$DETECTED_SDK_LIB/um/$DETECTED_LIB_ARCH;"
+[[ -d "$DETECTED_SDK_LIB/ucrt/$DETECTED_LIB_ARCH" ]] && lib_paths+="$DETECTED_SDK_LIB/ucrt/$DETECTED_LIB_ARCH;"
+
+export INCLUDE="$include_paths"
+export LIB="$lib_paths"
+
+echo "Set INCLUDE=$INCLUDE"
+echo "Set LIB=$LIB"
+
 echo "Compiling source files sequentially for debugging..."
 START_TIME=$(date +%s)
 
@@ -431,7 +449,9 @@ COMPILER_ARGS=(
 LINKER_ARGS=(
     "/subsystem:windows"
     "/defaultlib:libcmt.lib"
+    "/defaultlib:libucrt.lib"
     "/nodefaultlib:msvcrt.lib"
+    "/nodefaultlib:ucrt.lib"
     "/libpath:$ZLIB_DIR/lib"
     "/libpath:$LIBPNG_DIR/lib"
     "/libpath:$ADLMIDI_DIR/lib"
