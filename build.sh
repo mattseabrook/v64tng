@@ -293,6 +293,7 @@ COMMON_FLAGS=(
     "-D_UNICODE"
     "/std:c++latest"
     "/EHsc"
+    "/MT"
     "-fexceptions"
     "-fcxx-exceptions"
     "-msse2"
@@ -447,9 +448,9 @@ COMPILER_ARGS=(
 
 # Linker arguments (passed after /link)
 LINKER_ARGS=(
-    "/subsystem:windows"
-    "/defaultlib:libcmt.lib"
-    "/defaultlib:libucrt.lib"
+"/subsystem:windows"
+    "/defaultlib:libcmt"
+    "/defaultlib:libucrt"
     "/nodefaultlib:msvcrt.lib"
     "/nodefaultlib:ucrt.lib"
     "/libpath:$ZLIB_DIR/lib"

@@ -62,8 +62,8 @@ set(CMAKE_C_ARCHIVE_FINISH "")
 set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> /OUT:<TARGET> <OBJECTS>")
 set(CMAKE_CXX_ARCHIVE_FINISH "")
 
-set(CMAKE_C_FLAGS_INIT "-fuse-ld=lld-link $cmake_include_flags -D_MT -D_WIN32 -D_WIN64 -fms-compatibility -fms-compatibility-version=19.37")
-set(CMAKE_CXX_FLAGS_INIT "-fuse-ld=lld-link $cmake_include_flags -D_MT -D_WIN32 -D_WIN64 -fms-compatibility -fms-compatibility-version=19.37")
+set(CMAKE_C_FLAGS_INIT "-fuse-ld=lld-link $cmake_include_flags /MT -D_WIN32 -D_WIN64 -fms-compatibility -fms-compatibility-version=19.37")
+set(CMAKE_CXX_FLAGS_INIT "-fuse-ld=lld-link $cmake_include_flags /MT -D_WIN32 -D_WIN64 -fms-compatibility -fms-compatibility-version=19.37")
 
 set(CMAKE_C_FLAGS_RELEASE_INIT "-O2 -DNDEBUG -D_MT")
 set(CMAKE_CXX_FLAGS_RELEASE_INIT "-O2 -DNDEBUG -D_MT")
@@ -165,37 +165,37 @@ build_zlib() {
 }
 
 build_libpng() {
-    echo "=== Building libpng ==="
-    
+    echo "=== Building libpng (Manual Compilation) ==="
     cd "$BUILD_DIR"
     
-    if [[ ! -d "libpng-1.6.43" ]]; then
-        wget https://download.sourceforge.net/libpng/libpng-1.6.43.tar.gz
-        tar -xzf libpng-1.6.43.tar.gz
+    # Use latest libpng version 1.6.50
+    if [[ ! -d "libpng-1.6.50" ]]; then
+        echo "Downloading libpng 1.6.50..."
+        wget https://download.sourceforge.net/libpng/libpng-1.6.50.tar.gz
+        tar -xzf libpng-1.6.50.tar.gz
     fi
     
-    cd libpng-1.6.43
+    cd libpng-1.6.50
     
     # Clean previous build
-    rm -rf build_windows
-    mkdir build_windows
-    cd build_windows
+    rm -rf manual_build
+    mkdir manual_build
+    cd manual_build
     
-    # Set environment variables for clang-cl to find headers
+    # Set up environment paths
     local sdk_include="${DETECTED_SDK_INCLUDE:-$WINSDK_BASE/sdk/include}"
     local sdk_lib="${DETECTED_SDK_LIB:-$WINSDK_BASE/sdk/lib}"
     local crt_include="${DETECTED_CRT_INCLUDE:-$WINSDK_BASE/crt/include}"
     local crt_lib="${DETECTED_CRT_LIB:-$WINSDK_BASE/crt/lib}"
     local sdk_version="${DETECTED_SDK_VERSION:-$WINSDK_VERSION}"
     
-    # Build include path for INCLUDE environment variable
+    # Build include/lib paths for environment variables
     local include_paths=""
     [[ -d "$crt_include" ]] && include_paths+="$crt_include;"
     [[ -d "$sdk_include/$sdk_version/um" ]] && include_paths+="$sdk_include/$sdk_version/um;"
     [[ -d "$sdk_include/$sdk_version/shared" ]] && include_paths+="$sdk_include/$sdk_version/shared;"
     [[ -d "$sdk_include/$sdk_version/ucrt" ]] && include_paths+="$sdk_include/$sdk_version/ucrt;"
     
-    # Build lib path for LIB environment variable
     local lib_paths=""
     [[ -d "$crt_lib/x86_64" ]] && lib_paths+="$crt_lib/x86_64;"
     [[ -d "$sdk_lib/um/x86_64" ]] && lib_paths+="$sdk_lib/um/x86_64;"
@@ -207,42 +207,143 @@ build_libpng() {
     echo "Set INCLUDE=$INCLUDE"
     echo "Set LIB=$LIB"
     
-    create_toolchain_file
+    # Use the pre-built pnglibconf.h from Visual Studio projects (much simpler!)
+    echo "Using pre-built pnglibconf.h from Visual Studio projects..."
+    if [[ -f "../projects/vstudio/pnglibconf.h" ]]; then
+        cp "../projects/vstudio/pnglibconf.h" ./
+        echo "✓ Copied pnglibconf.h from vstudio projects"
+    else
+        echo "WARNING: vstudio pnglibconf.h not found, using scripts version..."
+        # Fallback to scripts directory if vstudio version doesn't exist
+        if [[ -f "../scripts/pnglibconf.h.prebuilt" ]]; then
+            cp "../scripts/pnglibconf.h.prebuilt" ./pnglibconf.h
+            echo "✓ Used prebuilt pnglibconf.h from scripts"
+        else
+            echo "ERROR: No pnglibconf.h found in expected locations"
+            exit 1
+        fi
+    fi
     
-    cmake .. \
-        -DCMAKE_TOOLCHAIN_FILE=windows-cross.cmake \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX/libpng" \
-        -DBUILD_SHARED_LIBS=OFF \
-        -DPNG_STATIC=ON \
-        -DPNG_SHARED=OFF \
-        -DPNG_TESTS=OFF \
-        -DPNG_ARM_NEON=off \
-        -DPNG_INTEL_SSE=off \
-        -DPNG_MIPS_MSA=off \
-        -DPNG_POWERPC_VSX=off \
-        -DZLIB_ROOT="$INSTALL_PREFIX/zlib" \
-        -DCMAKE_POSITION_INDEPENDENT_CODE=OFF \
-        -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded \
-        -DPNG_NO_DLL=1 \
-        -DCMAKE_C_FLAGS="-DPNG_STATIC -D_CRT_DECLARE_NONSTDC_NAMES=0 -DWIN32_LEAN_AND_MEAN"
-
-    # Build only static library target to avoid potential issues
-    make png_static -j$(nproc)
+    # Manual compilation flags - FORCE static linking, bypass CMake entirely
+    local compile_flags=(
+        "--target=x86_64-pc-windows-msvc"
+        "-fuse-ld=lld-link"
+        "/MT"
+        "-DPNG_STATIC"
+        "-DPNG_USE_DLL=0"
+        "-DPNG_NO_DLL=1"
+        "-D_CRT_DECLARE_NONSTDC_NAMES=0"
+        "-DWIN32_LEAN_AND_MEAN"
+        "-D_MT"
+        "-DNDEBUG"
+        "-O2"
+        "-I../."
+        "-I."
+        "-I$INSTALL_PREFIX/zlib/include"
+        "-imsvc$crt_include"
+        "-imsvc$sdk_include/$sdk_version/ucrt"
+        "-imsvc$sdk_include/$sdk_version/um"
+        "-imsvc$sdk_include/$sdk_version/shared"
+        "-c"
+    )
     
-    # Install manually to avoid shared library issues
+    echo "Manual compilation with static linking flags..."
+    echo "Compile flags: ${compile_flags[*]}"
+    
+    # Get all PNG source files
+    local png_sources=(
+        "../png.c"
+        "../pngerror.c"
+        "../pngget.c"
+        "../pngmem.c"
+        "../pngpread.c"
+        "../pngread.c"
+        "../pngrio.c"
+        "../pngrtran.c"
+        "../pngrutil.c" 
+        "../pngset.c"
+        "../pngtrans.c"
+        "../pngwio.c"
+        "../pngwrite.c"
+        "../pngwtran.c"
+        "../pngwutil.c"
+    )
+    
+    local object_files=()
+    
+    # Compile each source file individually
+    for src in "${png_sources[@]}"; do
+        if [[ -f "$src" ]]; then
+            obj_name="$(basename "${src%.c}").obj"
+            object_files+=("$obj_name")
+            
+            echo "Compiling $(basename "$src")..."
+            clang-cl "${compile_flags[@]}" "$src" -o "$obj_name"
+            
+            if [[ $? -ne 0 ]]; then
+                echo "ERROR: Failed to compile $src"
+                exit 1
+            fi
+            
+            if [[ ! -f "$obj_name" ]] || [[ ! -s "$obj_name" ]]; then
+                echo "ERROR: Object file $obj_name was not created or is empty"
+                exit 1
+            fi
+            
+            echo "✓ Compiled $(basename "$src") -> $obj_name ($(stat -c%s "$obj_name") bytes)"
+        else
+            echo "WARNING: Source file $src not found"
+        fi
+    done
+    
+    echo "Compiled ${#object_files[@]} object files"
+    
+    # Create static library using llvm-lib
+    echo "Creating static library with llvm-lib..."
+    llvm-lib "/OUT:libpng_static.lib" "${object_files[@]}"
+    
+    if [[ $? -ne 0 ]] || [[ ! -f "libpng_static.lib" ]]; then
+        echo "ERROR: Failed to create static library"
+        exit 1
+    fi
+    
+    echo "✓ Created libpng_static.lib ($(stat -c%s libpng_static.lib) bytes)"
+    
+    # Install library and headers
     mkdir -p "$INSTALL_PREFIX/libpng/lib"
     mkdir -p "$INSTALL_PREFIX/libpng/include"
     
-    # Copy the static library (libpng names it differently)
-    cp libpng*.lib "$INSTALL_PREFIX/libpng/lib/libpng.lib" 2>/dev/null || cp png*.lib "$INSTALL_PREFIX/libpng/lib/libpng.lib"
-
-    # Copy the headers
+    cp libpng_static.lib "$INSTALL_PREFIX/libpng/lib/libpng.lib"
     cp ../png.h "$INSTALL_PREFIX/libpng/include/"
     cp ../pngconf.h "$INSTALL_PREFIX/libpng/include/"
-    cp pnglibconf.h "$INSTALL_PREFIX/libpng/include/"
+    cp pnglibconf.h "$INSTALL_PREFIX/libpng/include/"  # Copy the pre-built one we used
     
-    echo "libpng build complete"
+    echo "libpng manual build complete"
+    
+    # Comprehensive verification
+    echo "Verifying libpng static library..."
+    
+    # Check for dllimport symbols (should be NONE)
+    if llvm-objdump --syms "$INSTALL_PREFIX/libpng/lib/libpng.lib" 2>/dev/null | grep -i "dllimport\|__imp__"; then
+        echo "ERROR: libpng contains dllimport symbols! This will cause linking failures."
+        echo "Found symbols:"
+        llvm-objdump --syms "$INSTALL_PREFIX/libpng/lib/libpng.lib" | grep -i "dllimport\|__imp__" | head -10
+        exit 1
+    fi
+    
+    # Check for expected PNG symbols
+    local expected_symbols=("png_create_write_struct" "png_create_read_struct" "png_write_image" "png_read_image")
+    for sym in "${expected_symbols[@]}"; do
+        if llvm-objdump --syms "$INSTALL_PREFIX/libpng/lib/libpng.lib" 2>/dev/null | grep -q "$sym"; then
+            echo "✓ Found symbol: $sym"
+        else
+            echo "⚠ Warning: Expected symbol $sym not found"
+        fi
+    done
+    
+    echo "✓ libpng 1.6.50 built successfully with manual compilation"
+    echo "✓ No dllimport symbols detected - ready for static linking"
+    echo "✓ Library size: $(stat -c%s "$INSTALL_PREFIX/libpng/lib/libpng.lib") bytes"
 }
 
 build_adlmidi() {
