@@ -88,9 +88,13 @@ endif()
 string(REPLACE ";" " " INCLUDE_FLAGS "\${INCLUDE_PATHS}")
 string(REPLACE ";" " " LIB_FLAGS "\${LIB_PATHS}")
 
+set(CMAKE_EXE_LINKER_FLAGS   "\${CMAKE_EXE_LINKER_FLAGS} \${LIB_FLAGS} /opt/windows-libs/clang_rt.builtins-x86_64.lib")
+set(CMAKE_SHARED_LINKER_FLAGS "\${CMAKE_SHARED_LINKER_FLAGS} \${LIB_FLAGS} /opt/windows-libs/clang_rt.builtins-x86_64.lib")
+set(CMAKE_MODULE_LINKER_FLAGS "\${CMAKE_MODULE_LINKER_FLAGS} \${LIB_FLAGS} /opt/windows-libs/clang_rt.builtins-x86_64.lib")
+
 # Compiler and linker flags - FORCE static runtime linking with clang-compatible flags
-set(CMAKE_C_FLAGS_INIT "-fuse-ld=lld \${INCLUDE_FLAGS} -D_MT -Wl,/DEFAULTLIB:libcmt.lib -Wl,/NODEFAULTLIB:msvcrt.lib")
-set(CMAKE_CXX_FLAGS_INIT "-fuse-ld=lld \${INCLUDE_FLAGS} -D_MT -Wl,/DEFAULTLIB:libcmt.lib -Wl,/NODEFAULTLIB:msvcrt.lib")
+set(CMAKE_C_FLAGS_INIT "-fuse-ld=lld \${INCLUDE_FLAGS} -D_MT -Wl,/DEFAULTLIB:libcmt.lib -Wl,/NODEFAULTLIB:msvcrt.lib -fms-compatibility -fms-compatibility-version=19.37 -mssse3")
+set(CMAKE_CXX_FLAGS_INIT "-fuse-ld=lld \${INCLUDE_FLAGS} -D_MT -Wl,/DEFAULTLIB:libcmt.lib -Wl,/NODEFAULTLIB:msvcrt.lib -fms-compatibility -fms-compatibility-version=19.37 -mssse3")
 
 # Force release mode flags to avoid debug runtime dependencies
 set(CMAKE_C_FLAGS_RELEASE_INIT "-O2 -DNDEBUG -D_MT")
@@ -235,8 +239,11 @@ build_libpng() {
         -DPNG_TESTS=OFF \
         -DZLIB_ROOT="$INSTALL_PREFIX/zlib" \
         -DCMAKE_POSITION_INDEPENDENT_CODE=OFF \
-        -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
-    
+        -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded \
+        -DCMAKE_EXE_LINKER_FLAGS="/opt/windows-libs/clang_rt.builtins-x86_64.lib" \
+        -DCMAKE_SHARED_LINKER_FLAGS="/opt/windows-libs/clang_rt.builtins-x86_64.lib" \
+        -DCMAKE_MODULE_LINKER_FLAGS="/opt/windows-libs/clang_rt.builtins-x86_64.lib"
+
     # Build only static library target to avoid potential issues
     make png_static -j$(nproc)
     

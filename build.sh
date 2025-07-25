@@ -272,6 +272,9 @@ COMMON_FLAGS=(
     "-Wcast-align"
     "-Wunused"
     "-Woverloaded-virtual"
+    "-fms-compatibility"
+    "-fms-compatibility-version=19.37"
+    "-mssse3"
 )
 
 if [[ "$BUILD_TYPE" == "Debug" ]]; then
@@ -396,6 +399,7 @@ LINK_ARGS+=(
     "-lole32"
     "-luuid"
     "-lwinmm"
+    "/opt/windows-libs/clang_rt.builtins-x86_64.lib"
     "-Wl,/SUBSYSTEM:WINDOWS"
 )
 
