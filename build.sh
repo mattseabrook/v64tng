@@ -469,6 +469,8 @@ LINKER_ARGS=(
     "shlwapi.lib"
     "shell32.lib"
     "d2d1.lib"
+    "d3d11.lib"
+    "dxgi.lib"
     "ole32.lib"
     "uuid.lib"
     "winmm.lib"
@@ -491,10 +493,10 @@ if [[ $? -eq 0 ]]; then
     mkdir -p "$TARGET_DIR"
     
     # Clean old binaries
-    rm -f "$TARGET_DIR"/*.exe "$TARGET_DIR"/*.pdb
+    sudo rm -f "$TARGET_DIR"/*.exe "$TARGET_DIR"/*.pdb
     
     # Copy new binary
-    cp "$OUTPUT_EXE" "$TARGET_DIR/"
+    sudo cp "$OUTPUT_EXE" "$TARGET_DIR/"
     
     echo "Deployed to $TARGET_DIR"
 else

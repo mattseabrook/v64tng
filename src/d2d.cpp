@@ -1,276 +1,201 @@
 // d2d.cpp
 
-#include <d2d1.h>
 #include <stdexcept>
-#include <vector>
 #include <windows.h>
-#include <wrl/client.h>
-#include <cstring>
 
 #include "d2d.h"
-#include "render.h"
 #include "config.h"
 #include "window.h"
 #include "raycast.h"
 #include "game.h"
 
-//=============================================================================
+D2DContext d2dCtx;
 
-//
-// Globals
-//
-static Microsoft::WRL::ComPtr<ID2D1Factory> factory;        // Direct2D factory
-Microsoft::WRL::ComPtr<ID2D1HwndRenderTarget> renderTarget; // Render target
-static Microsoft::WRL::ComPtr<ID2D1Bitmap> bitmap;          // Persistent bitmap
-static std::vector<uint8_t> bgraBuffer;                     // Persistent BGRA buffer
-static std::vector<uint8_t> previousFrameData;              // Store previous RGB data
-static bool forceFullUpdate = true;                         // Flag for full updates
-
-/*
-===============================================================================
-Function Name: resizeBitmap
-
-Description:
-    - Resizes the Direct2D bitmap to the specified width and height.
-
-Parameters:
-    - width: New width of the bitmap
-    - height: New height of the bitmap
-===============================================================================
-*/
-void resizeBitmap(UINT width, UINT height)
-{
-    if (bitmap)
-    {
-        D2D1_SIZE_U currentSize = bitmap->GetPixelSize();
-        if (currentSize.width == width && currentSize.height == height)
-        {
-            return;
-        }
-        bitmap.Reset();
-    }
-    HRESULT hr = renderTarget->CreateBitmap(
-        D2D1::SizeU(width, height),
-        D2D1::BitmapProperties(D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE)),
-        &bitmap);
-    if (FAILED(hr))
-    {
-        throw std::runtime_error("Failed to create Direct2D bitmap");
-    }
-    resizeFrameBuffers(bgraBuffer, previousFrameData, forceFullUpdate, width, height);
-}
-
-/*
-===============================================================================
-Function Name: initializeD2D
-
-Description:
-    - Initializes Direct2D factory and render target.
-===============================================================================
-*/
 void initializeD2D()
 {
-    HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, factory.GetAddressOf());
+    HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, __uuidof(ID2D1Factory1), reinterpret_cast<void **>(d2dCtx.factory1.GetAddressOf()));
     if (FAILED(hr))
-    {
-        throw std::runtime_error("Failed to create Direct2D factory");
-    }
+        throw std::runtime_error("Failed D2D factory");
 
-    RECT clientRect;
-    GetClientRect(g_hwnd, &clientRect);
-    hr = factory->CreateHwndRenderTarget(
-        D2D1::RenderTargetProperties(),
-        D2D1::HwndRenderTargetProperties(
-            g_hwnd, D2D1::SizeU(clientRect.right - clientRect.left, clientRect.bottom - clientRect.top)),
-        renderTarget.GetAddressOf());
+    D3D_FEATURE_LEVEL level;
+    hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, D3D11_CREATE_DEVICE_BGRA_SUPPORT, nullptr, 0, D3D11_SDK_VERSION, d2dCtx.d3dDevice.GetAddressOf(), &level, d2dCtx.d3dContext.GetAddressOf());
     if (FAILED(hr))
-    {
-        throw std::runtime_error("Failed to create Direct2D render target");
-    }
+        throw std::runtime_error("Failed D3D11 device");
 
-    if (state.raycast.enabled)
-    {
-        resizeBitmap(static_cast<UINT>(state.ui.width),
-                     static_cast<UINT>(state.ui.height));
-        scaleFactor = 1.0f;
-    }
-    else
-    {
-        resizeBitmap(MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT);
-        scaleFactor = static_cast<float>(state.ui.width) / MIN_CLIENT_WIDTH;
-    }
+    Microsoft::WRL::ComPtr<IDXGIDevice> dxgiDevice;
+    d2dCtx.d3dDevice.As(&dxgiDevice);
+    hr = d2dCtx.factory1->CreateDevice(dxgiDevice.Get(), d2dCtx.d2dDevice.GetAddressOf());
+    if (FAILED(hr))
+        throw std::runtime_error("Failed D2D device");
+
+    hr = d2dCtx.d2dDevice->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, d2dCtx.dc.GetAddressOf());
+    if (FAILED(hr))
+        throw std::runtime_error("Failed D2D context");
+
+    Microsoft::WRL::ComPtr<IDXGIFactory2> dxgiFactory;
+    hr = CreateDXGIFactory1(IID_PPV_ARGS(dxgiFactory.GetAddressOf()));
+    if (FAILED(hr))
+        throw std::runtime_error("Failed DXGI factory");
+
+    DXGI_SWAP_CHAIN_DESC1 swapDesc = {};
+    swapDesc.BufferCount = 2;
+    swapDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    swapDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    swapDesc.Scaling = DXGI_SCALING_STRETCH;
+    swapDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    swapDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+    swapDesc.Width = state.ui.width;
+    swapDesc.Height = state.ui.height;
+    swapDesc.SampleDesc.Count = 1;
+
+    hr = dxgiFactory->CreateSwapChainForHwnd(d2dCtx.d3dDevice.Get(), g_hwnd, &swapDesc, nullptr, nullptr, d2dCtx.swapchain.GetAddressOf());
+    if (FAILED(hr))
+        throw std::runtime_error("Failed swapchain");
+
+    // Mirror Vulkan texture sizing logic
+    UINT texW = state.raycast.enabled ? state.ui.width : MIN_CLIENT_WIDTH;
+    UINT texH = state.raycast.enabled ? state.ui.height : MIN_CLIENT_HEIGHT;
+    resizeTexture(texW, texH);
 }
 
-/*
-===============================================================================
-Function Name: renderFrameD2D
+void resizeTexture(UINT width, UINT height)
+{
+    d2dCtx.frameBitmap.Reset();
+    d2dCtx.frameSurface.Reset();
+    d2dCtx.frameTexture.Reset();
 
-Description:
-    - Renders the current frame using Direct2D.
-===============================================================================
-*/
+    D3D11_TEXTURE2D_DESC texDesc = {};
+    texDesc.Width = width;
+    texDesc.Height = height;
+    texDesc.MipLevels = 1;
+    texDesc.ArraySize = 1;
+    texDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    texDesc.SampleDesc.Count = 1;
+    texDesc.Usage = D3D11_USAGE_DYNAMIC;
+    texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    texDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+    HRESULT hr = d2dCtx.d3dDevice->CreateTexture2D(&texDesc, nullptr, d2dCtx.frameTexture.GetAddressOf());
+    if (FAILED(hr))
+        throw std::runtime_error("Failed D3D texture");
+
+    d2dCtx.frameTexture.As(&d2dCtx.frameSurface);
+
+    D2D1_BITMAP_PROPERTIES1 bitProps = D2D1::BitmapProperties1(D2D1_BITMAP_OPTIONS_NONE, D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE));
+    hr = d2dCtx.dc->CreateBitmapFromDxgiSurface(d2dCtx.frameSurface.Get(), &bitProps, d2dCtx.frameBitmap.GetAddressOf());
+    if (FAILED(hr))
+        throw std::runtime_error("Failed D2D bitmap from surface");
+
+    d2dCtx.rowBuffer.resize(width * 4);
+    d2dCtx.textureWidth = width;
+    d2dCtx.textureHeight = height;
+}
+
+D3D11_MAPPED_SUBRESOURCE mapTexture()
+{
+    D3D11_MAPPED_SUBRESOURCE mapped;
+    HRESULT hr = d2dCtx.d3dContext->Map(d2dCtx.frameTexture.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+    if (FAILED(hr))
+        throw std::runtime_error("Failed map texture");
+    return mapped;
+}
+
+void unmapTexture()
+{
+    d2dCtx.d3dContext->Unmap(d2dCtx.frameTexture.Get(), 0);
+}
+
 void renderFrameD2D()
 {
-    if (!renderTarget || !bitmap)
+    const VDXFile *vdx = state.transientVDX ? state.transientVDX : state.currentVDX;
+    size_t frameIdx = state.transientVDX ? state.transient_frame_index : state.currentFrameIndex;
+    if (!vdx)
+        return;
+
+    std::span<const uint8_t> pixels = vdx->frameData[frameIdx];
+
+    auto mapped = mapTexture();
+    uint8_t *dst = static_cast<uint8_t *>(mapped.pData);
+    size_t pitch = mapped.RowPitch;
+
+    for (int y = 0; y < d2dCtx.textureHeight; ++y)
     {
-        throw std::runtime_error("Render target or bitmap not initialized");
+        convertRGBtoBGRA_SSE(pixels.data() + y * d2dCtx.textureWidth * 3, d2dCtx.rowBuffer.data(), d2dCtx.textureWidth);
+        std::memcpy(dst + y * pitch, d2dCtx.rowBuffer.data(), d2dCtx.textureWidth * 4);
     }
 
-    const VDXFile *vdx_to_render = nullptr;
-    size_t frame_index = 0;
+    unmapTexture();
 
-    // Prioritize transient animation (even if stopped, use its last frame)
-    if (!state.transient_animation_name.empty())
-    {
-        if (state.transientVDX)
-        {
-            vdx_to_render = state.transientVDX;
-            frame_index = state.transient_frame_index; // Current or last frame
-        }
-        else
-        {
-            throw std::runtime_error("Transient animation VDX not found: " + state.transient_animation_name);
-        }
-    }
-    // Fallback to current VDX if no transient is active
-    else if (state.currentVDX)
-    {
-        vdx_to_render = state.currentVDX;
-        frame_index = state.currentFrameIndex;
-    }
-    else
-    {
-        return; // Nothing to render
-    }
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
+    d2dCtx.swapchain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf()));
 
-    std::span<const uint8_t> pixelData = vdx_to_render->frameData[frame_index];
+    Microsoft::WRL::ComPtr<IDXGISurface> backSurface;
+    backBuffer.As(&backSurface);
 
-    auto changedRows = prepareBGRABuffer(pixelData, MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT,
-                                         bgraBuffer, previousFrameData, forceFullUpdate);
-    if (changedRows.size() == static_cast<size_t>(MIN_CLIENT_HEIGHT))
-    {
-        bitmap->CopyFromMemory(nullptr, bgraBuffer.data(), MIN_CLIENT_WIDTH * 4);
-    }
-    else
-    {
-        for (size_t y : changedRows)
-        {
-            D2D1_RECT_U destRect = {0, static_cast<UINT32>(y), static_cast<UINT32>(MIN_CLIENT_WIDTH), static_cast<UINT32>(y + 1)};
-            bitmap->CopyFromMemory(&destRect, &bgraBuffer[y * MIN_CLIENT_WIDTH * 4], MIN_CLIENT_WIDTH * 4);
-        }
-    }
+    D2D1_BITMAP_PROPERTIES1 targetProps = D2D1::BitmapProperties1(D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW, D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE));
+    d2dCtx.dc->CreateBitmapFromDxgiSurface(backSurface.Get(), &targetProps, d2dCtx.targetBitmap.GetAddressOf());
 
-    // Draw the frame
-    renderTarget->BeginDraw();
-    renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
+    d2dCtx.dc->SetTarget(d2dCtx.targetBitmap.Get());
+    d2dCtx.dc->BeginDraw();
+    d2dCtx.dc->Clear(D2D1::ColorF(D2D1::ColorF::Black));
 
-    const float scaledHeight = MIN_CLIENT_HEIGHT * scaleFactor;
-    const float offsetY = (state.ui.height - scaledHeight) * 0.5f;
+    // Mirror Vulkan behavior: Scale up the content, maintaining proper aspect ratio
+    D2D1_RECT_F dest = {0.0f, 0.0f, static_cast<float>(state.ui.width), static_cast<float>(state.ui.height)};
+    D2D1_RECT_F src = {0.0f, 0.0f, static_cast<float>(d2dCtx.textureWidth), static_cast<float>(d2dCtx.textureHeight)};
 
-    D2D1_RECT_F destRect = D2D1::RectF(
-        0.0f,                               // Left
-        offsetY,                            // Top (centered vertically)
-        static_cast<float>(state.ui.width), // Right
-        offsetY + scaledHeight              // Bottom
-    );
+    d2dCtx.dc->DrawBitmap(d2dCtx.frameBitmap.Get(), &dest, 1.0f, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, &src);
 
-    D2D1_RECT_F sourceRect = D2D1::RectF(
-        0.0f, 0.0f,                           // Top-left corner
-        static_cast<float>(MIN_CLIENT_WIDTH), // Right
-        static_cast<float>(MIN_CLIENT_HEIGHT) // Bottom
-    );
-
-    renderTarget->DrawBitmap(
-        bitmap.Get(),
-        destRect,
-        1.0f, // Opacity
-        D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR,
-        sourceRect);
-
-    HRESULT hr = renderTarget->EndDraw();
+    HRESULT hr = d2dCtx.dc->EndDraw();
     if (FAILED(hr))
-    {
-        throw std::runtime_error("Failed to draw frame");
-    }
+        throw std::runtime_error("Failed draw");
+
+    d2dCtx.targetBitmap.Reset();
+    d2dCtx.swapchain->Present(1, 0);
 }
 
-/*
-===============================================================================
-Function Name: renderFrameRaycast
-
-Description:
-    - Renders the raycast view into the Direct2D bitmap and draws
-    it to the render target.
-===============================================================================
-*/
 void renderFrameRaycast()
 {
-    if (!renderTarget || !bitmap)
-    {
-        throw std::runtime_error("Render target or bitmap not initialized");
-    }
-
-    // Get the map and player from state
-    const auto &tileMap = *state.raycast.map;
+    const auto &map = *state.raycast.map;
     const RaycastPlayer &player = state.raycast.player;
 
-    // Render the raycast view into the BGRA buffer
-    renderRaycastView(
-        tileMap,
-        player,
-        bgraBuffer.data(),
-        state.ui.width,
-        state.ui.height,
-        config.value("raycastSupersample", 1));
+    auto mapped = mapTexture();
+    uint8_t *dst = static_cast<uint8_t *>(mapped.pData);
+    size_t pitch = mapped.RowPitch;
 
-    // Copy to D2D bitmap
-    bitmap->CopyFromMemory(nullptr, bgraBuffer.data(), state.ui.width * 4);
+    renderRaycastView(map, player, dst, pitch, state.ui.width, state.ui.height);
 
-    // Draw the frame
-    renderTarget->BeginDraw();
-    renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
+    unmapTexture();
 
-    D2D1_RECT_F destRect = D2D1::RectF(
-        0.0f,
-        0.0f,
-        static_cast<float>(state.ui.width),
-        static_cast<float>(state.ui.height));
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
+    d2dCtx.swapchain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf()));
 
-    D2D1_RECT_F sourceRect = D2D1::RectF(
-        0.0f,
-        0.0f,
-        static_cast<float>(state.ui.width),
-        static_cast<float>(state.ui.height));
+    Microsoft::WRL::ComPtr<IDXGISurface> backSurface;
+    backBuffer.As(&backSurface);
 
-    renderTarget->DrawBitmap(
-        bitmap.Get(),
-        destRect,
-        1.0f,
-        D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR,
-        sourceRect);
+    D2D1_BITMAP_PROPERTIES1 targetProps = D2D1::BitmapProperties1(D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW, D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE));
+    d2dCtx.dc->CreateBitmapFromDxgiSurface(backSurface.Get(), &targetProps, d2dCtx.targetBitmap.GetAddressOf());
 
-    HRESULT hr = renderTarget->EndDraw();
+    d2dCtx.dc->SetTarget(d2dCtx.targetBitmap.Get());
+    d2dCtx.dc->BeginDraw();
+    d2dCtx.dc->Clear(D2D1::ColorF(D2D1::ColorF::Black));
+
+    D2D1_RECT_F dest = {0.0f, 0.0f, static_cast<float>(state.ui.width), static_cast<float>(state.ui.height)};
+    D2D1_RECT_F src = {0.0f, 0.0f, static_cast<float>(state.ui.width), static_cast<float>(state.ui.height)};
+
+    d2dCtx.dc->DrawBitmap(d2dCtx.frameBitmap.Get(), &dest, 1.0f, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, &src);
+
+    HRESULT hr = d2dCtx.dc->EndDraw();
     if (FAILED(hr))
-    {
-        throw std::runtime_error("Failed to draw raycast frame");
-    }
-}
-/*
-===============================================================================
-Function Name: cleanupD2D
+        throw std::runtime_error("Failed draw raycast");
 
-Description:
-    - Cleans up Direct2D resources and destroys the window.
-===============================================================================
-*/
+    d2dCtx.targetBitmap.Reset();
+    d2dCtx.swapchain->Present(1, 0);
+}
+
 void cleanupD2D()
 {
-    bitmap.Reset();
-    renderTarget.Reset();
-    factory.Reset();
+    d2dCtx = {};
     if (g_hwnd)
-    {
         DestroyWindow(g_hwnd);
-        g_hwnd = nullptr;
-    }
+    g_hwnd = nullptr;
 }

@@ -2,12 +2,10 @@
 #define VULKAN_H
 
 #include <vector>
-#include <string>
-
 #include <vulkan/vulkan.h>
 
 //
-// VulkanContext structure to hold Vulkan-related resources
+// Context for Vulkan rendering
 //
 struct VulkanContext
 {
@@ -16,7 +14,6 @@ struct VulkanContext
     VkDevice device{};
     VkQueue graphicsQueue{};
     VkCommandPool commandPool{};
-
     VkSurfaceKHR surface{};
     VkSwapchainKHR swapchain{};
     std::vector<VkImage> swapchainImages;
@@ -25,23 +22,31 @@ struct VulkanContext
     VkSemaphore imageAvailableSemaphore{};
     VkSemaphore renderFinishedSemaphore{};
     VkFence inFlightFence{};
-
     VkImage textureImage{};
     VkDeviceMemory textureImageMemory{};
     VkImageView textureImageView{};
     VkSampler textureSampler{};
-
     void *mappedTextureData{};
     VkDeviceSize textureRowPitch{};
-
     uint32_t graphicsQueueFamily = 0;
+    std::vector<uint8_t> rowBuffer;
+    std::vector<uint8_t> previousFrameData;
+    bool forceFullUpdate = true;
+    uint32_t textureWidth = 0;
+    uint32_t textureHeight = 0;
 };
 
-// Function prototypes for Vulkan rendering
+extern VulkanContext vkCtx;
+
+//==========================================================
+
+// Function prototypes
 
 void initializeVulkan();
 void resizeVulkanTexture(uint32_t width, uint32_t height);
 void recreateSwapchain(uint32_t width, uint32_t height);
+void *mapVulkanTexture();
+void unmapVulkanTexture();
 void renderFrameVk();
 void renderFrameRaycastVk();
 void presentFrame();

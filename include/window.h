@@ -22,14 +22,9 @@ extern float scaleFactor;
 extern HCURSOR currentCursor;
 extern bool g_menuActive;
 
-//=============================================================================
-
-// Function declarations
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam);
 BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData);
-
-//=============================================================================
 
 void initHandlers();
 void initWindow();
