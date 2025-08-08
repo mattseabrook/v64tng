@@ -36,9 +36,12 @@ void convertRGBtoBGRA_SSE(const uint8_t *rgbData, uint8_t *bgraData, size_t pixe
 
     for (; i < pixelCount; ++i)
     {
-        bgraData[i * 4 + 0] = rgbData[i * 3 + 0];
-        bgraData[i * 4 + 1] = rgbData[i * 3 + 1];
-        bgraData[i * 4 + 2] = rgbData[i * 3 + 2];
+        const uint8_t r = rgbData[i * 3 + 0];
+        const uint8_t g = rgbData[i * 3 + 1];
+        const uint8_t b = rgbData[i * 3 + 2];
+        bgraData[i * 4 + 0] = b;
+        bgraData[i * 4 + 1] = g;
+        bgraData[i * 4 + 2] = r;
         bgraData[i * 4 + 3] = 255;
     }
 }
