@@ -230,7 +230,7 @@ void accumulateColumn(int x,
 }
 
 // Draw a 2x2 square crosshair
-void drawCrosshair(uint8_t *fb, int w, int h)
+void drawCrosshair(uint8_t *fb, size_t pitch, int w, int h)
 {
     int cx = w / 2, cy = h / 2;
     for (int dy : {-1, 0})
@@ -240,7 +240,7 @@ void drawCrosshair(uint8_t *fb, int w, int h)
             int px = cx + dx, py = cy + dy;
             if (px >= 0 && px < w && py >= 0 && py < h)
             {
-                int idx = (py * w + px) * 4;
+                size_t idx = static_cast<size_t>(py) * pitch + static_cast<size_t>(px) * 4;
                 fb[idx] = 255;     // B
                 fb[idx + 1] = 255; // G
                 fb[idx + 2] = 255; // R
@@ -254,6 +254,7 @@ void drawCrosshair(uint8_t *fb, int w, int h)
 void renderChunk(const std::vector<std::vector<uint8_t>> &tileMap,
                  const RaycastPlayer &player,
                  uint8_t *framebuffer,
+                 size_t pitch,
                  int screenWidth,
                  int screenHeight,
                  int supersample,
@@ -281,7 +282,7 @@ void renderChunk(const std::vector<std::vector<uint8_t>> &tileMap,
         std::lock_guard lock(mutex);
         for (int y = 0; y < screenHeight; ++y)
         {
-            int idx = (y * screenWidth + x) * 4;
+            size_t idx = static_cast<size_t>(y) * pitch + static_cast<size_t>(x) * 4;
             framebuffer[idx] = static_cast<uint8_t>(std::min(accumB[y] / supersample, 255.0f));     // Blue
             framebuffer[idx + 1] = static_cast<uint8_t>(std::min(accumG[y] / supersample, 255.0f)); // Green
             framebuffer[idx + 2] = static_cast<uint8_t>(std::min(accumR[y] / supersample, 255.0f)); // Red
@@ -294,12 +295,13 @@ void renderChunk(const std::vector<std::vector<uint8_t>> &tileMap,
 void renderRaycastView(const std::vector<std::vector<uint8_t>> &tileMap,
                        const RaycastPlayer &p,
                        uint8_t *fb,
+                       size_t pitch,
                        int w,
-                       int h,
-                       int ss)
+                       int h)
 {
     if (tileMap.empty() || tileMap[0].empty())
         return;
+    int ss = config["raycastSupersample"].get<int>();
     int nThreads = std::thread::hardware_concurrency();
     int chunk = w / nThreads;
     std::vector<std::jthread> threads;
@@ -308,11 +310,11 @@ void renderRaycastView(const std::vector<std::vector<uint8_t>> &tileMap,
         int s = i * chunk;
         int e = (i + 1 == nThreads) ? w : s + chunk;
         threads.emplace_back([=, &tileMap, &p, &fb]
-                             { renderChunk(tileMap, p, fb, w, h, ss, s, e); });
+                             { renderChunk(tileMap, p, fb, pitch, w, h, ss, s, e); });
     }
     // Wait for threads to finish
     threads.clear(); // Joins all threads
-    drawCrosshair(fb, w, h);
+    drawCrosshair(fb, pitch, w, h);
 }
 
 // Mouse handling for raycast mode
