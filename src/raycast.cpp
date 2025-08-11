@@ -425,6 +425,15 @@ void updateRaycasterMovement()
         float newX = x + dx;
         float newY = y + dy;
 
+        // Consistent wall test with raycaster: treat 0xF0-0xF3 as non-blocking
+        auto isWallAt = [&](int cx, int cy) -> bool
+        {
+            if (cx < 0 || cy < 0 || cx >= mapW || cy >= mapH)
+                return true; // Out of bounds is solid
+            uint8_t t = state.raycast.map->at(cy)[cx];
+            return (t >= 0x01 && (t < 0xF0 || t > 0xF3));
+        };
+
         // Check X movement with collision buffer
         bool canMoveX = true;
         int checkX = static_cast<int>(newX);
@@ -435,7 +444,7 @@ void updateRaycasterMovement()
             float rightEdge = newX + COLLISION_RADIUS;
             int rightCell = static_cast<int>(rightEdge);
             if (rightCell >= mapW || (rightCell >= 0 && checkY >= 0 && checkY < mapH &&
-                                      state.raycast.map->at(checkY)[rightCell]))
+                                      isWallAt(rightCell, checkY)))
                 canMoveX = false;
         }
         else if (dx < 0) // Moving left
@@ -443,7 +452,7 @@ void updateRaycasterMovement()
             float leftEdge = newX - COLLISION_RADIUS;
             int leftCell = static_cast<int>(leftEdge);
             if (leftCell < 0 || (leftCell < mapW && checkY >= 0 && checkY < mapH &&
-                                 state.raycast.map->at(checkY)[leftCell]))
+                                 isWallAt(leftCell, checkY)))
                 canMoveX = false;
         }
 
@@ -457,7 +466,7 @@ void updateRaycasterMovement()
             float bottomEdge = newY + COLLISION_RADIUS;
             int bottomCell = static_cast<int>(bottomEdge);
             if (bottomCell >= mapH || (bottomCell >= 0 && checkX >= 0 && checkX < mapW &&
-                                       state.raycast.map->at(bottomCell)[checkX]))
+                                       isWallAt(checkX, bottomCell)))
                 canMoveY = false;
         }
         else if (dy < 0) // Moving up
@@ -465,7 +474,7 @@ void updateRaycasterMovement()
             float topEdge = newY - COLLISION_RADIUS;
             int topCell = static_cast<int>(topEdge);
             if (topCell < 0 || (topCell < mapH && checkX >= 0 && checkX < mapW &&
-                                state.raycast.map->at(topCell)[checkX]))
+                                isWallAt(checkX, topCell)))
                 canMoveY = false;
         }
 
@@ -497,6 +506,11 @@ void initRaycaster()
     state.currentFPS = 60.0;
     float fovDeg = config.contains("raycastFov") ? static_cast<float>(config["raycastFov"]) : 90.0f;
     state.raycast.player.fov = deg2rad(fovDeg);
+
+    // Hide the OS cursor in raycast mode to avoid visible system pointer
+    // Ensure we decrement until the display count indicates hidden
+    while (ShowCursor(FALSE) >= 0)
+        ;
 
     if (!initializePlayerFromMap(*state.raycast.map, state.raycast.player))
     {

@@ -367,12 +367,12 @@ void toggleFullscreen()
 		g_windowedStyle = GetWindowLong(g_hwnd, GWL_STYLE);
 		g_windowedPlacement.length = sizeof(WINDOWPLACEMENT);
 		GetWindowPlacement(g_hwnd, &g_windowedPlacement);
-		
+
 		// Use the monitor the window is currently on, not the config display setting
 		HMONITOR currentMonitor = MonitorFromWindow(g_hwnd, MONITOR_DEFAULTTONEAREST);
 		MONITORINFOEX monitorInfo = {sizeof(MONITORINFOEX)};
 		const DisplayInfo *sel = nullptr;
-		
+
 		if (GetMonitorInfo(currentMonitor, &monitorInfo))
 		{
 			// Find the matching display info
@@ -385,7 +385,7 @@ void toggleFullscreen()
 				}
 			}
 		}
-		
+
 		// Fallback to config display if current monitor not found
 		if (!sel)
 		{
@@ -396,10 +396,10 @@ void toggleFullscreen()
 					sel = &disp;
 			}
 		}
-		
+
 		if (!sel && !state.ui.displays.empty())
 			sel = &state.ui.displays.front();
-			
+
 		SetWindowLong(g_hwnd, GWL_STYLE, g_windowedStyle & ~WS_OVERLAPPEDWINDOW);
 		SetWindowPos(g_hwnd, HWND_TOP, sel->bounds.left, sel->bounds.top, sel->bounds.right - sel->bounds.left, sel->bounds.bottom - sel->bounds.top, SWP_FRAMECHANGED);
 		ShowWindow(g_hwnd, SW_SHOW);
@@ -471,6 +471,9 @@ void initWindow()
 	{ // Raw input for low latency mouse
 		RAWINPUTDEVICE rid = {0x01, 0x02, 0, g_hwnd};
 		RegisterRawInputDevices(&rid, 1, sizeof(rid));
+		// Ensure the OS cursor is hidden at startup in raycast mode
+		while (ShowCursor(FALSE) >= 0)
+			;
 	}
 }
 
@@ -540,4 +543,10 @@ void renderFrame()
 	state.raycast.enabled ? renderRaycastFuncs[renderer]() : renderFrameFuncs[renderer]();
 }
 
-void cleanupWindow() { cleanupFuncs[renderer](); }
+void cleanupWindow()
+{
+	// Ensure the OS cursor is visible again on shutdown
+	while (ShowCursor(TRUE) < 0)
+		;
+	cleanupFuncs[renderer]();
+}

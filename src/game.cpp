@@ -375,25 +375,29 @@ void init()
 
 	buildViewMap();
 
-	// Intro Videos
+	// Intro Videos and initial music: skip entirely in raycast mode
+	if (!state.raycast.enabled)
 	{
-		std::ifstream file("Vielogo.vdx", std::ios::binary);
-		if (file)
+		// Intro Videos
 		{
-			std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)), {});
-			VDXFile vdx = parseVDXFile("Vielogo.vdx", std::span(buffer));
-			parseVDXChunks(vdx);
-			const size_t cropSize = 640 * 80 * 3;
-			for (auto &frame : vdx.frameData)
-				if (frame.size() > cropSize)
-					frame.erase(frame.begin(), frame.begin() + cropSize);
+			std::ifstream file("Vielogo.vdx", std::ios::binary);
+			if (file)
+			{
+				std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)), {});
+				VDXFile vdx = parseVDXFile("Vielogo.vdx", std::span(buffer));
+				parseVDXChunks(vdx);
+				const size_t cropSize = 640 * 80 * 3;
+				for (auto &frame : vdx.frameData)
+					if (frame.size() > cropSize)
+						frame.erase(frame.begin(), frame.begin() + cropSize);
 
-			vdxPlay("Vielogo.vdx", &vdx);
+				vdxPlay("Vielogo.vdx", &vdx);
+			}
+			vdxPlay("TRILOGO.VDX");
 		}
-		vdxPlay("TRILOGO.VDX");
-	}
 
-	xmiPlay("gu61");
+		xmiPlay("gu61");
+	}
 
 	viewHandler();
 	maybeRenderFrame(true);
