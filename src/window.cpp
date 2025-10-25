@@ -127,8 +127,12 @@ LRESULT HandleTimer(HWND hwnd, WPARAM wParam)
 	}
 	if (wParam == CURSOR_TIMER_ID && g_cursorsInitialized)
 	{
+		// Update cursor animation frame
 		updateCursorAnimation();
-		if (!g_menuActive)
+		
+		// Force Windows to send WM_SETCURSOR to update the displayed cursor
+		// This is needed for animated cursors to update their frames
+		if (!g_menuActive && !state.raycast.enabled)
 		{
 			POINT pt;
 			GetCursorPos(&pt);
@@ -136,7 +140,10 @@ LRESULT HandleTimer(HWND hwnd, WPARAM wParam)
 			RECT rc;
 			GetClientRect(hwnd, &rc);
 			if (PtInRect(&rc, pt))
-				SetCursor(getCurrentCursor());
+			{
+				// Trigger a WM_SETCURSOR message
+				SendMessage(hwnd, WM_SETCURSOR, (WPARAM)hwnd, MAKELPARAM(HTCLIENT, WM_MOUSEMOVE));
+			}
 		}
 	}
 	return 0;
@@ -155,27 +162,19 @@ LRESULT HandleSetCursor(LPARAM lParam)
 {
 	if (g_menuActive || LOWORD(lParam) != HTCLIENT)
 		return g_menuActive ? (SetCursor(LoadCursor(nullptr, IDC_ARROW)), TRUE) : DefWindowProc(g_hwnd, WM_SETCURSOR, WPARAM(g_hwnd), lParam);
-	SetCursor(getCurrentCursor());
+	
+	// Always set the cursor based on current state - Windows expects this in WM_SETCURSOR
+	HCURSOR desiredCursor = getCurrentCursor();
+	SetCursor(desiredCursor);
+	currentCursor = desiredCursor;
 	return TRUE;
 }
 
 LRESULT HandleNCHitTest(HWND hwnd, LPARAM lParam)
 {
-	LRESULT hit = DefWindowProc(hwnd, WM_NCHITTEST, 0, lParam);
-	if (hit != HTCLIENT)
-		return hit;
-	POINT pt = {LOWORD(lParam), HIWORD(lParam)};
-	RECT rc;
-	GetWindowRect(hwnd, &rc);
-	pt.x -= rc.left;
-	pt.y -= rc.top;
-	int border = GetSystemMetrics(SM_CXSIZEFRAME) * 3;
-	int w = rc.right - rc.left, h = rc.bottom - rc.top;
-	if (pt.x < border)
-		return (pt.y < border ? HTTOPLEFT : (pt.y >= h - border ? HTBOTTOMLEFT : HTLEFT));
-	if (pt.x >= w - border)
-		return (pt.y < border ? HTTOPRIGHT : (pt.y >= h - border ? HTBOTTOMRIGHT : HTRIGHT));
-	return (pt.y < border ? HTTOP : (pt.y >= h - border ? HTBOTTOM : HTCLIENT));
+	// Rely on the default system hit-testing to avoid misclassifying client area as resize borders.
+	// This prevents stray resize cursors flickering inside the client region.
+	return DefWindowProc(hwnd, WM_NCHITTEST, 0, lParam);
 }
 
 LRESULT HandleMouseMove(LPARAM lParam)
@@ -190,7 +189,7 @@ LRESULT HandleLButtonDown(LPARAM lParam)
 	POINT pt = {LOWORD(lParam), HIWORD(lParam)};
 	float nx = static_cast<float>(pt.x) / state.ui.width * 100.0f;
 	float ny = static_cast<float>(pt.y) / state.ui.height * 100.0f;
-	if (state.animation.isPlaying || state.transient_animation.isPlaying || !state.currentVDX)
+	if (state.animation.isPlaying || state.transient_animation.isPlaying || !state.currentVDX || !state.view)
 		return 0;
 	int maxZ = -1;
 	size_t tgtIdx = 0;
@@ -224,10 +223,18 @@ LRESULT HandleLButtonDown(LPARAM lParam)
 	{
 		state.current_view = state.view->navigations[tgtIdx].next_view;
 		state.animation_sequence.clear();
+		// Apply the view change immediately for snappy feedback
+		viewHandler();
+		maybeRenderFrame(true);
+		forceUpdateCursor();
 	}
 	else if (tgt == Tgt::Hot && state.view->hotspots[tgtIdx].action)
 	{
 		state.view->hotspots[tgtIdx].action();
+		// If hotspot triggered any animation/view, refresh promptly
+		viewHandler();
+		maybeRenderFrame(true);
+		forceUpdateCursor();
 	}
 	return 0;
 }
@@ -502,13 +509,12 @@ void updateCursorBasedOnPosition(POINT clientPos)
 {
 	if (g_menuActive)
 	{
-		SetCursor(LoadCursor(nullptr, IDC_ARROW));
+		g_activeCursorType = CURSOR_DEFAULT; // Will use system arrow
 		return;
 	}
-	if (state.raycast.enabled || state.animation.isPlaying || state.transient_animation.isPlaying)
+	if (state.raycast.enabled || state.animation.isPlaying || state.transient_animation.isPlaying || !state.view)
 	{
-		currentCursor = getCurrentCursor(); // Transparent
-		SetCursor(currentCursor);
+		g_activeCursorType = CURSOR_DEFAULT; // Will show transparent or default
 		return;
 	}
 	float nx = static_cast<float>(clientPos.x) / state.ui.width * 100.0f;
@@ -534,8 +540,7 @@ void updateCursorBasedOnPosition(POINT clientPos)
 		}
 	}
 	g_activeCursorType = static_cast<CursorType>(newType);
-	currentCursor = getCurrentCursor();
-	SetCursor(currentCursor);
+	// DO NOT call SetCursor() here - let WM_SETCURSOR handle it
 }
 
 void renderFrame()

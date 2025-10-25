@@ -123,7 +123,7 @@ struct GameState
 	std::string current_room = "FH";			// Default room (corresponds to RL/GJD file set)
 	std::string previous_room;					// Avoid re-rendering
 	std::string current_view = "f_1bc;static";	// Default view (corresponds to VDXFile .filename struct member)
-	std::string previous_view = "f_1bc;static"; // Avoid re-rendering
+	std::string previous_view = ""; 			// Avoid re-rendering (empty to force initial setup)
 
 	//
 	// 2D & FMV Graphics
