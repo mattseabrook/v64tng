@@ -32,6 +32,9 @@ void initializeD2D()
     if (FAILED(hr))
         throw std::runtime_error("Failed D2D context");
 
+    // Ensure all coordinates are interpreted as physical pixels to match Vulkan behavior
+    d2dCtx.dc->SetUnitMode(D2D1_UNIT_MODE_PIXELS);
+
     Microsoft::WRL::ComPtr<IDXGIFactory2> dxgiFactory;
     hr = CreateDXGIFactory1(IID_PPV_ARGS(dxgiFactory.GetAddressOf()));
     if (FAILED(hr))
@@ -56,6 +59,9 @@ void initializeD2D()
     UINT texW = state.raycast.enabled ? state.ui.width : MIN_CLIENT_WIDTH;
     UINT texH = state.raycast.enabled ? state.ui.height : MIN_CLIENT_HEIGHT;
     resizeTexture(texW, texH);
+
+    // Match Vulkan: establish initial scale factor for correct cursor scaling at startup
+    scaleFactor = state.raycast.enabled ? 1.0f : static_cast<float>(state.ui.width) / MIN_CLIENT_WIDTH;
 }
 
 void resizeTexture(UINT width, UINT height)
@@ -139,9 +145,21 @@ void renderFrameD2D()
     d2dCtx.dc->BeginDraw();
     d2dCtx.dc->Clear(D2D1::ColorF(D2D1::ColorF::Black));
 
-    // Mirror Vulkan behavior: Scale up the content, maintaining proper aspect ratio
-    D2D1_RECT_F dest = {0.0f, 0.0f, static_cast<float>(state.ui.width), static_cast<float>(state.ui.height)};
+    // Mirror Vulkan behavior precisely:
+    // - Raycast: fill entire client area.
+    // - FMV/2D: keep 640x320 logical content, scale to window width and letterbox vertically.
     D2D1_RECT_F src = {0.0f, 0.0f, static_cast<float>(d2dCtx.textureWidth), static_cast<float>(d2dCtx.textureHeight)};
+    D2D1_RECT_F dest;
+    if (state.raycast.enabled)
+    {
+        dest = {0.0f, 0.0f, static_cast<float>(state.ui.width), static_cast<float>(state.ui.height)};
+    }
+    else
+    {
+        float scaledH = MIN_CLIENT_HEIGHT * scaleFactor;
+        float offsetY = (static_cast<float>(state.ui.height) - scaledH) * 0.5f;
+        dest = {0.0f, offsetY, static_cast<float>(state.ui.width), offsetY + scaledH};
+    }
 
     d2dCtx.dc->DrawBitmap(d2dCtx.frameBitmap.Get(), &dest, 1.0f, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, &src);
 

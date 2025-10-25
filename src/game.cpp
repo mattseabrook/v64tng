@@ -406,6 +406,11 @@ void init()
 	{
 		std::cerr << "WARNING: Failed to initialize cursors, using system defaults\n";
 	}
+	else
+	{
+		// Ensure the correctly scaled cursor is shown immediately at startup
+		forceUpdateCursor();
+	}
 
 	state.previous_room = state.current_room;
 	state.ui.enabled = true;

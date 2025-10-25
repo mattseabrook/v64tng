@@ -93,6 +93,15 @@ LRESULT HandleSize(HWND hwnd, WPARAM wParam)
 	}
 	if (renderer == RendererType::DIRECTX)
 	{
+        // IMPORTANT: Release references to the current backbuffer before resizing
+        // Otherwise, ResizeBuffers can fail silently due to outstanding references
+        // and the swapchain will keep the old size, causing double-scaling.
+        if (d2dCtx.dc)
+        {
+            d2dCtx.dc->SetTarget(nullptr);
+        }
+        d2dCtx.targetBitmap.Reset();
+
 		d2dCtx.swapchain->ResizeBuffers(0, newW, newH, DXGI_FORMAT_UNKNOWN, 0);
 		// For DirectX, resize texture to proper dimensions based on raycast mode
 		// In non-raycast mode, keep texture at MIN_CLIENT size for proper scaling
