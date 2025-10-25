@@ -4,7 +4,7 @@
 #include <span>
 #include <cstdint>
 #include <algorithm>
-#include <ranges>
+#include <array>
 
 #include "bitmap.h"
 
@@ -94,6 +94,10 @@ std::vector<uint8_t> packBitmapData(std::span<const uint8_t> rawImageData, std::
 	std::vector<uint8_t> chunkData{static_cast<uint8_t>(numXTiles & 0xFF), static_cast<uint8_t>(numXTiles >> 8),
 								   static_cast<uint8_t>(numYTiles & 0xFF), static_cast<uint8_t>(numYTiles >> 8),
 								   8, 0}; // colourDepth = 8
+
+	// Pre-reserve to avoid reallocations: header(6) + palette + per-tile 4 bytes
+	const size_t tiles = static_cast<size_t>(numXTiles) * static_cast<size_t>(numYTiles);
+	chunkData.reserve(6 + palette.size() * 3 + tiles * 4);
 
 	for (const auto &color : palette)
 	{

@@ -7,7 +7,6 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
-#include <ranges>
 #include <cstdlib>
 #include <stdexcept>
 #include <cstdio>

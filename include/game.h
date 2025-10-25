@@ -162,7 +162,7 @@ struct GameState
 			0.2f,			// Walk speed
 			0.4f			// Run speed
 		};
-		std::vector<std::vector<uint8_t>> *map = nullptr; // Current map data
+		const std::vector<std::vector<uint8_t>> *map = nullptr; // Current map data (read-only)
 	} raycast;
 
 	//

@@ -1,11 +1,9 @@
 // vdx.cpp
 
 #include <vector>
-#include <tuple>
 #include <fstream>
 #include <filesystem>
 #include <algorithm>
-#include <thread>
 
 #include "vdx.h"
 #include "rl.h"
@@ -47,6 +45,21 @@ VDXFile parseVDXFile(std::string_view filename, std::span<const uint8_t> buffer)
 
 	vdxFile.rawData.assign(buffer.begin(), buffer.end());
 	std::span<const uint8_t> rawSpan{vdxFile.rawData};
+
+	// Pre-reserve an accurate chunk count to avoid vector growth
+	size_t preCount = 0;
+	if (rawSpan.size() >= 8)
+	{
+		size_t off = 8;
+		while (off + 8 <= rawSpan.size())
+		{
+			// Read chunk header to advance
+			const uint32_t dataSize = rawSpan[off + 2] | (rawSpan[off + 3] << 8) | (rawSpan[off + 4] << 16) | (rawSpan[off + 5] << 24);
+			++preCount;
+			off += 8u + static_cast<size_t>(dataSize);
+		}
+	}
+	vdxFile.chunks.reserve(preCount);
 
 	vdxFile.identifier = rawSpan[0] | (rawSpan[1] << 8);
 	std::copy(rawSpan.begin() + 2, rawSpan.begin() + 8, vdxFile.unknown.begin());
@@ -284,7 +297,8 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 
 		maybeRenderFrame();
 
-		vdxToUse->frameData[state.currentFrameIndex].clear();
+	// Free memory for frames already presented to keep peak usage low
+	vdxToUse->frameData[state.currentFrameIndex] = {};
 	}
 
 	// Restore

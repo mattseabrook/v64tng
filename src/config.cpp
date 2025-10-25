@@ -6,6 +6,7 @@
 
 #include <fstream>
 #include <filesystem>
+#include <iomanip>
 #include <windows.h>
 
 nlohmann::json config;

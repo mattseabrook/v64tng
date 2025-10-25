@@ -10,7 +10,7 @@
 // Variables
 HWND g_hwndMapOverlay = nullptr;
 bool g_mapOverlayVisible = false;
-static std::vector<std::vector<uint8_t>> *g_map = nullptr;
+static const std::vector<std::vector<uint8_t>> *g_map = nullptr;
 static RaycastPlayer *g_player = nullptr;
 static bool g_classRegistered = false;
 
@@ -42,6 +42,7 @@ std::string RenderMapString()
     const int W = static_cast<int>(state.raycast.map->at(0).size());
     const int H = static_cast<int>(state.raycast.map->size());
     std::string s;
+    s.reserve(static_cast<size_t>(H) * (static_cast<size_t>(W) + 1));
     int px = int(g_player->x + 0.5f), py = int(g_player->y + 0.5f);
 
     for (int y = 0; y < H; ++y)

@@ -48,6 +48,7 @@ void DetectCPUFeatures()
 std::string GenerateSystemInfoText()
 {
     std::string text;
+    text.reserve(160);
     text += "  SSE: " + std::string(cpuFeatures.sse ? "Yes" : "No") + "\n";
     text += "  SSE2: " + std::string(cpuFeatures.sse2 ? "Yes" : "No") + "\n";
     text += "  SSE3: " + std::string(cpuFeatures.sse3 ? "Yes" : "No") + "\n";
