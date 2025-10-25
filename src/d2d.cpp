@@ -44,7 +44,8 @@ void initializeD2D()
     swapDesc.BufferCount = 2;
     swapDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     swapDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    swapDesc.Scaling = DXGI_SCALING_STRETCH;
+    // Avoid DXGI scaling; we handle scaling explicitly in DrawBitmap
+    swapDesc.Scaling = DXGI_SCALING_NONE;
     swapDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     swapDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
     swapDesc.Width = state.ui.width;
@@ -54,6 +55,10 @@ void initializeD2D()
     hr = dxgiFactory->CreateSwapChainForHwnd(d2dCtx.d3dDevice.Get(), g_hwnd, &swapDesc, nullptr, nullptr, d2dCtx.swapchain.GetAddressOf());
     if (FAILED(hr))
         throw std::runtime_error("Failed swapchain");
+
+    // Try to cache IDXGISwapChain3 for backbuffer index
+    d2dCtx.swapchain.As(&d2dCtx.swapchain3);
+    recreateD2DTargets();
 
     // Mirror Vulkan texture sizing logic
     UINT texW = state.raycast.enabled ? state.ui.width : MIN_CLIENT_WIDTH;
@@ -93,6 +98,8 @@ void resizeTexture(UINT width, UINT height)
         throw std::runtime_error("Failed D2D bitmap from surface");
 
     d2dCtx.rowBuffer.resize(width * 4);
+    d2dCtx.frameBGRA.resize(static_cast<size_t>(width) * height * 4);
+    resizeFrameBuffers(d2dCtx.previousFrameData, d2dCtx.forceFullUpdate, width, height);
     d2dCtx.textureWidth = width;
     d2dCtx.textureHeight = height;
 }
@@ -120,27 +127,44 @@ void renderFrameD2D()
 
     std::span<const uint8_t> pixels = vdx->frameData[frameIdx];
 
+    // If the content source changed (e.g., intro -> foyer, or transient start/stop),
+    // force a full refresh to avoid mixing rows from the previous clip.
+    bool isTransient = (state.transientVDX != nullptr);
+    if (d2dCtx.lastVDX != vdx || d2dCtx.lastWasTransient != isTransient)
+    {
+        d2dCtx.forceFullUpdate = true;
+        d2dCtx.lastVDX = vdx;
+        d2dCtx.lastWasTransient = isTransient;
+    }
+    // Only convert changed rows, but always upload the full texture (WRITE_DISCARD invalidates previous GPU contents)
+    auto changed = getChangedRowsAndUpdatePrevious(pixels, d2dCtx.previousFrameData, d2dCtx.textureWidth, d2dCtx.textureHeight, d2dCtx.forceFullUpdate);
+    d2dCtx.forceFullUpdate = false;
+    for (size_t y : changed)
+    {
+        convertRGBRowToBGRA_SSE(pixels.data() + y * d2dCtx.textureWidth * 3, d2dCtx.rowBuffer.data(), d2dCtx.textureWidth);
+        std::memcpy(d2dCtx.frameBGRA.data() + y * static_cast<size_t>(d2dCtx.textureWidth) * 4, d2dCtx.rowBuffer.data(), static_cast<size_t>(d2dCtx.textureWidth) * 4);
+    }
+
     auto mapped = mapTexture();
     uint8_t *dst = static_cast<uint8_t *>(mapped.pData);
     size_t pitch = mapped.RowPitch;
-
+    const size_t rowSizeBytes = static_cast<size_t>(d2dCtx.textureWidth) * 4;
     for (int y = 0; y < d2dCtx.textureHeight; ++y)
     {
-        convertRGBtoBGRA_SSE(pixels.data() + y * d2dCtx.textureWidth * 3, d2dCtx.rowBuffer.data(), d2dCtx.textureWidth);
-        std::memcpy(dst + y * pitch, d2dCtx.rowBuffer.data(), d2dCtx.textureWidth * 4);
+        std::memcpy(dst + static_cast<size_t>(y) * pitch, d2dCtx.frameBGRA.data() + static_cast<size_t>(y) * rowSizeBytes, rowSizeBytes);
     }
-
     unmapTexture();
 
+    // Set target: create from the current backbuffer each frame for correctness
+    d2dCtx.dc->SetTarget(nullptr);
     Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
     d2dCtx.swapchain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf()));
-
     Microsoft::WRL::ComPtr<IDXGISurface> backSurface;
     backBuffer.As(&backSurface);
-
-    D2D1_BITMAP_PROPERTIES1 targetProps = D2D1::BitmapProperties1(D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW, D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE));
+    D2D1_BITMAP_PROPERTIES1 targetProps = D2D1::BitmapProperties1(
+        D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
+        D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE));
     d2dCtx.dc->CreateBitmapFromDxgiSurface(backSurface.Get(), &targetProps, d2dCtx.targetBitmap.GetAddressOf());
-
     d2dCtx.dc->SetTarget(d2dCtx.targetBitmap.Get());
     d2dCtx.dc->BeginDraw();
     d2dCtx.dc->Clear(D2D1::ColorF(D2D1::ColorF::Black));
@@ -167,6 +191,8 @@ void renderFrameD2D()
     if (FAILED(hr))
         throw std::runtime_error("Failed draw");
 
+    // Release target to avoid holding references across Present
+    d2dCtx.dc->SetTarget(nullptr);
     d2dCtx.targetBitmap.Reset();
     d2dCtx.swapchain->Present(1, 0);
 }
@@ -184,15 +210,15 @@ void renderFrameRaycast()
 
     unmapTexture();
 
+    d2dCtx.dc->SetTarget(nullptr);
     Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
     d2dCtx.swapchain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf()));
-
     Microsoft::WRL::ComPtr<IDXGISurface> backSurface;
     backBuffer.As(&backSurface);
-
-    D2D1_BITMAP_PROPERTIES1 targetProps = D2D1::BitmapProperties1(D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW, D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE));
+    D2D1_BITMAP_PROPERTIES1 targetProps = D2D1::BitmapProperties1(
+        D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
+        D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE));
     d2dCtx.dc->CreateBitmapFromDxgiSurface(backSurface.Get(), &targetProps, d2dCtx.targetBitmap.GetAddressOf());
-
     d2dCtx.dc->SetTarget(d2dCtx.targetBitmap.Get());
     d2dCtx.dc->BeginDraw();
     d2dCtx.dc->Clear(D2D1::ColorF(D2D1::ColorF::Black));
@@ -206,6 +232,7 @@ void renderFrameRaycast()
     if (FAILED(hr))
         throw std::runtime_error("Failed draw raycast");
 
+    d2dCtx.dc->SetTarget(nullptr);
     d2dCtx.targetBitmap.Reset();
     d2dCtx.swapchain->Present(1, 0);
 }
@@ -216,4 +243,69 @@ void cleanupD2D()
     if (g_hwnd)
         DestroyWindow(g_hwnd);
     g_hwnd = nullptr;
+}
+
+void recreateD2DTargets()
+{
+    d2dCtx.backTargets.clear();
+    if (!d2dCtx.swapchain3)
+        return;
+
+    // Assume 2 buffers per our swapchain creation
+    const UINT bufferCount = 2;
+    d2dCtx.backTargets.resize(bufferCount);
+
+    for (UINT i = 0; i < bufferCount; ++i)
+    {
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
+        if (FAILED(d2dCtx.swapchain3->GetBuffer(i, IID_PPV_ARGS(backBuffer.GetAddressOf()))))
+            continue;
+
+        Microsoft::WRL::ComPtr<IDXGISurface> backSurface;
+        backBuffer.As(&backSurface);
+
+        D2D1_BITMAP_PROPERTIES1 targetProps = D2D1::BitmapProperties1(
+            D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
+            D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE));
+
+        d2dCtx.dc->CreateBitmapFromDxgiSurface(backSurface.Get(), &targetProps, d2dCtx.backTargets[i].GetAddressOf());
+    }
+}
+
+void handleResizeD2D(int newW, int newH)
+{
+    // If renderer not initialized yet, defer resize
+    if (!d2dCtx.swapchain)
+        return;
+
+    // Release references to backbuffer and flush before resizing
+    if (d2dCtx.dc)
+    {
+        d2dCtx.dc->SetTarget(nullptr);
+        d2dCtx.dc->Flush();
+    }
+    d2dCtx.targetBitmap.Reset();
+    d2dCtx.backTargets.clear();
+
+    HRESULT hr = d2dCtx.swapchain->ResizeBuffers(0, newW, newH, DXGI_FORMAT_UNKNOWN, 0);
+    if (FAILED(hr))
+    {
+        // Retry once after extra flush
+        if (d2dCtx.dc)
+        {
+            d2dCtx.dc->SetTarget(nullptr);
+            d2dCtx.dc->Flush();
+        }
+        d2dCtx.targetBitmap.Reset();
+        d2dCtx.backTargets.clear();
+        d2dCtx.swapchain->ResizeBuffers(0, newW, newH, DXGI_FORMAT_UNKNOWN, 0);
+    }
+
+    // Recreate cached targets if desired (currently not used in render path)
+    // recreateD2DTargets();
+
+    // Texture sizing: raycast = window size, 2D = MIN_CLIENT size
+    UINT texW = state.raycast.enabled ? static_cast<UINT>(newW) : MIN_CLIENT_WIDTH;
+    UINT texH = state.raycast.enabled ? static_cast<UINT>(newH) : MIN_CLIENT_HEIGHT;
+    resizeTexture(texW, texH);
 }

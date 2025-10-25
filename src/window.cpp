@@ -80,7 +80,8 @@ void HandleSizing(WPARAM wParam, LPARAM lParam)
 
 LRESULT HandleSize(HWND hwnd, WPARAM wParam)
 {
-	if (!state.ui.enabled || wParam == SIZE_MINIMIZED)
+	// Allow resizing even before UI is fully enabled so intros scale correctly
+	if (wParam == SIZE_MINIMIZED)
 		return 0;
 	RECT client;
 	GetClientRect(hwnd, &client);
@@ -92,29 +93,9 @@ LRESULT HandleSize(HWND hwnd, WPARAM wParam)
 		forceUpdateCursor();
 	}
 	if (renderer == RendererType::DIRECTX)
-	{
-        // IMPORTANT: Release references to the current backbuffer before resizing
-        // Otherwise, ResizeBuffers can fail silently due to outstanding references
-        // and the swapchain will keep the old size, causing double-scaling.
-        if (d2dCtx.dc)
-        {
-            d2dCtx.dc->SetTarget(nullptr);
-        }
-        d2dCtx.targetBitmap.Reset();
-
-		d2dCtx.swapchain->ResizeBuffers(0, newW, newH, DXGI_FORMAT_UNKNOWN, 0);
-		// For DirectX, resize texture to proper dimensions based on raycast mode
-		// In non-raycast mode, keep texture at MIN_CLIENT size for proper scaling
-		UINT texW = state.raycast.enabled ? newW : MIN_CLIENT_WIDTH;
-		UINT texH = state.raycast.enabled ? newH : MIN_CLIENT_HEIGHT;
-		resizeTexture(texW, texH);
-	}
+		handleResizeD2D(newW, newH);
 	else
-	{
-		recreateSwapchain(newW, newH);
-		if (state.raycast.enabled)
-			resizeVulkanTexture(newW, newH);
-	}
+		handleResizeVulkan(newW, newH);
 	if (state.ui.width != newW || state.ui.height != newH)
 	{
 		state.ui.width = newW;

@@ -63,6 +63,61 @@ Parameters:
 	- height: New height of the texture.
 ===============================================================================
 */
+static uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+
+// Helper: create buffer
+static void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags props, VkBuffer &buffer, VkDeviceMemory &memory)
+{
+	VkBufferCreateInfo info{};
+	info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	info.size = size;
+	info.usage = usage;
+	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	vkCreateBuffer(vkCtx.device, &info, nullptr, &buffer);
+
+	VkMemoryRequirements req{};
+	vkGetBufferMemoryRequirements(vkCtx.device, buffer, &req);
+
+	VkMemoryAllocateInfo alloc{};
+	alloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	alloc.allocationSize = req.size;
+	alloc.memoryTypeIndex = findMemoryType(req.memoryTypeBits, props);
+	vkAllocateMemory(vkCtx.device, &alloc, nullptr, &memory);
+	vkBindBufferMemory(vkCtx.device, buffer, memory, 0);
+}
+
+static void destroyStaging()
+{
+	if (vkCtx.mappedStagingData)
+	{
+		vkUnmapMemory(vkCtx.device, vkCtx.stagingBufferMemory);
+		vkCtx.mappedStagingData = nullptr;
+	}
+	if (vkCtx.stagingBuffer)
+	{
+		vkDestroyBuffer(vkCtx.device, vkCtx.stagingBuffer, nullptr);
+		vkCtx.stagingBuffer = VK_NULL_HANDLE;
+	}
+	if (vkCtx.stagingBufferMemory)
+	{
+		vkFreeMemory(vkCtx.device, vkCtx.stagingBufferMemory, nullptr);
+		vkCtx.stagingBufferMemory = VK_NULL_HANDLE;
+	}
+}
+
+static void destroyTexture()
+{
+	if (vkCtx.textureSampler)
+		vkDestroySampler(vkCtx.device, vkCtx.textureSampler, nullptr), vkCtx.textureSampler = VK_NULL_HANDLE;
+	if (vkCtx.textureImageView)
+		vkDestroyImageView(vkCtx.device, vkCtx.textureImageView, nullptr), vkCtx.textureImageView = VK_NULL_HANDLE;
+	if (vkCtx.textureImage)
+		vkDestroyImage(vkCtx.device, vkCtx.textureImage, nullptr), vkCtx.textureImage = VK_NULL_HANDLE;
+	if (vkCtx.textureImageMemory)
+		vkFreeMemory(vkCtx.device, vkCtx.textureImageMemory, nullptr), vkCtx.textureImageMemory = VK_NULL_HANDLE;
+	vkCtx.textureImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+}
+
 static void createVulkanTexture(uint32_t width, uint32_t height)
 {
 	VkImageCreateInfo imageInfo = {};
@@ -73,9 +128,9 @@ static void createVulkanTexture(uint32_t width, uint32_t height)
 	imageInfo.mipLevels = 1;
 	imageInfo.arrayLayers = 1;
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
-	imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-	imageInfo.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
+	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL; // device-local optimal
+	imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
 	vkCreateImage(vkCtx.device, &imageInfo, nullptr, &vkCtx.textureImage);
 
@@ -85,16 +140,9 @@ static void createVulkanTexture(uint32_t width, uint32_t height)
 	VkMemoryAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = memReq.size;
-	allocInfo.memoryTypeIndex = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
+	allocInfo.memoryTypeIndex = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	vkAllocateMemory(vkCtx.device, &allocInfo, nullptr, &vkCtx.textureImageMemory);
 	vkBindImageMemory(vkCtx.device, vkCtx.textureImage, vkCtx.textureImageMemory, 0);
-
-	VkImageSubresource subres = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0};
-	VkSubresourceLayout layout = {};
-	vkGetImageSubresourceLayout(vkCtx.device, vkCtx.textureImage, &subres, &layout);
-	vkCtx.textureRowPitch = layout.rowPitch;
-	vkMapMemory(vkCtx.device, vkCtx.textureImageMemory, 0, VK_WHOLE_SIZE, 0, &vkCtx.mappedTextureData);
 
 	VkImageViewCreateInfo viewInfo = {};
 	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -116,11 +164,19 @@ static void createVulkanTexture(uint32_t width, uint32_t height)
 
 	vkCreateSampler(vkCtx.device, &samplerInfo, nullptr, &vkCtx.textureSampler);
 
+	// Create staging buffer (host visible, persistent map)
+	destroyStaging();
+	VkDeviceSize size = static_cast<VkDeviceSize>(width) * height * 4;
+	createBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vkCtx.stagingBuffer, vkCtx.stagingBufferMemory);
+	vkMapMemory(vkCtx.device, vkCtx.stagingBufferMemory, 0, VK_WHOLE_SIZE, 0, &vkCtx.mappedStagingData);
+	vkCtx.stagingRowPitch = static_cast<VkDeviceSize>(width) * 4;
+
 	vkCtx.rowBuffer.resize(width * 4);
 	vkCtx.previousFrameData.resize(width * height * 3);
 	vkCtx.forceFullUpdate = true;
 	vkCtx.textureWidth = width;
 	vkCtx.textureHeight = height;
+	vkCtx.textureImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 }
 
 /*
@@ -132,26 +188,7 @@ Description:
 	- This is called when cleaning up the Vulkan context.
 ===============================================================================
 */
-static void destroyTexture()
-{
-	if (vkCtx.mappedTextureData)
-		vkUnmapMemory(vkCtx.device, vkCtx.textureImageMemory);
-	if (vkCtx.textureSampler)
-		vkDestroySampler(vkCtx.device, vkCtx.textureSampler, nullptr);
-	if (vkCtx.textureImageView)
-		vkDestroyImageView(vkCtx.device, vkCtx.textureImageView, nullptr);
-	if (vkCtx.textureImage)
-		vkDestroyImage(vkCtx.device, vkCtx.textureImage, nullptr);
-	if (vkCtx.textureImageMemory)
-		vkFreeMemory(vkCtx.device, vkCtx.textureImageMemory, nullptr);
-
-	vkCtx.textureSampler = VK_NULL_HANDLE;
-	vkCtx.textureImageView = VK_NULL_HANDLE;
-	vkCtx.textureImage = VK_NULL_HANDLE;
-	vkCtx.textureImageMemory = VK_NULL_HANDLE;
-	vkCtx.mappedTextureData = nullptr;
-	vkCtx.textureRowPitch = 0;
-}
+// destroyTexture now defined above (refactored)
 
 /*
 ===============================================================================
@@ -169,6 +206,7 @@ Parameters:
 void resizeVulkanTexture(uint32_t width, uint32_t height)
 {
 	destroyTexture();
+	destroyStaging();
 	createVulkanTexture(width, height);
 }
 
@@ -214,6 +252,16 @@ void recreateSwapchain(uint32_t width, uint32_t height)
 	vkCtx.swapchainImages.resize(count);
 	vkGetSwapchainImagesKHR(vkCtx.device, vkCtx.swapchain, &count, vkCtx.swapchainImages.data());
 	vkCtx.swapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
+}
+
+void handleResizeVulkan(uint32_t newW, uint32_t newH)
+{
+	if (!vkCtx.swapchain)
+		return; // Renderer not initialized yet
+	recreateSwapchain(newW, newH);
+	if (state.raycast.enabled)
+		resizeVulkanTexture(newW, newH);
+	// For 2D/FMVs, texture remains MIN_CLIENT size; present scaling handles letterboxing
 }
 
 /*
@@ -298,22 +346,33 @@ void initializeVulkan()
 
 	recreateSwapchain(state.ui.width, state.ui.height);
 
-	VkSemaphoreCreateInfo semInfo = {};
-	semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	vkCreateSemaphore(vkCtx.device, &semInfo, nullptr, &vkCtx.imageAvailableSemaphore);
-	vkCreateSemaphore(vkCtx.device, &semInfo, nullptr, &vkCtx.renderFinishedSemaphore);
-
-	VkFenceCreateInfo fenceInfo = {};
-	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-	vkCreateFence(vkCtx.device, &fenceInfo, nullptr, &vkCtx.inFlightFence);
-
 	VkCommandPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolInfo.queueFamilyIndex = vkCtx.graphicsQueueFamily;
 	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 	vkCreateCommandPool(vkCtx.device, &poolInfo, nullptr, &vkCtx.commandPool);
+
+	// Allocate per-frame command buffers
+	VkCommandBufferAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.commandPool = vkCtx.commandPool;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandBufferCount = VulkanContext::MAX_FRAMES_IN_FLIGHT;
+	vkAllocateCommandBuffers(vkCtx.device, &allocInfo, vkCtx.commandBuffers);
+
+	// Create per-frame semaphores and fences
+	VkSemaphoreCreateInfo semInfo = {};
+	semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	VkFenceCreateInfo fenceInfo = {};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+	for (uint32_t i = 0; i < VulkanContext::MAX_FRAMES_IN_FLIGHT; ++i)
+	{
+		vkCreateSemaphore(vkCtx.device, &semInfo, nullptr, &vkCtx.imageAvailableSemaphores[i]);
+		vkCreateSemaphore(vkCtx.device, &semInfo, nullptr, &vkCtx.renderFinishedSemaphores[i]);
+		vkCreateFence(vkCtx.device, &fenceInfo, nullptr, &vkCtx.inFlightFences[i]);
+	}
 
 	uint32_t texW = state.raycast.enabled ? state.ui.width : MIN_CLIENT_WIDTH;
 	uint32_t texH = state.raycast.enabled ? state.ui.height : MIN_CLIENT_HEIGHT;
@@ -338,8 +397,8 @@ void renderFrameVk()
 
 	std::span<const uint8_t> pixels = vdx->frameData[frameIdx];
 
-	uint8_t *dst = static_cast<uint8_t *>(vkCtx.mappedTextureData);
-	size_t pitch = vkCtx.textureRowPitch;
+	uint8_t *dst = static_cast<uint8_t *>(vkCtx.mappedStagingData);
+	size_t pitch = static_cast<size_t>(vkCtx.stagingRowPitch);
 
 	auto changed = getChangedRowsAndUpdatePrevious(pixels, vkCtx.previousFrameData, MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT, vkCtx.forceFullUpdate || !state.transient_animation_name.empty());
 	vkCtx.forceFullUpdate = false;
@@ -367,8 +426,8 @@ void renderFrameRaycastVk()
 	const auto &map = *state.raycast.map;
 	const RaycastPlayer &player = state.raycast.player;
 
-	uint8_t *dst = static_cast<uint8_t *>(vkCtx.mappedTextureData);
-	size_t pitch = vkCtx.textureRowPitch;
+	uint8_t *dst = static_cast<uint8_t *>(vkCtx.mappedStagingData);
+	size_t pitch = static_cast<size_t>(vkCtx.stagingRowPitch);
 
 	// Assume modified to use pitch
 	renderRaycastView(map, player, dst, pitch, state.ui.width, state.ui.height);
@@ -387,20 +446,15 @@ Description:
 */
 void presentFrame()
 {
-	vkWaitForFences(vkCtx.device, 1, &vkCtx.inFlightFence, VK_TRUE, UINT64_MAX);
-	vkResetFences(vkCtx.device, 1, &vkCtx.inFlightFence);
+	uint32_t frame = vkCtx.currentFrame;
+	vkWaitForFences(vkCtx.device, 1, &vkCtx.inFlightFences[frame], VK_TRUE, UINT64_MAX);
+	vkResetFences(vkCtx.device, 1, &vkCtx.inFlightFences[frame]);
 
 	uint32_t imgIdx;
-	vkAcquireNextImageKHR(vkCtx.device, vkCtx.swapchain, UINT64_MAX, vkCtx.imageAvailableSemaphore, VK_NULL_HANDLE, &imgIdx);
+	vkAcquireNextImageKHR(vkCtx.device, vkCtx.swapchain, UINT64_MAX, vkCtx.imageAvailableSemaphores[frame], VK_NULL_HANDLE, &imgIdx);
 
-	VkCommandBufferAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.commandPool = vkCtx.commandPool;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandBufferCount = 1;
-
-	VkCommandBuffer cmdBuf;
-	vkAllocateCommandBuffers(vkCtx.device, &allocInfo, &cmdBuf);
+	VkCommandBuffer cmdBuf = vkCtx.commandBuffers[frame];
+	vkResetCommandBuffer(cmdBuf, 0);
 
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -418,16 +472,40 @@ void presentFrame()
 	barrier.subresourceRange.layerCount = 1;
 	vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
+	// Transition texture image to TRANSFER_DST_OPTIMAL
 	VkImageMemoryBarrier texBarrier = {};
 	texBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	texBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
-	texBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-	texBarrier.oldLayout = texBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	texBarrier.srcAccessMask = (vkCtx.textureImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) ? VK_ACCESS_TRANSFER_READ_BIT : 0;
+	texBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	texBarrier.oldLayout = vkCtx.textureImageLayout;
+	texBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	texBarrier.image = vkCtx.textureImage;
 	texBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	texBarrier.subresourceRange.levelCount = 1;
 	texBarrier.subresourceRange.layerCount = 1;
-	vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &texBarrier);
+	vkCmdPipelineBarrier(cmdBuf, (vkCtx.textureImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) ? VK_PIPELINE_STAGE_TRANSFER_BIT : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+						 VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &texBarrier);
+
+	// Copy buffer -> image (full image)
+	VkBufferImageCopy copyRegion{};
+	copyRegion.bufferOffset = 0;
+	copyRegion.bufferRowLength = 0; // tightly packed
+	copyRegion.bufferImageHeight = 0;
+	copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	copyRegion.imageSubresource.mipLevel = 0;
+	copyRegion.imageSubresource.baseArrayLayer = 0;
+	copyRegion.imageSubresource.layerCount = 1;
+	copyRegion.imageOffset = {0, 0, 0};
+	copyRegion.imageExtent = {vkCtx.textureWidth, vkCtx.textureHeight, 1};
+	vkCmdCopyBufferToImage(cmdBuf, vkCtx.stagingBuffer, vkCtx.textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+
+	// Transition texture to TRANSFER_SRC for blit/copy
+	texBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	texBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	texBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	texBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &texBarrier);
+	vkCtx.textureImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
 	VkImageBlit blit = {};
 	blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -435,6 +513,7 @@ void presentFrame()
 	blit.srcOffsets[1] = {static_cast<int32_t>(vkCtx.textureWidth), static_cast<int32_t>(vkCtx.textureHeight), 1};
 	blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	blit.dstSubresource.layerCount = 1;
+	bool sameSize = state.raycast.enabled && vkCtx.textureWidth == vkCtx.swapchainExtent.width && vkCtx.textureHeight == vkCtx.swapchainExtent.height;
 	if (state.raycast.enabled)
 	{
 		blit.dstOffsets[1] = {static_cast<int32_t>(vkCtx.swapchainExtent.width), static_cast<int32_t>(vkCtx.swapchainExtent.height), 1};
@@ -449,7 +528,20 @@ void presentFrame()
 		blit.dstOffsets[1].z = 1;
 	}
 
-	vkCmdBlitImage(cmdBuf, vkCtx.textureImage, VK_IMAGE_LAYOUT_GENERAL, vkCtx.swapchainImages[imgIdx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_NEAREST);
+	if (sameSize)
+	{
+		VkImageCopy imgCopy{};
+		imgCopy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imgCopy.srcSubresource.layerCount = 1;
+		imgCopy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imgCopy.dstSubresource.layerCount = 1;
+		imgCopy.extent = {vkCtx.textureWidth, vkCtx.textureHeight, 1};
+		vkCmdCopyImage(cmdBuf, vkCtx.textureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, vkCtx.swapchainImages[imgIdx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imgCopy);
+	}
+	else
+	{
+		vkCmdBlitImage(cmdBuf, vkCtx.textureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, vkCtx.swapchainImages[imgIdx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_NEAREST);
+	}
 
 	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -462,25 +554,25 @@ void presentFrame()
 	VkSubmitInfo submit = {};
 	submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submit.waitSemaphoreCount = 1;
-	submit.pWaitSemaphores = &vkCtx.imageAvailableSemaphore;
+	submit.pWaitSemaphores = &vkCtx.imageAvailableSemaphores[frame];
 	submit.pWaitDstStageMask = &waitStage;
 	submit.commandBufferCount = 1;
 	submit.pCommandBuffers = &cmdBuf;
 	submit.signalSemaphoreCount = 1;
-	submit.pSignalSemaphores = &vkCtx.renderFinishedSemaphore;
+	submit.pSignalSemaphores = &vkCtx.renderFinishedSemaphores[frame];
 
-	vkQueueSubmit(vkCtx.graphicsQueue, 1, &submit, vkCtx.inFlightFence);
+	vkQueueSubmit(vkCtx.graphicsQueue, 1, &submit, vkCtx.inFlightFences[frame]);
 
 	VkPresentInfoKHR present = {};
 	present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	present.waitSemaphoreCount = 1;
-	present.pWaitSemaphores = &vkCtx.renderFinishedSemaphore;
+	present.pWaitSemaphores = &vkCtx.renderFinishedSemaphores[frame];
 	present.swapchainCount = 1;
 	present.pSwapchains = &vkCtx.swapchain;
 	present.pImageIndices = &imgIdx;
 	vkQueuePresentKHR(vkCtx.graphicsQueue, &present);
 
-	vkFreeCommandBuffers(vkCtx.device, vkCtx.commandPool, 1, &cmdBuf);
+	vkCtx.currentFrame = (vkCtx.currentFrame + 1) % VulkanContext::MAX_FRAMES_IN_FLIGHT;
 }
 
 /*
@@ -495,16 +587,17 @@ Description:
 void cleanupVulkan()
 {
 	destroyTexture();
+	destroyStaging();
 	if (vkCtx.swapchain)
 		vkDestroySwapchainKHR(vkCtx.device, vkCtx.swapchain, nullptr);
 	if (vkCtx.surface)
 		vkDestroySurfaceKHR(vkCtx.instance, vkCtx.surface, nullptr);
-	if (vkCtx.imageAvailableSemaphore)
-		vkDestroySemaphore(vkCtx.device, vkCtx.imageAvailableSemaphore, nullptr);
-	if (vkCtx.renderFinishedSemaphore)
-		vkDestroySemaphore(vkCtx.device, vkCtx.renderFinishedSemaphore, nullptr);
-	if (vkCtx.inFlightFence)
-		vkDestroyFence(vkCtx.device, vkCtx.inFlightFence, nullptr);
+	for (uint32_t i = 0; i < VulkanContext::MAX_FRAMES_IN_FLIGHT; ++i)
+	{
+		if (vkCtx.imageAvailableSemaphores[i]) vkDestroySemaphore(vkCtx.device, vkCtx.imageAvailableSemaphores[i], nullptr);
+		if (vkCtx.renderFinishedSemaphores[i]) vkDestroySemaphore(vkCtx.device, vkCtx.renderFinishedSemaphores[i], nullptr);
+		if (vkCtx.inFlightFences[i]) vkDestroyFence(vkCtx.device, vkCtx.inFlightFences[i], nullptr);
+	}
 	if (vkCtx.commandPool)
 		vkDestroyCommandPool(vkCtx.device, vkCtx.commandPool, nullptr);
 	if (vkCtx.device)

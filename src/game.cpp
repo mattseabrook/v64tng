@@ -346,7 +346,37 @@ void maybeRenderFrame(bool force)
 		return;
 
 	if (timeSinceLast < frameDuration)
+	{
+#ifdef _WIN32
+		// Use a high-resolution waitable timer to reduce jitter compared to sleep_for
+		static HANDLE s_timer = nullptr;
+		if (!s_timer)
+		{
+			s_timer = CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+			if (!s_timer)
+			{
+				// Fallback to normal timer if high-res not supported
+				s_timer = CreateWaitableTimerW(nullptr, FALSE, nullptr);
+			}
+		}
+		auto remaining = duration_cast<microseconds>(frameDuration - timeSinceLast);
+		// SetWaitableTimer expects relative time in 100-ns units (negative for relative)
+		LARGE_INTEGER dueTime;
+		long long hundredNs = -static_cast<long long>(remaining.count()) * 10; // microseconds to 100ns
+		dueTime.QuadPart = hundredNs;
+		// Use a small period of 0; do not resume; no completion routine
+		if (s_timer && SetWaitableTimer(s_timer, &dueTime, 0, nullptr, nullptr, FALSE))
+		{
+			WaitForSingleObject(s_timer, INFINITE);
+		}
+		else
+		{
+			std::this_thread::sleep_for(remaining);
+		}
+#else
 		std::this_thread::sleep_for(frameDuration - timeSinceLast);
+#endif
+	}
 
 	renderFrame();
 	state.lastRenderTime = steady_clock::now();

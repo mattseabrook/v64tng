@@ -105,22 +105,45 @@ std::vector<size_t> getChangedRowsAndUpdatePrevious(std::span<const uint8_t> rgb
 {
     std::vector<size_t> changed;
     const size_t rowSize = static_cast<size_t>(width) * 3;
+    const size_t expectedSize = static_cast<size_t>(width) * height * 3;
+
+    // Ensure previous buffer matches the expected full frame size
+    if (previousFrameData.size() != expectedSize)
+        previousFrameData.assign(expectedSize, 0);
 
     if (forceFull)
     {
         changed.resize(height);
         std::iota(changed.begin(), changed.end(), 0);
-        previousFrameData.assign(rgbData.begin(), rgbData.end());
+        // Copy row-by-row; if rgbData is smaller (e.g., cropped intros), pad missing rows with zeros
+        for (int y = 0; y < height; ++y)
+        {
+            const size_t srcOffset = static_cast<size_t>(y) * rowSize;
+            uint8_t *dstRow = previousFrameData.data() + static_cast<size_t>(y) * rowSize;
+            if (srcOffset + rowSize <= rgbData.size())
+            {
+                std::memcpy(dstRow, rgbData.data() + srcOffset, rowSize);
+            }
+            else
+            {
+                std::memset(dstRow, 0, rowSize);
+            }
+        }
         return changed;
     }
 
     for (size_t y = 0; y < static_cast<size_t>(height); ++y)
     {
-        const uint8_t *srcRow = rgbData.data() + y * rowSize;
+        const size_t srcOffset = y * rowSize;
+        const bool srcAvailable = srcOffset + rowSize <= rgbData.size();
+        const uint8_t *srcRow = srcAvailable ? (rgbData.data() + srcOffset) : nullptr;
         uint8_t *prevRow = previousFrameData.data() + y * rowSize;
-        if (std::memcmp(srcRow, prevRow, rowSize) != 0)
+        if (!srcAvailable || std::memcmp(srcRow, prevRow, rowSize) != 0)
         {
-            std::memcpy(prevRow, srcRow, rowSize);
+            if (srcAvailable)
+                std::memcpy(prevRow, srcRow, rowSize);
+            else
+                std::memset(prevRow, 0, rowSize);
             changed.push_back(y);
         }
     }
