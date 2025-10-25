@@ -141,7 +141,9 @@ void accumulateColumn(int x,
                       std::vector<float> &acc_g,
                       std::vector<float> &acc_b)
 {
-    float perpWallDist = std::max(hit.distance, 0.01f);
+    // Visual scale: shrink perceived distances to make spaces feel less cavernous
+    float visualScale = config.contains("raycastScale") ? static_cast<float>(config["raycastScale"]) : 3.0f;
+    float perpWallDist = std::max(hit.distance / visualScale, 0.01f);
     float lineHeight = static_cast<float>(screenH) / perpWallDist;
     float drawStart = halfH - lineHeight / 2.0f;
     float drawEnd = halfH + lineHeight / 2.0f;
@@ -159,7 +161,9 @@ void accumulateColumn(int x,
         float dx = static_cast<float>(x) - halfW;
         float dy = yf - halfH;
         float screenDist = std::sqrt(dx * dx + dy * dy);
-        float screenFactor = std::max(0.0f, 1.0f - screenDist / maxRadius);
+        // Slightly reduce radial falloff so shrunken spaces still read well
+        float falloffScale = config.contains("raycastFalloffMul") ? static_cast<float>(config["raycastFalloffMul"]) : 0.85f;
+        float screenFactor = std::max(0.0f, 1.0f - (screenDist / maxRadius) * falloffScale);
 
         // Ceiling gradient
         float ceilingShade = 120.0f * (1.0f - yf / halfH);
@@ -264,7 +268,10 @@ void renderChunk(const std::vector<std::vector<uint8_t>> &tileMap,
     float halfWidth = screenWidth * 0.5f;
     float halfHeight = screenHeight * 0.5f;
     float maxRadius = std::sqrt(halfWidth * halfWidth + halfHeight * halfHeight);
-    float torchRange = 16.0f;
+    // Increase torch range proportionally to visual scale so lighting feels consistent
+    float baseTorchRange = 16.0f;
+    float visualScale = config.contains("raycastScale") ? static_cast<float>(config["raycastScale"]) : 3.0f;
+    float torchRange = baseTorchRange * visualScale;
 
     for (int x = startX; x < endX; ++x)
     {
@@ -272,7 +279,10 @@ void renderChunk(const std::vector<std::vector<uint8_t>> &tileMap,
         for (int sampleIdx = 0; sampleIdx < supersample; ++sampleIdx)
         {
             float camX = 2.0f * (x + (sampleIdx + 0.5f) / supersample) / screenWidth - 1.0f;
-            float rayAngle = player.angle + camX * (state.raycast.player.fov / 2.0f);
+            float fov = state.raycast.player.fov;
+            // Optional FOV multiplier for stylistic tuning (defaults to 1.0)
+            float fovMul = config.contains("raycastFovMul") ? static_cast<float>(config["raycastFovMul"]) : 1.0f;
+            float rayAngle = player.angle + camX * (fov * 0.5f * fovMul);
             float rayDirX = std::cos(rayAngle);
             float rayDirY = std::sin(rayAngle);
             RaycastHit hit = castRay(tileMap, player.x, player.y, rayDirX, rayDirY);
