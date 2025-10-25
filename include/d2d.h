@@ -7,7 +7,6 @@
 #include <d2d1_1.h>
 #include <d3d11.h>
 #include <dxgi1_2.h>
-#include <dxgi1_4.h>
 #include <wrl/client.h>
 
 #include "render.h"
@@ -20,8 +19,6 @@ struct D2DContext
     Microsoft::WRL::ComPtr<ID3D11Device> d3dDevice;
     Microsoft::WRL::ComPtr<ID3D11DeviceContext> d3dContext;
     Microsoft::WRL::ComPtr<IDXGISwapChain1> swapchain;
-    // Optional: IDXGISwapChain3 for back buffer index and caching targets
-    Microsoft::WRL::ComPtr<IDXGISwapChain3> swapchain3;
     Microsoft::WRL::ComPtr<ID3D11Texture2D> frameTexture;
     Microsoft::WRL::ComPtr<IDXGISurface> frameSurface;
     Microsoft::WRL::ComPtr<ID2D1Bitmap1> frameBitmap;
@@ -30,8 +27,6 @@ struct D2DContext
     std::vector<uint8_t> previousFrameData; // For dirty-row detection in 2D path
     std::vector<uint8_t> frameBGRA;         // CPU-side full BGRA buffer (accumulate changed rows)
     bool forceFullUpdate = true;
-    // Cached D2D targets per backbuffer when swapchain3 is available
-    std::vector<Microsoft::WRL::ComPtr<ID2D1Bitmap1>> backTargets;
     // Track source changes to reset dirty-tracking when VDX switches
     const struct VDXFile* lastVDX = nullptr;
     bool lastWasTransient = false;
@@ -48,9 +43,6 @@ D3D11_MAPPED_SUBRESOURCE mapTexture();
 void unmapTexture();
 void resizeTexture(UINT width, UINT height);
 void cleanupD2D();
-
-// Recreate D2D cached backbuffer targets after swapchain ResizeBuffers
-void recreateD2DTargets();
 
 // Renderer-specific resize entry (called from window.cpp)
 void handleResizeD2D(int newW, int newH);

@@ -104,6 +104,7 @@ Parameters:
 std::vector<size_t> getChangedRowsAndUpdatePrevious(std::span<const uint8_t> rgbData, std::vector<uint8_t> &previousFrameData, int width, int height, bool forceFull)
 {
     std::vector<size_t> changed;
+    changed.reserve(static_cast<size_t>(height));
     const size_t rowSize = static_cast<size_t>(width) * 3;
     const size_t expectedSize = static_cast<size_t>(width) * height * 3;
 
