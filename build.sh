@@ -471,6 +471,7 @@ LINKER_ARGS=(
     "d2d1.lib"
     "d3d11.lib"
     "dxgi.lib"
+    "d3dcompiler.lib"
     "ole32.lib"
     "uuid.lib"
     "winmm.lib"

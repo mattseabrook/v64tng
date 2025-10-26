@@ -32,6 +32,14 @@ struct D2DContext
     bool lastWasTransient = false;
     UINT textureWidth = 0;
     UINT textureHeight = 0;
+    
+    // GPU Compute Pipeline Resources
+    Microsoft::WRL::ComPtr<ID3D11ComputeShader> computeShader;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> inputRGBBuffer;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> inputRGBSRV;
+    Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> frameTextureUAV;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer;
+    UINT rgbBufferSize = 0;
 };
 
 extern D2DContext d2dCtx;
