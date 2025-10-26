@@ -56,58 +56,60 @@ void main(uint3 DTid : SV_DispatchThreadID)
     uint rgbOffset = pixelIndex * 3;
     
     // Load RGB bytes (stored as R, G, B in memory)
+    // Memory layout: [R0, G0, B0, R1, G1, B1, R2, G2, B2, ...]
     uint3 rgbBytes;
     
-    // Read 4 bytes aligned, then extract the 3 we need
-    // This is more efficient than 3 separate byte reads
+    // ByteAddressBuffer.Load reads DWORDs in little-endian
+    // So byte 0 is in LSB, byte 1 is next, etc.
     uint baseOffset = (rgbOffset / 4) * 4;
     uint alignment = rgbOffset % 4;
     
     if (alignment == 0)
     {
-        // Perfectly aligned - read RGBX as one uint
+        // Bytes: [R G B X] -> packed = 0xXXBBGGRR
         uint packed = inputRGB.Load(baseOffset);
-        rgbBytes.r = (packed >> 0) & 0xFF;
-        rgbBytes.g = (packed >> 8) & 0xFF;
-        rgbBytes.b = (packed >> 16) & 0xFF;
+        rgbBytes.r = (packed >> 0) & 0xFF;   // R is at byte 0 (LSB)
+        rgbBytes.g = (packed >> 8) & 0xFF;   // G is at byte 1
+        rgbBytes.b = (packed >> 16) & 0xFF;  // B is at byte 2
     }
     else if (alignment == 1)
     {
-        // Read across two uints: ...R GB..
+        // Bytes: [X R G B] in packed0 -> 0xBBGGRRXX
         uint packed0 = inputRGB.Load(baseOffset);
-        uint packed1 = inputRGB.Load(baseOffset + 4);
-        rgbBytes.r = (packed0 >> 8) & 0xFF;
-        rgbBytes.g = (packed0 >> 16) & 0xFF;
-        rgbBytes.b = (packed0 >> 24) & 0xFF;
+        rgbBytes.r = (packed0 >> 8) & 0xFF;   // R is at byte 1
+        rgbBytes.g = (packed0 >> 16) & 0xFF;  // G is at byte 2
+        rgbBytes.b = (packed0 >> 24) & 0xFF;  // B is at byte 3
     }
     else if (alignment == 2)
     {
-        // Read across two uints: ..RG B...
+        // Bytes: [X X R G] in packed0, [B ...] in packed1
         uint packed0 = inputRGB.Load(baseOffset);
         uint packed1 = inputRGB.Load(baseOffset + 4);
-        rgbBytes.r = (packed0 >> 16) & 0xFF;
-        rgbBytes.g = (packed0 >> 24) & 0xFF;
-        rgbBytes.b = (packed1 >> 0) & 0xFF;
+        rgbBytes.r = (packed0 >> 16) & 0xFF;  // R is at byte 2 of packed0
+        rgbBytes.g = (packed0 >> 24) & 0xFF;  // G is at byte 3 of packed0
+        rgbBytes.b = (packed1 >> 0) & 0xFF;   // B is at byte 0 of packed1
     }
     else // alignment == 3
     {
-        // Read across two uints: .RGB ....
+        // Bytes: [X X X R] in packed0, [G B ...] in packed1
         uint packed0 = inputRGB.Load(baseOffset);
         uint packed1 = inputRGB.Load(baseOffset + 4);
-        rgbBytes.r = (packed0 >> 24) & 0xFF;
-        rgbBytes.g = (packed1 >> 0) & 0xFF;
-        rgbBytes.b = (packed1 >> 8) & 0xFF;
+        rgbBytes.r = (packed0 >> 24) & 0xFF;  // R is at byte 3 of packed0
+        rgbBytes.g = (packed1 >> 0) & 0xFF;   // G is at byte 0 of packed1
+        rgbBytes.b = (packed1 >> 8) & 0xFF;   // B is at byte 1 of packed1
     }
     
-    // Convert to normalized float4 in BGRA order
-    float4 bgra;
-    bgra.r = float(rgbBytes.b) / 255.0;  // Blue
-    bgra.g = float(rgbBytes.g) / 255.0;  // Green
-    bgra.b = float(rgbBytes.r) / 255.0;  // Red
-    bgra.a = 1.0;                         // Alpha
+    // Write logically as RGBA. For BGRA textures, the driver performs the
+    // R/B swizzle for shader-visible writes. Writing RGBA here matches the
+    // CPU path exactly and avoids double-swizzle mistakes.
+    float4 rgba;
+    rgba.r = float(rgbBytes.r) / 255.0;  // Red
+    rgba.g = float(rgbBytes.g) / 255.0;  // Green
+    rgba.b = float(rgbBytes.b) / 255.0;  // Blue
+    rgba.a = 1.0;                        // Alpha
     
     // Write to output texture
-    outputBGRA[uint2(DTid.x, DTid.y)] = bgra;
+    outputBGRA[uint2(DTid.x, DTid.y)] = rgba;
 }
 )SHADER";
 
@@ -281,6 +283,9 @@ void initializeD2D()
 
     // Initialize GPU compute pipeline
     initializeGPUPipeline();
+    // Ensure GPU input buffer exists for current texture size at startup
+    if (d2dCtx.textureWidth && d2dCtx.textureHeight)
+        resizeGPUBuffers(d2dCtx.textureWidth, d2dCtx.textureHeight);
 
     // Match Vulkan: establish initial scale factor for correct cursor scaling at startup
     scaleFactor = state.raycast.enabled ? 1.0f : static_cast<float>(state.ui.width) / MIN_CLIENT_WIDTH;
