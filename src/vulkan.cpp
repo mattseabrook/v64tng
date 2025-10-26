@@ -403,10 +403,63 @@ void renderFrameVk()
 	auto changed = getChangedRowsAndUpdatePrevious(pixels, vkCtx.previousFrameData, MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT, vkCtx.forceFullUpdate || !state.transient_animation_name.empty());
 	vkCtx.forceFullUpdate = false;
 
+	// Heuristic for Auto mode
+	const float changedRatio = MIN_CLIENT_HEIGHT ? (static_cast<float>(changed.size()) / static_cast<float>(MIN_CLIENT_HEIGHT)) : 1.0f;
+	bool preferGPU = (state.renderMode == GameState::RenderMode::GPU);
+	if (state.renderMode == GameState::RenderMode::Auto)
+	{
+		preferGPU = (changedRatio >= 0.4f) || (static_cast<int>(MIN_CLIENT_HEIGHT) >= 1080);
+	}
+
+	// For now, GPU compute expansion is not implemented; fallback to CPU conversion regardless
+	(void)preferGPU;
+
+	// Update staging with only changed rows
 	for (size_t y : changed)
 	{
 		convertRGBRowToBGRA(pixels.data() + y * MIN_CLIENT_WIDTH * 3, vkCtx.rowBuffer.data(), MIN_CLIENT_WIDTH);
 		std::memcpy(dst + y * pitch, vkCtx.rowBuffer.data(), MIN_CLIENT_WIDTH * 4);
+	}
+
+	// Build batched buffer->image copy regions (merge contiguous rows into bands)
+	vkCtx.pendingCopyRegions.clear();
+	if (!changed.empty())
+	{
+		// Collapse contiguous rows
+		size_t runStart = changed[0];
+		size_t prev = changed[0];
+		for (size_t i = 1; i < changed.size(); ++i)
+		{
+			if (changed[i] != prev + 1)
+			{
+				// Emit band [runStart, prev]
+				VkBufferImageCopy region{};
+				region.bufferOffset = static_cast<VkDeviceSize>(runStart * pitch);
+				region.bufferRowLength = 0; // tightly packed
+				region.bufferImageHeight = 0;
+				region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				region.imageSubresource.mipLevel = 0;
+				region.imageSubresource.baseArrayLayer = 0;
+				region.imageSubresource.layerCount = 1;
+				region.imageOffset = {0, static_cast<int32_t>(runStart), 0};
+				region.imageExtent = {vkCtx.textureWidth, static_cast<uint32_t>(prev - runStart + 1), 1};
+				vkCtx.pendingCopyRegions.push_back(region);
+				runStart = changed[i];
+			}
+			prev = changed[i];
+		}
+		// Tail band
+		VkBufferImageCopy region{};
+		region.bufferOffset = static_cast<VkDeviceSize>(runStart * pitch);
+		region.bufferRowLength = 0;
+		region.bufferImageHeight = 0;
+		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		region.imageSubresource.mipLevel = 0;
+		region.imageSubresource.baseArrayLayer = 0;
+		region.imageSubresource.layerCount = 1;
+		region.imageOffset = {0, static_cast<int32_t>(runStart), 0};
+		region.imageExtent = {vkCtx.textureWidth, static_cast<uint32_t>(prev - runStart + 1), 1};
+		vkCtx.pendingCopyRegions.push_back(region);
 	}
 
 	presentFrame();
@@ -431,6 +484,20 @@ void renderFrameRaycastVk()
 
 	// Assume modified to use pitch
 	renderRaycastView(map, player, dst, pitch, state.ui.width, state.ui.height);
+
+	// Full-image copy region
+	vkCtx.pendingCopyRegions.clear();
+	VkBufferImageCopy region{};
+	region.bufferOffset = 0;
+	region.bufferRowLength = 0;
+	region.bufferImageHeight = 0;
+	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	region.imageSubresource.mipLevel = 0;
+	region.imageSubresource.baseArrayLayer = 0;
+	region.imageSubresource.layerCount = 1;
+	region.imageOffset = {0, 0, 0};
+	region.imageExtent = {vkCtx.textureWidth, vkCtx.textureHeight, 1};
+	vkCtx.pendingCopyRegions.push_back(region);
 
 	presentFrame();
 }
@@ -486,18 +553,13 @@ void presentFrame()
 	vkCmdPipelineBarrier(cmdBuf, (vkCtx.textureImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) ? VK_PIPELINE_STAGE_TRANSFER_BIT : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
 						 VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &texBarrier);
 
-	// Copy buffer -> image (full image)
-	VkBufferImageCopy copyRegion{};
-	copyRegion.bufferOffset = 0;
-	copyRegion.bufferRowLength = 0; // tightly packed
-	copyRegion.bufferImageHeight = 0;
-	copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	copyRegion.imageSubresource.mipLevel = 0;
-	copyRegion.imageSubresource.baseArrayLayer = 0;
-	copyRegion.imageSubresource.layerCount = 1;
-	copyRegion.imageOffset = {0, 0, 0};
-	copyRegion.imageExtent = {vkCtx.textureWidth, vkCtx.textureHeight, 1};
-	vkCmdCopyBufferToImage(cmdBuf, vkCtx.stagingBuffer, vkCtx.textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+	// Copy buffer -> image using prepared regions (row-batched). If none prepared, skip.
+	if (!vkCtx.pendingCopyRegions.empty())
+	{
+		vkCmdCopyBufferToImage(cmdBuf, vkCtx.stagingBuffer, vkCtx.textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+							   static_cast<uint32_t>(vkCtx.pendingCopyRegions.size()),
+							   vkCtx.pendingCopyRegions.data());
+	}
 
 	// Transition texture to TRANSFER_SRC for blit/copy
 	texBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;

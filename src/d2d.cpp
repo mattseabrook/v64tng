@@ -80,9 +80,10 @@ void resizeTexture(UINT width, UINT height)
     texDesc.ArraySize = 1;
     texDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     texDesc.SampleDesc.Count = 1;
-    texDesc.Usage = D3D11_USAGE_DYNAMIC;
+    // DEFAULT usage to enable partial row updates via UpdateSubresource + D3D11_BOX
+    texDesc.Usage = D3D11_USAGE_DEFAULT;
     texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-    texDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    texDesc.CPUAccessFlags = 0;
 
     HRESULT hr = d2dCtx.d3dDevice->CreateTexture2D(&texDesc, nullptr, d2dCtx.frameTexture.GetAddressOf());
     if (FAILED(hr))
@@ -102,19 +103,7 @@ void resizeTexture(UINT width, UINT height)
     d2dCtx.textureHeight = height;
 }
 
-D3D11_MAPPED_SUBRESOURCE mapTexture()
-{
-    D3D11_MAPPED_SUBRESOURCE mapped;
-    HRESULT hr = d2dCtx.d3dContext->Map(d2dCtx.frameTexture.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-    if (FAILED(hr))
-        throw std::runtime_error("Failed map texture");
-    return mapped;
-}
-
-void unmapTexture()
-{
-    d2dCtx.d3dContext->Unmap(d2dCtx.frameTexture.Get(), 0);
-}
+// Removed mapping helpers: using UpdateSubresource + D3D11_BOX for partial updates
 
 void renderFrameD2D()
 {
@@ -137,23 +126,43 @@ void renderFrameD2D()
     // Only convert changed rows, and upload only when needed
     auto changed = getChangedRowsAndUpdatePrevious(pixels, d2dCtx.previousFrameData, d2dCtx.textureWidth, d2dCtx.textureHeight, d2dCtx.forceFullUpdate);
     d2dCtx.forceFullUpdate = false;
-    for (size_t y : changed)
+    // Determine render path based on config: Auto heuristic or forced CPU/GPU.
+    // GPU compute expansion isn't implemented yet in the D3D11 path; GPU selection falls back to CPU uploads.
+    const float changedRatio = d2dCtx.textureHeight ? (static_cast<float>(changed.size()) / static_cast<float>(d2dCtx.textureHeight)) : 1.0f;
+    bool preferGPU = (state.renderMode == GameState::RenderMode::GPU);
+    if (state.renderMode == GameState::RenderMode::Auto)
     {
-        convertRGBRowToBGRA(pixels.data() + y * d2dCtx.textureWidth * 3, d2dCtx.rowBuffer.data(), d2dCtx.textureWidth);
-        std::memcpy(d2dCtx.frameBGRA.data() + y * static_cast<size_t>(d2dCtx.textureWidth) * 4, d2dCtx.rowBuffer.data(), static_cast<size_t>(d2dCtx.textureWidth) * 4);
+        preferGPU = (changedRatio >= 0.4f) || (static_cast<int>(d2dCtx.textureHeight) >= 1080);
     }
 
     if (!changed.empty())
     {
-        auto mapped = mapTexture();
-        uint8_t *dst = static_cast<uint8_t *>(mapped.pData);
-        size_t pitch = mapped.RowPitch;
-        const size_t rowSizeBytes = static_cast<size_t>(d2dCtx.textureWidth) * 4;
-        for (int y = 0; y < d2dCtx.textureHeight; ++y)
+        if (preferGPU)
         {
-            std::memcpy(dst + static_cast<size_t>(y) * pitch, d2dCtx.frameBGRA.data() + static_cast<size_t>(y) * rowSizeBytes, rowSizeBytes);
+            // TODO: D3D11 compute path (RGB24 SSBO -> UAV RGBA8) not implemented yet.
+            // Fallback to CPU path for now.
         }
-        unmapTexture();
+
+        // CPU SIMD path with partial row uploads via UpdateSubresource and D3D11_BOX
+        for (size_t y : changed)
+        {
+            convertRGBRowToBGRA(pixels.data() + y * d2dCtx.textureWidth * 3, d2dCtx.rowBuffer.data(), d2dCtx.textureWidth);
+
+            D3D11_BOX box{};
+            box.left = 0;
+            box.right = d2dCtx.textureWidth;
+            box.top = static_cast<UINT>(y);
+            box.bottom = static_cast<UINT>(y + 1);
+            box.front = 0;
+            box.back = 1;
+            d2dCtx.d3dContext->UpdateSubresource(
+                d2dCtx.frameTexture.Get(),
+                0,
+                &box,
+                d2dCtx.rowBuffer.data(),
+                d2dCtx.textureWidth * 4,
+                0);
+        }
     }
 
     // Set target: create from the current backbuffer each frame for correctness
@@ -203,13 +212,25 @@ void renderFrameRaycast()
     const auto &map = *state.raycast.map;
     const RaycastPlayer &player = state.raycast.player;
 
-    auto mapped = mapTexture();
-    uint8_t *dst = static_cast<uint8_t *>(mapped.pData);
-    size_t pitch = mapped.RowPitch;
+    // Render into CPU-side BGRA buffer then upload once
+    const UINT pitch = static_cast<UINT>(state.ui.width) * 4;
+    d2dCtx.frameBGRA.resize(static_cast<size_t>(state.ui.width) * state.ui.height * 4);
+    renderRaycastView(map, player, d2dCtx.frameBGRA.data(), pitch, state.ui.width, state.ui.height);
 
-    renderRaycastView(map, player, dst, pitch, state.ui.width, state.ui.height);
-
-    unmapTexture();
+    D3D11_BOX full{};
+    full.left = 0;
+    full.top = 0;
+    full.front = 0;
+    full.right = state.ui.width;
+    full.bottom = state.ui.height;
+    full.back = 1;
+    d2dCtx.d3dContext->UpdateSubresource(
+        d2dCtx.frameTexture.Get(),
+        0,
+        &full,
+        d2dCtx.frameBGRA.data(),
+        pitch,
+        0);
 
     d2dCtx.dc->SetTarget(nullptr);
     Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;

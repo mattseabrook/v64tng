@@ -104,6 +104,14 @@ struct ViewGroup
 ///////////////////////////////////////////////////////////////////////////////
 struct GameState
 {
+	// Render mode selection (CPU SIMD vs GPU compute), with Auto heuristic
+	enum class RenderMode
+	{
+		Auto = 0,
+		CPU,
+		GPU
+	};
+
 	//
 	// SIMD selection for hot-path pixel conversion
 	//
@@ -161,6 +169,9 @@ struct GameState
 
 	// Selected SIMD level for conversion paths
 	SIMDLevel simd = SIMDLevel::Scalar;
+
+	// Selected render mode (defaults populated from config)
+	RenderMode renderMode = RenderMode::Auto;
 
 	//
 	// Raycasting

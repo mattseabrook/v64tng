@@ -40,6 +40,7 @@
 #include <fstream>
 #include <algorithm>
 #include <io.h>
+#include <cctype>
 
 #include "config.h"
 #include "system.h"
@@ -346,6 +347,23 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
 
 	DetectCPUFeatures();
 	SetBestSIMDLevel();
+
+	// Configure render mode from config.json (auto|cpu|gpu). Default remains 'gpu' in default_config.
+	if (config.contains("renderMode") && config["renderMode"].is_string())
+	{
+		std::string mode = config["renderMode"];
+		for (auto &c : mode) c = static_cast<char>(::toupper(static_cast<unsigned char>(c)));
+		if (mode == "CPU")
+			state.renderMode = GameState::RenderMode::CPU;
+		else if (mode == "GPU")
+			state.renderMode = GameState::RenderMode::GPU;
+		else
+			state.renderMode = GameState::RenderMode::Auto;
+	}
+	else
+	{
+		state.renderMode = GameState::RenderMode::Auto;
+	}
 
 	std::vector<std::string> args = get_args_windows();
 

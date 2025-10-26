@@ -43,6 +43,8 @@ struct VulkanContext
     bool forceFullUpdate = true;
     uint32_t textureWidth = 0;
     uint32_t textureHeight = 0;
+    // Prepared copy regions for this frame (row-batched when possible)
+    std::vector<VkBufferImageCopy> pendingCopyRegions;
 };
 
 extern VulkanContext vkCtx;

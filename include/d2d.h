@@ -39,8 +39,6 @@ extern D2DContext d2dCtx;
 void initializeD2D();
 void renderFrameD2D();
 void renderFrameRaycast();
-D3D11_MAPPED_SUBRESOURCE mapTexture();
-void unmapTexture();
 void resizeTexture(UINT width, UINT height);
 void cleanupD2D();
 
