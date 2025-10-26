@@ -229,6 +229,26 @@ if [[ -f "$RESOURCE_RC" ]] && ([[ ! -f "$RESOURCE_RES" ]] || [[ "$RESOURCE_RC" -
         -o "$RESOURCE_RES" "$RESOURCE_RC"
 fi
 
+# Generate Vulkan SPIR-V and header for compute shader (only when needed)
+HEADER_OUT="$BUILD_DIR/rgb_to_bgra_spv.h"
+SPV_OUT="$BUILD_DIR/rgb_to_bgra.spv"
+SHADER_SRC="shaders/vk_rgb_to_bgra.comp"
+regen=false
+if [[ ! -f "$HEADER_OUT" ]]; then regen=true; fi
+if [[ -f "$SHADER_SRC" && -f "$HEADER_OUT" && "$SHADER_SRC" -nt "$HEADER_OUT" ]]; then regen=true; fi
+if [[ "$regen" == true ]]; then
+    echo "Generating SPIR-V for Vulkan compute shader..."
+    glslc -fshader-stage=compute "$SHADER_SRC" -o "$SPV_OUT"
+    if command -v xxd >/dev/null 2>&1; then
+        xxd -i "$SPV_OUT" > "$HEADER_OUT"
+    else
+        echo "ERROR: xxd not found (often provided by vim-common). Please install it."
+        exit 1
+    fi
+else
+    echo "Using cached SPIR-V header: $HEADER_OUT"
+fi
+
 # Get source files
 SOURCES=($(find src -name "*.cpp" | sort))
 echo "Found ${#SOURCES[@]} source files to process:"
@@ -280,6 +300,7 @@ fi
 
 USER_INCLUDES=(
     "-I./include"
+    "-I$BUILD_DIR"
     "-I$ZLIB_DIR/include"
     "-I$LIBPNG_DIR/include"
     "-I$ADLMIDI_DIR/include"

@@ -45,6 +45,18 @@ struct VulkanContext
     uint32_t textureHeight = 0;
     // Prepared copy regions for this frame (row-batched when possible)
     std::vector<VkBufferImageCopy> pendingCopyRegions;
+
+    // --- GPU compute pipeline for RGB24 -> BGRA32 ---
+    VkDescriptorSetLayout computeDescSetLayout{};
+    VkPipelineLayout computePipelineLayout{};
+    VkPipeline computePipeline{};
+    VkDescriptorPool computeDescPool{};
+    VkDescriptorSet computeDescSet{};
+    VkBuffer rgbInputBuffer{};               // host-visible storage buffer (RGB24)
+    VkDeviceMemory rgbInputBufferMemory{};
+    void* mappedRGBInput{};
+    VkDeviceSize rgbInputBufferSize{};
+    bool doCompute = false;                 // set per-frame if compute should run
 };
 
 extern VulkanContext vkCtx;

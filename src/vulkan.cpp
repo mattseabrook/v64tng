@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 #include <cstring>
+#include <string>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -21,6 +22,200 @@
 // Vulkan context
 //
 VulkanContext vkCtx;
+
+// Forward declaration used by buffer allocation helpers below
+static uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+
+// Embedded SPIR-V binary generated at build time: build/rgb_to_bgra_spv.h
+// Provides: unsigned char rgb_to_bgra_spv[]; unsigned int rgb_to_bgra_spv_len;
+#include "rgb_to_bgra_spv.h"
+
+static void destroyCompute()
+{
+	if (vkCtx.mappedRGBInput)
+	{
+		vkUnmapMemory(vkCtx.device, vkCtx.rgbInputBufferMemory);
+		vkCtx.mappedRGBInput = nullptr;
+	}
+	if (vkCtx.rgbInputBuffer)
+	{
+		vkDestroyBuffer(vkCtx.device, vkCtx.rgbInputBuffer, nullptr);
+		vkCtx.rgbInputBuffer = VK_NULL_HANDLE;
+	}
+	if (vkCtx.rgbInputBufferMemory)
+	{
+		vkFreeMemory(vkCtx.device, vkCtx.rgbInputBufferMemory, nullptr);
+		vkCtx.rgbInputBufferMemory = VK_NULL_HANDLE;
+	}
+	if (vkCtx.computeDescPool)
+	{
+		vkDestroyDescriptorPool(vkCtx.device, vkCtx.computeDescPool, nullptr);
+		vkCtx.computeDescPool = VK_NULL_HANDLE;
+	}
+	if (vkCtx.computePipeline)
+	{
+		vkDestroyPipeline(vkCtx.device, vkCtx.computePipeline, nullptr);
+		vkCtx.computePipeline = VK_NULL_HANDLE;
+	}
+	if (vkCtx.computePipelineLayout)
+	{
+		vkDestroyPipelineLayout(vkCtx.device, vkCtx.computePipelineLayout, nullptr);
+		vkCtx.computePipelineLayout = VK_NULL_HANDLE;
+	}
+	if (vkCtx.computeDescSetLayout)
+	{
+		vkDestroyDescriptorSetLayout(vkCtx.device, vkCtx.computeDescSetLayout, nullptr);
+		vkCtx.computeDescSetLayout = VK_NULL_HANDLE;
+	}
+}
+
+static void createOrResizeRGBInputBuffer(uint32_t width, uint32_t height)
+{
+	// Destroy old
+	if (vkCtx.mappedRGBInput)
+	{
+		vkUnmapMemory(vkCtx.device, vkCtx.rgbInputBufferMemory);
+		vkCtx.mappedRGBInput = nullptr;
+	}
+	if (vkCtx.rgbInputBuffer)
+	{
+		vkDestroyBuffer(vkCtx.device, vkCtx.rgbInputBuffer, nullptr);
+		vkCtx.rgbInputBuffer = VK_NULL_HANDLE;
+	}
+	if (vkCtx.rgbInputBufferMemory)
+	{
+		vkFreeMemory(vkCtx.device, vkCtx.rgbInputBufferMemory, nullptr);
+		vkCtx.rgbInputBufferMemory = VK_NULL_HANDLE;
+	}
+
+	vkCtx.rgbInputBufferSize = static_cast<VkDeviceSize>(width) * height * 3ull; // RGB24
+	VkBufferCreateInfo info{ };
+	info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	info.size = vkCtx.rgbInputBufferSize;
+	info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	vkCreateBuffer(vkCtx.device, &info, nullptr, &vkCtx.rgbInputBuffer);
+
+	VkMemoryRequirements req{ };
+	vkGetBufferMemoryRequirements(vkCtx.device, vkCtx.rgbInputBuffer, &req);
+
+	VkMemoryAllocateInfo alloc{ };
+	alloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	alloc.allocationSize = req.size;
+	alloc.memoryTypeIndex = findMemoryType(req.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	vkAllocateMemory(vkCtx.device, &alloc, nullptr, &vkCtx.rgbInputBufferMemory);
+	vkBindBufferMemory(vkCtx.device, vkCtx.rgbInputBuffer, vkCtx.rgbInputBufferMemory, 0);
+	vkMapMemory(vkCtx.device, vkCtx.rgbInputBufferMemory, 0, VK_WHOLE_SIZE, 0, &vkCtx.mappedRGBInput);
+}
+
+static void updateComputeDescriptors()
+{
+	if (!vkCtx.computeDescSet) return;
+	// storage buffer
+	VkDescriptorBufferInfo buf{};
+	buf.buffer = vkCtx.rgbInputBuffer;
+	buf.offset = 0;
+	buf.range = vkCtx.rgbInputBufferSize;
+	// storage image
+	VkDescriptorImageInfo img{};
+	img.imageView = vkCtx.textureImageView;
+	img.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+	VkWriteDescriptorSet writes[2]{};
+	writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writes[0].dstSet = vkCtx.computeDescSet;
+	writes[0].dstBinding = 0;
+	writes[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	writes[0].descriptorCount = 1;
+	writes[0].pBufferInfo = &buf;
+
+	writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writes[1].dstSet = vkCtx.computeDescSet;
+	writes[1].dstBinding = 1;
+	writes[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	writes[1].descriptorCount = 1;
+	writes[1].pImageInfo = &img;
+
+	vkUpdateDescriptorSets(vkCtx.device, 2, writes, 0, nullptr);
+}
+
+static void createComputePipeline()
+{
+	// Descriptor set layout: binding0 storage buffer, binding1 storage image
+	VkDescriptorSetLayoutBinding bindings[2]{};
+	bindings[0].binding = 0;
+	bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	bindings[0].descriptorCount = 1;
+	bindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	bindings[1].binding = 1;
+	bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	bindings[1].descriptorCount = 1;
+	bindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+	VkDescriptorSetLayoutCreateInfo dsl{};
+	dsl.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	dsl.bindingCount = 2;
+	dsl.pBindings = bindings;
+	vkCreateDescriptorSetLayout(vkCtx.device, &dsl, nullptr, &vkCtx.computeDescSetLayout);
+
+	VkPushConstantRange pc{};
+	pc.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	pc.offset = 0;
+	pc.size = sizeof(uint32_t) * 2; // width, height
+
+	VkPipelineLayoutCreateInfo pl{};
+	pl.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pl.setLayoutCount = 1;
+	pl.pSetLayouts = &vkCtx.computeDescSetLayout;
+	pl.pushConstantRangeCount = 1;
+	pl.pPushConstantRanges = &pc;
+	vkCreatePipelineLayout(vkCtx.device, &pl, nullptr, &vkCtx.computePipelineLayout);
+
+	// Create shader module from embedded SPIR-V
+	VkShaderModuleCreateInfo sm{};
+	sm.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	sm.codeSize = build_rgb_to_bgra_spv_len;
+	sm.pCode = reinterpret_cast<const uint32_t*>(build_rgb_to_bgra_spv);
+	VkShaderModule module;
+	vkCreateShaderModule(vkCtx.device, &sm, nullptr, &module);
+
+	VkPipelineShaderStageCreateInfo stage{};
+	stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+	stage.module = module;
+	stage.pName = "main";
+
+	VkComputePipelineCreateInfo cp{};
+	cp.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+	cp.stage = stage;
+	cp.layout = vkCtx.computePipelineLayout;
+	vkCreateComputePipelines(vkCtx.device, VK_NULL_HANDLE, 1, &cp, nullptr, &vkCtx.computePipeline);
+
+	vkDestroyShaderModule(vkCtx.device, module, nullptr);
+
+	// Descriptor pool and set
+	VkDescriptorPoolSize poolSizes[2]{};
+	poolSizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	poolSizes[0].descriptorCount = 1;
+	poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	poolSizes[1].descriptorCount = 1;
+
+	VkDescriptorPoolCreateInfo dp{};
+	dp.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	dp.maxSets = 1;
+	dp.poolSizeCount = 2;
+	dp.pPoolSizes = poolSizes;
+	vkCreateDescriptorPool(vkCtx.device, &dp, nullptr, &vkCtx.computeDescPool);
+
+	VkDescriptorSetAllocateInfo ai{};
+	ai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	ai.descriptorPool = vkCtx.computeDescPool;
+	ai.descriptorSetCount = 1;
+	ai.pSetLayouts = &vkCtx.computeDescSetLayout;
+	vkAllocateDescriptorSets(vkCtx.device, &ai, &vkCtx.computeDescSet);
+
+	updateComputeDescriptors();
+}
 
 /*
 ===============================================================================
@@ -129,7 +324,8 @@ static void createVulkanTexture(uint32_t width, uint32_t height)
 	imageInfo.arrayLayers = 1;
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL; // device-local optimal
-	imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	// Allow storage writes from compute as well as transfer ops
+	imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
 	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
 	vkCreateImage(vkCtx.device, &imageInfo, nullptr, &vkCtx.textureImage);
@@ -170,6 +366,14 @@ static void createVulkanTexture(uint32_t width, uint32_t height)
 	createBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vkCtx.stagingBuffer, vkCtx.stagingBufferMemory);
 	vkMapMemory(vkCtx.device, vkCtx.stagingBufferMemory, 0, VK_WHOLE_SIZE, 0, &vkCtx.mappedStagingData);
 	vkCtx.stagingRowPitch = static_cast<VkDeviceSize>(width) * 4;
+
+    // Create or resize RGB input storage buffer for compute path
+    createOrResizeRGBInputBuffer(width, height);
+    // Create compute pipeline and descriptors once
+    if (!vkCtx.computePipeline)
+        createComputePipeline();
+    // Update descriptors to point to the current image/buffer
+    updateComputeDescriptors();
 
 	vkCtx.rowBuffer.resize(width * 4);
 	vkCtx.previousFrameData.resize(width * height * 3);
@@ -411,55 +615,56 @@ void renderFrameVk()
 		preferGPU = (changedRatio >= 0.4f) || (static_cast<int>(MIN_CLIENT_HEIGHT) >= 1080);
 	}
 
-	// For now, GPU compute expansion is not implemented; fallback to CPU conversion regardless
-	(void)preferGPU;
-
-	// Update staging with only changed rows
-	for (size_t y : changed)
-	{
-		convertRGBRowToBGRA(pixels.data() + y * MIN_CLIENT_WIDTH * 3, vkCtx.rowBuffer.data(), MIN_CLIENT_WIDTH);
-		std::memcpy(dst + y * pitch, vkCtx.rowBuffer.data(), MIN_CLIENT_WIDTH * 4);
-	}
-
-	// Build batched buffer->image copy regions (merge contiguous rows into bands)
+	vkCtx.doCompute = preferGPU;
 	vkCtx.pendingCopyRegions.clear();
-	if (!changed.empty())
+	if (vkCtx.doCompute)
 	{
-		// Collapse contiguous rows
-		size_t runStart = changed[0];
-		size_t prev = changed[0];
-		for (size_t i = 1; i < changed.size(); ++i)
+		// Upload entire RGB frame into storage buffer for compute
+		std::memcpy(vkCtx.mappedRGBInput, pixels.data(), static_cast<size_t>(vkCtx.rgbInputBufferSize));
+	}
+	else
+	{
+		// CPU path: Update staging with only changed rows and prepare copy regions
+		for (size_t y : changed)
 		{
-			if (changed[i] != prev + 1)
-			{
-				// Emit band [runStart, prev]
-				VkBufferImageCopy region{};
-				region.bufferOffset = static_cast<VkDeviceSize>(runStart * pitch);
-				region.bufferRowLength = 0; // tightly packed
-				region.bufferImageHeight = 0;
-				region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				region.imageSubresource.mipLevel = 0;
-				region.imageSubresource.baseArrayLayer = 0;
-				region.imageSubresource.layerCount = 1;
-				region.imageOffset = {0, static_cast<int32_t>(runStart), 0};
-				region.imageExtent = {vkCtx.textureWidth, static_cast<uint32_t>(prev - runStart + 1), 1};
-				vkCtx.pendingCopyRegions.push_back(region);
-				runStart = changed[i];
-			}
-			prev = changed[i];
+			convertRGBRowToBGRA(pixels.data() + y * MIN_CLIENT_WIDTH * 3, vkCtx.rowBuffer.data(), MIN_CLIENT_WIDTH);
+			std::memcpy(dst + y * pitch, vkCtx.rowBuffer.data(), MIN_CLIENT_WIDTH * 4);
 		}
-		// Tail band
-		VkBufferImageCopy region{};
-		region.bufferOffset = static_cast<VkDeviceSize>(runStart * pitch);
-		region.bufferRowLength = 0;
-		region.bufferImageHeight = 0;
-		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		region.imageSubresource.mipLevel = 0;
-		region.imageSubresource.baseArrayLayer = 0;
-		region.imageSubresource.layerCount = 1;
-		region.imageOffset = {0, static_cast<int32_t>(runStart), 0};
-		region.imageExtent = {vkCtx.textureWidth, static_cast<uint32_t>(prev - runStart + 1), 1};
-		vkCtx.pendingCopyRegions.push_back(region);
+		if (!changed.empty())
+		{
+			size_t runStart = changed[0];
+			size_t prev = changed[0];
+			for (size_t i = 1; i < changed.size(); ++i)
+			{
+				if (changed[i] != prev + 1)
+				{
+					VkBufferImageCopy region{};
+					region.bufferOffset = static_cast<VkDeviceSize>(runStart * pitch);
+					region.bufferRowLength = 0; // tightly packed
+					region.bufferImageHeight = 0;
+					region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+					region.imageSubresource.mipLevel = 0;
+					region.imageSubresource.baseArrayLayer = 0;
+					region.imageSubresource.layerCount = 1;
+					region.imageOffset = {0, static_cast<int32_t>(runStart), 0};
+					region.imageExtent = {vkCtx.textureWidth, static_cast<uint32_t>(prev - runStart + 1), 1};
+					vkCtx.pendingCopyRegions.push_back(region);
+					runStart = changed[i];
+				}
+				prev = changed[i];
+			}
+			VkBufferImageCopy region{};
+			region.bufferOffset = static_cast<VkDeviceSize>(runStart * pitch);
+			region.bufferRowLength = 0;
+			region.bufferImageHeight = 0;
+			region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			region.imageSubresource.mipLevel = 0;
+			region.imageSubresource.baseArrayLayer = 0;
+			region.imageSubresource.layerCount = 1;
+			region.imageOffset = {0, static_cast<int32_t>(runStart), 0};
+			region.imageExtent = {vkCtx.textureWidth, static_cast<uint32_t>(prev - runStart + 1), 1};
+			vkCtx.pendingCopyRegions.push_back(region);
+		}
 	}
 
 	presentFrame();
@@ -539,35 +744,68 @@ void presentFrame()
 	barrier.subresourceRange.layerCount = 1;
 	vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
-	// Transition texture image to TRANSFER_DST_OPTIMAL
+	// Prepare texture depending on path (compute vs CPU copy)
 	VkImageMemoryBarrier texBarrier = {};
 	texBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	texBarrier.srcAccessMask = (vkCtx.textureImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) ? VK_ACCESS_TRANSFER_READ_BIT : 0;
-	texBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	texBarrier.oldLayout = vkCtx.textureImageLayout;
-	texBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	texBarrier.image = vkCtx.textureImage;
 	texBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	texBarrier.subresourceRange.levelCount = 1;
 	texBarrier.subresourceRange.layerCount = 1;
-	vkCmdPipelineBarrier(cmdBuf, (vkCtx.textureImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) ? VK_PIPELINE_STAGE_TRANSFER_BIT : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-						 VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &texBarrier);
 
-	// Copy buffer -> image using prepared regions (row-batched). If none prepared, skip.
-	if (!vkCtx.pendingCopyRegions.empty())
+	if (vkCtx.doCompute)
 	{
-		vkCmdCopyBufferToImage(cmdBuf, vkCtx.stagingBuffer, vkCtx.textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-							   static_cast<uint32_t>(vkCtx.pendingCopyRegions.size()),
-							   vkCtx.pendingCopyRegions.data());
-	}
+		// Transition to GENERAL for compute shader writes
+		texBarrier.srcAccessMask = (vkCtx.textureImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) ? VK_ACCESS_TRANSFER_READ_BIT : 0;
+		texBarrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+		texBarrier.oldLayout = vkCtx.textureImageLayout;
+		texBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+		vkCmdPipelineBarrier(cmdBuf,
+							 (vkCtx.textureImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) ? VK_PIPELINE_STAGE_TRANSFER_BIT : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+							 VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &texBarrier);
 
-	// Transition texture to TRANSFER_SRC for blit/copy
-	texBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	texBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-	texBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	texBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &texBarrier);
-	vkCtx.textureImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		// Dispatch compute
+		vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_COMPUTE, vkCtx.computePipeline);
+		vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_COMPUTE, vkCtx.computePipelineLayout, 0, 1, &vkCtx.computeDescSet, 0, nullptr);
+		uint32_t pcVals[2] = {vkCtx.textureWidth, vkCtx.textureHeight};
+		vkCmdPushConstants(cmdBuf, vkCtx.computePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pcVals), pcVals);
+		uint32_t gx = (vkCtx.textureWidth + 7u) / 8u;
+		uint32_t gy = (vkCtx.textureHeight + 7u) / 8u;
+		vkCmdDispatch(cmdBuf, gx, gy, 1);
+
+		// Barrier to make image available for transfer read
+		texBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+		texBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		texBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+		texBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &texBarrier);
+		vkCtx.textureImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	}
+	else
+	{
+		// CPU path: buffer->image copy
+		texBarrier.srcAccessMask = (vkCtx.textureImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) ? VK_ACCESS_TRANSFER_READ_BIT : 0;
+		texBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		texBarrier.oldLayout = vkCtx.textureImageLayout;
+		texBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		vkCmdPipelineBarrier(cmdBuf,
+							 (vkCtx.textureImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) ? VK_PIPELINE_STAGE_TRANSFER_BIT : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+							 VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &texBarrier);
+
+		if (!vkCtx.pendingCopyRegions.empty())
+		{
+			vkCmdCopyBufferToImage(cmdBuf, vkCtx.stagingBuffer, vkCtx.textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+								   static_cast<uint32_t>(vkCtx.pendingCopyRegions.size()),
+								   vkCtx.pendingCopyRegions.data());
+		}
+
+		// Transition to TRANSFER_SRC for blit/copy
+		texBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		texBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		texBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		texBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &texBarrier);
+		vkCtx.textureImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	}
 
 	VkImageBlit blit = {};
 	blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -648,6 +886,7 @@ Description:
 */
 void cleanupVulkan()
 {
+	destroyCompute();
 	destroyTexture();
 	destroyStaging();
 	if (vkCtx.swapchain)
