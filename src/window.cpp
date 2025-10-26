@@ -469,9 +469,8 @@ void initWindow()
 	{ // Raw input for low latency mouse
 		RAWINPUTDEVICE rid = {0x01, 0x02, 0, g_hwnd};
 		RegisterRawInputDevices(&rid, 1, sizeof(rid));
-		// Ensure the OS cursor is hidden at startup in raycast mode
-		while (ShowCursor(FALSE) >= 0)
-			;
+		// Hide the OS cursor for raycast mode (single call)
+		ShowCursor(FALSE);
 	}
 }
 
@@ -541,8 +540,8 @@ void renderFrame()
 
 void cleanupWindow()
 {
-	// Ensure the OS cursor is visible again on shutdown
-	while (ShowCursor(TRUE) < 0)
-		;
+	// Restore the OS cursor visibility
+	if (state.raycast.enabled)
+		ShowCursor(TRUE);
 	cleanupFuncs[renderer]();
 }

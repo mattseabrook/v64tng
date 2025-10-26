@@ -36,6 +36,7 @@ struct RayHit
 {
     float distance;
     int side;  // 0 = vertical wall, 1 = horizontal wall
+    bool hitWall;  // true if hit actual wall, false if just reached far distance
 };
 
 RayHit castRay(float2 pos, float2 rayDir)
@@ -90,11 +91,12 @@ RayHit castRay(float2 pos, float2 rayDir)
             side = 1;
         }
         
-        // Bounds check
+        // Bounds check - return distance traveled, no wall hit
         if (mapPos.x < 0 || mapPos.y < 0 || 
             mapPos.x >= (int)mapWidth || mapPos.y >= (int)mapHeight)
         {
-            return (RayHit){ 32.0, side };
+            float dist = side ? (sideDist.y - deltaDist.y) : (sideDist.x - deltaDist.x);
+            return (RayHit){ dist, side, false };
         }
         
         // Sample tile map
@@ -105,12 +107,13 @@ RayHit castRay(float2 pos, float2 rayDir)
         {
             // Hit wall - calculate distance
             float dist = side ? (sideDist.y - deltaDist.y) : (sideDist.x - deltaDist.x);
-            return (RayHit){ dist, side };
+            return (RayHit){ dist, side, true };
         }
     }
     
-    // Max distance if no hit
-    return (RayHit){ 32.0, side };
+    // Max steps reached - return distance traveled, no wall hit
+    float dist = side ? (sideDist.y - deltaDist.y) : (sideDist.x - deltaDist.x);
+    return (RayHit){ dist, side, false };
 }
 
 //==============================================================================
@@ -119,19 +122,6 @@ RayHit castRay(float2 pos, float2 rayDir)
 
 float3 shadePixel(uint2 pixel, RayHit hit, float halfW, float halfH, float maxRadius)
 {
-    // Apply visual scale to shrink perceived distances
-    float perpWallDist = max(hit.distance / visualScale, 0.01);
-    float lineHeight = screenHeight / perpWallDist;
-    float drawStart = halfH - lineHeight / 2.0;
-    float drawEnd = halfH + lineHeight / 2.0;
-    
-    // Wall color based on side (darker for horizontal walls)
-    float3 wallColor = hit.side ? float3(64.0/255.0, 64.0/255.0, 64.0/255.0) 
-                                : float3(120.0/255.0, 120.0/255.0, 120.0/255.0);
-    
-    // Lighting: torch falloff
-    float lightFactor = max(0.0, 1.0 - hit.distance / torchRange);
-    
     // Pixel Y position (center of pixel)
     float yf = pixel.y + 0.5;
     
@@ -153,42 +143,61 @@ float3 shadePixel(uint2 pixel, RayHit hit, float halfW, float halfH, float maxRa
                                70.0/255.0 * floorRatio, 
                                50.0/255.0 * floorRatio);
     
-    // Apply lighting to wall
-    float3 litWall = wallColor * lightFactor;
-    
-    // Determine pixel color: ceiling, wall, or floor
+    // If no wall hit, just render floor/ceiling
     float3 color;
-    if (yf < drawStart)
+    if (!hit.hitWall)
     {
-        // Ceiling
-        color = ceilingColor;
-    }
-    else if (yf > drawEnd)
-    {
-        // Floor
-        color = floorColor;
+        color = (yf < halfH) ? ceilingColor : floorColor;
     }
     else
     {
-        // Wall with edge blending for anti-aliasing
-        if (yf < drawStart + 1.0)
+        // Hit a wall - calculate wall rendering
+        float perpWallDist = max(hit.distance / visualScale, 0.01);
+        float lineHeight = screenHeight / perpWallDist;
+        float drawStart = halfH - lineHeight / 2.0;
+        float drawEnd = halfH + lineHeight / 2.0;
+        
+        // Wall color based on side (darker for horizontal walls)
+        float3 wallColor = hit.side ? float3(64.0/255.0, 64.0/255.0, 64.0/255.0) 
+                                    : float3(120.0/255.0, 120.0/255.0, 120.0/255.0);
+        
+        // Lighting: torch falloff
+        float lightFactor = max(0.0, 1.0 - hit.distance / torchRange);
+        float3 litWall = wallColor * lightFactor;
+        
+        // Determine pixel color: ceiling, wall, or floor
+        if (yf < drawStart)
         {
-            // Blend ceiling → wall
-            float weight = (yf - drawStart);
-            weight = clamp(weight, 0.0, 1.0);
-            color = lerp(ceilingColor, litWall, weight);
+            // Ceiling
+            color = ceilingColor;
         }
-        else if (yf > drawEnd - 1.0)
+        else if (yf > drawEnd)
         {
-            // Blend wall → floor
-            float weight = (drawEnd - yf);
-            weight = clamp(weight, 0.0, 1.0);
-            color = lerp(floorColor, litWall, weight);
+            // Floor
+            color = floorColor;
         }
         else
         {
-            // Pure wall
-            color = litWall;
+            // Wall with edge blending for anti-aliasing
+            if (yf < drawStart + 1.0)
+            {
+                // Blend ceiling → wall
+                float weight = (yf - drawStart);
+                weight = clamp(weight, 0.0, 1.0);
+                color = lerp(ceilingColor, litWall, weight);
+            }
+            else if (yf > drawEnd - 1.0)
+            {
+                // Blend wall → floor
+                float weight = (drawEnd - yf);
+                weight = clamp(weight, 0.0, 1.0);
+                color = lerp(floorColor, litWall, weight);
+            }
+            else
+            {
+                // Pure wall
+                color = litWall;
+            }
         }
     }
     

@@ -518,9 +518,7 @@ void initRaycaster()
     state.raycast.player.fov = deg2rad(fovDeg);
 
     // Hide the OS cursor in raycast mode to avoid visible system pointer
-    // Ensure we decrement until the display count indicates hidden
-    while (ShowCursor(FALSE) >= 0)
-        ;
+    ShowCursor(FALSE);
 
     if (!initializePlayerFromMap(*state.raycast.map, state.raycast.player))
     {

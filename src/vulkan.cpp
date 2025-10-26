@@ -968,9 +968,13 @@ Description:
 */
 void renderFrameRaycastVkGPU()
 {
-	if (!vkCtx.raycastPipeline)
+	// Check render mode preference
+	bool useGPU = (state.renderMode == GameState::RenderMode::GPU || 
+	               state.renderMode == GameState::RenderMode::Auto);
+	
+	if (!useGPU || !vkCtx.raycastPipeline)
 	{
-		// Fall back to CPU rendering if GPU pipeline not available
+		// Fall back to CPU rendering if mode is CPU or GPU pipeline not available
 		renderFrameRaycastVk();
 		return;
 	}

@@ -595,9 +595,13 @@ static void updateRaycastTileMap(const std::vector<std::vector<uint8_t>>& tileMa
 //
 void renderFrameRaycastGPU()
 {
-    if (!d2dCtx.raycastComputeShader)
+    // Check render mode preference
+    bool useGPU = (state.renderMode == GameState::RenderMode::GPU || 
+                   state.renderMode == GameState::RenderMode::Auto);
+    
+    if (!useGPU || !d2dCtx.raycastComputeShader)
     {
-        // Fall back to CPU rendering if GPU pipeline not available
+        // Fall back to CPU rendering if mode is CPU or GPU pipeline not available
         renderFrameRaycast();
         return;
     }
