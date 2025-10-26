@@ -405,7 +405,7 @@ void renderFrameVk()
 
 	for (size_t y : changed)
 	{
-		convertRGBRowToBGRA_SSE(pixels.data() + y * MIN_CLIENT_WIDTH * 3, vkCtx.rowBuffer.data(), MIN_CLIENT_WIDTH);
+		convertRGBRowToBGRA(pixels.data() + y * MIN_CLIENT_WIDTH * 3, vkCtx.rowBuffer.data(), MIN_CLIENT_WIDTH);
 		std::memcpy(dst + y * pitch, vkCtx.rowBuffer.data(), MIN_CLIENT_WIDTH * 4);
 	}
 

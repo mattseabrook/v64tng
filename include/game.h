@@ -105,6 +105,16 @@ struct ViewGroup
 struct GameState
 {
 	//
+	// SIMD selection for hot-path pixel conversion
+	//
+	enum class SIMDLevel
+	{
+		Scalar = 0,
+		SSSE3,
+		AVX2
+	};
+
+	//
 	// UI
 	//
 	struct
@@ -148,6 +158,9 @@ struct GameState
 	std::chrono::steady_clock::time_point lastRenderTime{};
 	bool dirtyFrame = true;
 	double currentFPS = 24.0; // Current target FPS, adjustable during gameplay
+
+	// Selected SIMD level for conversion paths
+	SIMDLevel simd = SIMDLevel::Scalar;
 
 	//
 	// Raycasting

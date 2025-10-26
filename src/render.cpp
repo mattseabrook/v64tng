@@ -5,6 +5,7 @@
 #include <numeric>
 
 #include "render.h"
+#include "game.h"
 
 /*
 ===============================================================================
@@ -46,6 +47,71 @@ void convertRGBtoBGRA_SSE(const uint8_t *rgbData, uint8_t *bgraData, size_t pixe
     }
 }
 
+// Optional AVX2-targeted variant; compiled with AVX2 when supported by the compiler
+#if defined(__clang__) || defined(__GNUC__)
+#define TARGET_AVX2 __attribute__((target("avx2")))
+#else
+#define TARGET_AVX2
+#endif
+
+static inline void convertRGBtoBGRA_Scalar(const uint8_t *rgbData, uint8_t *bgraData, size_t pixelCount)
+{
+    for (size_t i = 0; i < pixelCount; ++i)
+    {
+        const uint8_t r = rgbData[i * 3 + 0];
+        const uint8_t g = rgbData[i * 3 + 1];
+        const uint8_t b = rgbData[i * 3 + 2];
+        bgraData[i * 4 + 0] = b;
+        bgraData[i * 4 + 1] = g;
+        bgraData[i * 4 + 2] = r;
+        bgraData[i * 4 + 3] = 255;
+    }
+}
+
+// Process 8 pixels per iteration by doing two SSSE3 shuffles and combining into one AVX2 store
+static TARGET_AVX2 void convertRGBtoBGRA_AVX2(const uint8_t *rgbData, uint8_t *bgraData, size_t pixelCount)
+{
+#if defined(__AVX2__)
+    const __m128i shuffleMask = _mm_set_epi8(0x80, 9, 10, 11, 0x80, 6, 7, 8, 0x80, 3, 4, 5, 0x80, 0, 1, 2);
+    const __m128i alphaMask = _mm_set_epi8(255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0);
+
+    size_t i = 0;
+    for (; i + 8 <= pixelCount; i += 8)
+    {
+        // First 4 pixels
+        __m128i rgb0 = _mm_loadu_si128(reinterpret_cast<const __m128i *>(rgbData + i * 3));
+        __m128i shuf0 = _mm_shuffle_epi8(rgb0, shuffleMask);
+        __m128i bgra0 = _mm_or_si128(shuf0, alphaMask);
+
+        // Next 4 pixels (offset by 12 bytes)
+        __m128i rgb1 = _mm_loadu_si128(reinterpret_cast<const __m128i *>(rgbData + (i + 4) * 3));
+        __m128i shuf1 = _mm_shuffle_epi8(rgb1, shuffleMask);
+        __m128i bgra1 = _mm_or_si128(shuf1, alphaMask);
+
+        // Combine into one 256-bit store
+        __m256i out = _mm256_set_m128i(bgra1, bgra0);
+        _mm256_storeu_si256(reinterpret_cast<__m256i *>(bgraData + i * 4), out);
+    }
+
+    // Tail: handle remaining 4-pixel block with SSSE3 and any leftover scalars
+    if (i + 4 <= pixelCount)
+    {
+        __m128i rgb = _mm_loadu_si128(reinterpret_cast<const __m128i *>(rgbData + i * 3));
+        __m128i shuf = _mm_shuffle_epi8(rgb, shuffleMask);
+        __m128i bgra = _mm_or_si128(shuf, alphaMask);
+        _mm_storeu_si128(reinterpret_cast<__m128i *>(bgraData + i * 4), bgra);
+        i += 4;
+    }
+    if (i < pixelCount)
+    {
+        convertRGBtoBGRA_Scalar(rgbData + i * 3, bgraData + i * 4, pixelCount - i);
+    }
+#else
+    // If compiled without AVX2, fall back to SSSE3/scalar
+    convertRGBtoBGRA_SSE(rgbData, bgraData, pixelCount);
+#endif
+}
+
 /*
 ===============================================================================
 Function Name: resizeTexture
@@ -59,9 +125,20 @@ Parameters:
     - height: New height of the texture.
 ===============================================================================
 */
-void convertRGBRowToBGRA_SSE(const uint8_t *rgbRow, uint8_t *bgraRow, size_t width)
+void convertRGBRowToBGRA(const uint8_t *rgbRow, uint8_t *bgraRow, size_t width)
 {
-    convertRGBtoBGRA_SSE(rgbRow, bgraRow, width);
+    switch (state.simd)
+    {
+    case GameState::SIMDLevel::AVX2:
+        convertRGBtoBGRA_AVX2(rgbRow, bgraRow, width);
+        break;
+    case GameState::SIMDLevel::SSSE3:
+        convertRGBtoBGRA_SSE(rgbRow, bgraRow, width);
+        break;
+    default:
+        convertRGBtoBGRA_Scalar(rgbRow, bgraRow, width);
+        break;
+    }
 }
 
 /*

@@ -28,18 +28,52 @@ void DetectCPUFeatures()
 
     // Check features with function 1
     __cpuid(cpuInfo, 1);
-    cpuFeatures.sse = (cpuInfo[3] & (1 << 25)) != 0;   // EDX bit 25
-    cpuFeatures.sse2 = (cpuInfo[3] & (1 << 26)) != 0;  // EDX bit 26
-    cpuFeatures.sse3 = (cpuInfo[2] & (1 << 0)) != 0;   // ECX bit 0
-    cpuFeatures.ssse3 = (cpuInfo[2] & (1 << 9)) != 0;  // ECX bit 9
-    cpuFeatures.sse41 = (cpuInfo[2] & (1 << 19)) != 0; // ECX bit 19
-    cpuFeatures.sse42 = (cpuInfo[2] & (1 << 20)) != 0; // ECX bit 20
-    cpuFeatures.avx = (cpuInfo[2] & (1 << 28)) != 0;   // ECX bit 28
+    cpuFeatures.sse = (cpuInfo[3] & (1 << 25)) != 0;    // EDX bit 25
+    cpuFeatures.sse2 = (cpuInfo[3] & (1 << 26)) != 0;   // EDX bit 26
+    cpuFeatures.sse3 = (cpuInfo[2] & (1 << 0)) != 0;    // ECX bit 0
+    cpuFeatures.ssse3 = (cpuInfo[2] & (1 << 9)) != 0;   // ECX bit 9
+    cpuFeatures.sse41 = (cpuInfo[2] & (1 << 19)) != 0;  // ECX bit 19
+    cpuFeatures.sse42 = (cpuInfo[2] & (1 << 20)) != 0;  // ECX bit 20
+    bool avxCpu = (cpuInfo[2] & (1 << 28)) != 0;        // ECX bit 28 AVX
+    bool osxsave = (cpuInfo[2] & (1 << 27)) != 0;       // ECX bit 27 OSXSAVE
 
     // Check features with function 7
     __cpuid(cpuInfo, 7);
-    cpuFeatures.avx2 = (cpuInfo[1] & (1 << 5)) != 0;    // EBX bit 5
-    cpuFeatures.avx512 = (cpuInfo[1] & (1 << 16)) != 0; // EBX bit 16
+    bool avx2Cpu = (cpuInfo[1] & (1 << 5)) != 0;        // EBX bit 5
+    cpuFeatures.avx512 = (cpuInfo[1] & (1 << 16)) != 0; // EBX bit 16 (broad brush)
+
+    // OS support check for AVX state (XCR0: XMM bit1 and YMM bit2 must be set)
+    bool avxOs = false;
+#ifdef _XCR_XFEATURE_ENABLED_MASK
+    if (osxsave)
+    {
+        unsigned long long xcr0 = _xgetbv(_XCR_XFEATURE_ENABLED_MASK);
+        avxOs = (xcr0 & 0x6) == 0x6; // XMM (bit1) and YMM (bit2)
+    }
+#endif
+    cpuFeatures.avx = avxCpu && avxOs;
+    cpuFeatures.avx2 = avx2Cpu && avxOs;
+}
+
+//
+// Choose the highest supported SIMD level for hot-path conversions
+//
+void SetBestSIMDLevel()
+{
+    using SIMD = GameState::SIMDLevel;
+    // Prefer AVX2 when available; else SSSE3; else Scalar
+    if (cpuFeatures.avx2)
+    {
+        state.simd = SIMD::AVX2;
+    }
+    else if (cpuFeatures.ssse3)
+    {
+        state.simd = SIMD::SSSE3;
+    }
+    else
+    {
+        state.simd = SIMD::Scalar;
+    }
 }
 
 //

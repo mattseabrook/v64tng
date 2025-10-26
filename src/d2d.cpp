@@ -139,7 +139,7 @@ void renderFrameD2D()
     d2dCtx.forceFullUpdate = false;
     for (size_t y : changed)
     {
-        convertRGBRowToBGRA_SSE(pixels.data() + y * d2dCtx.textureWidth * 3, d2dCtx.rowBuffer.data(), d2dCtx.textureWidth);
+        convertRGBRowToBGRA(pixels.data() + y * d2dCtx.textureWidth * 3, d2dCtx.rowBuffer.data(), d2dCtx.textureWidth);
         std::memcpy(d2dCtx.frameBGRA.data() + y * static_cast<size_t>(d2dCtx.textureWidth) * 4, d2dCtx.rowBuffer.data(), static_cast<size_t>(d2dCtx.textureWidth) * 4);
     }
 

@@ -345,6 +345,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
 	load_config("config.json");
 
 	DetectCPUFeatures();
+	SetBestSIMDLevel();
 
 	std::vector<std::string> args = get_args_windows();
 

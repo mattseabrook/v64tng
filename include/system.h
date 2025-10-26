@@ -34,5 +34,6 @@ extern CPUFeatures cpuFeatures;
 // Function prototypes
 void ShowSystemInfoWindow();
 void DetectCPUFeatures();
+void SetBestSIMDLevel();
 
 #endif // SYSTEM_H
