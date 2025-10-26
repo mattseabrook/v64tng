@@ -14,6 +14,7 @@ struct RaycastHit
 {
     float distance; // Distance to the wall hit (in map units)
     int side;       // Side of the wall hit (0 for vertical, 1 for horizontal)
+    bool hitWall;   // true if hit actual wall, false if just reached far distance
 };
 
 //

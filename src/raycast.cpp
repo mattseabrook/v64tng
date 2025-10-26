@@ -118,15 +118,22 @@ RaycastHit castRay(const std::vector<std::vector<uint8_t>> &tileMap,
             mapY += stepY;
             side = 1;
         }
+        
+        // Out of bounds - return actual distance traveled, no wall hit
         if (mapX < 0 || mapY < 0 || mapX >= mapW || mapY >= mapH)
-            return {32.0f, side};
+        {
+            float dist = side ? (sideDistY - deltaDistY) : (sideDistX - deltaDistX);
+            return {dist, side, false};
+        }
 
         // Check for walls
         uint8_t tile = tileMap[mapY][mapX];
         if (tile >= 0x01 && (tile < 0xF0 || tile > 0xF3))
             break;
     }
-    return {side ? sideDistY - deltaDistY : sideDistX - deltaDistX, side};
+    
+    float dist = side ? (sideDistY - deltaDistY) : (sideDistX - deltaDistX);
+    return {dist, side, true};
 }
 
 // Render a column with vertical smoothing
@@ -143,17 +150,31 @@ void accumulateColumn(int x,
 {
     // Visual scale: shrink perceived distances to make spaces feel less cavernous
     float visualScale = config.contains("raycastScale") ? static_cast<float>(config["raycastScale"]) : 3.0f;
-    float perpWallDist = std::max(hit.distance / visualScale, 0.01f);
-    float lineHeight = static_cast<float>(screenH) / perpWallDist;
-    float drawStart = halfH - lineHeight / 2.0f;
-    float drawEnd = halfH + lineHeight / 2.0f;
+    float falloffScale = config.contains("raycastFalloffMul") ? static_cast<float>(config["raycastFalloffMul"]) : 0.85f;
+    
+    // Wall rendering parameters (only used if hitWall is true)
+    float perpWallDist = 0.0f;
+    float drawStart = 0.0f;
+    float drawEnd = 0.0f;
+    uint8_t wallR = 0, wallG = 0, wallB = 0;
+    
+    if (hit.hitWall)
+    {
+        perpWallDist = std::max(hit.distance / visualScale, 0.01f);
+        float lineHeight = static_cast<float>(screenH) / perpWallDist;
+        drawStart = halfH - lineHeight / 2.0f;
+        drawEnd = halfH + lineHeight / 2.0f;
 
-    // Wall color based on side
-    uint8_t r = hit.side ? 64 : 120;
-    uint8_t g = hit.side ? 64 : 120;
-    uint8_t b = hit.side ? 64 : 120;
+        // Wall color based on side
+        uint8_t r = hit.side ? 64 : 120;
+        uint8_t g = hit.side ? 64 : 120;
+        uint8_t b = hit.side ? 64 : 120;
 
-    float lightFactor = std::max(0.0f, 1.0f - hit.distance / torchRange);
+        float lightFactor = std::max(0.0f, 1.0f - hit.distance / torchRange);
+        wallR = static_cast<uint8_t>(r * lightFactor);
+        wallG = static_cast<uint8_t>(g * lightFactor);
+        wallB = static_cast<uint8_t>(b * lightFactor);
+    }
 
     for (int y = 0; y < screenH; ++y)
     {
@@ -176,14 +197,27 @@ void accumulateColumn(int x,
         uint8_t floorG = static_cast<uint8_t>(70.0f * floorRatio);
         uint8_t floorB = static_cast<uint8_t>(50.0f * floorRatio);
 
-        // Wall color with lighting
-        uint8_t wallR = static_cast<uint8_t>(r * lightFactor);
-        uint8_t wallG = static_cast<uint8_t>(g * lightFactor);
-        uint8_t wallB = static_cast<uint8_t>(b * lightFactor);
-
         uint8_t rr, gg, bb;
 
-        if (yf < drawStart)
+        // If no wall hit, just render floor/ceiling
+        if (!hit.hitWall)
+        {
+            if (yf < halfH)
+            {
+                // Ceiling
+                rr = static_cast<uint8_t>(ceilingShade);
+                gg = rr;
+                bb = rr;
+            }
+            else
+            {
+                // Floor
+                rr = floorR;
+                gg = floorG;
+                bb = floorB;
+            }
+        }
+        else if (yf < drawStart)
         {
             // Pure ceiling
             rr = static_cast<uint8_t>(ceilingShade);

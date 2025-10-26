@@ -96,7 +96,11 @@ RayHit castRay(float2 pos, float2 rayDir)
             mapPos.x >= (int)mapWidth || mapPos.y >= (int)mapHeight)
         {
             float dist = side ? (sideDist.y - deltaDist.y) : (sideDist.x - deltaDist.x);
-            return (RayHit){ dist, side, false };
+            RayHit result;
+            result.distance = dist;
+            result.side = side;
+            result.hitWall = false;
+            return result;
         }
         
         // Sample tile map
@@ -107,13 +111,21 @@ RayHit castRay(float2 pos, float2 rayDir)
         {
             // Hit wall - calculate distance
             float dist = side ? (sideDist.y - deltaDist.y) : (sideDist.x - deltaDist.x);
-            return (RayHit){ dist, side, true };
+            RayHit result;
+            result.distance = dist;
+            result.side = side;
+            result.hitWall = true;
+            return result;
         }
     }
     
     // Max steps reached - return distance traveled, no wall hit
     float dist = side ? (sideDist.y - deltaDist.y) : (sideDist.x - deltaDist.x);
-    return (RayHit){ dist, side, false };
+    RayHit result;
+    result.distance = dist;
+    result.side = side;
+    result.hitWall = false;
+    return result;
 }
 
 //==============================================================================
