@@ -57,6 +57,18 @@ struct VulkanContext
     void* mappedRGBInput{};
     VkDeviceSize rgbInputBufferSize{};
     bool doCompute = false;                 // set per-frame if compute should run
+    
+    // --- GPU raycasting pipeline ---
+    VkDescriptorSetLayout raycastDescSetLayout{};
+    VkPipelineLayout raycastPipelineLayout{};
+    VkPipeline raycastPipeline{};
+    VkDescriptorPool raycastDescPool{};
+    VkDescriptorSet raycastDescSet{};
+    VkBuffer tileMapBuffer{};                // device-local storage buffer for tile map
+    VkDeviceMemory tileMapBufferMemory{};
+    VkDeviceSize tileMapBufferSize{};
+    uint32_t lastMapWidth = 0;
+    uint32_t lastMapHeight = 0;
 };
 
 extern VulkanContext vkCtx;
@@ -70,6 +82,7 @@ void resizeVulkanTexture(uint32_t width, uint32_t height);
 void recreateSwapchain(uint32_t width, uint32_t height);
 void renderFrameVk();
 void renderFrameRaycastVk();
+void renderFrameRaycastVkGPU();
 void presentFrame();
 void cleanupVulkan();
 

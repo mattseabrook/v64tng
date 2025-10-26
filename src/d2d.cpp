@@ -20,98 +20,10 @@
 #include "window.h"
 #include "raycast.h"
 #include "game.h"
+#include "../build/d3d11_rgb_to_bgra.h"
+#include "../build/d3d11_raycast.h"
 
 D2DContext d2dCtx;
-
-//
-// Embedded HLSL compute shader source code
-//
-static const char* g_rgbToBgraShaderSource = R"SHADER(
-// DirectX 11 Compute Shader for RGB24 to BGRA32 conversion
-
-// Input: RGB data as raw bytes (3 bytes per pixel)
-ByteAddressBuffer inputRGB : register(t0);
-
-// Output: BGRA texture (4 bytes per pixel)
-RWTexture2D<unorm float4> outputBGRA : register(u0);
-
-// Constants
-cbuffer Constants : register(b0)
-{
-    uint width;
-    uint height;
-    uint padding1;
-    uint padding2;
-};
-
-[numthreads(8, 8, 1)]
-void main(uint3 DTid : SV_DispatchThreadID)
-{
-    // Bounds check
-    if (DTid.x >= width || DTid.y >= height)
-        return;
-    
-    // Calculate pixel index
-    uint pixelIndex = DTid.y * width + DTid.x;
-    uint rgbOffset = pixelIndex * 3;
-    
-    // Load RGB bytes (stored as R, G, B in memory)
-    // Memory layout: [R0, G0, B0, R1, G1, B1, R2, G2, B2, ...]
-    uint3 rgbBytes;
-    
-    // ByteAddressBuffer.Load reads DWORDs in little-endian
-    // So byte 0 is in LSB, byte 1 is next, etc.
-    uint baseOffset = (rgbOffset / 4) * 4;
-    uint alignment = rgbOffset % 4;
-    
-    if (alignment == 0)
-    {
-        // Bytes: [R G B X] -> packed = 0xXXBBGGRR
-        uint packed = inputRGB.Load(baseOffset);
-        rgbBytes.r = (packed >> 0) & 0xFF;   // R is at byte 0 (LSB)
-        rgbBytes.g = (packed >> 8) & 0xFF;   // G is at byte 1
-        rgbBytes.b = (packed >> 16) & 0xFF;  // B is at byte 2
-    }
-    else if (alignment == 1)
-    {
-        // Bytes: [X R G B] in packed0 -> 0xBBGGRRXX
-        uint packed0 = inputRGB.Load(baseOffset);
-        rgbBytes.r = (packed0 >> 8) & 0xFF;   // R is at byte 1
-        rgbBytes.g = (packed0 >> 16) & 0xFF;  // G is at byte 2
-        rgbBytes.b = (packed0 >> 24) & 0xFF;  // B is at byte 3
-    }
-    else if (alignment == 2)
-    {
-        // Bytes: [X X R G] in packed0, [B ...] in packed1
-        uint packed0 = inputRGB.Load(baseOffset);
-        uint packed1 = inputRGB.Load(baseOffset + 4);
-        rgbBytes.r = (packed0 >> 16) & 0xFF;  // R is at byte 2 of packed0
-        rgbBytes.g = (packed0 >> 24) & 0xFF;  // G is at byte 3 of packed0
-        rgbBytes.b = (packed1 >> 0) & 0xFF;   // B is at byte 0 of packed1
-    }
-    else // alignment == 3
-    {
-        // Bytes: [X X X R] in packed0, [G B ...] in packed1
-        uint packed0 = inputRGB.Load(baseOffset);
-        uint packed1 = inputRGB.Load(baseOffset + 4);
-        rgbBytes.r = (packed0 >> 24) & 0xFF;  // R is at byte 3 of packed0
-        rgbBytes.g = (packed1 >> 0) & 0xFF;   // G is at byte 0 of packed1
-        rgbBytes.b = (packed1 >> 8) & 0xFF;   // B is at byte 1 of packed1
-    }
-    
-    // Write logically as RGBA. For BGRA textures, the driver performs the
-    // R/B swizzle for shader-visible writes. Writing RGBA here matches the
-    // CPU path exactly and avoids double-swizzle mistakes.
-    float4 rgba;
-    rgba.r = float(rgbBytes.r) / 255.0;  // Red
-    rgba.g = float(rgbBytes.g) / 255.0;  // Green
-    rgba.b = float(rgbBytes.b) / 255.0;  // Blue
-    rgba.a = 1.0;                        // Alpha
-    
-    // Write to output texture
-    outputBGRA[uint2(DTid.x, DTid.y)] = rgba;
-}
-)SHADER";
 
 //
 // Helper function to compile HLSL shader from embedded source string
@@ -159,7 +71,7 @@ static Microsoft::WRL::ComPtr<ID3DBlob> compileShaderFromSource(const char* sour
 static void initializeGPUPipeline()
 {
     // Compile compute shader from embedded source
-    auto shaderBlob = compileShaderFromSource(g_rgbToBgraShaderSource, "main", "cs_5_0");
+    auto shaderBlob = compileShaderFromSource(g_d3d11_rgb_to_bgra_hlsl, "main", "cs_5_0");
     
     HRESULT hr = d2dCtx.d3dDevice->CreateComputeShader(
         shaderBlob->GetBufferPointer(),
@@ -181,6 +93,47 @@ static void initializeGPUPipeline()
     hr = d2dCtx.d3dDevice->CreateBuffer(&cbDesc, nullptr, d2dCtx.constantBuffer.GetAddressOf());
     if (FAILED(hr))
         throw std::runtime_error("Failed to create constant buffer");
+}
+
+//
+// Initialize GPU raycasting pipeline
+//
+static void initializeRaycastGPUPipeline()
+{
+    try {
+        // Compile raycast compute shader from embedded source
+        auto shaderBlob = compileShaderFromSource(g_d3d11_raycast_hlsl, "main", "cs_5_0");
+        
+        HRESULT hr = d2dCtx.d3dDevice->CreateComputeShader(
+            shaderBlob->GetBufferPointer(),
+            shaderBlob->GetBufferSize(),
+            nullptr,
+            d2dCtx.raycastComputeShader.GetAddressOf()
+        );
+        
+        if (FAILED(hr))
+            throw std::runtime_error("Failed to create raycast compute shader");
+        
+        // Create constant buffer for raycast parameters
+        // Must match the cbuffer layout in the shader (16 float/uint fields)
+        D3D11_BUFFER_DESC cbDesc = {};
+        cbDesc.ByteWidth = sizeof(float) * 16;  // Aligned to 16-byte boundaries
+        cbDesc.Usage = D3D11_USAGE_DYNAMIC;
+        cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        
+        hr = d2dCtx.d3dDevice->CreateBuffer(&cbDesc, nullptr, d2dCtx.raycastConstantBuffer.GetAddressOf());
+        if (FAILED(hr))
+            throw std::runtime_error("Failed to create raycast constant buffer");
+        
+        OutputDebugStringA("Raycast GPU pipeline initialized successfully\n");
+    }
+    catch (const std::exception& e) {
+        OutputDebugStringA("Warning: Failed to initialize raycast GPU pipeline: ");
+        OutputDebugStringA(e.what());
+        OutputDebugStringA("\n");
+        // Not fatal - will fall back to CPU rendering
+    }
 }
 
 //
@@ -283,6 +236,8 @@ void initializeD2D()
 
     // Initialize GPU compute pipeline
     initializeGPUPipeline();
+    // Initialize GPU raycasting pipeline
+    initializeRaycastGPUPipeline();
     // Ensure GPU input buffer exists for current texture size at startup
     if (d2dCtx.textureWidth && d2dCtx.textureHeight)
         resizeGPUBuffers(d2dCtx.textureWidth, d2dCtx.textureHeight);
@@ -559,6 +514,184 @@ void renderFrameRaycast()
     if (FAILED(hr))
         throw std::runtime_error("Failed draw raycast");
 
+    d2dCtx.dc->SetTarget(nullptr);
+    d2dCtx.targetBitmap.Reset();
+    d2dCtx.swapchain->Present(1, 0);
+}
+
+//
+// Update or create tile map texture for GPU raycasting
+//
+static void updateRaycastTileMap(const std::vector<std::vector<uint8_t>>& tileMap)
+{
+    if (tileMap.empty() || tileMap[0].empty())
+        return;
+    
+    UINT mapHeight = static_cast<UINT>(tileMap.size());
+    UINT mapWidth = static_cast<UINT>(tileMap[0].size());
+    
+    // Check if we need to recreate the texture
+    if (!d2dCtx.tileMapTexture || d2dCtx.lastMapWidth != mapWidth || d2dCtx.lastMapHeight != mapHeight)
+    {
+        d2dCtx.tileMapTexture.Reset();
+        d2dCtx.tileMapSRV.Reset();
+        
+        // Create 2D texture for tile map (R8_UINT format)
+        D3D11_TEXTURE2D_DESC texDesc = {};
+        texDesc.Width = mapWidth;
+        texDesc.Height = mapHeight;
+        texDesc.MipLevels = 1;
+        texDesc.ArraySize = 1;
+        texDesc.Format = DXGI_FORMAT_R8_UINT;
+        texDesc.SampleDesc.Count = 1;
+        texDesc.Usage = D3D11_USAGE_DEFAULT;
+        texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        
+        HRESULT hr = d2dCtx.d3dDevice->CreateTexture2D(&texDesc, nullptr, d2dCtx.tileMapTexture.GetAddressOf());
+        if (FAILED(hr))
+            throw std::runtime_error("Failed to create tile map texture");
+        
+        // Create SRV
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.Format = DXGI_FORMAT_R8_UINT;
+        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels = 1;
+        
+        hr = d2dCtx.d3dDevice->CreateShaderResourceView(
+            d2dCtx.tileMapTexture.Get(),
+            &srvDesc,
+            d2dCtx.tileMapSRV.GetAddressOf()
+        );
+        
+        if (FAILED(hr))
+            throw std::runtime_error("Failed to create tile map SRV");
+        
+        d2dCtx.lastMapWidth = mapWidth;
+        d2dCtx.lastMapHeight = mapHeight;
+    }
+    
+    // Upload tile data
+    std::vector<uint8_t> flatMap(mapWidth * mapHeight);
+    for (UINT y = 0; y < mapHeight; y++)
+    {
+        for (UINT x = 0; x < mapWidth; x++)
+        {
+            flatMap[y * mapWidth + x] = tileMap[y][x];
+        }
+    }
+    
+    d2dCtx.d3dContext->UpdateSubresource(
+        d2dCtx.tileMapTexture.Get(),
+        0,
+        nullptr,
+        flatMap.data(),
+        mapWidth,
+        0
+    );
+}
+
+//
+// Render raycaster view using GPU compute shader
+//
+void renderFrameRaycastGPU()
+{
+    if (!d2dCtx.raycastComputeShader)
+    {
+        // Fall back to CPU rendering if GPU pipeline not available
+        renderFrameRaycast();
+        return;
+    }
+    
+    const auto& map = *state.raycast.map;
+    const RaycastPlayer& player = state.raycast.player;
+    
+    // Update tile map texture if needed
+    updateRaycastTileMap(map);
+    
+    // Prepare constant buffer data
+    struct RaycastConstants
+    {
+        float playerX;
+        float playerY;
+        float playerAngle;
+        float playerFOV;
+        uint32_t screenWidth;
+        uint32_t screenHeight;
+        uint32_t mapWidth;
+        uint32_t mapHeight;
+        float visualScale;
+        float torchRange;
+        float falloffMul;
+        float fovMul;
+        uint32_t supersample;
+        uint32_t padding[3];
+    };
+    
+    RaycastConstants constants{};
+    constants.playerX = player.x;
+    constants.playerY = player.y;
+    constants.playerAngle = player.angle;
+    constants.playerFOV = player.fov;
+    constants.screenWidth = state.ui.width;
+    constants.screenHeight = state.ui.height;
+    constants.mapWidth = static_cast<uint32_t>(map[0].size());
+    constants.mapHeight = static_cast<uint32_t>(map.size());
+    constants.visualScale = config.contains("raycastScale") ? config["raycastScale"].get<float>() : 3.0f;
+    float baseTorchRange = 16.0f;
+    constants.torchRange = baseTorchRange * constants.visualScale;
+    constants.falloffMul = config.contains("raycastFalloffMul") ? config["raycastFalloffMul"].get<float>() : 0.85f;
+    constants.fovMul = config.contains("raycastFovMul") ? config["raycastFovMul"].get<float>() : 1.0f;
+    constants.supersample = config.contains("raycastSupersample") ? config["raycastSupersample"].get<uint32_t>() : 1;
+    
+    // Update constant buffer
+    D3D11_MAPPED_SUBRESOURCE mapped;
+    HRESULT hr = d2dCtx.d3dContext->Map(d2dCtx.raycastConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+    if (SUCCEEDED(hr))
+    {
+        memcpy(mapped.pData, &constants, sizeof(constants));
+        d2dCtx.d3dContext->Unmap(d2dCtx.raycastConstantBuffer.Get(), 0);
+    }
+    
+    // Bind resources
+    d2dCtx.d3dContext->CSSetShader(d2dCtx.raycastComputeShader.Get(), nullptr, 0);
+    d2dCtx.d3dContext->CSSetShaderResources(0, 1, d2dCtx.tileMapSRV.GetAddressOf());
+    d2dCtx.d3dContext->CSSetUnorderedAccessViews(0, 1, d2dCtx.frameTextureUAV.GetAddressOf(), nullptr);
+    d2dCtx.d3dContext->CSSetConstantBuffers(0, 1, d2dCtx.raycastConstantBuffer.GetAddressOf());
+    
+    // Dispatch compute shader
+    UINT dispatchX = (state.ui.width + 7) / 8;
+    UINT dispatchY = (state.ui.height + 7) / 8;
+    d2dCtx.d3dContext->Dispatch(dispatchX, dispatchY, 1);
+    
+    // Unbind resources
+    ID3D11UnorderedAccessView* nullUAV = nullptr;
+    d2dCtx.d3dContext->CSSetUnorderedAccessViews(0, 1, &nullUAV, nullptr);
+    ID3D11ShaderResourceView* nullSRV = nullptr;
+    d2dCtx.d3dContext->CSSetShaderResources(0, 1, &nullSRV);
+    
+    // Present to swapchain (same as CPU path)
+    d2dCtx.dc->SetTarget(nullptr);
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
+    d2dCtx.swapchain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf()));
+    Microsoft::WRL::ComPtr<IDXGISurface> backSurface;
+    backBuffer.As(&backSurface);
+    D2D1_BITMAP_PROPERTIES1 targetProps = D2D1::BitmapProperties1(
+        D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
+        D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE));
+    d2dCtx.dc->CreateBitmapFromDxgiSurface(backSurface.Get(), &targetProps, d2dCtx.targetBitmap.GetAddressOf());
+    d2dCtx.dc->SetTarget(d2dCtx.targetBitmap.Get());
+    d2dCtx.dc->BeginDraw();
+    d2dCtx.dc->Clear(D2D1::ColorF(D2D1::ColorF::Black));
+    
+    D2D1_RECT_F dest = {0.0f, 0.0f, static_cast<float>(state.ui.width), static_cast<float>(state.ui.height)};
+    D2D1_RECT_F src = {0.0f, 0.0f, static_cast<float>(state.ui.width), static_cast<float>(state.ui.height)};
+    
+    d2dCtx.dc->DrawBitmap(d2dCtx.frameBitmap.Get(), &dest, 1.0f, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, &src);
+    
+    hr = d2dCtx.dc->EndDraw();
+    if (FAILED(hr))
+        throw std::runtime_error("Failed draw raycast GPU");
+    
     d2dCtx.dc->SetTarget(nullptr);
     d2dCtx.targetBitmap.Reset();
     d2dCtx.swapchain->Present(1, 0);

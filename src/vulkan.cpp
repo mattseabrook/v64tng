@@ -17,18 +17,17 @@
 #include "window.h"
 #include "raycast.h"
 #include "render.h"
+#include "../build/rgb_to_bgra_spv.h"
+#include "../build/vk_raycast_spv.h"
 
 //
 // Vulkan context
 //
 VulkanContext vkCtx;
 
-// Forward declaration used by buffer allocation helpers below
+// Forward declarations used by buffer allocation helpers below
 static uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
-
-// Embedded SPIR-V binary generated at build time: build/rgb_to_bgra_spv.h
-// Provides: unsigned char rgb_to_bgra_spv[]; unsigned int rgb_to_bgra_spv_len;
-#include "rgb_to_bgra_spv.h"
+static void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags props, VkBuffer &buffer, VkDeviceMemory &memory);
 
 static void destroyCompute()
 {
@@ -66,6 +65,38 @@ static void destroyCompute()
 	{
 		vkDestroyDescriptorSetLayout(vkCtx.device, vkCtx.computeDescSetLayout, nullptr);
 		vkCtx.computeDescSetLayout = VK_NULL_HANDLE;
+	}
+	
+	// Raycast pipeline cleanup
+	if (vkCtx.tileMapBuffer)
+	{
+		vkDestroyBuffer(vkCtx.device, vkCtx.tileMapBuffer, nullptr);
+		vkCtx.tileMapBuffer = VK_NULL_HANDLE;
+	}
+	if (vkCtx.tileMapBufferMemory)
+	{
+		vkFreeMemory(vkCtx.device, vkCtx.tileMapBufferMemory, nullptr);
+		vkCtx.tileMapBufferMemory = VK_NULL_HANDLE;
+	}
+	if (vkCtx.raycastDescPool)
+	{
+		vkDestroyDescriptorPool(vkCtx.device, vkCtx.raycastDescPool, nullptr);
+		vkCtx.raycastDescPool = VK_NULL_HANDLE;
+	}
+	if (vkCtx.raycastPipeline)
+	{
+		vkDestroyPipeline(vkCtx.device, vkCtx.raycastPipeline, nullptr);
+		vkCtx.raycastPipeline = VK_NULL_HANDLE;
+	}
+	if (vkCtx.raycastPipelineLayout)
+	{
+		vkDestroyPipelineLayout(vkCtx.device, vkCtx.raycastPipelineLayout, nullptr);
+		vkCtx.raycastPipelineLayout = VK_NULL_HANDLE;
+	}
+	if (vkCtx.raycastDescSetLayout)
+	{
+		vkDestroyDescriptorSetLayout(vkCtx.device, vkCtx.raycastDescSetLayout, nullptr);
+		vkCtx.raycastDescSetLayout = VK_NULL_HANDLE;
 	}
 }
 
@@ -215,6 +246,221 @@ static void createComputePipeline()
 	vkAllocateDescriptorSets(vkCtx.device, &ai, &vkCtx.computeDescSet);
 
 	updateComputeDescriptors();
+}
+
+//==============================================================================
+// GPU Raycasting Pipeline
+//==============================================================================
+
+// SPIR-V bytecode arrays from generated header
+extern unsigned char build_vk_raycast_spv[];
+extern unsigned int build_vk_raycast_spv_len;
+
+static void createTileMapBuffer(const std::vector<std::vector<uint8_t>>& tileMap)
+{
+	if (tileMap.empty() || tileMap[0].empty())
+		return;
+	
+	uint32_t mapHeight = static_cast<uint32_t>(tileMap.size());
+	uint32_t mapWidth = static_cast<uint32_t>(tileMap[0].size());
+	
+	// Check if we need to recreate
+	if (vkCtx.tileMapBuffer && vkCtx.lastMapWidth == mapWidth && vkCtx.lastMapHeight == mapHeight)
+		return;  // Already created with correct size
+	
+	// Clean up old buffer
+	if (vkCtx.tileMapBuffer)
+	{
+		vkDestroyBuffer(vkCtx.device, vkCtx.tileMapBuffer, nullptr);
+		vkFreeMemory(vkCtx.device, vkCtx.tileMapBufferMemory, nullptr);
+		vkCtx.tileMapBuffer = VK_NULL_HANDLE;
+		vkCtx.tileMapBufferMemory = VK_NULL_HANDLE;
+	}
+	
+	// Flatten tile map
+	std::vector<uint8_t> flatMap(mapWidth * mapHeight);
+	for (uint32_t y = 0; y < mapHeight; y++)
+	{
+		for (uint32_t x = 0; x < mapWidth; x++)
+		{
+			flatMap[y * mapWidth + x] = tileMap[y][x];
+		}
+	}
+	
+	// Create staging buffer
+	VkDeviceSize bufferSize = flatMap.size();
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingMemory;
+	
+	createBuffer(bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		stagingBuffer, stagingMemory);
+	
+	// Copy data to staging
+	void* data;
+	vkMapMemory(vkCtx.device, stagingMemory, 0, bufferSize, 0, &data);
+	memcpy(data, flatMap.data(), bufferSize);
+	vkUnmapMemory(vkCtx.device, stagingMemory);
+	
+	// Create device-local buffer
+	createBuffer(bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		vkCtx.tileMapBuffer, vkCtx.tileMapBufferMemory);
+	
+	// Copy staging to device-local
+	VkCommandBuffer cmdBuf = vkCtx.commandBuffers[vkCtx.currentFrame];
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	
+	vkBeginCommandBuffer(cmdBuf, &beginInfo);
+	
+	VkBufferCopy copyRegion{};
+	copyRegion.size = bufferSize;
+	vkCmdCopyBuffer(cmdBuf, stagingBuffer, vkCtx.tileMapBuffer, 1, &copyRegion);
+	
+	vkEndCommandBuffer(cmdBuf);
+	
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &cmdBuf;
+	
+	vkQueueSubmit(vkCtx.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(vkCtx.graphicsQueue);
+	
+	// Clean up staging
+	vkDestroyBuffer(vkCtx.device, stagingBuffer, nullptr);
+	vkFreeMemory(vkCtx.device, stagingMemory, nullptr);
+	
+	vkCtx.tileMapBufferSize = bufferSize;
+	vkCtx.lastMapWidth = mapWidth;
+	vkCtx.lastMapHeight = mapHeight;
+}
+
+static void updateRaycastDescriptors()
+{
+	if (!vkCtx.raycastDescSet || !vkCtx.tileMapBuffer)
+		return;
+	
+	// Binding 0: tile map storage buffer
+	VkDescriptorBufferInfo bufInfo{};
+	bufInfo.buffer = vkCtx.tileMapBuffer;
+	bufInfo.offset = 0;
+	bufInfo.range = vkCtx.tileMapBufferSize;
+	
+	// Binding 1: output storage image
+	VkDescriptorImageInfo imgInfo{};
+	imgInfo.imageView = vkCtx.textureImageView;
+	imgInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	
+	VkWriteDescriptorSet writes[2]{};
+	writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writes[0].dstSet = vkCtx.raycastDescSet;
+	writes[0].dstBinding = 0;
+	writes[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	writes[0].descriptorCount = 1;
+	writes[0].pBufferInfo = &bufInfo;
+	
+	writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writes[1].dstSet = vkCtx.raycastDescSet;
+	writes[1].dstBinding = 1;
+	writes[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	writes[1].descriptorCount = 1;
+	writes[1].pImageInfo = &imgInfo;
+	
+	vkUpdateDescriptorSets(vkCtx.device, 2, writes, 0, nullptr);
+}
+
+static void createRaycastPipeline()
+{
+	try {
+		// Descriptor set layout: binding0 storage buffer (tile map), binding1 storage image (output)
+		VkDescriptorSetLayoutBinding bindings[2]{};
+		bindings[0].binding = 0;
+		bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		bindings[0].descriptorCount = 1;
+		bindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+		bindings[1].binding = 1;
+		bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+		bindings[1].descriptorCount = 1;
+		bindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+		
+		VkDescriptorSetLayoutCreateInfo dslInfo{};
+		dslInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		dslInfo.bindingCount = 2;
+		dslInfo.pBindings = bindings;
+		vkCreateDescriptorSetLayout(vkCtx.device, &dslInfo, nullptr, &vkCtx.raycastDescSetLayout);
+		
+		// Push constants for raycast parameters
+		VkPushConstantRange pcRange{};
+		pcRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+		pcRange.offset = 0;
+		pcRange.size = sizeof(float) * 16;  // Match shader layout
+		
+		VkPipelineLayoutCreateInfo plInfo{};
+		plInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		plInfo.setLayoutCount = 1;
+		plInfo.pSetLayouts = &vkCtx.raycastDescSetLayout;
+		plInfo.pushConstantRangeCount = 1;
+		plInfo.pPushConstantRanges = &pcRange;
+		vkCreatePipelineLayout(vkCtx.device, &plInfo, nullptr, &vkCtx.raycastPipelineLayout);
+		
+		// Load shader module from embedded SPIR-V
+		VkShaderModuleCreateInfo smInfo{};
+		smInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		smInfo.codeSize = build_vk_raycast_spv_len;
+		smInfo.pCode = reinterpret_cast<const uint32_t*>(build_vk_raycast_spv);
+		VkShaderModule module;
+		VkResult result = vkCreateShaderModule(vkCtx.device, &smInfo, nullptr, &module);
+		if (result != VK_SUCCESS)
+			throw std::runtime_error("Failed to create raycast shader module");
+		
+		VkPipelineShaderStageCreateInfo stageInfo{};
+		stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		stageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+		stageInfo.module = module;
+		stageInfo.pName = "main";
+		
+		VkComputePipelineCreateInfo cpInfo{};
+		cpInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+		cpInfo.stage = stageInfo;
+		cpInfo.layout = vkCtx.raycastPipelineLayout;
+		vkCreateComputePipelines(vkCtx.device, VK_NULL_HANDLE, 1, &cpInfo, nullptr, &vkCtx.raycastPipeline);
+		
+		vkDestroyShaderModule(vkCtx.device, module, nullptr);
+		
+		// Descriptor pool and set
+		VkDescriptorPoolSize poolSizes[2]{};
+		poolSizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		poolSizes[0].descriptorCount = 1;
+		poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+		poolSizes[1].descriptorCount = 1;
+		
+		VkDescriptorPoolCreateInfo dpInfo{};
+		dpInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		dpInfo.maxSets = 1;
+		dpInfo.poolSizeCount = 2;
+		dpInfo.pPoolSizes = poolSizes;
+		vkCreateDescriptorPool(vkCtx.device, &dpInfo, nullptr, &vkCtx.raycastDescPool);
+		
+		VkDescriptorSetAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.descriptorPool = vkCtx.raycastDescPool;
+		allocInfo.descriptorSetCount = 1;
+		allocInfo.pSetLayouts = &vkCtx.raycastDescSetLayout;
+		vkAllocateDescriptorSets(vkCtx.device, &allocInfo, &vkCtx.raycastDescSet);
+		
+		OutputDebugStringA("Vulkan raycast GPU pipeline created successfully\n");
+	}
+	catch (const std::exception& e) {
+		OutputDebugStringA("Warning: Failed to create raycast pipeline: ");
+		OutputDebugStringA(e.what());
+		OutputDebugStringA("\n");
+		// Not fatal - will fall back to CPU rendering
+	}
 }
 
 /*
@@ -374,6 +620,10 @@ static void createVulkanTexture(uint32_t width, uint32_t height)
         createComputePipeline();
     // Update descriptors to point to the current image/buffer
     updateComputeDescriptors();
+    
+    // Create raycast GPU pipeline once
+    if (!vkCtx.raycastPipeline)
+        createRaycastPipeline();
 
 	vkCtx.rowBuffer.resize(width * 4);
 	vkCtx.previousFrameData.resize(width * height * 3);
@@ -705,6 +955,213 @@ void renderFrameRaycastVk()
 	vkCtx.pendingCopyRegions.push_back(region);
 
 	presentFrame();
+}
+
+/*
+===============================================================================
+Function Name: renderFrameRaycastVkGPU
+
+Description:
+	- Renders the raycaster view using GPU compute shader (Vulkan).
+	- This function dispatches the GPU raycast compute shader and presents the result.
+===============================================================================
+*/
+void renderFrameRaycastVkGPU()
+{
+	if (!vkCtx.raycastPipeline)
+	{
+		// Fall back to CPU rendering if GPU pipeline not available
+		renderFrameRaycastVk();
+		return;
+	}
+	
+	const auto& map = *state.raycast.map;
+	const RaycastPlayer& player = state.raycast.player;
+	
+	// Upload tile map to GPU if needed
+	createTileMapBuffer(map);
+	
+	// Update descriptors if needed
+	if (vkCtx.tileMapBuffer)
+		updateRaycastDescriptors();
+	
+	// Prepare push constants
+	struct RaycastConstants
+	{
+		float playerX;
+		float playerY;
+		float playerAngle;
+		float playerFOV;
+		uint32_t screenWidth;
+		uint32_t screenHeight;
+		uint32_t mapWidth;
+		uint32_t mapHeight;
+		float visualScale;
+		float torchRange;
+		float falloffMul;
+		float fovMul;
+		uint32_t supersample;
+		float padding[3];
+	};
+	
+	RaycastConstants constants{};
+	constants.playerX = player.x;
+	constants.playerY = player.y;
+	constants.playerAngle = player.angle;
+	constants.playerFOV = player.fov;
+	constants.screenWidth = state.ui.width;
+	constants.screenHeight = state.ui.height;
+	constants.mapWidth = static_cast<uint32_t>(map[0].size());
+	constants.mapHeight = static_cast<uint32_t>(map.size());
+	constants.visualScale = config.contains("raycastScale") ? config["raycastScale"].get<float>() : 3.0f;
+	float baseTorchRange = 16.0f;
+	constants.torchRange = baseTorchRange * constants.visualScale;
+	constants.falloffMul = config.contains("raycastFalloffMul") ? config["raycastFalloffMul"].get<float>() : 0.85f;
+	constants.fovMul = config.contains("raycastFovMul") ? config["raycastFovMul"].get<float>() : 1.0f;
+	constants.supersample = config.contains("raycastSupersample") ? config["raycastSupersample"].get<uint32_t>() : 1;
+	
+	// Present frame with compute shader execution
+	uint32_t frame = vkCtx.currentFrame;
+	vkWaitForFences(vkCtx.device, 1, &vkCtx.inFlightFences[frame], VK_TRUE, UINT64_MAX);
+	vkResetFences(vkCtx.device, 1, &vkCtx.inFlightFences[frame]);
+	
+	uint32_t imgIdx;
+	vkAcquireNextImageKHR(vkCtx.device, vkCtx.swapchain, UINT64_MAX, vkCtx.imageAvailableSemaphores[frame], VK_NULL_HANDLE, &imgIdx);
+	
+	VkCommandBuffer cmdBuf = vkCtx.commandBuffers[frame];
+	vkResetCommandBuffer(cmdBuf, 0);
+	
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	vkBeginCommandBuffer(cmdBuf, &beginInfo);
+	
+	// Transition texture to GENERAL layout for compute shader write
+	if (vkCtx.textureImageLayout != VK_IMAGE_LAYOUT_GENERAL)
+	{
+		VkImageMemoryBarrier barrier{};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrier.oldLayout = vkCtx.textureImageLayout;
+		barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.image = vkCtx.textureImage;
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barrier.subresourceRange.levelCount = 1;
+		barrier.subresourceRange.layerCount = 1;
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+		
+		vkCmdPipelineBarrier(cmdBuf,
+			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+			0, 0, nullptr, 0, nullptr, 1, &barrier);
+		
+		vkCtx.textureImageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	}
+	
+	// Bind raycast compute pipeline
+	vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_COMPUTE, vkCtx.raycastPipeline);
+	vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_COMPUTE, vkCtx.raycastPipelineLayout, 0, 1, &vkCtx.raycastDescSet, 0, nullptr);
+	vkCmdPushConstants(cmdBuf, vkCtx.raycastPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(constants), &constants);
+	
+	// Dispatch compute shader
+	uint32_t dispatchX = (state.ui.width + 7) / 8;
+	uint32_t dispatchY = (state.ui.height + 7) / 8;
+	vkCmdDispatch(cmdBuf, dispatchX, dispatchY, 1);
+	
+	// Barrier before copy to swapchain
+	VkImageMemoryBarrier computeBarrier{};
+	computeBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	computeBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+	computeBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	computeBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	computeBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	computeBarrier.image = vkCtx.textureImage;
+	computeBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	computeBarrier.subresourceRange.levelCount = 1;
+	computeBarrier.subresourceRange.layerCount = 1;
+	computeBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+	computeBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	
+	vkCmdPipelineBarrier(cmdBuf,
+		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+		VK_PIPELINE_STAGE_TRANSFER_BIT,
+		0, 0, nullptr, 0, nullptr, 1, &computeBarrier);
+	
+	vkCtx.textureImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	
+	// Transition swapchain image to TRANSFER_DST
+	VkImage swapImg = vkCtx.swapchainImages[imgIdx];
+	VkImageMemoryBarrier swapBarrier{};
+	swapBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	swapBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	swapBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	swapBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	swapBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	swapBarrier.image = swapImg;
+	swapBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	swapBarrier.subresourceRange.levelCount = 1;
+	swapBarrier.subresourceRange.layerCount = 1;
+	swapBarrier.srcAccessMask = 0;
+	swapBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	
+	vkCmdPipelineBarrier(cmdBuf,
+		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		VK_PIPELINE_STAGE_TRANSFER_BIT,
+		0, 0, nullptr, 0, nullptr, 1, &swapBarrier);
+	
+	// Copy texture to swapchain
+	VkImageBlit blit{};
+	blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	blit.srcSubresource.layerCount = 1;
+	blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	blit.dstSubresource.layerCount = 1;
+	blit.srcOffsets[1] = {static_cast<int32_t>(vkCtx.textureWidth), static_cast<int32_t>(vkCtx.textureHeight), 1};
+	blit.dstOffsets[1] = {static_cast<int32_t>(vkCtx.swapchainExtent.width), static_cast<int32_t>(vkCtx.swapchainExtent.height), 1};
+	
+	vkCmdBlitImage(cmdBuf,
+		vkCtx.textureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		swapImg, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		1, &blit, VK_FILTER_NEAREST);
+	
+	// Transition swapchain to PRESENT
+	swapBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	swapBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	swapBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	swapBarrier.dstAccessMask = 0;
+	
+	vkCmdPipelineBarrier(cmdBuf,
+		VK_PIPELINE_STAGE_TRANSFER_BIT,
+		VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+		0, 0, nullptr, 0, nullptr, 1, &swapBarrier);
+	
+	vkEndCommandBuffer(cmdBuf);
+	
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = &vkCtx.imageAvailableSemaphores[frame];
+	submitInfo.pWaitDstStageMask = &waitStage;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &cmdBuf;
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &vkCtx.renderFinishedSemaphores[frame];
+	
+	vkQueueSubmit(vkCtx.graphicsQueue, 1, &submitInfo, vkCtx.inFlightFences[frame]);
+	
+	VkPresentInfoKHR presentInfo{};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = &vkCtx.renderFinishedSemaphores[frame];
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = &vkCtx.swapchain;
+	presentInfo.pImageIndices = &imgIdx;
+	
+	vkQueuePresentKHR(vkCtx.graphicsQueue, &presentInfo);
+	
+	vkCtx.currentFrame = (vkCtx.currentFrame + 1) % VulkanContext::MAX_FRAMES_IN_FLIGHT;
 }
 
 /*

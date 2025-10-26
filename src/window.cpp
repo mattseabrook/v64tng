@@ -33,7 +33,8 @@ std::map<RendererType, void (*)()> initializeRenderer = {
 std::map<RendererType, void (*)()> renderFrameFuncs = {
 	{RendererType::VULKAN, renderFrameVk}, {RendererType::DIRECTX, renderFrameD2D}};
 std::map<RendererType, void (*)()> renderRaycastFuncs = {
-	{RendererType::VULKAN, renderFrameRaycastVk}, {RendererType::DIRECTX, renderFrameRaycast}};
+	{RendererType::VULKAN, renderFrameRaycastVkGPU}, {RendererType::DIRECTX, renderFrameRaycastGPU}};
+
 std::map<RendererType, void (*)()> cleanupFuncs = {
 	{RendererType::VULKAN, cleanupVulkan}, {RendererType::DIRECTX, cleanupD2D}};
 

@@ -229,25 +229,107 @@ if [[ -f "$RESOURCE_RC" ]] && ([[ ! -f "$RESOURCE_RES" ]] || [[ "$RESOURCE_RC" -
         -o "$RESOURCE_RES" "$RESOURCE_RC"
 fi
 
-# Generate Vulkan SPIR-V and header for compute shader (only when needed)
-HEADER_OUT="$BUILD_DIR/rgb_to_bgra_spv.h"
-SPV_OUT="$BUILD_DIR/rgb_to_bgra.spv"
-SHADER_SRC="shaders/vk_rgb_to_bgra.comp"
-regen=false
-if [[ ! -f "$HEADER_OUT" ]]; then regen=true; fi
-if [[ -f "$SHADER_SRC" && -f "$HEADER_OUT" && "$SHADER_SRC" -nt "$HEADER_OUT" ]]; then regen=true; fi
-if [[ "$regen" == true ]]; then
-    echo "Generating SPIR-V for Vulkan compute shader..."
-    glslc -fshader-stage=compute "$SHADER_SRC" -o "$SPV_OUT"
-    if command -v xxd >/dev/null 2>&1; then
-        xxd -i "$SPV_OUT" > "$HEADER_OUT"
+# ============================================================================
+# Shader Compilation
+# ============================================================================
+
+echo "=== Compiling Shaders ==="
+
+# Helper function to compile Vulkan GLSL to SPIR-V header
+compile_vulkan_shader() {
+    local shader_src="$1"
+    local spv_out="$2"
+    local header_out="$3"
+    local shader_name=$(basename "$shader_src" .comp)
+    
+    local regen=false
+    if [[ ! -f "$header_out" ]]; then regen=true; fi
+    if [[ -f "$shader_src" && -f "$header_out" && "$shader_src" -nt "$header_out" ]]; then regen=true; fi
+    
+    if [[ "$regen" == true ]]; then
+        echo "Compiling Vulkan shader: $shader_name..."
+        glslc -fshader-stage=compute "$shader_src" -o "$spv_out"
+        if command -v xxd >/dev/null 2>&1; then
+            xxd -i "$spv_out" > "$header_out"
+        else
+            echo "ERROR: xxd not found (often provided by vim-common). Please install it."
+            exit 1
+        fi
+        echo "  Generated: $header_out"
     else
-        echo "ERROR: xxd not found (often provided by vim-common). Please install it."
-        exit 1
+        echo "Vulkan shader cached: $shader_name"
     fi
-else
-    echo "Using cached SPIR-V header: $HEADER_OUT"
-fi
+}
+
+# Helper function to embed shader source as C++ header (for runtime compilation)
+embed_shader_source() {
+    local shader_src="$1"
+    local header_out="$2"
+    local var_name="$3"
+    local shader_name=$(basename "$shader_src")
+    
+    local regen=false
+    if [[ ! -f "$header_out" ]]; then regen=true; fi
+    if [[ -f "$shader_src" && -f "$header_out" && "$shader_src" -nt "$header_out" ]]; then regen=true; fi
+    
+    if [[ "$regen" == true ]]; then
+        echo "Embedding shader source: $shader_name..."
+        
+        # Read shader file and escape for C string
+        local escaped_content=$(cat "$shader_src" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | awk '{printf "%s\\n", $0}')
+        
+        # Generate header
+        cat > "$header_out" << EOF
+// Auto-generated embedded shader source: $shader_name
+#ifndef ${var_name}_H
+#define ${var_name}_H
+
+static const char* ${var_name} = R"SHADER(
+$(cat "$shader_src")
+)SHADER";
+
+#endif // ${var_name}_H
+EOF
+        echo "  Generated: $header_out"
+    else
+        echo "Shader source cached: $shader_name"
+    fi
+}
+
+# Helper function to compile D3D11 HLSL to CSO (compiled shader object) header
+compile_d3d11_shader() {
+    local shader_src="$1"
+    local header_out="$2"
+    local var_name="$3"
+    
+    # For D3D11, we embed the source code since we compile at runtime with D3DCompile
+    embed_shader_source "$shader_src" "$header_out" "$var_name"
+}
+
+# Compile Vulkan shaders to SPIR-V (binary embedded)
+compile_vulkan_shader \
+    "shaders/vk_rgb_to_bgra.comp" \
+    "$BUILD_DIR/rgb_to_bgra.spv" \
+    "$BUILD_DIR/rgb_to_bgra_spv.h"
+
+compile_vulkan_shader \
+    "shaders/vk_raycast.comp" \
+    "$BUILD_DIR/vk_raycast.spv" \
+    "$BUILD_DIR/vk_raycast_spv.h"
+
+# Embed D3D11 shader sources (compiled at runtime, but source is in exe)
+compile_d3d11_shader \
+    "shaders/d3d11_rgb_to_bgra.hlsl" \
+    "$BUILD_DIR/d3d11_rgb_to_bgra.h" \
+    "g_d3d11_rgb_to_bgra_hlsl"
+
+compile_d3d11_shader \
+    "shaders/d3d11_raycast.hlsl" \
+    "$BUILD_DIR/d3d11_raycast.h" \
+    "g_d3d11_raycast_hlsl"
+
+echo "Shader compilation complete."
+echo ""
 
 # Get source files
 SOURCES=($(find src -name "*.cpp" | sort))

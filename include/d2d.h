@@ -33,13 +33,21 @@ struct D2DContext
     UINT textureWidth = 0;
     UINT textureHeight = 0;
     
-    // GPU Compute Pipeline Resources
+    // GPU Compute Pipeline Resources (2D rendering)
     Microsoft::WRL::ComPtr<ID3D11ComputeShader> computeShader;
     Microsoft::WRL::ComPtr<ID3D11Buffer> inputRGBBuffer;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> inputRGBSRV;
     Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> frameTextureUAV;
     Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer;
     UINT rgbBufferSize = 0;
+    
+    // GPU Raycasting Resources
+    Microsoft::WRL::ComPtr<ID3D11ComputeShader> raycastComputeShader;
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> tileMapTexture;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> tileMapSRV;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> raycastConstantBuffer;
+    UINT lastMapWidth = 0;
+    UINT lastMapHeight = 0;
 };
 
 extern D2DContext d2dCtx;
@@ -47,6 +55,7 @@ extern D2DContext d2dCtx;
 void initializeD2D();
 void renderFrameD2D();
 void renderFrameRaycast();
+void renderFrameRaycastGPU();
 void resizeTexture(UINT width, UINT height);
 void cleanupD2D();
 

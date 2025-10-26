@@ -1,0 +1,263 @@
+#version 450
+// Vulkan Compute Shader for GPU-Accelerated Raycasting
+// Implements DDA algorithm entirely on GPU for maximum parallelism
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+// Tile map: storage buffer with uint8 wall types
+layout(std430, binding = 0) readonly buffer TileMap {
+    uint data[];  // Packed bytes (4 tiles per uint)
+};
+
+// Output: BGRA8 image
+layout(binding = 1, rgba8) uniform writeonly image2D outputImage;
+
+// Per-frame constants
+layout(push_constant) uniform RaycastConstants {
+    float playerX;
+    float playerY;
+    float playerAngle;
+    float playerFOV;
+    uint screenWidth;
+    uint screenHeight;
+    uint mapWidth;
+    uint mapHeight;
+    float visualScale;       // Distance shrink factor (typically 3.0)
+    float torchRange;        // Light falloff range
+    float falloffMul;        // Radial falloff multiplier
+    float fovMul;            // FOV adjustment multiplier
+    uint supersample;        // Supersampling count
+} pc;
+
+//==============================================================================
+// Tile Map Access
+//==============================================================================
+
+uint getTile(ivec2 mapPos)
+{
+    // Bounds check
+    if (mapPos.x < 0 || mapPos.y < 0 || 
+        mapPos.x >= int(pc.mapWidth) || mapPos.y >= int(pc.mapHeight))
+        return 0xFF;  // Out of bounds = solid wall
+    
+    // Calculate byte index in map
+    uint byteIndex = uint(mapPos.y) * pc.mapWidth + uint(mapPos.x);
+    
+    // Load packed uint (4 bytes per word)
+    uint wordIndex = byteIndex >> 2;
+    uint byteOffset = byteIndex & 3u;
+    uint packedWord = data[wordIndex];
+    
+    // Extract byte
+    uint shift = byteOffset * 8u;
+    return (packedWord >> shift) & 0xFFu;
+}
+
+//==============================================================================
+// DDA Raycasting
+//==============================================================================
+
+struct RayHit
+{
+    float distance;
+    int side;  // 0 = vertical wall, 1 = horizontal wall
+};
+
+RayHit castRay(vec2 pos, vec2 rayDir)
+{
+    // DDA initialization
+    ivec2 mapPos = ivec2(floor(pos));
+    vec2 deltaDist = abs(1.0 / rayDir);
+    ivec2 step;
+    vec2 sideDist;
+    
+    // Calculate step direction and initial side distances
+    if (rayDir.x < 0.0)
+    {
+        step.x = -1;
+        sideDist.x = (pos.x - float(mapPos.x)) * deltaDist.x;
+    }
+    else
+    {
+        step.x = 1;
+        sideDist.x = (float(mapPos.x) + 1.0 - pos.x) * deltaDist.x;
+    }
+    
+    if (rayDir.y < 0.0)
+    {
+        step.y = -1;
+        sideDist.y = (pos.y - float(mapPos.y)) * deltaDist.y;
+    }
+    else
+    {
+        step.y = 1;
+        sideDist.y = (float(mapPos.y) + 1.0 - pos.y) * deltaDist.y;
+    }
+    
+    // DDA loop - bounded to prevent infinite loops
+    int side = 0;
+    const int MAX_STEPS = 64;
+    
+    for (int i = 0; i < MAX_STEPS; i++)
+    {
+        // Step to next grid cell
+        if (sideDist.x < sideDist.y)
+        {
+            sideDist.x += deltaDist.x;
+            mapPos.x += step.x;
+            side = 0;
+        }
+        else
+        {
+            sideDist.y += deltaDist.y;
+            mapPos.y += step.y;
+            side = 1;
+        }
+        
+        // Sample tile
+        uint tile = getTile(mapPos);
+        
+        // Out of bounds returns 0xFF
+        if (tile == 0xFF)
+            return RayHit(32.0, side);
+        
+        // Check for walls (0x01-0xEF, excluding player markers 0xF0-0xF3)
+        if (tile >= 1u && (tile < 0xF0u || tile > 0xF3u))
+        {
+            // Hit wall - calculate distance
+            float dist = side == 0 ? (sideDist.x - deltaDist.x) : (sideDist.y - deltaDist.y);
+            return RayHit(dist, side);
+        }
+    }
+    
+    // Max distance if no hit
+    return RayHit(32.0, side);
+}
+
+//==============================================================================
+// Shading & Lighting
+//==============================================================================
+
+vec3 shadePixel(uvec2 pixel, RayHit hit, float halfW, float halfH, float maxRadius)
+{
+    // Apply visual scale to shrink perceived distances
+    float perpWallDist = max(hit.distance / pc.visualScale, 0.01);
+    float lineHeight = float(pc.screenHeight) / perpWallDist;
+    float drawStart = halfH - lineHeight / 2.0;
+    float drawEnd = halfH + lineHeight / 2.0;
+    
+    // Wall color based on side (darker for horizontal walls)
+    vec3 wallColor = hit.side == 1 ? vec3(64.0/255.0) : vec3(120.0/255.0);
+    
+    // Lighting: torch falloff
+    float lightFactor = max(0.0, 1.0 - hit.distance / pc.torchRange);
+    
+    // Pixel Y position (center of pixel)
+    float yf = float(pixel.y) + 0.5;
+    
+    // Radial screen-space vignette
+    float dx = float(pixel.x) - halfW;
+    float dy = yf - halfH;
+    float screenDist = sqrt(dx * dx + dy * dy);
+    float screenFactor = max(0.0, 1.0 - (screenDist / maxRadius) * pc.falloffMul);
+    
+    // Ceiling gradient
+    float ceilingShade = (120.0/255.0) * (1.0 - yf / halfH);
+    ceilingShade = clamp(ceilingShade, 0.0, 1.0);
+    vec3 ceilingColor = vec3(ceilingShade);
+    
+    // Floor gradient
+    float floorRatio = (yf - halfH) / halfH;
+    floorRatio = clamp(floorRatio, 0.0, 1.0);
+    vec3 floorColor = vec3(90.0/255.0 * floorRatio, 
+                           70.0/255.0 * floorRatio, 
+                           50.0/255.0 * floorRatio);
+    
+    // Apply lighting to wall
+    vec3 litWall = wallColor * lightFactor;
+    
+    // Determine pixel color: ceiling, wall, or floor
+    vec3 color;
+    if (yf < drawStart)
+    {
+        // Ceiling
+        color = ceilingColor;
+    }
+    else if (yf > drawEnd)
+    {
+        // Floor
+        color = floorColor;
+    }
+    else
+    {
+        // Wall with edge blending for anti-aliasing
+        if (yf < drawStart + 1.0)
+        {
+            // Blend ceiling → wall
+            float weight = (yf - drawStart);
+            weight = clamp(weight, 0.0, 1.0);
+            color = mix(ceilingColor, litWall, weight);
+        }
+        else if (yf > drawEnd - 1.0)
+        {
+            // Blend wall → floor
+            float weight = (drawEnd - yf);
+            weight = clamp(weight, 0.0, 1.0);
+            color = mix(floorColor, litWall, weight);
+        }
+        else
+        {
+            // Pure wall
+            color = litWall;
+        }
+    }
+    
+    // Apply screen vignette
+    color *= screenFactor;
+    
+    return color;
+}
+
+//==============================================================================
+// Main Compute Shader
+//==============================================================================
+
+void main()
+{
+    uvec2 pixel = gl_GlobalInvocationID.xy;
+    
+    // Bounds check
+    if (pixel.x >= pc.screenWidth || pixel.y >= pc.screenHeight)
+        return;
+    
+    // Precompute common values
+    float halfW = float(pc.screenWidth) * 0.5;
+    float halfH = float(pc.screenHeight) * 0.5;
+    float maxRadius = sqrt(halfW * halfW + halfH * halfH);
+    
+    // Accumulate color for supersampling
+    vec3 accumColor = vec3(0.0);
+    
+    for (uint sampleIdx = 0u; sampleIdx < pc.supersample; sampleIdx++)
+    {
+        // Camera X coordinate with sub-pixel offset for supersampling
+        float camX = 2.0 * (float(pixel.x) + (float(sampleIdx) + 0.5) / float(pc.supersample)) / float(pc.screenWidth) - 1.0;
+        
+        // Calculate ray angle and direction
+        float rayAngle = pc.playerAngle + camX * (pc.playerFOV * 0.5 * pc.fovMul);
+        vec2 rayDir = vec2(cos(rayAngle), sin(rayAngle));
+        
+        // Cast ray
+        RayHit hit = castRay(vec2(pc.playerX, pc.playerY), rayDir);
+        
+        // Shade pixel
+        vec3 color = shadePixel(pixel, hit, halfW, halfH, maxRadius);
+        accumColor += color;
+    }
+    
+    // Average samples
+    accumColor /= float(pc.supersample);
+    
+    // Write output as RGBA (Vulkan will handle BGRA swizzle)
+    imageStore(outputImage, ivec2(pixel), vec4(accumColor, 1.0));
+}
