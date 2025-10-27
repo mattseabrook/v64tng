@@ -17,50 +17,9 @@ ZLIB_DIR="/opt/windows-libs/zlib"
 LIBPNG_DIR="/opt/windows-libs/libpng"
 ADLMIDI_DIR="/opt/windows-libs/ADLMIDI"
 
-# Parallel compilation settings
-MAX_JOBS=$(nproc)
-COMPILE_JOBS=$MAX_JOBS
-
-# Build logging
-BUILD_LOG="build.log"
-
-#===============================================================================
-# Utility Functions
-#===============================================================================
-
-# Banner for section headers (from speedboards.sh)
-banner() {
-    local w=78
-    local line="$(printf '%*s' "$w" | tr ' ' '=')"
-    printf "\n%s\n" "$line"
-    printf "  %s\n" "$1"
-    printf "%s\n\n" "$line"
-}
-
-# Initialize build log (clear it)
-init_log() {
-    rm -f "$BUILD_LOG"
-    touch "$BUILD_LOG"
-}
-
-# Log warnings and errors only
-log_output() {
-    local tmp_file="$1"
-    if [[ -f "$tmp_file" ]]; then
-        if grep -qiE '(warning|error):' "$tmp_file"; then
-            cat "$tmp_file" >> "$BUILD_LOG"
-        fi
-        rm -f "$tmp_file"
-    fi
-}
-
-#===============================================================================
-# Windows SDK Setup
-#===============================================================================
-
 # Setup Windows SDK
 setup_winsdk() {
-    banner "Setting up Windows SDK"
+    echo "=== Setting up Windows SDK ==="
     
     if [[ ! -d "$WINSDK_BASE" ]]; then
         echo "Windows SDK not found at $WINSDK_BASE"
@@ -221,40 +180,26 @@ setup_winsdk() {
     
     export DETECTED_LIB_ARCH="$detected_lib_arch"
     
-    echo "✓ SDK version: $DETECTED_SDK_VERSION"
-    echo "✓ Library arch: $detected_lib_arch"
-    echo "✓ All critical paths verified"
+    echo "Detected library architecture: $detected_lib_arch"
+    echo ""
+    echo "Final detected paths:"
+    echo "  SDK_INCLUDE: $DETECTED_SDK_INCLUDE"
+    echo "  SDK_LIB: $DETECTED_SDK_LIB"
+    echo "  CRT_INCLUDE: $DETECTED_CRT_INCLUDE"
+    echo "  CRT_LIB: $DETECTED_CRT_LIB"
+    echo "  SDK_VERSION: $DETECTED_SDK_VERSION"
+    echo "  LIB_ARCH: $DETECTED_LIB_ARCH"
 }
-
-#===============================================================================
-# Clean Target
-#===============================================================================
-
-clean() {
-    banner "Cleaning Build Artifacts"
-    
-    rm -rf "$BUILD_DIR"
-    rm -f v64tng.exe v64tng-debug.exe *.pdb
-    rm -f "$BUILD_LOG"
-    
-    echo "✓ Cleaned build directory"
-    echo "✓ Removed executables"
-    echo "✓ Removed build log"
-}
-
-#===============================================================================
-# Main Build
-#===============================================================================
-
-# Initialize build log
-init_log
 
 # Call setups
 setup_winsdk
 
 # Clean target
 if [[ "$1" == "clean" ]]; then
-    clean
+    echo "Cleaning build artifacts..."
+    rm -rf "$BUILD_DIR"
+    rm -f v64tng.exe v64tng-debug.exe *.pdb
+    echo "Clean complete."
     exit 0
 fi
 
@@ -271,37 +216,24 @@ fi
 mkdir -p "$BUILD_DIR"
 
 # Compile resources using mingw windres (only thing we use from mingw)
-banner "Compiling Resources"
-
 RESOURCE_RES="$BUILD_DIR/resource.res"
 RESOURCE_RC="resource.rc"
 
 if [[ -f "$RESOURCE_RC" ]] && ([[ ! -f "$RESOURCE_RES" ]] || [[ "$RESOURCE_RC" -nt "$RESOURCE_RES" ]]); then
     echo "Compiling resource file..."
-    res_log="$BUILD_DIR/resource.log"
-    if x86_64-w64-mingw32-windres \
+    x86_64-w64-mingw32-windres \
         -I "$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/um" \
         -I "$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/shared" \
         -I "$DETECTED_SDK_INCLUDE/ucrt" \
         -I "$DETECTED_CRT_INCLUDE" \
-        -o "$RESOURCE_RES" "$RESOURCE_RC" 2>"$res_log"; then
-        log_output "$res_log"
-        echo "✓ Resource compiled"
-    else
-        log_output "$res_log"
-        cat "$res_log"
-        echo "ERROR: Resource compilation failed"
-        exit 1
-    fi
-else
-    echo "✓ Resource up to date"
+        -o "$RESOURCE_RES" "$RESOURCE_RC"
 fi
 
-#===============================================================================
+# ============================================================================
 # Shader Compilation
-#===============================================================================
+# ============================================================================
 
-banner "Compiling Shaders"
+echo "=== Compiling Shaders ==="
 
 # Helper function to compile Vulkan GLSL to SPIR-V header
 compile_vulkan_shader() {
@@ -396,17 +328,15 @@ compile_d3d11_shader \
     "$BUILD_DIR/d3d11_raycast.h" \
     "g_d3d11_raycast_hlsl"
 
-echo "✓ Shader compilation complete"
-
-#===============================================================================
-# Source File Scanning
-#===============================================================================
-
-banner "Scanning Source Files"
+echo "Shader compilation complete."
+echo ""
 
 # Get source files
 SOURCES=($(find src -name "*.cpp" | sort))
-echo "Found ${#SOURCES[@]} source files"
+echo "Found ${#SOURCES[@]} source files to process:"
+for src in "${SOURCES[@]}"; do
+    echo "  - $(basename "$src")"
+done
 
 # Generate object file paths
 OBJECTS=()
@@ -543,45 +473,10 @@ needs_compile() {
     return 1
 }
 
-# Compile batch of sources in parallel (from phantom.sh)
-compile_batch() {
-    local batch_sources=("$@")
-    local pids=()
-    
-    for src in "${batch_sources[@]}"; do
-        obj="$BUILD_DIR/$(basename "${src%.cpp}").o"
-        
-        if needs_compile "$src" "$obj"; then
-            {
-                local error_log="$BUILD_DIR/$(basename "${src%.cpp}").error.log"
-                
-                if clang-cl -c "$src" -o "$obj" "${CLANG_FLAGS[@]}" 2>"$error_log"; then
-                    echo "  ✓ $(basename "$src")"
-                    log_output "$error_log"
-                else
-                    echo "  ✗ FAILED: $(basename "$src")"
-                    log_output "$error_log"
-                    cat "$error_log"
-                    exit 1
-                fi
-            } &
-            pids+=($!)
-        else
-            echo "  ≡ $(basename "$src") (cached)"
-        fi
-    done
-    
-    # Wait for all jobs in this batch
-    for pid in "${pids[@]}"; do
-        wait "$pid" || return 1
-    done
-}
-
-#===============================================================================
-# Parallel Compilation
-#===============================================================================
-
-banner "Parallel Compilation ($COMPILE_JOBS jobs)"
+# Debug: Print the flags to verify they're correct
+echo "Debug: CLANG_FLAGS:"
+printf '%s\n' "${CLANG_FLAGS[@]}"
+echo ""
 
 # Set environment variables for clang-cl to find headers (same as library builds)
 include_paths=""
@@ -598,41 +493,51 @@ lib_paths=""
 export INCLUDE="$include_paths"
 export LIB="$lib_paths"
 
+echo "Set INCLUDE=$INCLUDE"
+echo "Set LIB=$LIB"
+
+echo "Compiling source files sequentially for debugging..."
 START_TIME=$(date +%s)
 
-# Process sources in batches
-BATCH_SIZE=$COMPILE_JOBS
-for ((i=0; i<${#SOURCES[@]}; i+=BATCH_SIZE)); do
-    batch=("${SOURCES[@]:i:BATCH_SIZE}")
-    compile_batch "${batch[@]}" || exit 1
-done
-
-# Verify all compilations succeeded
-FAILED_COUNT=0
+# Compile each source file sequentially first
 for src in "${SOURCES[@]}"; do
     obj="$BUILD_DIR/$(basename "${src%.cpp}").o"
-    if [[ ! -f "$obj" ]] || [[ ! -s "$obj" ]]; then
-        echo "ERROR: Compilation failed for $(basename "$src")"
-        ((FAILED_COUNT++))
+    
+    if needs_compile "$src" "$obj"; then
+        echo "Compiling $(basename "$src")..."
+        
+        # Run compilation with explicit flags - show full command
+        echo "Command: clang-cl -c $src -o $obj ${CLANG_FLAGS[*]}"
+        clang-cl -v -c "$src" -o "$obj" "${CLANG_FLAGS[@]}" 2>&1
+        
+        if [[ ! -f "$obj" ]]; then
+            echo "ERROR: Object file for $(basename "$src") wasn't created!"
+            echo "Trying with -v flag to see include search paths..."
+            clang-cl -v -c "$src" -o "$obj" "${CLANG_FLAGS[@]}" 2>&1 | head -20
+            exit 1
+        fi
+        echo "Compiled $(basename "$src") - Size: $(stat -c%s "$obj") bytes"
+    else
+        echo "Object for $(basename "$src") up to date - Size: $(stat -c%s "$obj") bytes"
     fi
 done
 
-if [[ $FAILED_COUNT -gt 0 ]]; then
-    echo "ERROR: $FAILED_COUNT source files failed to compile"
-    exit 1
-fi
-
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
+echo "Compilation completed in ${DURATION} seconds."
 
-echo ""
-echo "✓ Compilation completed in ${DURATION}s"
+# Verify all object files exist
+echo "Verifying all object files before linking..."
+for obj in "${OBJECTS[@]}"; do
+    if [[ ! -f "$obj" ]]; then
+        echo "ERROR: Missing object file: $obj"
+        exit 1
+    fi
+done
+echo "All object files verified."
 
-#===============================================================================
-# Linking
-#===============================================================================
-
-banner "Linking Executable"
+# Link executable
+echo "Linking executable..."
 
 # Compiler arguments
 COMPILER_ARGS=(
@@ -683,44 +588,22 @@ else
     LINKER_ARGS+=("/opt:ref")
 fi
 
-LINK_LOG="$BUILD_DIR/link.log"
+clang-cl "${COMPILER_ARGS[@]}" -o "$OUTPUT_EXE" /link "${LINKER_ARGS[@]}"
 
-if clang-cl "${COMPILER_ARGS[@]}" -o "$OUTPUT_EXE" /link "${LINKER_ARGS[@]}" 2>"$LINK_LOG"; then
-    log_output "$LINK_LOG"
-    echo "✓ Linked: $OUTPUT_EXE"
+if [[ $? -eq 0 ]]; then
+    echo "Build successful! Executable: $OUTPUT_EXE"
+    
+    # Deploy to target directory
+    mkdir -p "$TARGET_DIR"
+    
+    # Clean old binaries
+    sudo rm -f "$TARGET_DIR"/*.exe "$TARGET_DIR"/*.pdb
+    
+    # Copy new binary
+    sudo cp "$OUTPUT_EXE" "$TARGET_DIR/"
+    
+    echo "Deployed to $TARGET_DIR"
 else
-    log_output "$LINK_LOG"
-    cat "$LINK_LOG"
-    echo "ERROR: Linking failed"
+    echo "Build failed!"
     exit 1
-fi
-
-#===============================================================================
-# Deployment
-#===============================================================================
-
-banner "Deployment"
-
-mkdir -p "$TARGET_DIR"
-sudo rm -f "$TARGET_DIR"/*.exe "$TARGET_DIR"/*.pdb
-sudo cp "$OUTPUT_EXE" "$TARGET_DIR/"
-
-echo "✓ Deployed to $TARGET_DIR"
-
-#===============================================================================
-# Build Complete
-#===============================================================================
-
-banner "Build Complete"
-
-echo "Output:     $OUTPUT_EXE"
-echo "Size:       $(stat -c%s "$OUTPUT_EXE" | numfmt --to=iec-i --suffix=B)"
-echo "Build type: $BUILD_TYPE"
-echo ""
-
-# Check if there were any warnings/errors logged
-if [[ -s "$BUILD_LOG" ]]; then
-    echo "⚠  Warnings/errors logged to: $BUILD_LOG"
-else
-    echo "✓ No warnings or errors"
 fi

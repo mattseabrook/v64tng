@@ -1,11 +1,33 @@
 #!/bin/bash
 
-# Build script for v64tng game engine - Linux to Windows cross-compilation
+# Build script for Phantom Engine - Linux to Windows cross-compilation
 # Requires: clang, lld, mingw-w64-binutils (for windres only)
 
 set -e  # Exit on any error
 
+# Check for --log flag
+USE_LOGGING=false
+FILTERED_ARGS=()
+for arg in "$@"; do
+    if [[ "$arg" == "--log" ]]; then
+        USE_LOGGING=true
+    else
+        FILTERED_ARGS+=("$arg")
+    fi
+done
+
+# Setup logging if requested
+if [[ "$USE_LOGGING" == "true" ]]; then
+    LOG_FILE="build.log"
+    exec > >(tee -a "$LOG_FILE") 2>&1
+    echo "=== Build started at $(date) ==="
+    echo "Build log will be saved to: $LOG_FILE"
+else
+    echo "=== Build started at $(date) ==="
+fi
+
 # Configuration
+PROJECT_ROOT=$(pwd)
 TARGET_TRIPLE="x86_64-pc-windows-msvc"
 BUILD_DIR="build"
 TARGET_DIR="/mnt/T7G"
@@ -13,54 +35,12 @@ WINSDK_BASE="/opt/winsdk"
 VULKAN_DIR="/opt/VulkanSDK/1.4.313.2"
 
 # Third-party library paths (these will be built for Windows target)
-ZLIB_DIR="/opt/windows-libs/zlib"
-LIBPNG_DIR="/opt/windows-libs/libpng"
+ZSTD_DIR="/opt/windows-libs/zstd"
 ADLMIDI_DIR="/opt/windows-libs/ADLMIDI"
-
-# Parallel compilation settings
-MAX_JOBS=$(nproc)
-COMPILE_JOBS=$MAX_JOBS
-
-# Build logging
-BUILD_LOG="build.log"
-
-#===============================================================================
-# Utility Functions
-#===============================================================================
-
-# Banner for section headers (from speedboards.sh)
-banner() {
-    local w=78
-    local line="$(printf '%*s' "$w" | tr ' ' '=')"
-    printf "\n%s\n" "$line"
-    printf "  %s\n" "$1"
-    printf "%s\n\n" "$line"
-}
-
-# Initialize build log (clear it)
-init_log() {
-    rm -f "$BUILD_LOG"
-    touch "$BUILD_LOG"
-}
-
-# Log warnings and errors only
-log_output() {
-    local tmp_file="$1"
-    if [[ -f "$tmp_file" ]]; then
-        if grep -qiE '(warning|error):' "$tmp_file"; then
-            cat "$tmp_file" >> "$BUILD_LOG"
-        fi
-        rm -f "$tmp_file"
-    fi
-}
-
-#===============================================================================
-# Windows SDK Setup
-#===============================================================================
 
 # Setup Windows SDK
 setup_winsdk() {
-    banner "Setting up Windows SDK"
+    echo "=== Setting up Windows SDK ==="
     
     if [[ ! -d "$WINSDK_BASE" ]]; then
         echo "Windows SDK not found at $WINSDK_BASE"
@@ -221,46 +201,105 @@ setup_winsdk() {
     
     export DETECTED_LIB_ARCH="$detected_lib_arch"
     
-    echo "✓ SDK version: $DETECTED_SDK_VERSION"
-    echo "✓ Library arch: $detected_lib_arch"
-    echo "✓ All critical paths verified"
+    echo "Detected library architecture: $detected_lib_arch"
+    echo ""
+    echo "Final detected paths:"
+    echo "  SDK_INCLUDE: $DETECTED_SDK_INCLUDE"
+    echo "  SDK_LIB: $DETECTED_SDK_LIB"
+    echo "  CRT_INCLUDE: $DETECTED_CRT_INCLUDE"
+    echo "  CRT_LIB: $DETECTED_CRT_LIB"
+    echo "  SDK_VERSION: $DETECTED_SDK_VERSION"
+    echo "  LIB_ARCH: $DETECTED_LIB_ARCH"
 }
 
-#===============================================================================
-# Clean Target
-#===============================================================================
+# Build zstd static library for Windows
+build_zstd_win() {
+    local prefix="/opt/windows-libs/zstd"
+    local cache_dir="/tmp/zstd-cache"
+    local archive_file="$cache_dir/zstd-1.5.7.tar.gz"
 
-clean() {
-    banner "Cleaning Build Artifacts"
-    
-    rm -rf "$BUILD_DIR"
-    rm -f v64tng.exe v64tng-debug.exe *.pdb
-    rm -f "$BUILD_LOG"
-    
-    echo "✓ Cleaned build directory"
-    echo "✓ Removed executables"
-    echo "✓ Removed build log"
+    if [[ -f "$prefix/lib/zstd_static.lib" && -f "$prefix/include/zstd.h" ]]; then
+        echo "✅ zstd (Windows) already built → $prefix"
+        return 0
+    fi
+
+    echo "=== Building static zstd for Windows ==="
+    mkdir -p "$prefix" "$cache_dir"
+    if [[ ! -s "$archive_file" ]]; then
+        echo "Downloading zstd 1.5.7 ..."
+        curl -L --progress-bar --max-time 60 "https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz" -o "$archive_file"
+    else
+        echo "Using cached zstd: $archive_file"
+    fi
+
+    cd /tmp
+    rm -rf zstd-tmp
+    mkdir zstd-tmp && cd zstd-tmp
+    tar -xzf "$archive_file"
+    ZSTD_DIR_BUILD=$(ls -d zstd-* 2>/dev/null | head -1)
+    [[ -n "$ZSTD_DIR_BUILD" ]] || { echo "Error: zstd dir not found"; exit 1; }
+    cd "$ZSTD_DIR_BUILD/build/cmake"
+
+    cat > toolchain.cmake <<EOF
+set(CMAKE_SYSTEM_NAME Windows)
+set(CMAKE_SYSTEM_PROCESSOR AMD64)
+set(CMAKE_C_COMPILER clang-cl)
+set(CMAKE_CXX_COMPILER clang-cl)
+set(CMAKE_C_COMPILER_TARGET $TARGET_TRIPLE)
+set(CMAKE_CXX_COMPILER_TARGET $TARGET_TRIPLE)
+set(CMAKE_AR llvm-lib)
+set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> /OUT:<TARGET> <OBJECTS>")
+set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_C_ARCHIVE_CREATE>")
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
+set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
+set(CMAKE_C_COMPILER_WORKS TRUE)
+set(CMAKE_CXX_COMPILER_WORKS TRUE)
+set(CMAKE_C_ABI_COMPILED TRUE)
+set(CMAKE_CXX_ABI_COMPILED TRUE)
+set(CMAKE_C_FLAGS "/MT -DWIN32 -D_WINDOWS -DNDEBUG -D_CRT_SECURE_NO_WARNINGS \"/imsvc$DETECTED_CRT_INCLUDE\" \"/imsvc$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/ucrt\" \"/imsvc$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/um\" \"/imsvc$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/shared\" /D_CRTIMP= /D_DLL=0 /D ZSTD_MULTITHREAD=0")
+set(CMAKE_CXX_FLAGS "/MT -DWIN32 -D_WINDOWS -DNDEBUG -D_CRT_SECURE_NO_WARNINGS \"/imsvc$DETECTED_CRT_INCLUDE\" \"/imsvc$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/ucrt\" \"/imsvc$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/um\" \"/imsvc$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/shared\"")
+set(CMAKE_C_STANDARD_INCLUDE_DIRECTORIES "${CMAKE_C_STANDARD_INCLUDE_DIRECTORIES};$DETECTED_CRT_INCLUDE;$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/ucrt;$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/um;$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/shared")
+set(CMAKE_INCLUDE_DIRECTORIES_BEFORE ON)
+set(CMAKE_EXE_LINKER_FLAGS_INIT "/libpath:$DETECTED_CRT_LIB/$DETECTED_LIB_ARCH /libpath:$DETECTED_SDK_LIB/um/$DETECTED_LIB_ARCH /libpath:$DETECTED_SDK_LIB/ucrt/$DETECTED_LIB_ARCH /defaultlib:libcmt /defaultlib:libucrt /defaultlib:libcpmt /defaultlib:libvcruntime /nodefaultlib:msvcrt /nodefaultlib:msvcrtd /nodefaultlib:ucrt /nodefaultlib:ucrtd")
+set(CMAKE_SHARED_LINKER_FLAGS_INIT "/libpath:$DETECTED_CRT_LIB/$DETECTED_LIB_ARCH /libpath:$DETECTED_SDK_LIB/um/$DETECTED_LIB_ARCH /libpath:$DETECTED_SDK_LIB/ucrt/$DETECTED_LIB_ARCH /defaultlib:libcmt /defaultlib:libucrt /defaultlib:libcpmt /defaultlib:libvcruntime /nodefaultlib:msvcrt /nodefaultlib:msvcrtd /nodefaultlib:ucrt /nodefaultlib:ucrtd")
+set(CMAKE_STATIC_LINKER_FLAGS_INIT "/libpath:$DETECTED_CRT_LIB/$DETECTED_LIB_ARCH /libpath:$DETECTED_SDK_LIB/um/$DETECTED_LIB_ARCH /libpath:$DETECTED_SDK_LIB/ucrt/$DETECTED_LIB_ARCH")
+EOF
+
+    rm -rf build
+    mkdir build && cd build
+    cmake .. \
+        -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX="$prefix" \
+        -DZSTD_BUILD_PROGRAMS=OFF \
+        -DZSTD_BUILD_SHARED=OFF \
+        -DZSTD_BUILD_STATIC=ON
+    # Use all cores and optimize for high-memory system (32GB RAM)
+    cmake --build . --target install --config Release -j"$(nproc)" --parallel "$(nproc)"
+    echo "1.5.7" > "$prefix/.runtime_MT"
+    echo "✅ zstd (Windows) built → $prefix"
+    cd "$PROJECT_ROOT"
 }
-
-#===============================================================================
-# Main Build
-#===============================================================================
-
-# Initialize build log
-init_log
 
 # Call setups
 setup_winsdk
+build_zstd_win
 
 # Clean target
-if [[ "$1" == "clean" ]]; then
-    clean
+if [[ "${FILTERED_ARGS[0]}" == "clean" ]]; then
+    echo "Cleaning build artifacts..."
+    rm -rf "$BUILD_DIR"
+    rm -f Phantom.exe Phantom-debug.exe *.pdb
+    if [[ "$USE_LOGGING" == "true" ]]; then
+        rm -f "$LOG_FILE"  # Also clean the log file
+    fi
+    echo "Clean complete."
     exit 0
 fi
 
 # Determine build type
 BUILD_TYPE="Release"
-if [[ "$1" == "debug" ]]; then
+if [[ "${FILTERED_ARGS[0]}" == "debug" ]]; then
     BUILD_TYPE="Debug"
     echo "Debug build selected."
 else
@@ -271,142 +310,25 @@ fi
 mkdir -p "$BUILD_DIR"
 
 # Compile resources using mingw windres (only thing we use from mingw)
-banner "Compiling Resources"
-
 RESOURCE_RES="$BUILD_DIR/resource.res"
 RESOURCE_RC="resource.rc"
 
 if [[ -f "$RESOURCE_RC" ]] && ([[ ! -f "$RESOURCE_RES" ]] || [[ "$RESOURCE_RC" -nt "$RESOURCE_RES" ]]); then
     echo "Compiling resource file..."
-    res_log="$BUILD_DIR/resource.log"
-    if x86_64-w64-mingw32-windres \
+    x86_64-w64-mingw32-windres \
         -I "$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/um" \
         -I "$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/shared" \
         -I "$DETECTED_SDK_INCLUDE/ucrt" \
         -I "$DETECTED_CRT_INCLUDE" \
-        -o "$RESOURCE_RES" "$RESOURCE_RC" 2>"$res_log"; then
-        log_output "$res_log"
-        echo "✓ Resource compiled"
-    else
-        log_output "$res_log"
-        cat "$res_log"
-        echo "ERROR: Resource compilation failed"
-        exit 1
-    fi
-else
-    echo "✓ Resource up to date"
+        -o "$RESOURCE_RES" "$RESOURCE_RC"
 fi
-
-#===============================================================================
-# Shader Compilation
-#===============================================================================
-
-banner "Compiling Shaders"
-
-# Helper function to compile Vulkan GLSL to SPIR-V header
-compile_vulkan_shader() {
-    local shader_src="$1"
-    local spv_out="$2"
-    local header_out="$3"
-    local shader_name=$(basename "$shader_src" .comp)
-    
-    local regen=false
-    if [[ ! -f "$header_out" ]]; then regen=true; fi
-    if [[ -f "$shader_src" && -f "$header_out" && "$shader_src" -nt "$header_out" ]]; then regen=true; fi
-    
-    if [[ "$regen" == true ]]; then
-        echo "Compiling Vulkan shader: $shader_name..."
-        glslc -fshader-stage=compute "$shader_src" -o "$spv_out"
-        if command -v xxd >/dev/null 2>&1; then
-            xxd -i "$spv_out" > "$header_out"
-        else
-            echo "ERROR: xxd not found (often provided by vim-common). Please install it."
-            exit 1
-        fi
-        echo "  Generated: $header_out"
-    else
-        echo "Vulkan shader cached: $shader_name"
-    fi
-}
-
-# Helper function to embed shader source as C++ header (for runtime compilation)
-embed_shader_source() {
-    local shader_src="$1"
-    local header_out="$2"
-    local var_name="$3"
-    local shader_name=$(basename "$shader_src")
-    
-    local regen=false
-    if [[ ! -f "$header_out" ]]; then regen=true; fi
-    if [[ -f "$shader_src" && -f "$header_out" && "$shader_src" -nt "$header_out" ]]; then regen=true; fi
-    
-    if [[ "$regen" == true ]]; then
-        echo "Embedding shader source: $shader_name..."
-        
-        # Read shader file and escape for C string
-        local escaped_content=$(cat "$shader_src" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | awk '{printf "%s\\n", $0}')
-        
-        # Generate header
-        cat > "$header_out" << EOF
-// Auto-generated embedded shader source: $shader_name
-#ifndef ${var_name}_H
-#define ${var_name}_H
-
-static const char* ${var_name} = R"SHADER(
-$(cat "$shader_src")
-)SHADER";
-
-#endif // ${var_name}_H
-EOF
-        echo "  Generated: $header_out"
-    else
-        echo "Shader source cached: $shader_name"
-    fi
-}
-
-# Helper function to compile D3D11 HLSL to CSO (compiled shader object) header
-compile_d3d11_shader() {
-    local shader_src="$1"
-    local header_out="$2"
-    local var_name="$3"
-    
-    # For D3D11, we embed the source code since we compile at runtime with D3DCompile
-    embed_shader_source "$shader_src" "$header_out" "$var_name"
-}
-
-# Compile Vulkan shaders to SPIR-V (binary embedded)
-compile_vulkan_shader \
-    "shaders/vk_rgb_to_bgra.comp" \
-    "$BUILD_DIR/rgb_to_bgra.spv" \
-    "$BUILD_DIR/rgb_to_bgra_spv.h"
-
-compile_vulkan_shader \
-    "shaders/vk_raycast.comp" \
-    "$BUILD_DIR/vk_raycast.spv" \
-    "$BUILD_DIR/vk_raycast_spv.h"
-
-# Embed D3D11 shader sources (compiled at runtime, but source is in exe)
-compile_d3d11_shader \
-    "shaders/d3d11_rgb_to_bgra.hlsl" \
-    "$BUILD_DIR/d3d11_rgb_to_bgra.h" \
-    "g_d3d11_rgb_to_bgra_hlsl"
-
-compile_d3d11_shader \
-    "shaders/d3d11_raycast.hlsl" \
-    "$BUILD_DIR/d3d11_raycast.h" \
-    "g_d3d11_raycast_hlsl"
-
-echo "✓ Shader compilation complete"
-
-#===============================================================================
-# Source File Scanning
-#===============================================================================
-
-banner "Scanning Source Files"
 
 # Get source files
 SOURCES=($(find src -name "*.cpp" | sort))
-echo "Found ${#SOURCES[@]} source files"
+echo "Found ${#SOURCES[@]} source files to process:"
+for src in "${SOURCES[@]}"; do
+    echo "  - $(basename "$src")"
+done
 
 # Generate object file paths
 OBJECTS=()
@@ -451,10 +373,8 @@ if [[ -d "$DETECTED_SDK_INCLUDE/cppwinrt" ]]; then
 fi
 
 USER_INCLUDES=(
-    "-I./include"
-    "-I$BUILD_DIR"
-    "-I$ZLIB_DIR/include"
-    "-I$LIBPNG_DIR/include"
+    "-I$PROJECT_ROOT/include"
+    "-I$ZSTD_DIR/include"
     "-I$ADLMIDI_DIR/include"
     "-I$VULKAN_DIR/Include"
 )
@@ -505,6 +425,7 @@ if [[ "$BUILD_TYPE" == "Debug" ]]; then
         "-gcodeview"
     )
 else
+    # Optimized flags for high-end hardware (13th gen Intel, 32GB RAM)
     CLANG_FLAGS=(
         "${COMMON_FLAGS[@]}"
         "${SYSTEM_INCLUDES[@]}"
@@ -512,6 +433,9 @@ else
         "-O3"
         "-DNDEBUG"
         "-fno-rtti"
+        "-march=native"        # Optimize for your specific 13th gen CPU
+        "-mtune=native"        # Tune for your specific CPU microarchitecture
+        "-flto=thin"           # Thin LTO for faster link-time optimization
     )
 fi
 
@@ -543,45 +467,10 @@ needs_compile() {
     return 1
 }
 
-# Compile batch of sources in parallel (from phantom.sh)
-compile_batch() {
-    local batch_sources=("$@")
-    local pids=()
-    
-    for src in "${batch_sources[@]}"; do
-        obj="$BUILD_DIR/$(basename "${src%.cpp}").o"
-        
-        if needs_compile "$src" "$obj"; then
-            {
-                local error_log="$BUILD_DIR/$(basename "${src%.cpp}").error.log"
-                
-                if clang-cl -c "$src" -o "$obj" "${CLANG_FLAGS[@]}" 2>"$error_log"; then
-                    echo "  ✓ $(basename "$src")"
-                    log_output "$error_log"
-                else
-                    echo "  ✗ FAILED: $(basename "$src")"
-                    log_output "$error_log"
-                    cat "$error_log"
-                    exit 1
-                fi
-            } &
-            pids+=($!)
-        else
-            echo "  ≡ $(basename "$src") (cached)"
-        fi
-    done
-    
-    # Wait for all jobs in this batch
-    for pid in "${pids[@]}"; do
-        wait "$pid" || return 1
-    done
-}
-
-#===============================================================================
-# Parallel Compilation
-#===============================================================================
-
-banner "Parallel Compilation ($COMPILE_JOBS jobs)"
+# Debug: Print the flags to verify they're correct
+echo "Debug: CLANG_FLAGS:"
+printf '%s\n' "${CLANG_FLAGS[@]}"
+echo ""
 
 # Set environment variables for clang-cl to find headers (same as library builds)
 include_paths=""
@@ -598,16 +487,76 @@ lib_paths=""
 export INCLUDE="$include_paths"
 export LIB="$lib_paths"
 
+echo "Set INCLUDE=$INCLUDE"
+echo "Set LIB=$LIB"
+
+echo "=== Hardware-Optimized Compilation ==="
+# Detect system specifications
+MAX_JOBS=$(nproc)
+TOTAL_RAM_KB=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}' || echo "unknown")
+if [[ "$TOTAL_RAM_KB" != "unknown" ]]; then
+    TOTAL_RAM_GB=$((TOTAL_RAM_KB / 1024 / 1024))
+    echo "Detected: $MAX_JOBS CPU cores, ${TOTAL_RAM_GB}GB RAM"
+else
+    echo "Detected: $MAX_JOBS CPU cores"
+fi
+
+echo "Optimizations enabled:"
+echo "  ✓ Native CPU optimization (-march=native -mtune=native)"
+echo "  ✓ Thin LTO for faster link-time optimization"
+echo "  ✓ Parallel compilation using all $MAX_JOBS cores"
+echo "  ✓ Parallel linking with $MAX_JOBS threads"
+
 START_TIME=$(date +%s)
 
-# Process sources in batches
+# Use GNU parallel for proper parallel compilation without breaking paths
+COMPILE_JOBS=$MAX_JOBS
+
+echo "Starting optimized parallel compilation with $COMPILE_JOBS jobs..."
+
+# Use simple parallel approach with wait
+compile_batch() {
+    local batch_sources=("$@")
+    local pids=()
+    
+    for src in "${batch_sources[@]}"; do
+        obj="$BUILD_DIR/$(basename "${src%.cpp}").o"
+        
+        if needs_compile "$src" "$obj"; then
+            echo "Compiling $(basename "$src")..."
+            {
+                # Capture both stdout and stderr to a temp file
+                local error_log="$BUILD_DIR/$(basename "${src%.cpp}").error.log"
+                if clang-cl -c "$src" -o "$obj" "${CLANG_FLAGS[@]}" 2>"$error_log"; then
+                    echo "✓ Compiled $(basename "$src") - Size: $(stat -c%s "$obj") bytes"
+                    rm -f "$error_log"
+                else
+                    echo "ERROR: Failed to compile $(basename "$src")"
+                    echo "=== Full error output saved to: $error_log ==="
+                    cat "$error_log"
+                    exit 1
+                fi
+            } &
+            pids+=($!)
+        else
+            echo "✓ Object for $(basename "$src") up to date - Size: $(stat -c%s "$obj") bytes"
+        fi
+    done
+    
+    # Wait for all jobs in this batch
+    for pid in "${pids[@]}"; do
+        wait "$pid" || return 1
+    done
+}
+
+# Process sources in batches to control parallelism
 BATCH_SIZE=$COMPILE_JOBS
 for ((i=0; i<${#SOURCES[@]}; i+=BATCH_SIZE)); do
     batch=("${SOURCES[@]:i:BATCH_SIZE}")
     compile_batch "${batch[@]}" || exit 1
 done
 
-# Verify all compilations succeeded
+# Check if all compilations succeeded
 FAILED_COUNT=0
 for src in "${SOURCES[@]}"; do
     obj="$BUILD_DIR/$(basename "${src%.cpp}").o"
@@ -624,15 +573,20 @@ fi
 
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
+echo "Compilation completed in ${DURATION} seconds."
 
-echo ""
-echo "✓ Compilation completed in ${DURATION}s"
+# Verify all object files exist
+echo "Verifying all object files before linking..."
+for obj in "${OBJECTS[@]}"; do
+    if [[ ! -f "$obj" ]]; then
+        echo "ERROR: Missing object file: $obj"
+        exit 1
+    fi
+done
+echo "All object files verified."
 
-#===============================================================================
-# Linking
-#===============================================================================
-
-banner "Linking Executable"
+# Link executable
+echo "Linking executable..."
 
 # Compiler arguments
 COMPILER_ARGS=(
@@ -644,22 +598,27 @@ COMPILER_ARGS=(
 # Add resource
 [[ -f "$RESOURCE_RES" ]] && COMPILER_ARGS+=("$RESOURCE_RES")
 
-# Linker arguments (passed after /link)
+# Linker arguments (passed after /link) - optimized for high-end hardware
 LINKER_ARGS=(
 "/subsystem:windows"
     "/defaultlib:libcmt"
     "/defaultlib:libucrt"
+    "/defaultlib:libcpmt"
+    "/defaultlib:libvcruntime"
     "/nodefaultlib:msvcrt.lib"
+    "/nodefaultlib:msvcrtd.lib"
     "/nodefaultlib:ucrt.lib"
-    "/libpath:$ZLIB_DIR/lib"
-    "/libpath:$LIBPNG_DIR/lib"
+    "/nodefaultlib:ucrtd.lib"
+    "/nodefaultlib:vcruntime.lib"
+    "/nodefaultlib:vcruntimed.lib"
+    "/threads:$(nproc)"         # Use all cores for linking
+    "/libpath:$ZSTD_DIR/lib"
     "/libpath:$ADLMIDI_DIR/lib"
     "/libpath:$VULKAN_DIR/Lib"
     "/libpath:$DETECTED_SDK_LIB/um/$DETECTED_LIB_ARCH"
     "/libpath:$DETECTED_SDK_LIB/ucrt/$DETECTED_LIB_ARCH"
     "/libpath:$DETECTED_CRT_LIB/$DETECTED_LIB_ARCH"
-    "zlib.lib"
-    "libpng.lib"
+    "zstd_static.lib"
     "ADLMIDI.lib"
     "vulkan-1.lib"
     "user32.lib"
@@ -667,60 +626,49 @@ LINKER_ARGS=(
     "shlwapi.lib"
     "shell32.lib"
     "d2d1.lib"
+    "dwrite.lib"
     "d3d11.lib"
     "dxgi.lib"
-    "d3dcompiler.lib"
     "ole32.lib"
     "uuid.lib"
     "winmm.lib"
+    "kernel32.lib"
+    "advapi32.lib"
+    "synchronization.lib"
 )
 
 if [[ "$BUILD_TYPE" == "Debug" ]]; then
-    OUTPUT_EXE="v64tng-debug.exe"
+    OUTPUT_EXE="Phantom-debug.exe"
     LINKER_ARGS+=("/debug:full")
 else
-    OUTPUT_EXE="v64tng.exe"
+    OUTPUT_EXE="Phantom.exe"
     LINKER_ARGS+=("/opt:ref")
 fi
 
-LINK_LOG="$BUILD_DIR/link.log"
+clang-cl "${COMPILER_ARGS[@]}" -o "$OUTPUT_EXE" /link "${LINKER_ARGS[@]}"
 
-if clang-cl "${COMPILER_ARGS[@]}" -o "$OUTPUT_EXE" /link "${LINKER_ARGS[@]}" 2>"$LINK_LOG"; then
-    log_output "$LINK_LOG"
-    echo "✓ Linked: $OUTPUT_EXE"
+if [[ $? -eq 0 ]]; then
+    echo "Build successful! Executable: $OUTPUT_EXE"
+    
+    # Deploy to target directory
+    mkdir -p "$TARGET_DIR"
+    
+    # Clean old binaries
+    sudo rm -f "$TARGET_DIR"/*.exe "$TARGET_DIR"/*.pdb
+    
+    # Copy new binary
+    sudo cp "$OUTPUT_EXE" "$TARGET_DIR/"
+    
+    echo "Deployed to $TARGET_DIR"
+    echo "=== Build completed successfully at $(date) ==="
+    if [[ "$USE_LOGGING" == "true" ]]; then
+        echo "Build log saved to: $LOG_FILE"
+    fi
 else
-    log_output "$LINK_LOG"
-    cat "$LINK_LOG"
-    echo "ERROR: Linking failed"
+    echo "Build failed!"
+    echo "=== Build failed at $(date) ==="
+    if [[ "$USE_LOGGING" == "true" ]]; then
+        echo "Check build log for details: $LOG_FILE"
+    fi
     exit 1
-fi
-
-#===============================================================================
-# Deployment
-#===============================================================================
-
-banner "Deployment"
-
-mkdir -p "$TARGET_DIR"
-sudo rm -f "$TARGET_DIR"/*.exe "$TARGET_DIR"/*.pdb
-sudo cp "$OUTPUT_EXE" "$TARGET_DIR/"
-
-echo "✓ Deployed to $TARGET_DIR"
-
-#===============================================================================
-# Build Complete
-#===============================================================================
-
-banner "Build Complete"
-
-echo "Output:     $OUTPUT_EXE"
-echo "Size:       $(stat -c%s "$OUTPUT_EXE" | numfmt --to=iec-i --suffix=B)"
-echo "Build type: $BUILD_TYPE"
-echo ""
-
-# Check if there were any warnings/errors logged
-if [[ -s "$BUILD_LOG" ]]; then
-    echo "⚠  Warnings/errors logged to: $BUILD_LOG"
-else
-    echo "✓ No warnings or errors"
 fi
