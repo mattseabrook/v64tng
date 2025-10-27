@@ -52,6 +52,7 @@
 #include "gjd.h"
 #include "vdx.h"
 #include "music.h"
+#include "megatexture.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -327,10 +328,38 @@ int process_args(const std::vector<std::string> &args)
 		// Launch the game engine in raycasting mode
 		init();
 	}
+	else if (args[1] == "-megatexture" || args[1] == "-mt")
+	{
+		// Generate procedural megatexture tiles from basement map
+		std::cout << "Generating megatexture tiles from basement map...\n";
+		
+		if (!analyzeMapEdges(map))
+		{
+			std::cerr << "ERROR: Failed to analyze map for megatexture generation.\n";
+			return -1;
+		}
+		
+		MegatextureParams params = getDefaultMegatextureParams();
+		// Tweak noise for veins
+		params.perlinOctaves = 2;       // Domain warp octaves
+		params.perlinScale = 1.7f;      // Domain warp frequency
+		params.worleyScale = 2.0f;      // Vein network density (cells per unit)
+		params.worleyStrength = 0.4f;   // Domain warp strength
+		params.mortarWidth = 0.005f;    // Vein thickness
+		params.mortarGray = 0.30f;      // Dark gray
+		
+		if (!generateMegatextureTilesOnly(params, "megatexture"))
+		{
+			std::cerr << "ERROR: Failed to generate megatexture tiles.\n";
+			return -1;
+		}
+		
+		std::cout << "Megatexture generation complete.\n";
+	}
 	else
 	{
 		std::cerr << "ERROR: Invalid option: " << args[1] << std::endl;
-		std::cerr << "\nUsage: " << args[0] << " [!|-g|-l|-p|-r|-v|-x] [options...]\n";
+		std::cerr << "\nUsage: " << args[0] << " [!|-g|-l|-p|-r|-v|-x|-raycast|-megatexture] [options...]\n";
 		return -1;
 	}
 

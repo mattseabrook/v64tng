@@ -469,6 +469,7 @@ COMMON_FLAGS=(
     "/MT"
     "-fexceptions"
     "-fcxx-exceptions"
+    "-fopenmp"
     "-msse2"
     "-msse3"
     "-mssse3"
@@ -547,22 +548,21 @@ needs_compile() {
 compile_batch() {
     local batch_sources=("$@")
     local pids=()
+    local temp_outputs=()
     
     for src in "${batch_sources[@]}"; do
         obj="$BUILD_DIR/$(basename "${src%.cpp}").o"
         
         if needs_compile "$src" "$obj"; then
+            local temp_out="$BUILD_DIR/$(basename "${src%.cpp}").compile.tmp"
+            temp_outputs+=("$temp_out")
+            
             {
-                local error_log="$BUILD_DIR/$(basename "${src%.cpp}").error.log"
-                
-                if clang-cl -c "$src" -o "$obj" "${CLANG_FLAGS[@]}" 2>"$error_log"; then
-                    echo "  ✓ $(basename "$src")"
-                    log_output "$error_log"
+                if clang-cl -c "$src" -o "$obj" "${CLANG_FLAGS[@]}" 2>"$temp_out"; then
+                    echo "  ✓ $(basename "$src")" > "$temp_out.status"
                 else
-                    echo "  ✗ FAILED: $(basename "$src")"
-                    log_output "$error_log"
-                    cat "$error_log"
-                    exit 1
+                    echo "  ✗ FAILED: $(basename "$src")" > "$temp_out.status"
+                    echo "1" > "$temp_out.failed"
                 fi
             } &
             pids+=($!)
@@ -572,9 +572,36 @@ compile_batch() {
     done
     
     # Wait for all jobs in this batch
+    local any_failed=0
     for pid in "${pids[@]}"; do
-        wait "$pid" || return 1
+        wait "$pid" || any_failed=1
     done
+    
+    # Now print all outputs in order (keep the nice formatting)
+    for temp_out in "${temp_outputs[@]}"; do
+        if [[ -f "$temp_out.status" ]]; then
+            cat "$temp_out.status"
+        fi
+        
+        # Filter and show warnings/errors (exclude nlohmann/json.hpp spam)
+        if [[ -s "$temp_out" ]]; then
+            # Show warnings/errors but filter out nlohmann JSON library noise
+            grep -v "nlohmann/json.hpp" "$temp_out" || true
+            
+            # Still log everything to build.log for completeness
+            cat "$temp_out" >> "$BUILD_LOG"
+        fi
+        
+        # Check if this one failed
+        if [[ -f "$temp_out.failed" ]]; then
+            any_failed=1
+        fi
+        
+        # Cleanup temp files
+        rm -f "$temp_out" "$temp_out.status" "$temp_out.failed"
+    done
+    
+    return $any_failed
 }
 
 #===============================================================================
@@ -662,6 +689,7 @@ LINKER_ARGS=(
     "libpng.lib"
     "ADLMIDI.lib"
     "vulkan-1.lib"
+    "libomp.lib"
     "user32.lib"
     "gdi32.lib"
     "shlwapi.lib"

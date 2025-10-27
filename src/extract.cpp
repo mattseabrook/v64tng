@@ -622,10 +622,16 @@ void savePNG(const std::string &filename, const std::vector<uint8_t> &imageData,
 
 	png_init_io(png_ptr, fp);
 
+	// Allow very large images (libpng defaults to 1,000,000 max on each axis)
+#ifdef PNG_USER_LIMITS_SUPPORTED
+	// Set generous limits to accommodate megatexture dimensions
+	png_set_user_limits(png_ptr, 0x7fffffffU, 0x7fffffffU);
+#endif
+
 	const int colorType = hasAlpha ? PNG_COLOR_TYPE_RGBA : PNG_COLOR_TYPE_RGB;
 	const int bytesPerPixel = hasAlpha ? 4 : 3;
 
-	png_set_IHDR(png_ptr, info_ptr, width, height,
+	png_set_IHDR(png_ptr, info_ptr, static_cast<png_uint_32>(width), static_cast<png_uint_32>(height),
 				 8, colorType, PNG_INTERLACE_NONE,
 				 PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
