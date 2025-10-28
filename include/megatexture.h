@@ -65,6 +65,14 @@ bool analyzeMapEdges(const std::vector<std::vector<uint8_t>>& map);
 // Outputs 1024×1024 PNG tiles to the specified directory
 bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::string& outDir);
 
+// Pack PNG tiles into compressed MTX archive
+// Returns true on success
+bool saveMTX(const std::string& mtxPath, const std::string& tilesDir, const MegatextureParams& params);
+
+// Decode MTX archive back to PNG tiles (for validation/debugging)
+// Writes tiles to outDir - should be bit-identical to originals
+bool decodeMTX(const std::string& mtxPath, const std::string& outDir);
+
 // Lookup edge data by map coordinates (returns nullptr if not found)
 const WallEdge* findWallEdge(int cellX, int cellY, int side);
 

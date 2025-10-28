@@ -26,6 +26,7 @@ void extractVDX(const std::string_view &filename);
 void extractCursors(const std::string_view &robFilename);
 void extractPNG(std::string_view filename, bool raw);
 void savePNG(const std::string &filename, const std::vector<uint8_t> &imageData, int width, int height, bool hasAlpha = false);
+std::vector<uint8_t> loadPNG(const std::string& filename, int& width, int& height);
 void saveWAV(const std::string &filename, const std::vector<uint8_t> &audioData);
 void createVideoFromImages(const std::string &filenameParam);
 

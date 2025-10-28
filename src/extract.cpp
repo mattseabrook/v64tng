@@ -650,6 +650,95 @@ void savePNG(const std::string &filename, const std::vector<uint8_t> &imageData,
 
 /*
 ===============================================================================
+Function Name: loadPNG
+
+Description:
+	- Loads a PNG file and returns RGBA image data.
+
+Parameters:
+	- filename: The filename of the PNG file to be read.
+	- width: Output width of the image
+	- height: Output height of the image
+	
+Returns:
+	- Vector of RGBA pixel data (4 bytes per pixel)
+===============================================================================
+*/
+std::vector<uint8_t> loadPNG(const std::string& filename, int& width, int& height)
+{
+	FILE* fp;
+	if (fopen_s(&fp, filename.c_str(), "rb") || !fp)
+		throw std::runtime_error("Failed to open " + filename);
+
+	png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+	if (!png_ptr)
+	{
+		fclose(fp);
+		throw std::runtime_error("png_create_read_struct failed");
+	}
+
+	png_infop info_ptr = png_create_info_struct(png_ptr);
+	if (!info_ptr)
+	{
+		fclose(fp);
+		png_destroy_read_struct(&png_ptr, nullptr, nullptr);
+		throw std::runtime_error("png_create_info_struct failed");
+	}
+
+	if (setjmp(png_jmpbuf(png_ptr)))
+	{
+		fclose(fp);
+		png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
+		throw std::runtime_error("libpng read error");
+	}
+
+	png_init_io(png_ptr, fp);
+	png_read_info(png_ptr, info_ptr);
+
+	width = png_get_image_width(png_ptr, info_ptr);
+	height = png_get_image_height(png_ptr, info_ptr);
+	png_byte colorType = png_get_color_type(png_ptr, info_ptr);
+	png_byte bitDepth = png_get_bit_depth(png_ptr, info_ptr);
+
+	// Convert to RGBA8
+	if (bitDepth == 16)
+		png_set_strip_16(png_ptr);
+	
+	if (colorType == PNG_COLOR_TYPE_PALETTE)
+		png_set_palette_to_rgb(png_ptr);
+	
+	if (colorType == PNG_COLOR_TYPE_GRAY && bitDepth < 8)
+		png_set_expand_gray_1_2_4_to_8(png_ptr);
+	
+	if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))
+		png_set_tRNS_to_alpha(png_ptr);
+	
+	if (colorType == PNG_COLOR_TYPE_RGB || colorType == PNG_COLOR_TYPE_GRAY || colorType == PNG_COLOR_TYPE_PALETTE)
+		png_set_filler(png_ptr, 0xFF, PNG_FILLER_AFTER);
+	
+	if (colorType == PNG_COLOR_TYPE_GRAY || colorType == PNG_COLOR_TYPE_GRAY_ALPHA)
+		png_set_gray_to_rgb(png_ptr);
+
+	png_read_update_info(png_ptr, info_ptr);
+
+	// Allocate image buffer
+	std::vector<uint8_t> imageData(static_cast<size_t>(width) * height * 4);
+	std::vector<png_bytep> rowPtrs(height);
+	
+	for (int y = 0; y < height; ++y)
+		rowPtrs[y] = &imageData[y * width * 4];
+
+	png_read_image(png_ptr, rowPtrs.data());
+	png_read_end(png_ptr, nullptr);
+
+	fclose(fp);
+	png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
+
+	return imageData;
+}
+
+/*
+===============================================================================
 Function Name: saveWAV
 
 Description:

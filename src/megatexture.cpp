@@ -5,15 +5,20 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <fstream>
 #include <filesystem>
 #include <omp.h>
+#include <cstring>
+#include <zlib.h>
 
 // Undefine Windows min/max macros that conflict with std::min/std::max
+#ifdef _WIN32
 #ifdef min
 #undef min
 #endif
 #ifdef max
 #undef max
+#endif
 #endif
 
 /*
@@ -421,4 +426,325 @@ MegatextureParams getDefaultMegatextureParams()
     params.worleyScale = 2.0f;        // Vein network density (cells per unit)
     params.worleyStrength = 0.4f;     // Domain warp strength
     return params;
+}
+
+/*
+===============================================================================
+
+    MTX Format - Custom Megatexture Archive
+
+    Efficient storage for monochrome alpha tiles.
+    Uses DEFLATE (zlib) compression on raw RGBA data.
+    
+    No PNG dependency at runtime - just decompress to raw RGBA for GPU upload.
+
+===============================================================================
+*/
+
+#pragma pack(push, 1)
+struct MTXHeader
+{
+    char magic[4];          // "MTX1"
+    uint32_t version;       // Format version (1)
+    uint32_t tileSize;      // Tile dimensions (1024)
+    uint32_t tileCount;     // Number of tiles in archive
+    uint8_t mortarRGB[3];   // Constant mortar color (R, G, B)
+    uint32_t seed;          // Generation seed (for validation)
+    uint8_t reserved[43];   // Reserved for future use
+};
+#pragma pack(pop)
+
+// DEFLATE-compress raw RGBA data using zlib
+// Returns compressed size in bytes, or 0 on error
+static size_t compressRGBA(const std::vector<uint8_t>& rgba, std::vector<uint8_t>& outCompressed)
+{
+    outCompressed.clear();
+    if (rgba.empty()) return 0;
+
+    // Allocate worst-case output buffer
+    uLongf compressedSize = compressBound(static_cast<uLong>(rgba.size()));
+    outCompressed.resize(compressedSize);
+
+    // Compress with zlib (DEFLATE) - level 6 is good balance of speed/size
+    int result = compress2(
+        outCompressed.data(),
+        &compressedSize,
+        rgba.data(),
+        static_cast<uLong>(rgba.size()),
+        6  // Compression level (1=fast, 9=best, 6=default)
+    );
+
+    if (result != Z_OK)
+    {
+        std::cerr << "ERROR: zlib compression failed with code " << result << "\n";
+        return 0;
+    }
+
+    outCompressed.resize(compressedSize);
+    return compressedSize;
+}
+
+// Decompress DEFLATE data back to raw RGBA
+static bool decompressRGBA(const uint8_t* compressedData, size_t compressedSize,
+                          std::vector<uint8_t>& outRGBA)
+{
+    const size_t expectedSize = 1024 * 1024 * 4;
+    outRGBA.resize(expectedSize);
+
+    uLongf uncompressedSize = static_cast<uLong>(expectedSize);
+    int result = uncompress(
+        outRGBA.data(),
+        &uncompressedSize,
+        compressedData,
+        static_cast<uLong>(compressedSize)
+    );
+
+    if (result != Z_OK)
+    {
+        std::cerr << "ERROR: zlib decompression failed with code " << result << "\n";
+        return false;
+    }
+
+    if (uncompressedSize != expectedSize)
+    {
+        std::cerr << "ERROR: Decompressed size mismatch - expected " << expectedSize
+                  << " bytes, got " << uncompressedSize << "\n";
+        return false;
+    }
+
+    return true;
+}
+
+bool saveMTX(const std::string& mtxPath, const std::string& tilesDir, const MegatextureParams& params)
+{
+    std::cout << "\n=== Packing MTX Archive ===\n";
+    std::cout << "Reading tiles from: " << tilesDir << "/\n";
+
+    // Scan directory for tile PNGs
+    std::vector<std::string> tilePaths;
+    try {
+        for (const auto& entry : std::filesystem::directory_iterator(tilesDir))
+        {
+            if (entry.is_regular_file())
+            {
+                std::string filename = entry.path().filename().string();
+                if (filename.find("tile_") == 0 && filename.ends_with(".png"))
+                {
+                    tilePaths.push_back(entry.path().string());
+                }
+            }
+        }
+    }
+    catch (const std::exception& e) {
+        std::cerr << "ERROR: Failed to read tiles directory: " << e.what() << "\n";
+        return false;
+    }
+
+    if (tilePaths.empty())
+    {
+        std::cerr << "ERROR: No tile PNGs found in " << tilesDir << "/\n";
+        return false;
+    }
+
+    // Sort tiles by name to ensure correct order
+    std::sort(tilePaths.begin(), tilePaths.end());
+
+    std::cout << "Found " << tilePaths.size() << " tiles.\n";
+
+    // Prepare header
+    MTXHeader header = {};
+    header.magic[0] = 'M'; header.magic[1] = 'T'; header.magic[2] = 'X'; header.magic[3] = '1';
+    header.version = 1;
+    header.tileSize = 1024;
+    header.tileCount = static_cast<uint32_t>(tilePaths.size());
+    
+    // Store constant mortar color from params
+    const uint8_t grayByte = static_cast<uint8_t>(std::clamp(params.mortarGray, 0.0f, 1.0f) * 255.0f);
+    header.mortarRGB[0] = grayByte;
+    header.mortarRGB[1] = grayByte;
+    header.mortarRGB[2] = grayByte;
+    header.seed = params.seed;
+
+    // Open output file
+    std::ofstream mtxFile(mtxPath, std::ios::binary);
+    if (!mtxFile)
+    {
+        std::cerr << "ERROR: Failed to create MTX file: " << mtxPath << "\n";
+        return false;
+    }
+
+    // Write header
+    mtxFile.write(reinterpret_cast<const char*>(&header), sizeof(MTXHeader));
+
+    // Allocate offset table (write placeholder, update later)
+    const size_t offsetTablePos = mtxFile.tellp();
+    std::vector<uint64_t> tileOffsets(header.tileCount, 0);
+    mtxFile.write(reinterpret_cast<const char*>(tileOffsets.data()), sizeof(uint64_t) * header.tileCount);
+
+    // Compress and write each tile
+    size_t totalOriginalBytes = 0;
+    size_t totalCompressedBytes = 0;
+
+    for (uint32_t i = 0; i < header.tileCount; ++i)
+    {
+        // Record this tile's offset
+        tileOffsets[i] = static_cast<uint64_t>(mtxFile.tellp());
+
+        // Load PNG
+        int width = 0, height = 0;
+        std::vector<uint8_t> rgba;
+        
+        try {
+            rgba = loadPNG(tilePaths[i], width, height);
+        }
+        catch (const std::exception& e) {
+            std::cerr << "ERROR: Failed to load tile " << i << ": " << e.what() << "\n";
+            return false;
+        }
+
+        if (width != 1024 || height != 1024 || rgba.size() != 1024 * 1024 * 4)
+        {
+            std::cerr << "ERROR: Tile " << i << " has invalid dimensions (" << width << "×" << height << ")\n";
+            return false;
+        }
+
+        // DEFLATE-compress raw RGBA
+        std::vector<uint8_t> compressedData;
+        const size_t compressedSize = compressRGBA(rgba, compressedData);
+        
+        if (compressedSize == 0)
+        {
+            std::cerr << "ERROR: Failed to compress tile " << i << "\n";
+            return false;
+        }
+
+        // Write compressed tile: size (4 bytes) + DEFLATE data
+        const uint32_t chunkSize = static_cast<uint32_t>(compressedSize);
+        mtxFile.write(reinterpret_cast<const char*>(&chunkSize), sizeof(uint32_t));
+        mtxFile.write(reinterpret_cast<const char*>(compressedData.data()), compressedSize);
+
+        totalOriginalBytes += rgba.size();
+        totalCompressedBytes += compressedSize + sizeof(uint32_t);
+
+        if ((i + 1) % 100 == 0 || i == header.tileCount - 1)
+        {
+            std::cout << "  Compressed tile " << (i + 1) << "/" << header.tileCount 
+                      << " (" << compressedSize << " bytes)\n";
+        }
+    }
+
+    // Update offset table
+    mtxFile.seekp(offsetTablePos);
+    mtxFile.write(reinterpret_cast<const char*>(tileOffsets.data()), sizeof(uint64_t) * header.tileCount);
+
+    mtxFile.close();
+
+    // Report compression stats
+    const size_t finalSize = std::filesystem::file_size(mtxPath);
+    const float ratio = (totalOriginalBytes > 0) ? (100.0f * finalSize / totalOriginalBytes) : 0.0f;
+
+    std::cout << "\n=== MTX Archive Complete ===\n";
+    std::cout << "Output: " << mtxPath << "\n";
+    std::cout << "Tiles: " << header.tileCount << "\n";
+    std::cout << "Original size: " << (totalOriginalBytes / 1024 / 1024) << " MB (raw RGBA)\n";
+    std::cout << "Compressed size: " << (finalSize / 1024) << " KB\n";
+    std::cout << "Compression ratio: " << std::fixed << std::setprecision(1) << ratio << "%\n";
+
+    return true;
+}
+
+bool decodeMTX(const std::string& mtxPath, const std::string& outDir)
+{
+    std::cout << "\n=== Decoding MTX Archive ===\n";
+    std::cout << "Input: " << mtxPath << "\n";
+    std::cout << "Output: " << outDir << "/\n";
+
+    // Open MTX file
+    std::ifstream mtxFile(mtxPath, std::ios::binary);
+    if (!mtxFile)
+    {
+        std::cerr << "ERROR: Failed to open MTX file: " << mtxPath << "\n";
+        return false;
+    }
+
+    // Read header
+    MTXHeader header;
+    mtxFile.read(reinterpret_cast<char*>(&header), sizeof(MTXHeader));
+
+    // Validate header
+    if (std::strncmp(header.magic, "MTX1", 4) != 0)
+    {
+        std::cerr << "ERROR: Invalid MTX file (bad magic)\n";
+        return false;
+    }
+
+    if (header.version != 1)
+    {
+        std::cerr << "ERROR: Unsupported MTX version: " << header.version << "\n";
+        return false;
+    }
+
+    std::cout << "Tiles: " << header.tileCount << "\n";
+    std::cout << "Tile size: " << header.tileSize << "×" << header.tileSize << "\n";
+    std::cout << "Mortar RGB: (" << (int)header.mortarRGB[0] << ", " 
+              << (int)header.mortarRGB[1] << ", " << (int)header.mortarRGB[2] << ")\n";
+    std::cout << "Seed: " << header.seed << "\n\n";
+
+    // Read offset table
+    std::vector<uint64_t> tileOffsets(header.tileCount);
+    mtxFile.read(reinterpret_cast<char*>(tileOffsets.data()), sizeof(uint64_t) * header.tileCount);
+
+    // Create output directory
+    try {
+        std::filesystem::create_directories(outDir);
+    }
+    catch (const std::exception& e) {
+        std::cerr << "ERROR: Failed to create output directory: " << e.what() << "\n";
+        return false;
+    }
+
+    // Decode each tile
+    for (uint32_t i = 0; i < header.tileCount; ++i)
+    {
+        // Seek to tile data
+        mtxFile.seekg(tileOffsets[i]);
+
+        // Read compressed size
+        uint32_t compressedSize = 0;
+        mtxFile.read(reinterpret_cast<char*>(&compressedSize), sizeof(uint32_t));
+
+        // Read DEFLATE-compressed data
+        std::vector<uint8_t> compressedData(compressedSize);
+        mtxFile.read(reinterpret_cast<char*>(compressedData.data()), compressedSize);
+
+        // Decompress to RGBA
+        std::vector<uint8_t> rgba;
+        if (!decompressRGBA(compressedData.data(), compressedData.size(), rgba))
+        {
+            std::cerr << "ERROR: Failed to decompress tile " << i << "\n";
+            return false;
+        }
+
+        // Write PNG
+        std::ostringstream filename;
+        filename << outDir << "/tile_" << std::setw(5) << std::setfill('0') << i << ".png";
+
+        try {
+            savePNG(filename.str(), rgba, header.tileSize, header.tileSize, true);
+        }
+        catch (const std::exception& e) {
+            std::cerr << "ERROR: Failed to write tile " << i << ": " << e.what() << "\n";
+            return false;
+        }
+
+        if ((i + 1) % 100 == 0 || i == header.tileCount - 1)
+        {
+            std::cout << "  Decoded tile " << (i + 1) << "/" << header.tileCount << "\n";
+        }
+    }
+
+    mtxFile.close();
+
+    std::cout << "\nDone! " << header.tileCount << " tiles written to " << outDir << "/\n";
+    return true;
 }

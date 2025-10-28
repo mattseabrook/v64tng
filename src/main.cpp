@@ -330,17 +330,7 @@ int process_args(const std::vector<std::string> &args)
 	}
 	else if (args[1] == "-megatexture" || args[1] == "-mt")
 	{
-		// Generate procedural megatexture tiles from basement map
-		std::cout << "Generating megatexture tiles from basement map...\n";
-		
-		if (!analyzeMapEdges(map))
-		{
-			std::cerr << "ERROR: Failed to analyze map for megatexture generation.\n";
-			return -1;
-		}
-		
 		MegatextureParams params = getDefaultMegatextureParams();
-		// Tweak noise for veins
 		params.perlinOctaves = 2;       // Domain warp octaves
 		params.perlinScale = 1.7f;      // Domain warp frequency
 		params.worleyScale = 2.0f;      // Vein network density (cells per unit)
@@ -348,18 +338,76 @@ int process_args(const std::vector<std::string> &args)
 		params.mortarWidth = 0.005f;    // Vein thickness
 		params.mortarGray = 0.30f;      // Dark gray
 		
-		if (!generateMegatextureTilesOnly(params, "megatexture"))
+		// Check if megatexture/ folder already exists with PNG files
+		bool hasExistingTiles = false;
+		if (std::filesystem::exists("megatexture") && std::filesystem::is_directory("megatexture"))
 		{
-			std::cerr << "ERROR: Failed to generate megatexture tiles.\n";
+			// Count PNG files in directory
+			int pngCount = 0;
+			for (const auto& entry : std::filesystem::directory_iterator("megatexture"))
+			{
+				if (entry.is_regular_file() && entry.path().extension() == ".png")
+				{
+					pngCount++;
+				}
+			}
+			
+			if (pngCount > 0)
+			{
+				std::cout << "Found existing megatexture/ folder with " << pngCount << " PNG tiles.\n";
+				std::cout << "Skipping procedural generation...\n";
+				hasExistingTiles = true;
+			}
+		}
+		
+		// Generate tiles if needed
+		if (!hasExistingTiles)
+		{
+			std::cout << "Generating megatexture tiles from basement map...\n";
+			
+			if (!analyzeMapEdges(map))
+			{
+				std::cerr << "ERROR: Failed to analyze map for megatexture generation.\n";
+				return -1;
+			}
+			
+			if (!generateMegatextureTilesOnly(params, "megatexture"))
+			{
+				std::cerr << "ERROR: Failed to generate megatexture tiles.\n";
+				return -1;
+			}
+		}
+		
+		// Pack into MTX archive (always in current working directory)
+		std::cout << "\nPacking tiles into MTX archive...\n";
+		if (!saveMTX("megatexture.mtx", "megatexture", params))
+		{
+			std::cerr << "ERROR: Failed to create MTX archive.\n";
 			return -1;
 		}
 		
-		std::cout << "Megatexture generation complete.\n";
+		std::cout << "\nMegatexture complete.\n";
+		std::cout << "Archive: megatexture.mtx\n";
+		std::cout << "Source tiles: megatexture/\n";
+	}
+	else if (args[1] == "-decodemtx" && args.size() >= 3)
+	{
+		// Decode MTX archive back to PNG tiles for validation
+		std::string mtxPath = args[2];
+		std::string outDir = (args.size() >= 4) ? args[3] : "megatexture_decoded";
+		
+		if (!decodeMTX(mtxPath, outDir))
+		{
+			std::cerr << "ERROR: Failed to decode MTX archive.\n";
+			return -1;
+		}
+		
+		std::cout << "\nDecode complete. Compare with original tiles to verify bit-exactness.\n";
 	}
 	else
 	{
 		std::cerr << "ERROR: Invalid option: " << args[1] << std::endl;
-		std::cerr << "\nUsage: " << args[0] << " [!|-g|-l|-p|-r|-v|-x|-raycast|-megatexture] [options...]\n";
+		std::cerr << "\nUsage: " << args[0] << " [!|-g|-l|-p|-r|-v|-x|-raycast|-megatexture|-decodemtx] [options...]\n";
 		return -1;
 	}
 
