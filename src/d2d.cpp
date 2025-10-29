@@ -591,7 +591,7 @@ static void updateRaycastTileMap(const std::vector<std::vector<uint8_t>>& tileMa
     );
 }
 
-// Build or update edge offsets SRV buffer: ((y*mapWidth + x)*4 + side) -> offset in pixels
+// Build or update edge offsets SRV buffer: ((y*mapWidth + x)*4 + side) -> triplet [offset,width,dir]
 static void updateRaycastEdgeOffsets(const std::vector<std::vector<uint8_t>>& tileMap)
 {
     if (tileMap.empty() || tileMap[0].empty()) return;
@@ -599,18 +599,19 @@ static void updateRaycastEdgeOffsets(const std::vector<std::vector<uint8_t>>& ti
     UINT mapWidth = static_cast<UINT>(tileMap[0].size());
 
     const size_t count = static_cast<size_t>(mapWidth) * mapHeight * 4ull;
-    // Store pairs: [offset,width] for each edge entry
-    std::vector<uint32_t> table(count * 2ull, 0u);
+    // Store triplets: [offset,width,dirFlag] for each edge entry
+    std::vector<uint32_t> table(count * 3ull, 0u);
 
     for (const auto& e : megatex.edges)
     {
         if (e.cellX < 0 || e.cellY < 0) continue;
         if (e.cellX >= static_cast<int>(mapWidth) || e.cellY >= static_cast<int>(mapHeight)) continue;
         size_t idx = (static_cast<size_t>(e.cellY) * mapWidth + static_cast<size_t>(e.cellX)) * 4ull + static_cast<size_t>(e.side & 3);
-        size_t idx2 = idx * 2ull;
-        if (idx2 + 1 < table.size()) {
-            table[idx2 + 0] = static_cast<uint32_t>(e.xOffsetPixels);
-            table[idx2 + 1] = static_cast<uint32_t>(std::max(1, e.pixelWidth));
+        size_t idx3 = idx * 3ull;
+        if (idx3 + 2 < table.size()) {
+            table[idx3 + 0] = static_cast<uint32_t>(e.xOffsetPixels);
+            table[idx3 + 1] = static_cast<uint32_t>(std::max(1, e.pixelWidth));
+            table[idx3 + 2] = static_cast<uint32_t>(e.direction < 0 ? 1u : 0u);
         }
     }
 
@@ -638,7 +639,7 @@ static void updateRaycastEdgeOffsets(const std::vector<std::vector<uint8_t>>& ti
         srv.Format = DXGI_FORMAT_R32_UINT;
         srv.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
         srv.Buffer.FirstElement = 0;
-        srv.Buffer.NumElements = static_cast<UINT>(count * 2ull);
+        srv.Buffer.NumElements = static_cast<UINT>(count * 3ull);
         hr = d2dCtx.d3dDevice->CreateShaderResourceView(d2dCtx.edgeOffsetsBuffer.Get(), &srv, d2dCtx.edgeOffsetsSRV.GetAddressOf());
         if (FAILED(hr)) throw std::runtime_error("Failed to create edgeOffsets SRV");
     }
@@ -735,8 +736,8 @@ void renderFrameRaycastGPU()
     // Unbind resources
     ID3D11UnorderedAccessView* nullUAV = nullptr;
     d2dCtx.d3dContext->CSSetUnorderedAccessViews(0, 1, &nullUAV, nullptr);
-    ID3D11ShaderResourceView* nullSRV = nullptr;
-    d2dCtx.d3dContext->CSSetShaderResources(0, 1, &nullSRV);
+    ID3D11ShaderResourceView* nullSRVs[2] = { nullptr, nullptr };
+    d2dCtx.d3dContext->CSSetShaderResources(0, 2, nullSRVs);
     
     // Present to swapchain (same as CPU path)
     d2dCtx.dc->SetTarget(nullptr);

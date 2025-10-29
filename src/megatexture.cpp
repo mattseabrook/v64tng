@@ -10,6 +10,7 @@
 #include <omp.h>
 #include <cstring>
 #include <zlib.h>
+#include <unordered_map>
 
 // Undefine Windows min/max macros that conflict with std::min/std::max
 #ifdef _WIN32
@@ -251,7 +252,7 @@ static void enumerateExposedEdges(const std::vector<std::vector<uint8_t>>& map)
                 edge.cellY = y;
                 edge.side = 0;
                 edge.xOffsetPixels = 0;
-                edge.direction = 1;
+                edge.direction = 1; // No flip needed
                 tempEdges.push_back(edge);
             }
             
@@ -263,7 +264,7 @@ static void enumerateExposedEdges(const std::vector<std::vector<uint8_t>>& map)
                 edge.cellY = y;
                 edge.side = 1;
                 edge.xOffsetPixels = 0;
-                edge.direction = 1;
+                edge.direction = 1; // No flip needed
                 tempEdges.push_back(edge);
             }
             
@@ -275,7 +276,7 @@ static void enumerateExposedEdges(const std::vector<std::vector<uint8_t>>& map)
                 edge.cellY = y;
                 edge.side = 2;
                 edge.xOffsetPixels = 0;
-                edge.direction = 1;
+                edge.direction = -1; // Flip U for seamless corners
                 tempEdges.push_back(edge);
             }
             
@@ -287,7 +288,7 @@ static void enumerateExposedEdges(const std::vector<std::vector<uint8_t>>& map)
                 edge.cellY = y;
                 edge.side = 3;
                 edge.xOffsetPixels = 0;
-                edge.direction = 1;
+                edge.direction = -1; // Flip U for seamless corners
                 tempEdges.push_back(edge);
             }
         }
@@ -308,94 +309,136 @@ static void orderEdgesSpatially()
         });
 }
 
+// Pack a 2D grid point into a 64-bit key
+static inline uint64_t packKey(int x, int y)
+{
+    return (static_cast<uint64_t>(static_cast<uint32_t>(x)) << 32) | static_cast<uint32_t>(y);
+}
+
+static void edgeEndpoints(const WallEdge &e, int &x0, int &y0, int &x1, int &y1)
+{
+    switch (e.side & 3)
+    {
+        case 0: // North: (x,y) -> (x+1,y)
+            x0 = e.cellX;     y0 = e.cellY;
+            x1 = e.cellX + 1; y1 = e.cellY;
+            break;
+        case 1: // East: (x+1,y) -> (x+1,y+1)
+            x0 = e.cellX + 1; y0 = e.cellY;
+            x1 = e.cellX + 1; y1 = e.cellY + 1;
+            break;
+        case 2: // South: (x+1,y+1) -> (x,y+1)
+            x0 = e.cellX + 1; y0 = e.cellY + 1;
+            x1 = e.cellX;     y1 = e.cellY + 1;
+            break;
+        default: // West: (x,y+1) -> (x,y)
+            x0 = e.cellX;     y0 = e.cellY + 1;
+            x1 = e.cellX;     y1 = e.cellY;
+            break;
+    }
+}
+
 static void computeEdgeOffsets(int pixelsPerUnit)
 {
-    // Build a quick lookup grid from cell(x,y,side) -> edge index
     if (megatex.mapWidth <= 0 || megatex.mapHeight <= 0) return;
-    std::vector<int> indexGrid(static_cast<size_t>(megatex.mapWidth) * megatex.mapHeight * 4, -1);
-    auto idxOf = [&](int x, int y, int side) -> int&
-    {
-        size_t i = (static_cast<size_t>(y) * megatex.mapWidth + static_cast<size_t>(x)) * 4ull + static_cast<size_t>(side & 3);
-        return indexGrid[i];
-    };
+
+    // Build adjacency from endpoints to edges
+    std::unordered_map<uint64_t, std::vector<int>> adj; adj.reserve(megatex.edges.size()*2);
     for (size_t i = 0; i < megatex.edges.size(); ++i)
     {
-        const auto &e = megatex.edges[i];
-        if (e.cellX >= 0 && e.cellX < megatex.mapWidth && e.cellY >= 0 && e.cellY < megatex.mapHeight)
-            idxOf(e.cellX, e.cellY, e.side) = static_cast<int>(i);
+        int x0,y0,x1,y1; edgeEndpoints(megatex.edges[i], x0,y0,x1,y1);
+        adj[packKey(x0,y0)].push_back(static_cast<int>(i));
+        adj[packKey(x1,y1)].push_back(static_cast<int>(i));
     }
-
-    auto neighbor = [&](int x, int y, int side, int dir) -> int // dir = -1 or +1 along run
-    {
-        switch (side & 3)
-        {
-            case 0: // North – runs along +X
-            case 2: // South – runs along +X
-                return (x + dir >= 0 && x + dir < megatex.mapWidth) ? idxOf(x + dir, y, side) : -1;
-            case 1: // East – runs along +Y
-            case 3: // West – runs along +Y
-                return (y + dir >= 0 && y + dir < megatex.mapHeight) ? idxOf(x, y + dir, side) : -1;
-        }
-        return -1;
-    };
 
     std::vector<uint8_t> visited(megatex.edges.size(), 0);
     int currentOffset = 0;
-    const double step = 1024.0 / 3.0; // pixels per 1 world-unit segment horizontally
+    const double step = 1024.0 / 3.0; // pixels per unit horizontally
 
-    for (size_t i = 0; i < megatex.edges.size(); ++i)
+    auto otherEndpoint = [&](const WallEdge &e, int px, int py, int &nx, int &ny)
     {
-        if (visited[i]) continue;
-        // Walk backwards to find the start of this run
-        int sx = megatex.edges[i].cellX;
-        int sy = megatex.edges[i].cellY;
-        int ss = megatex.edges[i].side;
-        int startIndex = static_cast<int>(i);
+        int x0,y0,x1,y1; edgeEndpoints(e,x0,y0,x1,y1);
+        if (x0==px && y0==py) { nx=x1; ny=y1; }
+        else { nx=x0; ny=y0; }
+    };
+
+    for (size_t si = 0; si < megatex.edges.size(); ++si)
+    {
+        if (visited[si]) continue;
+
+        // Start a new loop from this edge
+        std::vector<int> loop;
+        int sx0, sy0, sx1, sy1; edgeEndpoints(megatex.edges[si], sx0, sy0, sx1, sy1);
+        int startKeyX = sx0, startKeyY = sy0;
+        int curEdge = static_cast<int>(si);
+        int curX = sx1, curY = sy1; // move from first edge's start to its end
+        loop.push_back(curEdge);
+        visited[curEdge] = 1;
+
+        // Walk until we return to start point or cannot continue
         while (true)
         {
-            int prev = neighbor(sx, sy, ss, -1);
-            if (prev < 0) break;
-            sx = megatex.edges[prev].cellX;
-            sy = megatex.edges[prev].cellY;
-            startIndex = prev;
+            auto it = adj.find(packKey(curX, curY));
+            if (it == adj.end()) break;
+            int nextEdge = -1;
+            for (int eidx : it->second)
+            {
+                if (eidx != curEdge && !visited[eidx]) { nextEdge = eidx; break; }
+            }
+            if (nextEdge < 0) break;
+            loop.push_back(nextEdge);
+            visited[nextEdge] = 1;
+            int nx, ny; otherEndpoint(megatex.edges[nextEdge], curX, curY, nx, ny);
+            curEdge = nextEdge;
+            curX = nx; curY = ny;
+            if (curX == startKeyX && curY == startKeyY) break; // closed loop
         }
 
-        // Collect the run in forward direction
-        std::vector<int> run;
-        int cx = sx, cy = sy;
-        int ci = startIndex;
-        while (ci >= 0 && !visited[ci])
-        {
-            run.push_back(ci);
-            visited[ci] = 1;
-            int ni = neighbor(cx, cy, ss, +1);
-            if (ni < 0) break;
-            cx = megatex.edges[ni].cellX;
-            cy = megatex.edges[ni].cellY;
-            ci = ni;
-        }
+        if (loop.empty()) continue;
 
-        if (run.empty()) continue;
-
-        // If the run is exactly 3 units wide, align the start to a 1024px tile boundary
-        if (run.size() == 3u && (currentOffset % 1024) != 0)
-        {
-            int pad = 1024 - (currentOffset % 1024);
-            currentOffset += pad;
-        }
-
-        // Distribute widths within the run so that each 3 edges ~ 1024px (341/341/342)
+        // Assign offsets across the loop
         double acc = 0.0;
-        for (int ei : run)
+        std::vector<int> widths(loop.size(), 0);
+        for (size_t k = 0; k < loop.size(); ++k)
         {
             int start = static_cast<int>(std::floor(acc));
             acc += step;
             int next = static_cast<int>(std::floor(acc));
-            int width = std::max(1, next - start);
-            megatex.edges[ei].xOffsetPixels = currentOffset;
-            megatex.edges[ei].pixelWidth = width;
-            currentOffset += width;
+            widths[k] = std::max(1, next - start);
         }
+
+        // Optional: if there exists a straight segment of exactly 3 edges, align it to tile boundary
+        // Find first run of exactly 3 consecutive edges with same side value
+        int alignShift = 0;
+        for (size_t k = 0; k + 2 < loop.size(); ++k)
+        {
+            const auto &e0 = megatex.edges[loop[k+0]];
+            const auto &e1 = megatex.edges[loop[k+1]];
+            const auto &e2 = megatex.edges[loop[k+2]];
+            if ((e0.side == e1.side) && (e1.side == e2.side))
+            {
+                // compute offset at start of this triple within the loop
+                int localOff = 0;
+                for (size_t t = 0; t < k; ++t) localOff += widths[t];
+                int absoluteOff = currentOffset + localOff;
+                int mod = absoluteOff % 1024;
+                if (mod != 0) alignShift = 1024 - mod;
+                break;
+            }
+        }
+
+        currentOffset += alignShift;
+        int loopOffset = currentOffset;
+
+        int accumulated = 0;
+        for (size_t k = 0; k < loop.size(); ++k)
+        {
+            int ei = loop[k];
+            megatex.edges[ei].xOffsetPixels = loopOffset + accumulated;
+            megatex.edges[ei].pixelWidth = widths[k];
+            accumulated += widths[k];
+        }
+        currentOffset += accumulated;
     }
 
     megatex.textureHeight = pixelsPerUnit; // 1024 px = full wall height
@@ -997,6 +1040,10 @@ uint32_t sampleMegatexture(int cellX, int cellY, int side, float u, float v)
     const WallEdge* edge = findWallEdge(cellX, cellY, side);
     if (!edge)
         return 0; // No texture for this wall
+
+    // Apply edge direction so that U increases consistently along world axes
+    if (edge->direction < 0)
+        u = 1.0f - u;
 
     // Calculate global U coordinate in the megatexture strip
     // u is [0..1] along the wall, map it to the per-edge pixel width (341/342)

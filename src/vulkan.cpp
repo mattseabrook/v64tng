@@ -354,9 +354,9 @@ static void createOrUpdateEdgeOffsetsBuffer(const std::vector<std::vector<uint8_
 	uint32_t mapHeight = static_cast<uint32_t>(tileMap.size());
 	uint32_t mapWidth = static_cast<uint32_t>(tileMap[0].size());
 
-	// Create CPU-side table of pairs: [offset,width]
+	// Create CPU-side table of triplets: [offset,width,dirFlag]
 	const size_t count = static_cast<size_t>(mapWidth) * mapHeight * 4ull;
-	std::vector<uint32_t> table(count * 2ull, 0u);
+	std::vector<uint32_t> table(count * 3ull, 0u);
 
 	// Fill from analyzed edges (computed on CPU at init)
 	for (const auto& e : megatex.edges)
@@ -364,10 +364,11 @@ static void createOrUpdateEdgeOffsetsBuffer(const std::vector<std::vector<uint8_
 		if (e.cellX < 0 || e.cellY < 0) continue;
 		if (e.cellX >= static_cast<int>(mapWidth) || e.cellY >= static_cast<int>(mapHeight)) continue;
 		size_t idx = (static_cast<size_t>(e.cellY) * mapWidth + static_cast<size_t>(e.cellX)) * 4ull + static_cast<size_t>(e.side & 3);
-		size_t idx2 = idx * 2ull;
-		if (idx2 + 1 < table.size()) {
-			table[idx2 + 0] = static_cast<uint32_t>(e.xOffsetPixels);
-			table[idx2 + 1] = static_cast<uint32_t>(std::max(1, e.pixelWidth));
+		size_t idx3 = idx * 3ull;
+		if (idx3 + 2 < table.size()) {
+			table[idx3 + 0] = static_cast<uint32_t>(e.xOffsetPixels);
+			table[idx3 + 1] = static_cast<uint32_t>(std::max(1, e.pixelWidth));
+			table[idx3 + 2] = static_cast<uint32_t>(e.direction < 0 ? 1u : 0u);
 		}
 	}
 

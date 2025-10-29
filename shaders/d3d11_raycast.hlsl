@@ -3,8 +3,8 @@
 
 // Tile map: 2D texture of uint8 wall types
 Texture2D<uint> tileMap : register(t0);
-// Megatexture edge data: pairs [offset,width] of uints indexed by ((y*mapWidth + x)*4 + side)
-StructuredBuffer<uint> edgeData : register(t1);
+// Megatexture edge data: triplets [offset,width,dirFlag] of uints indexed by ((y*mapWidth + x)*4 + side)
+Buffer<uint> edgeData : register(t1);
 
 // Output: BGRA render target
 RWTexture2D<unorm float4> outputBGRA : register(u0);
@@ -213,13 +213,8 @@ float3 shadePixel(uint2 pixel, RayHit hit, float halfW, float halfH, float maxRa
         float drawStart = halfH - lineHeight / 2.0;
         float drawEnd = halfH + lineHeight / 2.0;
         
-    // Base wall color (uniform across all orientations)
-    // Old-school "perpendicular darkening" removed; lighting will handle shading.
-    float3 wallColor = float3(120.0/255.0, 120.0/255.0, 120.0/255.0);
-        
-        // Lighting: torch falloff
-        float lightFactor = max(0.0, 1.0 - hit.distance / torchRange);
-        float3 litWall = wallColor * lightFactor;
+        // Base wall color: UNIFORM across all orientations (NO lighting yet)
+        float3 baseWall = float3(120.0/255.0, 120.0/255.0, 120.0/255.0);
         
         // Determine pixel color: ceiling, wall, or floor
         if (yf < drawStart)
@@ -237,14 +232,18 @@ float3 shadePixel(uint2 pixel, RayHit hit, float halfW, float halfH, float maxRa
             // Wall with megatexture mortar overlay and edge blending
             if (yf < drawStart + 1.0)
             {
-                // Blend ceiling → wall
+                // Blend ceiling → wall (apply lighting to base wall first)
+                float lightFactor = max(0.0, 1.0 - hit.distance / torchRange);
+                float3 litWall = baseWall * lightFactor;
                 float weight = (yf - drawStart);
                 weight = clamp(weight, 0.0, 1.0);
                 color = lerp(ceilingColor, litWall, weight);
             }
             else if (yf > drawEnd - 1.0)
             {
-                // Blend wall → floor
+                // Blend wall → floor (apply lighting to base wall first)
+                float lightFactor = max(0.0, 1.0 - hit.distance / torchRange);
+                float3 litWall = baseWall * lightFactor;
                 float weight = (drawEnd - yf);
                 weight = clamp(weight, 0.0, 1.0);
                 color = lerp(floorColor, litWall, weight);
@@ -255,14 +254,20 @@ float3 shadePixel(uint2 pixel, RayHit hit, float halfW, float halfH, float maxRa
                 float v = saturate((yf - drawStart) / max(1.0, (drawEnd - drawStart)));
                 // Lookup global U offset for this wall edge
                 uint idx = (uint(hit.cell.y) * mapWidth + uint(hit.cell.x)) * 4u + uint(hit.cardinalSide & 3);
-                uint idx2 = idx * 2u;
-                uint xOff = edgeData[idx2 + 0];
-                uint wpx  = edgeData[idx2 + 1];
-                float globalU = float(xOff) + hit.wallX * float(wpx);
+                uint idx3 = idx * 3u;
+                uint xOff = edgeData[idx3 + 0];
+                uint wpx  = edgeData[idx3 + 1];
+                uint dir  = edgeData[idx3 + 2]; // 0: +u, 1: flip u
+                float uLocal = (dir != 0u) ? (1.0 - hit.wallX) : hit.wallX;
+                float globalU = float(xOff) + uLocal * float(wpx);
                 // Mortar alpha mask
                 float a = mortarMask(globalU, v);
-                float3 mortar = float3(0.30, 0.30, 0.30); // same gray as CPU
-                color = lerp(litWall, mortar * lightFactor, a);
+                float3 mortarGray = float3(0.30, 0.30, 0.30);
+                // Blend base wall with mortar FIRST (both unlit)
+                float3 compositedWall = lerp(baseWall, mortarGray, a);
+                // THEN apply lighting to the final composited color
+                float lightFactor = max(0.0, 1.0 - hit.distance / torchRange);
+                color = compositedWall * lightFactor;
             }
         }
     }
@@ -313,6 +318,12 @@ void main(uint3 DTid : SV_DispatchThreadID)
     
     // Average samples
     accumColor /= supersample;
+
+    // Add a touch of dithering to reduce visible banding on smooth gradients
+    // Cheap hash from pixel coords -> [0,1)
+    float h = frac(sin(dot(float2(pixel), float2(12.9898, 78.233))) * 43758.5453);
+    float d = (h - 0.5) * (1.5 / 255.0); // +/- ~1.5 LSBs
+    accumColor = saturate(accumColor + d);
     
     // Write output as BGRA (DirectX convention)
     // Note: We specify RGB in shader but output texture is BGRA,
