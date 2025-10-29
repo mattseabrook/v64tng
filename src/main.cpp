@@ -318,6 +318,17 @@ int process_args(const std::vector<std::string> &args)
 		float fovDeg = config.contains("raycastFov") ? static_cast<float>(config["raycastFov"]) : 90.0f;
 		state.raycast.player.fov = deg2rad(fovDeg);
 
+		// Initialize megatexture mapping and load archive for CPU renderer
+		// Note: analyzeMapEdges builds the wall-edge list once from the current map.
+		// loadMTX preloads tiles for fast sampling at runtime.
+		// If the MTX isn't present, the renderer will gracefully fall back to solid walls.
+		analyzeMapEdges(map);
+		// Prefer the game directory path if present, else current working directory
+		if (!loadMTX("C:\\T7G\\megatexture.mtx"))
+		{
+			loadMTX("megatexture.mtx");
+		}
+
 		if (!initializePlayerFromMap(*state.raycast.map, state.raycast.player))
 		{
 			MessageBoxA(nullptr, "No player start position found in the map!", "Error", MB_ICONERROR | MB_OK);
@@ -337,6 +348,7 @@ int process_args(const std::vector<std::string> &args)
 		params.worleyStrength = 0.4f;   // Domain warp strength
 		params.mortarWidth = 0.005f;    // Vein thickness
 		params.mortarGray = 0.30f;      // Dark gray
+		// Wall height:width is fixed at 3:1 and baked into generation; no config override
 		
 		// Check if megatexture/ folder already exists with PNG files
 		bool hasExistingTiles = false;

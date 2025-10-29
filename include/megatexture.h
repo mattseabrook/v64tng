@@ -14,7 +14,8 @@
     Uses edge enumeration + procedural mortar vein patterns.
     
     NOTE: Megatexture is conceptually one seamless 1024×W strip.
-    We *only* generate and write 1024×1024 tiles, streaming, to avoid huge memory.
+    Tiles are 3× longer than taller (3072×1024), streamed and packed without
+    allocating the full strip.
     Seamlessness is guaranteed because generatePixelVeins(u,v) uses global (u,v).
     No preview/combined PNG by design.
 
@@ -28,6 +29,7 @@ struct WallEdge
     int cellY;              // Map cell Y coordinate
     int side;               // Which side: 0=North, 1=East, 2=South, 3=West
     int xOffsetPixels;      // Starting pixel offset in the megatexture strip
+    int pixelWidth;         // Width in pixels assigned to this edge (341/342 alternating) so 3 edges = 1024px
     int direction;          // +1 or -1 for traversal direction consistency
 };
 
@@ -37,6 +39,7 @@ struct MegatextureParams
     uint32_t seed;              // Random seed for procedural generation
     float mortarWidth;          // Mortar vein thickness in world units
     float mortarGray;           // Mortar gray value (0..1)
+    float wallHeightUnits;      // Wall height relative to 1 world unit width (e.g., 1.0 = square, 2.0 = twice as tall)
     
     // Noise parameters
     int perlinOctaves;          // Number of Perlin noise octaves (for domain warp)
@@ -51,8 +54,14 @@ struct MegatextureState
     std::vector<WallEdge> edges;
     int textureWidth;           // Total strip width in pixels
     int textureHeight;          // Strip height (always 1024)
+    int tileWidth;              // Tile width in pixels (3072)
+    int tileHeight;             // Tile height in pixels (1024)
     int mapWidth;
     int mapHeight;
+    
+    // Runtime tile cache (loaded from MTX)
+    std::vector<std::vector<uint8_t>> tileCache;  // RGBA data per tile
+    bool loaded;                                   // Is MTX loaded?
 };
 
 // Global megatexture state
@@ -62,7 +71,7 @@ extern MegatextureState megatex;
 bool analyzeMapEdges(const std::vector<std::vector<uint8_t>>& map);
 
 // Generate megatexture tiles only (streaming, no full allocation)
-// Outputs 1024×1024 PNG tiles to the specified directory
+// Outputs 3072×1024 PNG tiles to the specified directory
 bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::string& outDir);
 
 // Pack PNG tiles into compressed MTX archive
@@ -72,6 +81,18 @@ bool saveMTX(const std::string& mtxPath, const std::string& tilesDir, const Mega
 // Decode MTX archive back to PNG tiles (for validation/debugging)
 // Writes tiles to outDir - should be bit-identical to originals
 bool decodeMTX(const std::string& mtxPath, const std::string& outDir);
+
+// Load MTX into runtime tile cache for rendering
+// Call this at startup before rendering
+bool loadMTX(const std::string& mtxPath);
+
+// Sample megatexture at world coordinates
+// cellX, cellY: Map cell coordinates
+// side: Wall side (0=North, 1=East, 2=South, 3=West)
+// u: Horizontal texture coordinate [0..1] along wall
+// v: Vertical texture coordinate [0..1] along wall height
+// Returns RGBA pixel value, or transparent if not found
+uint32_t sampleMegatexture(int cellX, int cellY, int side, float u, float v);
 
 // Lookup edge data by map coordinates (returns nullptr if not found)
 const WallEdge* findWallEdge(int cellX, int cellY, int side);

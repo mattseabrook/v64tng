@@ -48,6 +48,10 @@ struct D2DContext
     Microsoft::WRL::ComPtr<ID3D11Buffer> raycastConstantBuffer;
     UINT lastMapWidth = 0;
     UINT lastMapHeight = 0;
+
+    // Megatexture edge-offset lookup buffer (SRV as R32_UINT array)
+    Microsoft::WRL::ComPtr<ID3D11Buffer> edgeOffsetsBuffer;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> edgeOffsetsSRV;
 };
 
 extern D2DContext d2dCtx;

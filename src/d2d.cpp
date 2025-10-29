@@ -19,6 +19,7 @@
 #include "config.h"
 #include "window.h"
 #include "raycast.h"
+#include "megatexture.h"
 #include "game.h"
 #include "../build/d3d11_rgb_to_bgra.h"
 #include "../build/d3d11_raycast.h"
@@ -590,6 +591,64 @@ static void updateRaycastTileMap(const std::vector<std::vector<uint8_t>>& tileMa
     );
 }
 
+// Build or update edge offsets SRV buffer: ((y*mapWidth + x)*4 + side) -> offset in pixels
+static void updateRaycastEdgeOffsets(const std::vector<std::vector<uint8_t>>& tileMap)
+{
+    if (tileMap.empty() || tileMap[0].empty()) return;
+    UINT mapHeight = static_cast<UINT>(tileMap.size());
+    UINT mapWidth = static_cast<UINT>(tileMap[0].size());
+
+    const size_t count = static_cast<size_t>(mapWidth) * mapHeight * 4ull;
+    // Store pairs: [offset,width] for each edge entry
+    std::vector<uint32_t> table(count * 2ull, 0u);
+
+    for (const auto& e : megatex.edges)
+    {
+        if (e.cellX < 0 || e.cellY < 0) continue;
+        if (e.cellX >= static_cast<int>(mapWidth) || e.cellY >= static_cast<int>(mapHeight)) continue;
+        size_t idx = (static_cast<size_t>(e.cellY) * mapWidth + static_cast<size_t>(e.cellX)) * 4ull + static_cast<size_t>(e.side & 3);
+        size_t idx2 = idx * 2ull;
+        if (idx2 + 1 < table.size()) {
+            table[idx2 + 0] = static_cast<uint32_t>(e.xOffsetPixels);
+            table[idx2 + 1] = static_cast<uint32_t>(std::max(1, e.pixelWidth));
+        }
+    }
+
+    // Recreate buffer if size changed or not created
+    size_t byteSize = table.size() * sizeof(uint32_t);
+    bool needRecreate = !d2dCtx.edgeOffsetsBuffer || !d2dCtx.edgeOffsetsSRV;
+    if (needRecreate)
+    {
+        d2dCtx.edgeOffsetsBuffer.Reset();
+        d2dCtx.edgeOffsetsSRV.Reset();
+
+        D3D11_BUFFER_DESC bd{};
+        bd.ByteWidth = static_cast<UINT>(byteSize);
+        bd.Usage = D3D11_USAGE_DEFAULT;
+        bd.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        bd.CPUAccessFlags = 0;
+        bd.MiscFlags = 0; // Structured not needed for uint
+
+        D3D11_SUBRESOURCE_DATA init{};
+        init.pSysMem = table.data();
+        HRESULT hr = d2dCtx.d3dDevice->CreateBuffer(&bd, &init, d2dCtx.edgeOffsetsBuffer.GetAddressOf());
+        if (FAILED(hr)) throw std::runtime_error("Failed to create edgeOffsets buffer");
+
+        D3D11_SHADER_RESOURCE_VIEW_DESC srv{};
+        srv.Format = DXGI_FORMAT_R32_UINT;
+        srv.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+        srv.Buffer.FirstElement = 0;
+        srv.Buffer.NumElements = static_cast<UINT>(count * 2ull);
+        hr = d2dCtx.d3dDevice->CreateShaderResourceView(d2dCtx.edgeOffsetsBuffer.Get(), &srv, d2dCtx.edgeOffsetsSRV.GetAddressOf());
+        if (FAILED(hr)) throw std::runtime_error("Failed to create edgeOffsets SRV");
+    }
+    else
+    {
+        // Update contents
+        d2dCtx.d3dContext->UpdateSubresource(d2dCtx.edgeOffsetsBuffer.Get(), 0, nullptr, table.data(), 0, 0);
+    }
+}
+
 //
 // Render raycaster view using GPU compute shader
 //
@@ -611,6 +670,8 @@ void renderFrameRaycastGPU()
     
     // Update tile map texture if needed
     updateRaycastTileMap(map);
+    // Update edge offset lookup SRV
+    updateRaycastEdgeOffsets(map);
     
     // Prepare constant buffer data
     struct RaycastConstants
@@ -628,7 +689,8 @@ void renderFrameRaycastGPU()
         float falloffMul;
         float fovMul;
         uint32_t supersample;
-        uint32_t padding[3];
+        float wallHeightUnits; // vertical scale of mortar/world vs width
+        uint32_t padding[2];
     };
     
     RaycastConstants constants{};
@@ -646,6 +708,8 @@ void renderFrameRaycastGPU()
     constants.falloffMul = config.contains("raycastFalloffMul") ? config["raycastFalloffMul"].get<float>() : 0.85f;
     constants.fovMul = config.contains("raycastFovMul") ? config["raycastFovMul"].get<float>() : 1.0f;
     constants.supersample = config.contains("raycastSupersample") ? config["raycastSupersample"].get<uint32_t>() : 1;
+    // Vertical scale: 1 wall unit per 1024px (horizontal anisotropy handled in content/shader)
+    constants.wallHeightUnits = 1.0f;
     
     // Update constant buffer
     D3D11_MAPPED_SUBRESOURCE mapped;
@@ -658,7 +722,8 @@ void renderFrameRaycastGPU()
     
     // Bind resources
     d2dCtx.d3dContext->CSSetShader(d2dCtx.raycastComputeShader.Get(), nullptr, 0);
-    d2dCtx.d3dContext->CSSetShaderResources(0, 1, d2dCtx.tileMapSRV.GetAddressOf());
+    ID3D11ShaderResourceView* srvs[2] = { d2dCtx.tileMapSRV.Get(), d2dCtx.edgeOffsetsSRV.Get() };
+    d2dCtx.d3dContext->CSSetShaderResources(0, 2, srvs);
     d2dCtx.d3dContext->CSSetUnorderedAccessViews(0, 1, d2dCtx.frameTextureUAV.GetAddressOf(), nullptr);
     d2dCtx.d3dContext->CSSetConstantBuffers(0, 1, d2dCtx.raycastConstantBuffer.GetAddressOf());
     

@@ -3,6 +3,8 @@
 
 // Tile map: 2D texture of uint8 wall types
 Texture2D<uint> tileMap : register(t0);
+// Megatexture edge data: pairs [offset,width] of uints indexed by ((y*mapWidth + x)*4 + side)
+StructuredBuffer<uint> edgeData : register(t1);
 
 // Output: BGRA render target
 RWTexture2D<unorm float4> outputBGRA : register(u0);
@@ -23,7 +25,7 @@ cbuffer RaycastConstants : register(b0)
     float falloffMul;        // Radial falloff multiplier
     float fovMul;            // FOV adjustment multiplier
     uint supersample;        // Supersampling count (1, 2, 4, etc.)
-    uint padding1;
+    float wallHeightUnits;   // Wall height in world units relative to width
     uint padding2;
     uint padding3;
 };
@@ -35,8 +37,11 @@ cbuffer RaycastConstants : register(b0)
 struct RayHit
 {
     float distance;
-    int side;  // 0 = vertical wall, 1 = horizontal wall
-    bool hitWall;  // true if hit actual wall, false if just reached far distance
+    int side;          // 0 = vertical wall, 1 = horizontal wall
+    bool hitWall;      // true if hit actual wall, false if just reached far distance
+    int2 cell;         // map cell at hit
+    int cardinalSide;  // 0=N,1=E,2=S,3=W
+    float wallX;       // [0..1] along wall
 };
 
 RayHit castRay(float2 pos, float2 rayDir)
@@ -96,11 +101,8 @@ RayHit castRay(float2 pos, float2 rayDir)
             mapPos.x >= (int)mapWidth || mapPos.y >= (int)mapHeight)
         {
             float dist = side ? (sideDist.y - deltaDist.y) : (sideDist.x - deltaDist.x);
-            RayHit result;
-            result.distance = dist;
-            result.side = side;
-            result.hitWall = false;
-            return result;
+            RayHit r; r.distance = dist; r.side = side; r.hitWall = false; r.cell = mapPos; r.cardinalSide = 0; r.wallX = 0.0;
+            return r;
         }
         
         // Sample tile map
@@ -111,26 +113,68 @@ RayHit castRay(float2 pos, float2 rayDir)
         {
             // Hit wall - calculate distance
             float dist = side ? (sideDist.y - deltaDist.y) : (sideDist.x - deltaDist.x);
-            RayHit result;
-            result.distance = dist;
-            result.side = side;
-            result.hitWall = true;
-            return result;
+            RayHit r; r.distance = dist; r.side = side; r.hitWall = true; r.cell = mapPos;
+            // Compute wallX (fraction along wall) and cardinal side
+            float wx = (side == 0) ? (pos.y + dist * rayDir.y) : (pos.x + dist * rayDir.x);
+            wx = wx - floor(wx);
+            r.wallX = wx;
+            int cardinal;
+            if (side == 0) { cardinal = (step.x > 0) ? 3 : 1; } else { cardinal = (step.y > 0) ? 0 : 2; }
+            r.cardinalSide = cardinal;
+            return r;
         }
     }
     
     // Max steps reached - return distance traveled, no wall hit
     float dist = side ? (sideDist.y - deltaDist.y) : (sideDist.x - deltaDist.x);
-    RayHit result;
-    result.distance = dist;
-    result.side = side;
-    result.hitWall = false;
-    return result;
+    RayHit r; r.distance = dist; r.side = side; r.hitWall = false; r.cell = mapPos; r.cardinalSide = 0; r.wallX = 0.0;
+    return r;
 }
 
 //==============================================================================
 // Shading & Lighting
 //==============================================================================
+
+// Procedural mortar veins (subset of CPU algorithm)
+float mortarMask(float globalU, float v)
+{
+    // Mapping: 1024 px width = 3 world units, 1024 px height = 1 world unit
+    float x = (globalU / 1024.0) * 3.0;
+    float y = v;
+    // Cheap cellular ridge: evaluate nearest points in 3x3 grid (fixed seed)
+    float density = 2.0; // cells per unit
+    float X = x * density;
+    float Y = y * density;
+    int xi = (int)floor(X);
+    int yi = (int)floor(Y);
+    float f1 = 1e9, f2 = 1e9;
+    [unroll]
+    for (int dy=-1; dy<=1; ++dy)
+    {
+        [unroll]
+        for (int dx=-1; dx<=1; ++dx)
+        {
+            int cx = xi+dx, cy = yi+dy;
+            // hash
+            uint h = asuint((cx*73856093) ^ (cy*19349663) ^ 12345);
+            float jx = frac(h * 0.000000119f);
+            float jy = frac(h * 0.000000167f);
+            float fx = (float)cx + jx;
+            float fy = (float)cy + jy;
+            float dxp = X - fx;
+            float dyp = Y - fy;
+            float d2 = dxp*dxp + dyp*dyp;
+            if (d2 < f1) { f2 = f1; f1 = d2; }
+            else if (d2 < f2) { f2 = d2; }
+        }
+    }
+    f1 = sqrt(f1); f2 = sqrt(f2);
+    float ridge = (f2 - f1);
+    float target = 0.005; // mortar width in world units
+    float m = saturate(1.0 - smoothstep(target*0.25, target*0.75, ridge));
+    // Shape a bit
+    return pow(m, 0.8);
+}
 
 float3 shadePixel(uint2 pixel, RayHit hit, float halfW, float halfH, float maxRadius)
 {
@@ -169,9 +213,9 @@ float3 shadePixel(uint2 pixel, RayHit hit, float halfW, float halfH, float maxRa
         float drawStart = halfH - lineHeight / 2.0;
         float drawEnd = halfH + lineHeight / 2.0;
         
-        // Wall color based on side (darker for horizontal walls)
-        float3 wallColor = hit.side ? float3(64.0/255.0, 64.0/255.0, 64.0/255.0) 
-                                    : float3(120.0/255.0, 120.0/255.0, 120.0/255.0);
+    // Base wall color (darker for horizontal walls)
+    float3 wallColor = hit.side ? float3(64.0/255.0, 64.0/255.0, 64.0/255.0)
+                    : float3(120.0/255.0, 120.0/255.0, 120.0/255.0);
         
         // Lighting: torch falloff
         float lightFactor = max(0.0, 1.0 - hit.distance / torchRange);
@@ -190,7 +234,7 @@ float3 shadePixel(uint2 pixel, RayHit hit, float halfW, float halfH, float maxRa
         }
         else
         {
-            // Wall with edge blending for anti-aliasing
+            // Wall with megatexture mortar overlay and edge blending
             if (yf < drawStart + 1.0)
             {
                 // Blend ceiling → wall
@@ -207,8 +251,18 @@ float3 shadePixel(uint2 pixel, RayHit hit, float halfW, float halfH, float maxRa
             }
             else
             {
-                // Pure wall
-                color = litWall;
+                // Per-pixel v along wall
+                float v = saturate((yf - drawStart) / max(1.0, (drawEnd - drawStart)));
+                // Lookup global U offset for this wall edge
+                uint idx = (uint(hit.cell.y) * mapWidth + uint(hit.cell.x)) * 4u + uint(hit.cardinalSide & 3);
+                uint idx2 = idx * 2u;
+                uint xOff = edgeData[idx2 + 0];
+                uint wpx  = edgeData[idx2 + 1];
+                float globalU = float(xOff) + hit.wallX * float(wpx);
+                // Mortar alpha mask
+                float a = mortarMask(globalU, v);
+                float3 mortar = float3(0.30, 0.30, 0.30); // same gray as CPU
+                color = lerp(litWall, mortar * lightFactor, a);
             }
         }
     }

@@ -12,6 +12,11 @@ layout(std430, binding = 0) readonly buffer TileMap {
 // Output: BGRA8 image
 layout(binding = 1, rgba8) uniform writeonly image2D outputImage;
 
+// Megatexture edge data: pairs [offset,width] as linear array
+layout(std430, binding = 2) readonly buffer EdgeData {
+    uint data2[];
+};
+
 // Per-frame constants
 layout(push_constant) uniform RaycastConstants {
     float playerX;
@@ -27,6 +32,7 @@ layout(push_constant) uniform RaycastConstants {
     float falloffMul;        // Radial falloff multiplier
     float fovMul;            // FOV adjustment multiplier
     uint supersample;        // Supersampling count
+    float wallHeightUnits;   // Wall height in world units relative to width
 } pc;
 
 //==============================================================================
@@ -62,6 +68,9 @@ struct RayHit
     float distance;
     int side;  // 0 = vertical wall, 1 = horizontal wall
     bool hitWall;  // true if hit actual wall, false if just reached far distance
+    ivec2 cell;       // map cell at hit
+    int cardinalSide; // 0=N,1=E,2=S,3=W
+    float wallX;      // [0..1] along wall
 };
 
 RayHit castRay(vec2 pos, vec2 rayDir)
@@ -122,7 +131,7 @@ RayHit castRay(vec2 pos, vec2 rayDir)
         if (tile == 0xFF)
         {
             float dist = side == 0 ? (sideDist.x - deltaDist.x) : (sideDist.y - deltaDist.y);
-            return RayHit(dist, side, false);
+            RayHit r; r.distance = dist; r.side = side; r.hitWall = false; r.cell = mapPos; r.cardinalSide = 0; r.wallX = 0.0; return r;
         }
         
         // Check for walls (0x01-0xEF, excluding player markers 0xF0-0xF3)
@@ -130,18 +139,59 @@ RayHit castRay(vec2 pos, vec2 rayDir)
         {
             // Hit wall - calculate distance
             float dist = side == 0 ? (sideDist.x - deltaDist.x) : (sideDist.y - deltaDist.y);
-            return RayHit(dist, side, true);
+            RayHit r; r.distance = dist; r.side = side; r.hitWall = true; r.cell = mapPos;
+            float wx = (side == 0) ? (pos.y + dist * rayDir.y) : (pos.x + dist * rayDir.x);
+            wx -= floor(wx);
+            r.wallX = wx;
+            int cardinal;
+            if (side == 0) { cardinal = (step.x > 0) ? 3 : 1; } else { cardinal = (step.y > 0) ? 0 : 2; }
+            r.cardinalSide = cardinal;
+            return r;
         }
     }
     
     // Max steps reached - return distance traveled, no wall hit
     float dist = side == 0 ? (sideDist.x - deltaDist.x) : (sideDist.y - deltaDist.y);
-    return RayHit(dist, side, false);
+    RayHit r; r.distance = dist; r.side = side; r.hitWall = false; r.cell = mapPos; r.cardinalSide = 0; r.wallX = 0.0; return r;
 }
 
 //==============================================================================
 // Shading & Lighting
 //==============================================================================
+
+// Procedural mortar mask (approximation to CPU)
+float mortarMask(float globalU, float v)
+{
+    // 1024 px width = 3 world units; vertical: 1 unit per full height
+    float x = (globalU / 1024.0) * 3.0;
+    float y = v;
+    float density = 2.0; // cells/unit
+    float X = x * density;
+    float Y = y * density;
+    int xi = int(floor(X));
+    int yi = int(floor(Y));
+    float f1 = 1e9, f2 = 1e9;
+    for (int dy=-1; dy<=1; ++dy)
+    for (int dx=-1; dx<=1; ++dx)
+    {
+        int cx = xi+dx, cy = yi+dy;
+        uint h = uint(cx)*73856093u ^ uint(cy)*19349663u ^ 12345u;
+        float jx = fract(float(h) * 0.000000119);
+        float jy = fract(float(h) * 0.000000167);
+        float fx = float(cx) + jx;
+        float fy = float(cy) + jy;
+        float dxp = X - fx;
+        float dyp = Y - fy;
+        float d2 = dxp*dxp + dyp*dyp;
+        if (d2 < f1) { f2 = f1; f1 = d2; }
+        else if (d2 < f2) { f2 = d2; }
+    }
+    f1 = sqrt(f1); f2 = sqrt(f2);
+    float ridge = (f2 - f1);
+    float target = 0.005; // world units
+    float m = clamp(1.0 - smoothstep(target*0.25, target*0.75, ridge), 0.0, 1.0);
+    return pow(m, 0.8);
+}
 
 vec3 shadePixel(uvec2 pixel, RayHit hit, float halfW, float halfH, float maxRadius)
 {
@@ -217,8 +267,16 @@ vec3 shadePixel(uvec2 pixel, RayHit hit, float halfW, float halfH, float maxRadi
             }
             else
             {
-                // Pure wall
-                color = litWall;
+                // Pure wall: overlay procedural mortar using global edge offset
+                float v = clamp((yf - drawStart) / max(1.0, (drawEnd - drawStart)), 0.0, 1.0);
+        uint idx = (uint(hit.cell.y) * pc.mapWidth + uint(hit.cell.x)) * 4u + uint(hit.cardinalSide & 3);
+        uint idx2 = idx * 2u;
+    uint xOff = (idx2 + 1u < data2.length()) ? data2[idx2 + 0u] : 0u;
+    uint wpx  = (idx2 + 1u < data2.length()) ? data2[idx2 + 1u] : 1024u;
+        float globalU = float(xOff) + hit.wallX * float(wpx);
+                float a = mortarMask(globalU, v);
+                vec3 mortar = vec3(0.30);
+                color = mix(litWall, mortar * lightFactor, a);
             }
         }
     }

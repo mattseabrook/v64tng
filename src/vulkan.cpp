@@ -6,6 +6,12 @@
 
 #ifdef _WIN32
 #include <Windows.h>
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
 #endif
 
 #include <vulkan/vulkan.h>
@@ -17,6 +23,7 @@
 #include "window.h"
 #include "raycast.h"
 #include "render.h"
+#include "megatexture.h"
 #include "../build/rgb_to_bgra_spv.h"
 #include "../build/vk_raycast_spv.h"
 
@@ -340,6 +347,84 @@ static void createTileMapBuffer(const std::vector<std::vector<uint8_t>>& tileMap
 	vkCtx.lastMapHeight = mapHeight;
 }
 
+// Build and upload edge offset lookup buffer: ((y*mapWidth + x)*4 + side) -> offset in pixels
+static void createOrUpdateEdgeOffsetsBuffer(const std::vector<std::vector<uint8_t>>& tileMap)
+{
+	if (tileMap.empty() || tileMap[0].empty()) return;
+	uint32_t mapHeight = static_cast<uint32_t>(tileMap.size());
+	uint32_t mapWidth = static_cast<uint32_t>(tileMap[0].size());
+
+	// Create CPU-side table of pairs: [offset,width]
+	const size_t count = static_cast<size_t>(mapWidth) * mapHeight * 4ull;
+	std::vector<uint32_t> table(count * 2ull, 0u);
+
+	// Fill from analyzed edges (computed on CPU at init)
+	for (const auto& e : megatex.edges)
+	{
+		if (e.cellX < 0 || e.cellY < 0) continue;
+		if (e.cellX >= static_cast<int>(mapWidth) || e.cellY >= static_cast<int>(mapHeight)) continue;
+		size_t idx = (static_cast<size_t>(e.cellY) * mapWidth + static_cast<size_t>(e.cellX)) * 4ull + static_cast<size_t>(e.side & 3);
+		size_t idx2 = idx * 2ull;
+		if (idx2 + 1 < table.size()) {
+			table[idx2 + 0] = static_cast<uint32_t>(e.xOffsetPixels);
+			table[idx2 + 1] = static_cast<uint32_t>(std::max(1, e.pixelWidth));
+		}
+	}
+
+	// Create or resize GPU buffer
+	VkDeviceSize bufferSize = static_cast<VkDeviceSize>(table.size() * sizeof(uint32_t));
+	bool needRecreate = (!vkCtx.edgeOffsetsBuffer) || (vkCtx.edgeOffsetsBufferSize != bufferSize);
+	if (needRecreate)
+	{
+		if (vkCtx.edgeOffsetsBuffer)
+		{
+			vkDestroyBuffer(vkCtx.device, vkCtx.edgeOffsetsBuffer, nullptr);
+			vkFreeMemory(vkCtx.device, vkCtx.edgeOffsetsBufferMemory, nullptr);
+			vkCtx.edgeOffsetsBuffer = VK_NULL_HANDLE;
+			vkCtx.edgeOffsetsBufferMemory = VK_NULL_HANDLE;
+		}
+		createBuffer(bufferSize,
+					 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+					 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+					 vkCtx.edgeOffsetsBuffer, vkCtx.edgeOffsetsBufferMemory);
+		vkCtx.edgeOffsetsBufferSize = bufferSize;
+	}
+
+	// Staging upload
+	VkBuffer staging;
+	VkDeviceMemory stagingMem;
+	createBuffer(bufferSize,
+				 VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+				 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+				 staging, stagingMem);
+
+	void* data = nullptr;
+	vkMapMemory(vkCtx.device, stagingMem, 0, bufferSize, 0, &data);
+	std::memcpy(data, table.data(), static_cast<size_t>(bufferSize));
+	vkUnmapMemory(vkCtx.device, stagingMem);
+
+	VkCommandBuffer cmdBuf = vkCtx.commandBuffers[vkCtx.currentFrame];
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	vkBeginCommandBuffer(cmdBuf, &beginInfo);
+
+	VkBufferCopy copy{ };
+	copy.size = bufferSize;
+	vkCmdCopyBuffer(cmdBuf, staging, vkCtx.edgeOffsetsBuffer, 1, &copy);
+	vkEndCommandBuffer(cmdBuf);
+
+	VkSubmitInfo submit{};
+	submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit.commandBufferCount = 1;
+	submit.pCommandBuffers = &cmdBuf;
+	vkQueueSubmit(vkCtx.graphicsQueue, 1, &submit, VK_NULL_HANDLE);
+	vkQueueWaitIdle(vkCtx.graphicsQueue);
+
+	vkDestroyBuffer(vkCtx.device, staging, nullptr);
+	vkFreeMemory(vkCtx.device, stagingMem, nullptr);
+}
+
 static void updateRaycastDescriptors()
 {
 	if (!vkCtx.raycastDescSet || !vkCtx.tileMapBuffer)
@@ -355,8 +440,13 @@ static void updateRaycastDescriptors()
 	VkDescriptorImageInfo imgInfo{};
 	imgInfo.imageView = vkCtx.textureImageView;
 	imgInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	
-	VkWriteDescriptorSet writes[2]{};
+	// Binding 2: edge offsets storage buffer
+	VkDescriptorBufferInfo offsetsInfo{};
+	offsetsInfo.buffer = vkCtx.edgeOffsetsBuffer;
+	offsetsInfo.offset = 0;
+	offsetsInfo.range = vkCtx.edgeOffsetsBufferSize;
+
+	VkWriteDescriptorSet writes[3]{};
 	writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	writes[0].dstSet = vkCtx.raycastDescSet;
 	writes[0].dstBinding = 0;
@@ -370,15 +460,28 @@ static void updateRaycastDescriptors()
 	writes[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 	writes[1].descriptorCount = 1;
 	writes[1].pImageInfo = &imgInfo;
-	
-	vkUpdateDescriptorSets(vkCtx.device, 2, writes, 0, nullptr);
+
+	if (vkCtx.edgeOffsetsBuffer)
+	{
+		writes[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writes[2].dstSet = vkCtx.raycastDescSet;
+		writes[2].dstBinding = 2;
+		writes[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		writes[2].descriptorCount = 1;
+		writes[2].pBufferInfo = &offsetsInfo;
+		vkUpdateDescriptorSets(vkCtx.device, 3, writes, 0, nullptr);
+	}
+	else
+	{
+		vkUpdateDescriptorSets(vkCtx.device, 2, writes, 0, nullptr);
+	}
 }
 
 static void createRaycastPipeline()
 {
 	try {
-		// Descriptor set layout: binding0 storage buffer (tile map), binding1 storage image (output)
-		VkDescriptorSetLayoutBinding bindings[2]{};
+		// Descriptor set layout: binding0 storage buffer (tile map), binding1 storage image (output), binding2 storage buffer (edge offsets)
+		VkDescriptorSetLayoutBinding bindings[3]{};
 		bindings[0].binding = 0;
 		bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		bindings[0].descriptorCount = 1;
@@ -387,10 +490,14 @@ static void createRaycastPipeline()
 		bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 		bindings[1].descriptorCount = 1;
 		bindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+		bindings[2].binding = 2;
+		bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		bindings[2].descriptorCount = 1;
+		bindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 		
 		VkDescriptorSetLayoutCreateInfo dslInfo{};
 		dslInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		dslInfo.bindingCount = 2;
+		dslInfo.bindingCount = 3;
 		dslInfo.pBindings = bindings;
 		vkCreateDescriptorSetLayout(vkCtx.device, &dslInfo, nullptr, &vkCtx.raycastDescSetLayout);
 		
@@ -433,16 +540,18 @@ static void createRaycastPipeline()
 		vkDestroyShaderModule(vkCtx.device, module, nullptr);
 		
 		// Descriptor pool and set
-		VkDescriptorPoolSize poolSizes[2]{};
-		poolSizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		poolSizes[0].descriptorCount = 1;
-		poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-		poolSizes[1].descriptorCount = 1;
+	VkDescriptorPoolSize poolSizes[3]{};
+	poolSizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; // tile map
+	poolSizes[0].descriptorCount = 1;
+	poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;  // output
+	poolSizes[1].descriptorCount = 1;
+	poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; // edge offsets
+	poolSizes[2].descriptorCount = 1;
 		
 		VkDescriptorPoolCreateInfo dpInfo{};
 		dpInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		dpInfo.maxSets = 1;
-		dpInfo.poolSizeCount = 2;
+	dpInfo.poolSizeCount = 3;
 		dpInfo.pPoolSizes = poolSizes;
 		vkCreateDescriptorPool(vkCtx.device, &dpInfo, nullptr, &vkCtx.raycastDescPool);
 		
@@ -504,7 +613,7 @@ Parameters:
 	- height: New height of the texture.
 ===============================================================================
 */
-static uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+
 
 // Helper: create buffer
 static void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags props, VkBuffer &buffer, VkDeviceMemory &memory)
@@ -984,6 +1093,8 @@ void renderFrameRaycastVkGPU()
 	
 	// Upload tile map to GPU if needed
 	createTileMapBuffer(map);
+	// Upload edge offsets table (built from megatex.edges)
+	createOrUpdateEdgeOffsetsBuffer(map);
 	
 	// Update descriptors if needed
 	if (vkCtx.tileMapBuffer)
@@ -1005,7 +1116,8 @@ void renderFrameRaycastVkGPU()
 		float falloffMul;
 		float fovMul;
 		uint32_t supersample;
-		float padding[3];
+		float wallHeightUnits; // vertical scale of mortar/world vs width
+		float padding[2];
 	};
 	
 	RaycastConstants constants{};
@@ -1023,6 +1135,8 @@ void renderFrameRaycastVkGPU()
 	constants.falloffMul = config.contains("raycastFalloffMul") ? config["raycastFalloffMul"].get<float>() : 0.85f;
 	constants.fovMul = config.contains("raycastFovMul") ? config["raycastFovMul"].get<float>() : 1.0f;
 	constants.supersample = config.contains("raycastSupersample") ? config["raycastSupersample"].get<uint32_t>() : 1;
+	// Vertical scale: 1 wall unit per 1024px (horizontal anisotropy handled in content/shader)
+	constants.wallHeightUnits = 1.0f;
 	
 	// Present frame with compute shader execution
 	uint32_t frame = vkCtx.currentFrame;

@@ -30,7 +30,8 @@
     Streaming tile-based generation with no full-strip allocation.
     
     NOTE: Megatexture is conceptually one seamless 1024×W strip.
-    We *only* generate and write 1024×1024 tiles, streaming, to avoid huge memory.
+    We generate and write 3072×1024 tiles (3× longer than taller), streaming,
+    to avoid huge memory.
     Seamlessness is guaranteed because generatePixelVeins(u,v) uses global (u,v).
     No preview/combined PNG by design.
 
@@ -38,7 +39,7 @@
 */
 
 // Global megatexture state
-MegatextureState megatex = {};
+MegatextureState megatex = { .loaded = false };
 
 //
 // Internal helpers
@@ -144,52 +145,68 @@ static void worleyF1F2(float x, float y, float density, uint32_t seed, float &f1
 // u = horizontal pixel coordinate in the entire strip (0..textureWidth-1)
 // v = vertical pixel coordinate (0..1023)
 // Returns RGBA8 packed as uint32_t (R,G,B,A in bytes 0,1,2,3)
-static uint32_t generatePixelVeins(int u, int v, const MegatextureParams &params)
+// Return mortar coverage in [0,1] at world coords (x,y)
+static float mortarShapeAt(float x, float y, const MegatextureParams &params)
 {
-    // Convert pixel coordinates to world units (1 unit = 1024 pixels, wall height = 1 unit)
-    const float pixelsPerUnit = 1024.0f;
-    float x = (float)u / pixelsPerUnit;
-    float y = (float)v / pixelsPerUnit;
-
-    // Domain warp to make the vein network more organic
+    // Domain warp for organic feel
     float warpAmp = std::max(0.0f, params.worleyStrength);
     float ws = std::max(0.001f, params.perlinScale);
     if (warpAmp > 0.0f)
     {
         float nx = fbm(x * ws + 31.1f, y * ws + 17.3f, std::max(1, params.perlinOctaves), params.seed);
         float ny = fbm(x * ws + 101.7f, y * ws + 47.9f, std::max(1, params.perlinOctaves), params.seed ^ 0x9E3779B9u);
-        // remap -1..1
         nx = nx * 2.0f - 1.0f;
         ny = ny * 2.0f - 1.0f;
         x += nx * warpAmp * 0.25f;
         y += ny * warpAmp * 0.25f;
     }
 
-    // Worley-based veins: ridges where F2-F1 is small (near cell boundaries)
     float density = std::max(0.001f, params.worleyScale); // cells per unit
     float f1, f2;
     worleyF1F2(x, y, density, params.seed * 59167u + 123u, f1, f2);
     float ridge = (f2 - f1); // small near edges
 
-    // Control mortar width using mortarWidth ~ desired line thickness in world units
+    // Desired line thickness in world units
     float target = std::max(0.0005f, params.mortarWidth);
     float th0 = target * 0.25f;
-    float th1 = target * 0.75f;
+    float th1 = target * 0.85f; // slightly wider transition than before for stability
     float m = 1.0f - smoothstep(th0, th1, ridge); // 1 on vein center, 0 outside
     m = std::clamp(m, 0.0f, 1.0f);
-
-    // Softening/shaping to keep lines rounded
+    // Keep lines rounded and avoid razor-thin segments
     float shape = std::pow(m, 0.8f);
+    return shape;
+}
 
-    // Output only the mortar lines; everything else fully transparent
-    uint8_t a = (uint8_t)std::round(shape * 255.0f);
-    if (a == 0)
-        return 0u; // transparent pixel (R=0, G=0, B=0, A=0)
+static uint32_t generatePixelVeins(int u, int v, const MegatextureParams &params)
+{
+    // Convert pixel coordinates to world units with anisotropy:
+    // 1024 px width = 3 world units (horizontal), 1024 px height = 1 world unit (vertical)
+    const float pixelsPerUnitY = 1024.0f;
+    const float unitsPerTileX = 3.0f; // world units per 1024 px horizontally
 
-    float gflt = std::clamp(params.mortarGray, 0.0f, 1.0f);
-    uint8_t g = (uint8_t)std::round(gflt * 255.0f);
-    
-    // Pack as RGBA (byte order: R, G, B, A)
+    // 2x2 supersampling at sub-pixel offsets to eliminate dotted/aliased gaps
+    const float ox[2] = {0.25f, 0.75f};
+    const float oy[2] = {0.25f, 0.75f};
+    float acc = 0.0f;
+    for (int yi = 0; yi < 2; ++yi)
+    {
+        for (int xi = 0; xi < 2; ++xi)
+        {
+            float x = (((float)u + ox[xi]) / 1024.0f) * unitsPerTileX;
+            float y = (((float)v + oy[yi]) / pixelsPerUnitY);
+            acc += mortarShapeAt(x, y, params);
+        }
+    }
+    float coverage = acc * 0.25f; // average
+
+    // Convert to alpha; enforce a tiny floor to keep lines continuous at 4K/2K
+    float aFloat = std::clamp(coverage, 0.0f, 1.0f);
+    const float minVisible = 8.0f / 255.0f; // ensures faint segments don't disappear entirely
+    if (aFloat > 0.0f && aFloat < minVisible) aFloat = minVisible;
+    uint8_t a = (uint8_t)std::round(aFloat * 255.0f);
+    if (a == 0) return 0u;
+
+    uint8_t g = (uint8_t)std::round(std::clamp(params.mortarGray, 0.0f, 1.0f) * 255.0f);
     return ((uint32_t)g << 0) | ((uint32_t)g << 8) | ((uint32_t)g << 16) | ((uint32_t)a << 24);
 }
 
@@ -293,16 +310,25 @@ static void orderEdgesSpatially()
 
 static void computeEdgeOffsets(int pixelsPerUnit)
 {
+    // Assign variable pixel widths per edge so that 3 edges = 1024px
+    // Use fractional accumulator to distribute the extra pixel (341,341,342 pattern)
     int currentOffset = 0;
-    
+    double acc = 0.0;
+    const double step = 1024.0 / 3.0; // pixels per world unit horizontally
+
     for (auto& edge : megatex.edges)
     {
+        int start = static_cast<int>(std::floor(acc));
+        acc += step;
+        int next = static_cast<int>(std::floor(acc));
+        int width = std::max(1, next - start);
         edge.xOffsetPixels = currentOffset;
-        currentOffset += pixelsPerUnit;
+        edge.pixelWidth = width;
+        currentOffset += width;
     }
-    
-    megatex.textureHeight = pixelsPerUnit;
-    megatex.textureWidth = currentOffset;
+
+    megatex.textureHeight = pixelsPerUnit; // 1024 px = full wall height
+    megatex.textureWidth = currentOffset;  // sum of per-edge widths
 }
 
 //
@@ -311,16 +337,55 @@ static void computeEdgeOffsets(int pixelsPerUnit)
 
 bool analyzeMapEdges(const std::vector<std::vector<uint8_t>>& map)
 {
+    // Debug: Write IMMEDIATELY to prove function was called
+    {
+        std::ofstream f("C:\\T7G\\edge_debug.txt");
+        f << "=== analyzeMapEdges() START ===\n";
+        f.flush();
+    }
+    
     if (map.empty() || map[0].empty())
+    {
+        std::ofstream f("C:\\T7G\\edge_debug.txt", std::ios::app);
+        f << "ERROR: Map is empty!\n";
         return false;
+    }
     
     megatex.mapHeight = (int)map.size();
     megatex.mapWidth = (int)map[0].size();
     megatex.edges.clear();
     
+    {
+        std::ofstream f("C:\\T7G\\edge_debug.txt", std::ios::app);
+        f << "Map size: " << megatex.mapWidth << " x " << megatex.mapHeight << "\n";
+        f << "Calling enumerateExposedEdges()...\n";
+        f.flush();
+    }
+    
     enumerateExposedEdges(map);
+    
+    {
+        std::ofstream f("C:\\T7G\\edge_debug.txt", std::ios::app);
+        f << "Edges after enumeration: " << megatex.edges.size() << "\n";
+        f << "Calling orderEdgesSpatially()...\n";
+        f.flush();
+    }
+    
     orderEdgesSpatially();
     computeEdgeOffsets(1024);  // 1024 pixels per unit
+    
+    {
+        std::ofstream f("C:\\T7G\\edge_debug.txt", std::ios::app);
+        f << "Final edge count: " << megatex.edges.size() << "\n\n";
+        
+        for (size_t i = 0; i < std::min(megatex.edges.size(), size_t(20)); ++i)
+        {
+            const auto& e = megatex.edges[i];
+            f << "Edge " << i << ": cell(" << e.cellX << "," << e.cellY << ") side=" << e.side 
+              << " offset=" << e.xOffsetPixels << "\n";
+        }
+        f << "\n=== analyzeMapEdges() END ===\n";
+    }
     
     return !megatex.edges.empty();
 }
@@ -333,15 +398,17 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
         return false;
     }
 
-    const int tileSize = 1024;
-    const int W_px = megatex.textureWidth;
-    const int H_px = megatex.textureHeight;  // Always 1024
-    const int numTiles = (W_px + tileSize - 1) / tileSize;
+    // Tiles remain 1024×1024, but each tile spans 3 world units horizontally.
+    const int tileWidth = 1024;
+    const int tileHeight = 1024;
+    const int W_px = megatex.textureWidth;     // multiples of 1024
+    const int H_px = megatex.textureHeight;    // 1024
+    const int numTiles = (W_px + tileWidth - 1) / tileWidth;
 
     std::cout << "\n=== Megatexture Tile Generation ===\n";
     std::cout << "Strip dimensions: " << W_px << " × " << H_px << " px\n";
     std::cout << "Exposed edges: " << megatex.edges.size() << "\n";
-    std::cout << "Tile size: " << tileSize << " × " << tileSize << "\n";
+    std::cout << "Tile size: " << tileWidth << " × " << tileHeight << "\n";
     std::cout << "Number of tiles: " << numTiles << "\n";
     std::cout << "Output directory: " << outDir << "/\n";
     std::cout << "Using " << omp_get_max_threads() << " threads per tile...\n\n";
@@ -358,15 +425,15 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
     // Generate and write tiles one at a time (streaming)
     for (int tileIdx = 0; tileIdx < numTiles; ++tileIdx)
     {
-        const int tileU0 = tileIdx * tileSize;  // Global U start
-        const int tileW = std::min(tileSize, W_px - tileU0);  // Actual width of this tile
+    const int tileU0 = tileIdx * tileWidth;  // Global U start
+    const int tileW = std::min(tileWidth, W_px - tileU0);  // Actual width of this tile
 
         std::cout << "Tile #" << tileIdx << ": u=[" << tileU0 << ".." << (tileU0 + tileW - 1) 
                   << "] (" << tileW << " px wide)...";
         std::cout.flush();
 
-        // Allocate tile buffer (always 1024×1024 RGBA8)
-        std::vector<uint8_t> tile(static_cast<size_t>(tileSize) * tileSize * 4, 0);
+    // Allocate tile buffer (3072×1024 RGBA8)
+    std::vector<uint8_t> tile(static_cast<size_t>(tileWidth) * tileHeight * 4, 0);
 
         // Fill tile in parallel using global coordinates
         #pragma omp parallel for schedule(static) num_threads(omp_get_max_threads())
@@ -379,7 +446,7 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
                 
                 uint32_t rgba = generatePixelVeins(u, v, params);
                 
-                const size_t idx = (static_cast<size_t>(y) * tileSize + x) * 4;
+                const size_t idx = (static_cast<size_t>(y) * tileWidth + x) * 4;
                 tile[idx + 0] = (rgba >> 0) & 0xFF;   // R
                 tile[idx + 1] = (rgba >> 8) & 0xFF;   // G
                 tile[idx + 2] = (rgba >> 16) & 0xFF;  // B
@@ -392,7 +459,7 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
         filename << outDir << "/tile_" << std::setw(5) << std::setfill('0') << tileIdx << ".png";
         
         try {
-            savePNG(filename.str(), tile, tileSize, tileSize, true);
+            savePNG(filename.str(), tile, tileWidth, tileHeight, true);
             std::cout << " Written.\n";
         }
         catch (const std::exception& e) {
@@ -421,6 +488,7 @@ MegatextureParams getDefaultMegatextureParams()
     params.seed = 12345;
     params.mortarWidth = 0.005f;      // Vein thickness in world units
     params.mortarGray = 0.30f;        // Dark gray mortar
+    params.wallHeightUnits = 1.0f;    // Default: 1 unit tall per 1 unit wide (square)
     params.perlinOctaves = 2;         // Domain warp octaves
     params.perlinScale = 1.7f;        // Domain warp frequency
     params.worleyScale = 2.0f;        // Vein network density (cells per unit)
@@ -445,12 +513,13 @@ MegatextureParams getDefaultMegatextureParams()
 struct MTXHeader
 {
     char magic[4];          // "MTX1"
-    uint32_t version;       // Format version (1)
-    uint32_t tileSize;      // Tile dimensions (1024)
+    uint32_t version;       // Format version (2)
+    uint32_t tileWidth;     // Tile width in pixels (3072)
+    uint32_t tileHeight;    // Tile height in pixels (1024)
     uint32_t tileCount;     // Number of tiles in archive
     uint8_t mortarRGB[3];   // Constant mortar color (R, G, B)
     uint32_t seed;          // Generation seed (for validation)
-    uint8_t reserved[43];   // Reserved for future use
+    uint8_t reserved[40];   // Reserved for future use
 };
 #pragma pack(pop)
 
@@ -486,9 +555,9 @@ static size_t compressRGBA(const std::vector<uint8_t>& rgba, std::vector<uint8_t
 
 // Decompress DEFLATE data back to raw RGBA
 static bool decompressRGBA(const uint8_t* compressedData, size_t compressedSize,
-                          std::vector<uint8_t>& outRGBA)
+                          std::vector<uint8_t>& outRGBA, int width, int height)
 {
-    const size_t expectedSize = 1024 * 1024 * 4;
+    const size_t expectedSize = static_cast<size_t>(width) * height * 4;
     outRGBA.resize(expectedSize);
 
     uLongf uncompressedSize = static_cast<uLong>(expectedSize);
@@ -552,10 +621,23 @@ bool saveMTX(const std::string& mtxPath, const std::string& tilesDir, const Mega
     std::cout << "Found " << tilePaths.size() << " tiles.\n";
 
     // Prepare header
+    // Peek first tile to determine dimensions
+    int firstW = 0, firstH = 0;
+    {
+        try {
+            std::vector<uint8_t> tmp = loadPNG(tilePaths[0], firstW, firstH);
+            (void)tmp;
+        } catch (...) {
+            std::cerr << "ERROR: Failed to read first tile to determine dimensions.\n";
+            return false;
+        }
+    }
+
     MTXHeader header = {};
     header.magic[0] = 'M'; header.magic[1] = 'T'; header.magic[2] = 'X'; header.magic[3] = '1';
-    header.version = 1;
-    header.tileSize = 1024;
+    header.version = 2;
+    header.tileWidth = static_cast<uint32_t>(firstW);
+    header.tileHeight = static_cast<uint32_t>(firstH);
     header.tileCount = static_cast<uint32_t>(tilePaths.size());
     
     // Store constant mortar color from params
@@ -602,7 +684,7 @@ bool saveMTX(const std::string& mtxPath, const std::string& tilesDir, const Mega
             return false;
         }
 
-        if (width != 1024 || height != 1024 || rgba.size() != 1024 * 1024 * 4)
+        if (width != (int)header.tileWidth || height != (int)header.tileHeight || rgba.size() != (size_t)header.tileWidth * header.tileHeight * 4)
         {
             std::cerr << "ERROR: Tile " << i << " has invalid dimensions (" << width << "×" << height << ")\n";
             return false;
@@ -678,14 +760,17 @@ bool decodeMTX(const std::string& mtxPath, const std::string& outDir)
         return false;
     }
 
-    if (header.version != 1)
+    if (header.version != 1 && header.version != 2)
     {
         std::cerr << "ERROR: Unsupported MTX version: " << header.version << "\n";
         return false;
     }
 
     std::cout << "Tiles: " << header.tileCount << "\n";
-    std::cout << "Tile size: " << header.tileSize << "×" << header.tileSize << "\n";
+    if (header.version == 1)
+        std::cout << "Tile size: 1024×1024\n";
+    else
+        std::cout << "Tile size: " << header.tileWidth << "×" << header.tileHeight << "\n";
     std::cout << "Mortar RGB: (" << (int)header.mortarRGB[0] << ", " 
               << (int)header.mortarRGB[1] << ", " << (int)header.mortarRGB[2] << ")\n";
     std::cout << "Seed: " << header.seed << "\n\n";
@@ -719,7 +804,9 @@ bool decodeMTX(const std::string& mtxPath, const std::string& outDir)
 
         // Decompress to RGBA
         std::vector<uint8_t> rgba;
-        if (!decompressRGBA(compressedData.data(), compressedData.size(), rgba))
+        const int w = (header.version == 1) ? 1024 : (int)header.tileWidth;
+        const int h = (header.version == 1) ? 1024 : (int)header.tileHeight;
+        if (!decompressRGBA(compressedData.data(), compressedData.size(), rgba, w, h))
         {
             std::cerr << "ERROR: Failed to decompress tile " << i << "\n";
             return false;
@@ -730,7 +817,9 @@ bool decodeMTX(const std::string& mtxPath, const std::string& outDir)
         filename << outDir << "/tile_" << std::setw(5) << std::setfill('0') << i << ".png";
 
         try {
-            savePNG(filename.str(), rgba, header.tileSize, header.tileSize, true);
+            const int wOut = (header.version == 1) ? 1024 : (int)header.tileWidth;
+            const int hOut = (header.version == 1) ? 1024 : (int)header.tileHeight;
+            savePNG(filename.str(), rgba, wOut, hOut, true);
         }
         catch (const std::exception& e) {
             std::cerr << "ERROR: Failed to write tile " << i << ": " << e.what() << "\n";
@@ -747,4 +836,129 @@ bool decodeMTX(const std::string& mtxPath, const std::string& outDir)
 
     std::cout << "\nDone! " << header.tileCount << " tiles written to " << outDir << "/\n";
     return true;
+}
+
+bool loadMTX(const std::string& mtxPath)
+{
+    std::cout << "\n=== Loading MTX Megatexture ===\n";
+    std::cout << "Reading: " << mtxPath << "\n";
+
+    // Open MTX file
+    std::ifstream mtxFile(mtxPath, std::ios::binary);
+    if (!mtxFile)
+    {
+        std::cerr << "ERROR: Failed to open MTX file: " << mtxPath << "\n";
+        return false;
+    }
+
+    // Read header
+    MTXHeader header;
+    mtxFile.read(reinterpret_cast<char*>(&header), sizeof(MTXHeader));
+
+    // Validate
+    if (std::strncmp(header.magic, "MTX1", 4) != 0)
+    {
+        std::cerr << "ERROR: Invalid MTX file (bad magic)\n";
+        return false;
+    }
+
+    std::cout << "Tiles: " << header.tileCount << "\n";
+    std::cout << "Loading into memory...\n";
+    // Fill state tile dimensions
+    if (header.version == 1) {
+        megatex.tileWidth = 1024;
+        megatex.tileHeight = 1024;
+    } else {
+        megatex.tileWidth = (int)header.tileWidth;
+        megatex.tileHeight = (int)header.tileHeight;
+    }
+
+    // Read offset table
+    std::vector<uint64_t> tileOffsets(header.tileCount);
+    mtxFile.read(reinterpret_cast<char*>(tileOffsets.data()), sizeof(uint64_t) * header.tileCount);
+
+    // Load all tiles into cache
+    megatex.tileCache.resize(header.tileCount);
+
+    for (uint32_t i = 0; i < header.tileCount; ++i)
+    {
+        // Seek to tile
+        mtxFile.seekg(tileOffsets[i]);
+
+        // Read compressed size
+        uint32_t compressedSize = 0;
+        mtxFile.read(reinterpret_cast<char*>(&compressedSize), sizeof(uint32_t));
+
+        // Read compressed data
+        std::vector<uint8_t> compressedData(compressedSize);
+        mtxFile.read(reinterpret_cast<char*>(compressedData.data()), compressedSize);
+
+        // Decompress to RGBA
+        if (!decompressRGBA(compressedData.data(), compressedData.size(), megatex.tileCache[i], megatex.tileWidth, megatex.tileHeight))
+        {
+            std::cerr << "ERROR: Failed to decompress tile " << i << "\n";
+            return false;
+        }
+
+        if ((i + 1) % 500 == 0 || i == header.tileCount - 1)
+        {
+            std::cout << "  Loaded tile " << (i + 1) << "/" << header.tileCount << "\n";
+        }
+    }
+
+    mtxFile.close();
+
+    megatex.loaded = true;
+    std::cout << "Megatexture loaded successfully!\n";
+    const size_t bytesPerTile = static_cast<size_t>(megatex.tileWidth) * megatex.tileHeight * 4;
+    std::cout << "Memory usage: ~" << (header.tileCount * bytesPerTile / 1024 / 1024) << " MB\n\n";
+
+    return true;
+}
+
+uint32_t sampleMegatexture(int cellX, int cellY, int side, float u, float v)
+{
+    // If not loaded, return transparent
+    if (!megatex.loaded || megatex.tileCache.empty())
+        return 0;
+
+    // Find the edge for this wall
+    const WallEdge* edge = findWallEdge(cellX, cellY, side);
+    if (!edge)
+        return 0; // No texture for this wall
+
+    // Calculate global U coordinate in the megatexture strip
+    // u is [0..1] along the wall, map it to the per-edge pixel width (341/342)
+    int edgeW = std::max(1, edge->pixelWidth);
+    float globalU = static_cast<float>(edge->xOffsetPixels) + u * static_cast<float>(edgeW);
+    
+    // Clamp v to [0..1]
+    v = std::clamp(v, 0.0f, 1.0f);
+    float globalV = v * 1024.0f; // vertical: 1024 px = 1 wall unit
+
+    // Convert to integer pixel coordinates
+    int pixelU = static_cast<int>(globalU);
+    int pixelV = static_cast<int>(globalV);
+
+    // Determine which tile this falls into
+    int tileIndex = pixelU / megatex.tileWidth;
+    int localU = pixelU % megatex.tileWidth;
+    int localV = pixelV;
+
+    // Bounds check
+    if (tileIndex < 0 || tileIndex >= static_cast<int>(megatex.tileCache.size()))
+        return 0;
+    
+    if (localU < 0 || localU >= megatex.tileWidth || localV < 0 || localV >= megatex.tileHeight)
+        return 0;
+
+    // Sample the tile
+    const std::vector<uint8_t>& tile = megatex.tileCache[tileIndex];
+    const size_t idx = (static_cast<size_t>(localV) * megatex.tileWidth + localU) * 4;
+
+    // Return RGBA as packed uint32 (R, G, B, A in bytes 0,1,2,3)
+    return static_cast<uint32_t>(tile[idx]) |
+           (static_cast<uint32_t>(tile[idx + 1]) << 8) |
+           (static_cast<uint32_t>(tile[idx + 2]) << 16) |
+           (static_cast<uint32_t>(tile[idx + 3]) << 24);
 }

@@ -5,11 +5,13 @@
 #include <thread>
 #include <vector>
 #include <mutex>
+#include <fstream>
 
 #include "raycast.h"
 #include "window.h"
 #include "game.h"
 #include "basement.h"
+#include "megatexture.h"
 
 #ifdef WIN32
 #undef min
@@ -123,7 +125,7 @@ RaycastHit castRay(const std::vector<std::vector<uint8_t>> &tileMap,
         if (mapX < 0 || mapY < 0 || mapX >= mapW || mapY >= mapH)
         {
             float dist = side ? (sideDistY - deltaDistY) : (sideDistX - deltaDistX);
-            return {dist, side, false};
+            return {dist, side, false, mapX, mapY, 0.0f};
         }
 
         // Check for walls
@@ -133,7 +135,29 @@ RaycastHit castRay(const std::vector<std::vector<uint8_t>> &tileMap,
     }
     
     float dist = side ? (sideDistY - deltaDistY) : (sideDistX - deltaDistX);
-    return {dist, side, true};
+    
+    // Calculate exact hit position on wall for texture U coordinate
+    float wallX;
+    if (side == 0) // Vertical wall (hit on X side)
+        wallX = posY + dist * rayDirY;
+    else // Horizontal wall (hit on Y side)
+        wallX = posX + dist * rayDirX;
+    wallX -= std::floor(wallX); // Get fractional part [0..1]
+    
+    // Determine cardinal direction for megatexture lookup
+    // side 0 = North/South walls (Y-aligned), side 1 = East/West walls (X-aligned)
+    // Megatexture sides: 0=North, 1=East, 2=South, 3=West
+    int cardinalSide;
+    if (side == 0) // Vertical wall (stepped in X)
+    {
+        cardinalSide = (stepX > 0) ? 3 : 1; // Stepped right = hit west wall, stepped left = hit east wall
+    }
+    else // Horizontal wall (stepped in Y)
+    {
+        cardinalSide = (stepY > 0) ? 0 : 2; // Stepped down = hit north wall, stepped up = hit south wall
+    }
+    
+    return {dist, cardinalSide, true, mapX, mapY, wallX};
 }
 
 // Render a column with vertical smoothing
@@ -157,6 +181,7 @@ void accumulateColumn(int x,
     float drawStart = 0.0f;
     float drawEnd = 0.0f;
     uint8_t wallR = 0, wallG = 0, wallB = 0;
+    float lightFactor = 1.0f;
     
     if (hit.hitWall)
     {
@@ -165,15 +190,12 @@ void accumulateColumn(int x,
         drawStart = halfH - lineHeight / 2.0f;
         drawEnd = halfH + lineHeight / 2.0f;
 
-        // Wall color based on side
-        uint8_t r = hit.side ? 64 : 120;
-        uint8_t g = hit.side ? 64 : 120;
-        uint8_t b = hit.side ? 64 : 120;
+        lightFactor = std::max(0.0f, 1.0f - hit.distance / torchRange);
 
-        float lightFactor = std::max(0.0f, 1.0f - hit.distance / torchRange);
-        wallR = static_cast<uint8_t>(r * lightFactor);
-        wallG = static_cast<uint8_t>(g * lightFactor);
-        wallB = static_cast<uint8_t>(b * lightFactor);
+        // Initialize fallback wall color (used when sampling fails per-pixel)
+        wallR = static_cast<uint8_t>((hit.side ? 64 : 120) * lightFactor);
+        wallG = static_cast<uint8_t>((hit.side ? 64 : 120) * lightFactor);
+        wallB = static_cast<uint8_t>((hit.side ? 64 : 120) * lightFactor);
     }
 
     for (int y = 0; y < screenH; ++y)
@@ -233,30 +255,61 @@ void accumulateColumn(int x,
         }
         else
         {
-            // Wall with edge blending
+            // Wall with per-pixel megatexture sampling and edge blending
             float weight = 1.0f;
+            
+            // Compute per-pixel wall color from megatexture
+            // Map screen y to [0..1] along the wall segment
+            float v = (yf - drawStart) / std::max(1.0f, (drawEnd - drawStart));
+            v = std::max(0.0f, std::min(1.0f, v));
+
+            uint8_t wallR_px = wallR, wallG_px = wallG, wallB_px = wallB; // defaults
+            {
+                uint32_t texSample = sampleMegatexture(hit.mapX, hit.mapY, hit.side, hit.wallX, v);
+                uint8_t texR = (texSample >> 0) & 0xFF;
+                uint8_t texG = (texSample >> 8) & 0xFF;
+                uint8_t texB = (texSample >> 16) & 0xFF;
+                uint8_t texA = (texSample >> 24) & 0xFF;
+
+                if (texA > 0)
+                {
+                    float alpha = texA / 255.0f;
+                    uint8_t baseR = hit.side ? 64 : 120;
+                    uint8_t baseG = hit.side ? 64 : 120;
+                    uint8_t baseB = hit.side ? 64 : 120;
+                    wallR_px = static_cast<uint8_t>((texR * alpha + baseR * (1.0f - alpha)) * lightFactor);
+                    wallG_px = static_cast<uint8_t>((texG * alpha + baseG * (1.0f - alpha)) * lightFactor);
+                    wallB_px = static_cast<uint8_t>((texB * alpha + baseB * (1.0f - alpha)) * lightFactor);
+                }
+                else
+                {
+                    wallR_px = static_cast<uint8_t>((hit.side ? 64 : 120) * lightFactor);
+                    wallG_px = static_cast<uint8_t>((hit.side ? 64 : 120) * lightFactor);
+                    wallB_px = static_cast<uint8_t>((hit.side ? 64 : 120) * lightFactor);
+                }
+            }
             if (yf < drawStart + 1.0f)
             {
                 weight = (yf - drawStart) / 1.0f; // Blend over 1 pixel
                 weight = std::max(0.0f, std::min(weight, 1.0f));
-                rr = static_cast<uint8_t>((1.0f - weight) * ceilingShade + weight * wallR);
-                gg = static_cast<uint8_t>((1.0f - weight) * ceilingShade + weight * wallG);
-                bb = static_cast<uint8_t>((1.0f - weight) * ceilingShade + weight * wallB);
+                rr = static_cast<uint8_t>((1.0f - weight) * ceilingShade + weight * wallR_px);
+                gg = static_cast<uint8_t>((1.0f - weight) * ceilingShade + weight * wallG_px);
+                bb = static_cast<uint8_t>((1.0f - weight) * ceilingShade + weight * wallB_px);
             }
             else if (yf > drawEnd - 1.0f)
             {
                 weight = (drawEnd - yf) / 1.0f;
                 weight = std::max(0.0f, std::min(weight, 1.0f));
-                rr = static_cast<uint8_t>((1.0f - weight) * floorR + weight * wallR);
-                gg = static_cast<uint8_t>((1.0f - weight) * floorG + weight * wallG);
-                bb = static_cast<uint8_t>((1.0f - weight) * floorB + weight * wallB);
+                rr = static_cast<uint8_t>((1.0f - weight) * floorR + weight * wallR_px);
+                gg = static_cast<uint8_t>((1.0f - weight) * floorG + weight * wallG_px);
+                bb = static_cast<uint8_t>((1.0f - weight) * floorB + weight * wallB_px);
             }
             else
             {
                 // Pure wall
-                rr = wallR;
-                gg = wallG;
-                bb = wallB;
+                rr = wallR_px;
+                gg = wallG_px;
+                bb = wallB_px;
             }
         }
 
@@ -266,6 +319,8 @@ void accumulateColumn(int x,
         acc_b[y] += bb * finalFactor;
     }
 }
+
+// No on-framebuffer font: use window title for lightweight overlay info
 
 // Draw a 2x2 square crosshair
 void drawCrosshair(uint8_t *fb, size_t pitch, int w, int h)
@@ -359,6 +414,30 @@ void renderRaycastView(const std::vector<std::vector<uint8_t>> &tileMap,
     // Wait for threads to finish
     threads.clear(); // Joins all threads
     drawCrosshair(fb, pitch, w, h);
+
+    // Lightweight overlay via window title (avoids console/files)
+#ifdef _WIN32
+    {
+        // Estimate recommended wallHeightUnits by comparing wall pixel height to pixel width of a 1-unit wall at center
+        float fovMul = config.contains("raycastFovMul") ? static_cast<float>(config["raycastFovMul"]) : 1.0f;
+        float fov = state.raycast.player.fov * fovMul;
+        // Center ray cast
+        RaycastHit centerHit = castRay(*state.raycast.map, state.raycast.player.x, state.raycast.player.y,
+                                       std::cos(state.raycast.player.angle), std::sin(state.raycast.player.angle));
+        float dist = std::max(centerHit.distance, 0.001f);
+        float lineHeight = static_cast<float>(h) / std::max(dist / (config.contains("raycastScale") ? static_cast<float>(config["raycastScale"]) : 3.0f), 0.01f);
+        // Small-angle approx for projected width of a 1-unit wall centered at distance dist
+        float angularWidth = 2.0f * std::atan(0.5f / dist);
+        float widthPixels = static_cast<float>(w) * (angularWidth / std::max(fov, 0.001f));
+        float recommendedUnits = (widthPixels > 0.0f) ? (lineHeight / widthPixels) : 1.0f;
+
+        std::string title = "v64tng  |  Edges: " + std::to_string((int)megatex.edges.size()) +
+                            "  Tiles: " + std::to_string((int)megatex.tileCache.size()) +
+                            (megatex.loaded ? " loaded" : " not loaded") +
+                            "  WH: 3.0  RecWH: " + std::to_string(recommendedUnits);
+        SetWindowTextA(g_hwnd, title.c_str());
+    }
+#endif
 }
 
 // Mouse handling for raycast mode
@@ -553,6 +632,17 @@ void initRaycaster()
 
     // Hide the OS cursor in raycast mode to avoid visible system pointer
     ShowCursor(FALSE);
+
+    // Ensure megatexture is ready (avoid duplicate heavy work if main already did it)
+    if (megatex.edges.empty())
+    {
+        analyzeMapEdges(map);
+    }
+    if (!megatex.loaded)
+    {
+        // Try current working dir MTX as a generic fallback
+        loadMTX("megatexture.mtx");
+    }
 
     if (!initializePlayerFromMap(*state.raycast.map, state.raycast.player))
     {

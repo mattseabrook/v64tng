@@ -69,6 +69,11 @@ struct VulkanContext
     VkDeviceSize tileMapBufferSize{};
     uint32_t lastMapWidth = 0;
     uint32_t lastMapHeight = 0;
+
+    // Megatexture edge-offset lookup (mapWidth*mapHeight*4 entries of uint32)
+    VkBuffer edgeOffsetsBuffer{};
+    VkDeviceMemory edgeOffsetsBufferMemory{};
+    VkDeviceSize edgeOffsetsBufferSize{};
 };
 
 extern VulkanContext vkCtx;
