@@ -213,9 +213,9 @@ float3 shadePixel(uint2 pixel, RayHit hit, float halfW, float halfH, float maxRa
         float drawStart = halfH - lineHeight / 2.0;
         float drawEnd = halfH + lineHeight / 2.0;
         
-    // Base wall color (darker for horizontal walls)
-    float3 wallColor = hit.side ? float3(64.0/255.0, 64.0/255.0, 64.0/255.0)
-                    : float3(120.0/255.0, 120.0/255.0, 120.0/255.0);
+    // Base wall color (uniform across all orientations)
+    // Old-school "perpendicular darkening" removed; lighting will handle shading.
+    float3 wallColor = float3(120.0/255.0, 120.0/255.0, 120.0/255.0);
         
         // Lighting: torch falloff
         float lightFactor = max(0.0, 1.0 - hit.distance / torchRange);

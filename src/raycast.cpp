@@ -192,10 +192,11 @@ void accumulateColumn(int x,
 
         lightFactor = std::max(0.0f, 1.0f - hit.distance / torchRange);
 
-        // Initialize fallback wall color (used when sampling fails per-pixel)
-        wallR = static_cast<uint8_t>((hit.side ? 64 : 120) * lightFactor);
-        wallG = static_cast<uint8_t>((hit.side ? 64 : 120) * lightFactor);
-        wallB = static_cast<uint8_t>((hit.side ? 64 : 120) * lightFactor);
+    // Initialize fallback wall color (used when sampling fails per-pixel)
+    // Uniform base color across all orientations; lighting varies by distance only.
+    wallR = static_cast<uint8_t>(120 * lightFactor);
+    wallG = static_cast<uint8_t>(120 * lightFactor);
+    wallB = static_cast<uint8_t>(120 * lightFactor);
     }
 
     for (int y = 0; y < screenH; ++y)
@@ -274,18 +275,17 @@ void accumulateColumn(int x,
                 if (texA > 0)
                 {
                     float alpha = texA / 255.0f;
-                    uint8_t baseR = hit.side ? 64 : 120;
-                    uint8_t baseG = hit.side ? 64 : 120;
-                    uint8_t baseB = hit.side ? 64 : 120;
-                    wallR_px = static_cast<uint8_t>((texR * alpha + baseR * (1.0f - alpha)) * lightFactor);
-                    wallG_px = static_cast<uint8_t>((texG * alpha + baseG * (1.0f - alpha)) * lightFactor);
-                    wallB_px = static_cast<uint8_t>((texB * alpha + baseB * (1.0f - alpha)) * lightFactor);
+                    const uint8_t base = 120; // same base tone for all walls
+                    wallR_px = static_cast<uint8_t>((texR * alpha + base * (1.0f - alpha)) * lightFactor);
+                    wallG_px = static_cast<uint8_t>((texG * alpha + base * (1.0f - alpha)) * lightFactor);
+                    wallB_px = static_cast<uint8_t>((texB * alpha + base * (1.0f - alpha)) * lightFactor);
                 }
                 else
                 {
-                    wallR_px = static_cast<uint8_t>((hit.side ? 64 : 120) * lightFactor);
-                    wallG_px = static_cast<uint8_t>((hit.side ? 64 : 120) * lightFactor);
-                    wallB_px = static_cast<uint8_t>((hit.side ? 64 : 120) * lightFactor);
+                    const uint8_t base = 120;
+                    wallR_px = static_cast<uint8_t>(base * lightFactor);
+                    wallG_px = static_cast<uint8_t>(base * lightFactor);
+                    wallB_px = static_cast<uint8_t>(base * lightFactor);
                 }
             }
             if (yf < drawStart + 1.0f)

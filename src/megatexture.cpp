@@ -310,21 +310,92 @@ static void orderEdgesSpatially()
 
 static void computeEdgeOffsets(int pixelsPerUnit)
 {
-    // Assign variable pixel widths per edge so that 3 edges = 1024px
-    // Use fractional accumulator to distribute the extra pixel (341,341,342 pattern)
-    int currentOffset = 0;
-    double acc = 0.0;
-    const double step = 1024.0 / 3.0; // pixels per world unit horizontally
-
-    for (auto& edge : megatex.edges)
+    // Build a quick lookup grid from cell(x,y,side) -> edge index
+    if (megatex.mapWidth <= 0 || megatex.mapHeight <= 0) return;
+    std::vector<int> indexGrid(static_cast<size_t>(megatex.mapWidth) * megatex.mapHeight * 4, -1);
+    auto idxOf = [&](int x, int y, int side) -> int&
     {
-        int start = static_cast<int>(std::floor(acc));
-        acc += step;
-        int next = static_cast<int>(std::floor(acc));
-        int width = std::max(1, next - start);
-        edge.xOffsetPixels = currentOffset;
-        edge.pixelWidth = width;
-        currentOffset += width;
+        size_t i = (static_cast<size_t>(y) * megatex.mapWidth + static_cast<size_t>(x)) * 4ull + static_cast<size_t>(side & 3);
+        return indexGrid[i];
+    };
+    for (size_t i = 0; i < megatex.edges.size(); ++i)
+    {
+        const auto &e = megatex.edges[i];
+        if (e.cellX >= 0 && e.cellX < megatex.mapWidth && e.cellY >= 0 && e.cellY < megatex.mapHeight)
+            idxOf(e.cellX, e.cellY, e.side) = static_cast<int>(i);
+    }
+
+    auto neighbor = [&](int x, int y, int side, int dir) -> int // dir = -1 or +1 along run
+    {
+        switch (side & 3)
+        {
+            case 0: // North – runs along +X
+            case 2: // South – runs along +X
+                return (x + dir >= 0 && x + dir < megatex.mapWidth) ? idxOf(x + dir, y, side) : -1;
+            case 1: // East – runs along +Y
+            case 3: // West – runs along +Y
+                return (y + dir >= 0 && y + dir < megatex.mapHeight) ? idxOf(x, y + dir, side) : -1;
+        }
+        return -1;
+    };
+
+    std::vector<uint8_t> visited(megatex.edges.size(), 0);
+    int currentOffset = 0;
+    const double step = 1024.0 / 3.0; // pixels per 1 world-unit segment horizontally
+
+    for (size_t i = 0; i < megatex.edges.size(); ++i)
+    {
+        if (visited[i]) continue;
+        // Walk backwards to find the start of this run
+        int sx = megatex.edges[i].cellX;
+        int sy = megatex.edges[i].cellY;
+        int ss = megatex.edges[i].side;
+        int startIndex = static_cast<int>(i);
+        while (true)
+        {
+            int prev = neighbor(sx, sy, ss, -1);
+            if (prev < 0) break;
+            sx = megatex.edges[prev].cellX;
+            sy = megatex.edges[prev].cellY;
+            startIndex = prev;
+        }
+
+        // Collect the run in forward direction
+        std::vector<int> run;
+        int cx = sx, cy = sy;
+        int ci = startIndex;
+        while (ci >= 0 && !visited[ci])
+        {
+            run.push_back(ci);
+            visited[ci] = 1;
+            int ni = neighbor(cx, cy, ss, +1);
+            if (ni < 0) break;
+            cx = megatex.edges[ni].cellX;
+            cy = megatex.edges[ni].cellY;
+            ci = ni;
+        }
+
+        if (run.empty()) continue;
+
+        // If the run is exactly 3 units wide, align the start to a 1024px tile boundary
+        if (run.size() == 3u && (currentOffset % 1024) != 0)
+        {
+            int pad = 1024 - (currentOffset % 1024);
+            currentOffset += pad;
+        }
+
+        // Distribute widths within the run so that each 3 edges ~ 1024px (341/341/342)
+        double acc = 0.0;
+        for (int ei : run)
+        {
+            int start = static_cast<int>(std::floor(acc));
+            acc += step;
+            int next = static_cast<int>(std::floor(acc));
+            int width = std::max(1, next - start);
+            megatex.edges[ei].xOffsetPixels = currentOffset;
+            megatex.edges[ei].pixelWidth = width;
+            currentOffset += width;
+        }
     }
 
     megatex.textureHeight = pixelsPerUnit; // 1024 px = full wall height
