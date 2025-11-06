@@ -43,112 +43,142 @@ This project is an academic endeavor, created as a technical study and homage to
 
 # Game Engine Architecture
 
+The 7th Guest uses a sophisticated data packaging system designed by Rob Landeros (RL files) and Graeme J Devine (GJD files). The game's assets—video sequences, still images, music, and cursors—are stored in compressed archive formats indexed by external metadata files. Understanding this architecture is essential for extracting, viewing, or modifying game content.
+
 ## RL
 
-The RL (Rob Landeros) file is an index file that contains information about VDX file locations inside the corresponding `*.GJD` file. The RL file format consists of a list of records, each representing a VDX file. Each entry in the RL file is 20 bytes long:
+The RL (Rob Landeros) file is an index file that contains information about VDX file locations inside the corresponding `*.GJD` file. The RL file format consists of a list of records, each representing a VDX file entry. Each entry in the RL file is exactly 20 bytes long with no header or trailer:
 
-- The first 12 bytes correspond to the filename.
-- The next 4 bytes correspond to the offset.
-- The final 4 bytes correspond to the length.
+- The first 12 bytes correspond to the filename (null-terminated, but may use all 12 bytes for long names).
+- The next 4 bytes correspond to the byte offset within the GJD file (little-endian).
+- The final 4 bytes correspond to the length in bytes of the VDX data (little-endian).
 
-| Name     | Type               | Description                                 |
-| -------- | ------------------ | ------------------------------------------- |
-| Filename | char[12]           | Filename (null-terminated string)           |
-| Offset   | uint32_t (4 bytes) | Unsigned integer indicating VDX file offset |
-| Length   | uint32_t (4 bytes) | Unsigned integer indicating VDX file length |
+| Name     | Type               | Description                                           |
+| -------- | ------------------ | ----------------------------------------------------- |
+| Filename | char[12]           | Filename (null-padded or null-terminated string)      |
+| Offset   | uint32_t (4 bytes) | Little-endian unsigned integer (VDX byte offset)      |
+| Length   | uint32_t (4 bytes) | Little-endian unsigned integer (VDX data length)      |
+
+The total file size divided by 20 gives the number of entries. The engine reads RL files sequentially, parsing 20-byte blocks until EOF. Each filename typically includes a file extension (e.g., `.VDX`) but the engine may strip this extension during lookup operations.
 
 ## GJD
 
-The GJD (Graeme J Devine) file is an archive file format that is essentially a collection of VDX data blobs, with their structure and location determined by the corresponding `*.RL` file.
+The GJD (Graeme J Devine) file is an archive file format that is essentially a collection of VDX data blobs concatenated together, with their structure and location determined by the corresponding `*.RL` index file.
 
-It doesn't have a fixed header structure but rather uses the `*.RL` file as an index. Using the `offset` and `length` from the `*.RL` file, the VDX data is read from the GJD file.
+It doesn't have a fixed header structure, footer, or internal metadata—it is simply a flat binary concatenation of VDX files. The `*.RL` file acts as the external index that maps filenames to byte ranges within the GJD archive. Using the `offset` and `length` from each `*.RL` entry, the VDX data is read directly from the GJD file.
 
-| Name     | Type            | Description                                                                |
-| -------- | --------------- | -------------------------------------------------------------------------- |
-| VDX Data | uint8_t[length] | VDX data blob, length and offset determined by corresponding RL file entry |
+| Component | Type            | Description                                                                       |
+| --------- | --------------- | --------------------------------------------------------------------------------- |
+| VDX Data  | uint8_t[length] | VDX file data blob, length and offset determined by corresponding RL file entry   |
+| ...       | ...             | Additional VDX data blobs, concatenated without delimiters or padding             |
+
+The engine uses memory-mapped I/O (on both Windows and Unix systems) for zero-copy access to GJD files, as they can be quite large. Each VDX blob within a GJD file begins with the standard VDX header (identifier `0x6792`) followed by chunk data.
 
 ## VDX
 
-The VDX file format is used to store video sequences and still images. The data in a VDX file consists of a dedicated header followed by an arbitrary number of chunks with their own header. 
+The VDX file format is used to store video sequences and still images in The 7th Guest. The data in a VDX file consists of a dedicated header followed by an arbitrary number of chunks, each with its own header. VDX files can contain a mix of image data (0x20 static bitmaps, 0x25 delta frames, 0x00 frame duplication) and audio data (0x80 raw WAV), allowing synchronized audio-visual playback.
 
 ### Header
 
-| Name       | Type     | Description      |
-| ---------- | -------- | ---------------- |
-| identifier | uint16   | Should be 0x6792 |
-| unknown    | uint8[6] | Unknown purpose  |
+| Name       | Type     | Description                                          |
+| ---------- | -------- | ---------------------------------------------------- |
+| identifier | uint16   | Magic number, always 0x6792 (little-endian)          |
+| unknown    | uint8[6] | Unknown purpose (possibly version or reserved space) |
+
+The VDX header is always 8 bytes total. The identifier value `0x6792` is stored in little-endian format (bytes `0x92 0x67` in the file). The purpose of the 6-byte unknown field has not been determined—it varies across different VDX files but does not appear to affect decoding.
 
 ### Chunk Header
 
-| Name       | Type   | Description                                                |
-| ---------- | ------ | ---------------------------------------------------------- |
-| ChunkType  | uint8  | Determines the type of data                                |
-| Unknown    | uint8  | Probably related to replay or synchronization commands     |
-| DataSize   | uint32 | Size of the chunk without the header information           |
-| LengthMask | uint8  | Compression information (not zero when data is compressed) |
-| LengthBits | uint8  | Compression information (not zero when data is compressed) |
-| Data       | uint[] | Pure chunk data with length determined by `DataSize`       |
+Each chunk following the VDX header has an 8-byte header followed by the chunk data:
+
+| Offset | Type   | Field      | Description                                                       |
+| ------ | ------ | ---------- | ----------------------------------------------------------------- |
+| 0      | uint8  | ChunkType  | Determines the type of data (0x20, 0x25, 0x80, 0x00, etc.)        |
+| 1      | uint8  | Unknown    | Purpose unknown (possibly related to replay or synchronization)   |
+| 2-5    | uint32 | DataSize   | Size of chunk data in bytes (little-endian, excludes 8-byte header)|
+| 6      | uint8  | LengthMask | LZSS parameter: bitmask for isolating length field (0 if uncompressed)|
+| 7      | uint8  | LengthBits | LZSS parameter: bits used for length encoding (0 if uncompressed) |
+| 8+     | uint8[]| Data       | Chunk data payload with length determined by `DataSize`           |
+
+**Compression Detection**: If both `LengthMask` and `LengthBits` are **non-zero**, the chunk data is LZSS-compressed and must be decompressed before further processing. If either value is zero, the data is uncompressed and can be processed directly.
 
 ### Chunk Types
 
 #### 0x20 Bitmap
 
-This chunk, as processed by the function `getBitmapData`, contains a compressed bitmap image following a header:
+This chunk, as processed by the function `getBitmapData`, contains a static bitmap image. The chunk data (after LZSS decompression if necessary) has the following structure:
 
-| Name        | Type          | Description                                               |
-| ----------- | ------------- | --------------------------------------------------------- |
-| numXTiles   | uint16_t      | Number of tiles in the horizontal direction.              |
-| numYTiles   | uint16_t      | Number of tiles in the vertical direction.                |
-| colourDepth | uint16_t      | Colour depth in bits. (In the code, only 8 is observed).  |
-| palette     | RGBColor[768] | RGB values required for a palette implied by colourDepth. |
-| image       | uint8_t[]     | Sequence of structures describing the image.              |
+| Offset    | Type          | Size (bytes) | Field       | Description                                                    |
+| --------- | ------------- | ------------ | ----------- | -------------------------------------------------------------- |
+| 0-1       | uint16_t      | 2            | numXTiles   | Number of 4×4 pixel tiles horizontally (little-endian)         |
+| 2-3       | uint16_t      | 2            | numYTiles   | Number of 4×4 pixel tiles vertically (little-endian)           |
+| 4-5       | uint16_t      | 2            | colourDepth | Bits per pixel (always 8 in practice, meaning 256-color palette)|
+| 6+        | RGBColor[]    | varies       | palette     | RGB color entries: `(1 << colourDepth) * 3` bytes (768 for 8-bit)|
+| varies    | uint8_t[]     | varies       | image       | Tile data: 4 bytes per tile (colour1, colour0, colourMap[2])   |
 
-The overall bitmap dimensions are derived from these tile counts. Width is `numXTiles * 4` pixels and height is `numYTiles * 4` pixels. Most assets measure 640x320 pixels (160x80 tiles), but `Vielogo.vdx` from the Windows release uses 640x480 pixels (160x120 tiles).
+The overall bitmap dimensions are derived from these tile counts. Width is `numXTiles * 4` pixels and height is `numYTiles * 4` pixels. Most assets measure 640×320 pixels (160×80 tiles), but `Vielogo.vdx` from the Windows release uses 640×480 pixels (160×120 tiles).
 
-The image is split into tiles, each measuring 4x4 pixels. Each tile structure within the image data is as follows:
+The palette contains `(1 << colourDepth)` RGB triplets. For 8-bit color depth, this is 256 colors × 3 bytes = 768 bytes.
 
-| Name      | Type     | Description                                                                                                                                               |
-| --------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| colour1   | uint8_t  | Palette index used when the respective bit in the colourMap is set to 1.                                                                                  |
-| colour0   | uint8_t  | Palette index used when the respective bit in the colourMap is set to 0.                                                                                  |
-| colourMap | uint16_t | Field of 16 bits determining the colors of the pixels within the 4x4 tile. The colourMap is processed in the function to extract individual pixel colors. |
+The image is split into tiles, each measuring 4×4 pixels (16 pixels total). Tiles are stored in row-major order (left-to-right, top-to-bottom). Each tile structure within the image data is as follows:
 
-The `colourMap` is a 16-bit field determining the colors of the pixels within the 4x4 tile. A pixel will be colored as indicated by the palette index `colour1` if and only if the respective bit is set to 1. Otherwise, `colour0` is used:
+| Offset | Type     | Field     | Description                                                       |
+| ------ | -------- | --------- | ----------------------------------------------------------------- |
+| 0      | uint8_t  | colour1   | Palette index used when the colourMap bit is 1                    |
+| 1      | uint8_t  | colour0   | Palette index used when the colourMap bit is 0                    |
+| 2-3    | uint16_t | colourMap | 16-bit field (little-endian) mapping each pixel to colour1 or colour0 |
+
+The `colourMap` is a 16-bit little-endian value determining which of the two palette entries to use for each pixel. The bits are mapped to pixels using MSB-first ordering within the 4×4 tile:
 
 ```
                                 +----+----+----+----+
-                                | 15 | 14 | 13 | 12 |
- LSB (0)        MSB (15)        +----+----+----+----+
-   |              |             | 11 | 10 |  9 |  8 |
-   XXXXXXXXXXXXXXXX      -->    +----+----+----+----+
+                                | 15 | 14 | 13 | 12 |  ← MSB (bit 15)
+ Little-endian uint16_t:        +----+----+----+----+
+ [byte0][byte1]                 | 11 | 10 |  9 |  8 |
+   LSB    MSB                    +----+----+----+----+
                                 |  7 |  6 |  5 |  4 |
-                                +----+----+----+----+
-                                |  3 |  2 |  1 |  0 |
-                                +----+----+----+----+
+   Bit ordering:                +----+----+----+----+
+   - Bit 15 (MSB) → pixel 0     |  3 |  2 |  1 |  0 |  ← LSB (bit 0)
+   - Bit 0 (LSB) → pixel 15     +----+----+----+----+
 ```
+
+For each pixel `i` (0-15):
+- **Bit set to 1** (`colourMap & (0x8000 >> i)`): Use `colour1` palette entry
+- **Bit set to 0**: Use `colour0` palette entry
+
+This 2-color-per-tile encoding provides efficient compression while allowing relatively rich detail through careful color selection per tile.
 
 #### 0x25 Delta Bitmap
 
-These blocks contain animated (i.e., video) sequences. LZSS decompressed data is transformed into an 8-bit RGB raw bitmap data structure. A fresh image/frame is meticulously constructed using the delta bitmap data. In the context of a VDX file that contains a video sequence, the initial frame is always represented by the picture contained in the `0x20` chunk. All subsequent frames leverage the `0x25` chunk type, outlining the modifications to be applied to the prior frame and its associated palette. Each `0x25` chunk has the following header:
+These chunks contain animated (video) sequences. After LZSS decompression (if applicable), delta bitmap data describes modifications to apply to the previous frame's pixel data and palette. In VDX video sequences, the first frame is always a `0x20` chunk (complete static bitmap), and all subsequent frames use `0x25` chunks to encode only the changes from the prior frame.
 
-| Name         | Type                    | Description                                                                                                               |
-| ------------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| localPalSize | `uint16_t`              | Determines the number of palette entries that need alteration for this frame. If set to zero, the header concludes here.  |
-| palBitField  | `uint16_t[16]`          | A 256-bit field that specifies which palette entries are subject to change.                                               |
-| localColours | `std::vector<RGBColor>` | An array of RGB values, equivalent in size to the number of bits set in `palBitField`. Designates the new palette colors. |
-| image        | `std::vector<uint8_t>`  | A series of byte opcodes, each followed by a variable count of byte parameters, encapsulating the delta information.      |
+Each `0x25` chunk has the following structure:
 
-The first value, `localPalSize`, always exists. The next two fields (`palBitField` and `localColours`) only appear when the `localPalSize` is greater than zero.
+| Offset    | Size (bytes) | Field         | Description                                                          |
+| --------- | ------------ | ------------- | -------------------------------------------------------------------- |
+| 0-1       | 2            | localPalSize  | Number of palette entries to update (little-endian, 0 if no changes) |
+| 2-33      | 32           | palBitField   | 256-bit field (16×uint16_t) specifying which palette entries change  |
+| 34+       | 3×N          | localColours  | N RGB triplets, where N = number of bits set in palBitField          |
+| varies    | varies       | image         | Opcode stream encoding pixel modifications                           |
 
-The current palette is altered according to the `palBitField`. Each position in this 256-bit wide field represents one palette entry. If a bit is set, the new colors for the referenced palette entry can be found in the `localColours`, which is a sequence of RGB colors following the bit field. Note that there are exactly as many bits set as there are RGB values following the bit field.
+**Palette Update Process:**
 
-After adapting the palette, the previous frame can be modified according to the image data. This data consists of a sequence of byte opcodes and a varying number of parameters following each opcode. Similar to the still image in the chunk of type `0x20`, changes are performed on a picture divided into 4x4 pixel blocks. The changes start at the top-left block.
+1. If `localPalSize == 0`, skip directly to the image opcodes (no palette changes).
+2. Otherwise, parse the `palBitField` as 16 little-endian uint16_t values forming a 256-bit array.
+3. For each bit position `i` (0-255) in the bit field:
+   - If bit `i` is set, read the next RGB triplet from `localColours` and update `palette[i]`.
+   - The bit field is processed in groups of 16 bits (paletteGroup 0-15), with bit 15 (MSB) of each group corresponding to the first palette entry in that group.
+4. The number of RGB triplets in `localColours` always equals the number of set bits in `palBitField`.
+
+**Example:** If bits 0, 3, and 255 are set in `palBitField`, then `localColours` contains exactly 3 RGB triplets that update palette entries 0, 3, and 255 respectively.
+
+After updating the palette, the frame's pixel data is modified according to the image opcode stream. This data consists of a sequence of byte opcodes, each followed by zero or more parameter bytes. Similar to the static bitmap in chunk type `0x20`, modifications are performed on the image organized as 4×4 pixel tiles. Processing begins at the top-left tile (coordinates `x=0, y=0`) and proceeds according to opcode instructions.
 
 ##### Opcodes
 
-Opcodes are byte-sized instructions dictating how the image should be adapted. The initial documentation provides a comprehensive breakdown of these opcodes, from `0x00` to `0xff`, and their associated behaviors.
+Opcodes are byte-sized instructions that dictate how tiles should be modified. The opcode encoding is designed for efficient compression, with common operations (skipping tiles, filling with solid colors) using minimal bytes. The current tile position (`xPos`, `yPos`) is maintained throughout processing and updated by each opcode.
 
-In the function `getDeltaBitmapData`, the buffer is parsed, and each opcode is processed according to its defined behavior.
+In the function `getDeltaBitmapData`, the opcode stream is parsed sequentially, and each opcode updates the frame buffer according to its defined behavior. All tile-based operations use the previously updated palette, allowing palette animation effects.
 
 ###### Tile Alteration Using Predefined Map (0x00 - 0x5F)
 
@@ -242,35 +272,217 @@ For opcodes in the range `0x80` to `0xFF` within the VDX file's delta frame proc
 
 #### 0x80 Raw WAV data
 
-These VDX chunks are just a stream of raw *.WAV file data that is 8-bit, mono, 22050 Hz in specification.
+These VDX chunks contain raw PCM audio data without a WAV header. The audio format is always:
+- **Format**: Uncompressed PCM
+- **Sample Rate**: 22050 Hz
+- **Bit Depth**: 8-bit unsigned
+- **Channels**: Mono (1 channel)
 
-In the new game engine, the WAV Header is statically defined, the `chunkSize` and `subchunk2Size` are calculated dynamically, and the entire structure is prepended to the appropriate `std::vector<uint8_t> wavData`.
+When extracting or playing audio, the engine prepends a standard WAV header to the raw PCM data. The WAV header structure is statically defined, with `chunkSize` and `subchunk2Size` calculated dynamically based on the audio data length:
 
 ```cpp
 struct WAVHeader {
-    char     chunkID[4] = "RIFF";
-    uint32_t chunkSize;  // This value will be set later
-    char     format[4] = "WAVE";
+    char     chunkID[4] = {'R', 'I', 'F', 'F'};
+    uint32_t chunkSize = 0;                      // Set to: dataSize + 36
+    char     format[4] = {'W', 'A', 'V', 'E'};
 
-    char     subchunk1ID[4] = "fmt ";
-    uint32_t subchunk1Size = 16;
-    uint16_t audioFormat = 1;
-    uint16_t numChannels = 1;
-    uint32_t sampleRate = 22050;
-    uint32_t byteRate = 22050;
-    uint16_t blockAlign = 1;
-    uint16_t bitsPerSample = 8;
+    char     subchunk1ID[4] = {'f', 'm', 't', ' '};
+    uint32_t subchunk1Size = 16;                 // PCM format chunk size
+    uint16_t audioFormat = 1;                    // 1 = PCM
+    uint16_t numChannels = 1;                    // Mono
+    uint32_t sampleRate = 22050;                 // 22.05 kHz
+    uint32_t byteRate = 22050;                   // sampleRate × numChannels × (bitsPerSample/8)
+    uint16_t blockAlign = 1;                     // numChannels × (bitsPerSample/8)
+    uint16_t bitsPerSample = 8;                  // 8-bit samples
 
-    char     subchunk2ID[4] = "data";
-    uint32_t subchunk2Size;  // This value will be set later
+    char     subchunk2ID[4] = {'d', 'a', 't', 'a'};
+    uint32_t subchunk2Size = 0;                  // Set to: dataSize
 };
 ```
+
+Multiple `0x80` chunks in a single VDX file are concatenated to form one continuous audio stream. VDX files with audio are played at 15 FPS to maintain audio-video synchronization.
+
+**Note**: Full audio playback functionality is currently under development. The header structure and extraction are implemented, but integration with the Windows audio API for VDX audio playback is pending completion.
+
+#### 0x00 Frame Duplication
+
+This chunk type indicates that the previous frame should be duplicated without modification. This is an optimization technique used in VDX files to represent static frames in video sequences without storing redundant data. When a 0x00 chunk is encountered, the engine simply copies the last frame in the `frameData` vector to create a new frame entry.
+
+This chunk type has no data payload—only the chunk header exists.
 
 #### Notes
 
 - Video sequences within a VDX file are intended to be played at 15 frames per second.
+- The first frame in any VDX video sequence is always a 0x20 chunk (full bitmap).
+- All subsequent frames use 0x25 chunks (delta bitmap) to encode changes from the previous frame.
+- Chunk type 0x00 (frame duplication) is used to extend the duration of a static frame without storing redundant pixel data.
 
 ## XMI
+
+The 7th Guest uses Extended MIDI (XMI) format for its music, which was developed by Miles Sound System for early 1990s games. XMI is an extension of the standard MIDI format that includes additional timing information and simplified branching support, making it ideal for adaptive game music. The engine converts XMI data to standard MIDI Format 0 in memory, then synthesizes it using OPL2/OPL3 emulation via the libADLMIDI library.
+
+### XMI Data Storage
+
+XMI files are stored in `XMI.GJD` and indexed by `XMI.RL`. The RL file maps song names (without the `.XMI` extension) to their offset and length within the GJD archive. Unlike VDX files, XMI files do not have a unique container format header—they are raw XMI data blobs that follow the Extended MIDI specification.
+
+### XMI to MIDI Conversion
+
+The engine's `xmiConverter` function performs a complete XMI-to-MIDI conversion in memory before playback. This conversion process is complex and handles several XMI-specific features:
+
+#### XMI File Structure
+
+An XMI file begins with several header chunks:
+1. **TIMB Chunk**: Contains timbre/instrument bank information (skipped after reading length)
+2. **RBRN Chunk** (optional): Branch information for interactive music (skipped if present)
+3. **EVNT Chunk**: The core event data containing note and control information
+
+The converter skips directly to the EVNT chunk, which contains the musical event data that needs translation to MIDI.
+
+#### Key Differences Between XMI and MIDI
+
+**Note Duration Encoding:**
+- **MIDI**: Uses separate Note On and Note Off events with delta times between them
+- **XMI**: Embeds duration directly in the Note On event as a variable-length value immediately following the note parameters
+- The converter must extract these durations and schedule corresponding Note Off events
+
+**Timing Format:**
+- **XMI**: Uses a fixed timebase of 120 ticks per beat
+- **MIDI**: Supports arbitrary timebase values (the converter uses 960 ticks per beat for higher precision)
+- All delta times must be scaled proportionally when converting
+
+**Delta Time Representation:**
+- **XMI**: Uses `0x7F` bytes to represent delays of 127 ticks, which can be chained (e.g., `0x7F 0x7F 0x20` = 127 + 127 + 32 = 286 ticks)
+- **MIDI**: Uses variable-length quantity (VLQ) encoding where the MSB indicates continuation
+
+#### Conversion Algorithm
+
+The conversion process operates in two passes:
+
+**Pass 1: XMI Event Decoding**
+
+The decoder maintains a priority queue of pending Note Off events sorted by delta time:
+
+1. **Read Delta Times**: Parse XMI delta format (handle `0x7F` chaining)
+2. **Process Pending Note Offs**: Before each new event, emit any Note Off events whose delta time has expired
+3. **Parse MIDI Event Types**:
+   - `0x90` (Note On): Extract note, velocity, and **duration**, schedule a Note Off event
+   - `0x80` (Note Off): Copy directly (rare in XMI)
+   - `0xA0-0xE0`: Standard MIDI events (pressure, control change, program change, pitch bend)
+   - `0xFF`: Meta events (tempo, text, end-of-track)
+   - `0xF0/0xF7`: System Exclusive messages
+4. **Note Off Queue Management**: When a Note On is encountered, create a Note Off event with the specified duration and insert it into the sorted queue
+5. **Flush Remaining Note Offs**: After the end-of-track marker, emit all pending Note Off events
+
+**Pass 2: MIDI Formatting and Timebase Conversion**
+
+The second pass converts the decoded event stream to standard MIDI:
+
+1. **Delta Time Scaling**: Apply formula to convert from XMI timebase (120) to MIDI timebase (960):
+   ```
+   new_delta = old_delta × (midi_timebase × default_qnlen) / (xmi_freq × current_qnlen)
+   ```
+   where `xmi_freq = 120`, `default_qnlen = 500000` (microseconds per quarter note at 120 BPM)
+
+2. **Variable-Length Quantity Encoding**: Convert scaled delta times to MIDI VLQ format
+3. **Tempo Meta Events**: Track tempo changes (`FF 51`) to adjust subsequent delta time scaling dynamically
+4. **Write MIDI Header**: 
+   - Format 0 (single track)
+   - Division: 960 ticks per quarter note
+5. **Write Track Chunk**: Complete event stream with proper VLQ encoding
+
+#### MIDI Header Structure
+
+```cpp
+const std::array<uint8_t, 18> midiHeader = {
+    'M', 'T', 'h', 'd',    // Chunk ID
+    0, 0, 0, 6,            // Header length (6 bytes)
+    0, 0,                  // Format 0 (single track)
+    0, 1,                  // Number of tracks (1)
+    0, 60,                 // Division (timebase, replaced with 960)
+    'M', 'T', 'r', 'k'     // Track chunk ID
+};
+```
+
+### OPL Synthesis via libADLMIDI
+
+After conversion, the MIDI data is synthesized using libADLMIDI, which provides cycle-accurate emulation of Yamaha OPL2 and OPL3 FM synthesis chips:
+
+#### Emulator Selection
+
+The engine supports multiple emulation modes configured via `config.json`:
+
+- **`opl2` or `opl`**: Single OPL2 chip (9 channels, 2-operator sounds)
+- **`dual_opl2`**: Two OPL2 chips (18 channels)
+- **`opl3`** (default): Single OPL3 chip (18 channels, 2-operator and 4-operator sounds)
+
+The emulator core is selected at runtime:
+```cpp
+V64TNG_EMU_OPL2  // Prefers YMFM_OPL2, falls back to MAME_OPL2, then DOSBOX
+V64TNG_EMU_OPL3  // Prefers YMFM_OPL3, falls back to NUKED, then DOSBOX
+```
+
+#### Bank Selection and 4-Op Configuration
+
+- **MIDI Bank**: The `midiBank` configuration selects the instrument bank (default: 0)
+- **4-Op Channels**: In OPL3 mode, six channels are configured for 4-operator synthesis, enabling richer instrument sounds
+- Banks are applied before MIDI data is loaded to ensure correct instrument mapping
+
+#### Real-Time Audio Rendering
+
+The `PlayMIDI` function implements real-time audio playback using the Windows Audio API (WASAPI):
+
+1. **Audio Format**: 16-bit stereo PCM at 44.1 kHz (falls back to 48 kHz if unsupported)
+2. **Buffer Management**: Uses a shared-mode audio client with a 500ms buffer
+3. **Rendering Loop**:
+   - Queries available buffer space (`GetCurrentPadding`)
+   - Generates PCM samples via `adl_play` (libADLMIDI renders MIDI → OPL → PCM)
+   - Applies gain (6.0× multiplication) and volume scaling
+   - Applies fade-in (500ms) for main songs after the first song plays
+   - Writes samples to the audio endpoint
+4. **Position Tracking**: For main (non-transient) songs, saves playback position when paused to enable resume functionality
+
+### Music State Management
+
+The engine maintains sophisticated music state to support layered playback:
+
+#### Song Types
+
+- **Main Songs**: Background music that persists across scenes, resumable from saved position
+- **Transient Songs**: Short music cues that interrupt the main song and always play from the beginning
+
+#### State Tracking
+
+```cpp
+state.current_song        // Name of the main background song
+state.transient_song      // Name of the currently playing transient song
+state.main_song_position  // Playback position (seconds) for main song resume
+state.song_stack          // Stack of (song_name, position) pairs for nested music
+state.music_playing       // Flag indicating if music thread is active
+state.music_thread        // Background thread handle for music playback
+```
+
+#### Song Stack Operations
+
+- **`pushMainSong(songName)`**: Saves current song state to stack, starts new main song
+- **`popMainSong()`**: Restores previous song from stack, resumes from saved position
+- **`xmiPlay(songName, isTransient)`**: Stops current music, starts new song (transient or main)
+
+The stack system enables complex music transitions, such as playing a special theme when entering a room, then returning to the main house theme when leaving.
+
+### Configuration Options
+
+The following settings in `config.json` control music playback:
+
+```json
+{
+  "midiEnabled": true,           // Enable/disable music
+  "midiVolume": 100,              // Volume (0-100)
+  "midiMode": "opl3",             // Emulation mode: "opl2", "dual_opl2", "opl3"
+  "midiBank": 0                   // MIDI instrument bank (0-73+ depending on libADLMIDI version)
+}
+```
+
+### XMI Song Index
 
 Here is the table of how the original songs are packed in `XMI.GJD`:
 
@@ -349,21 +561,170 @@ Here is the table of how the original songs are packed in `XMI.GJD`:
 
 ## Cursors
 
-- `ROB.GJD`
+The 7th Guest uses animated cursors stored in the `ROB.GJD` file. This file contains nine distinct cursor animations, each serving a specific purpose in the game's user interface. The cursor system is a sophisticated component that provides visual feedback and enhances the game's atmospheric presentation.
+
+### ROB.GJD Structure
+
+The `ROB.GJD` file is a specialized archive containing compressed cursor image data and their associated color palettes. Unlike the VDX-based GJD files, ROB.GJD does not use an external RL index file. Instead, the cursor metadata is hardcoded in the engine, specifying the exact byte offset of each cursor blob within the file.
+
+The file contains:
+- **Nine cursor animation blobs** at fixed offsets
+- **Seven color palettes** stored at the end of the file (each 96 bytes / 0x60 bytes)
+- Each cursor blob is independently compressed using a custom LZSS-variant compression scheme
+
+### Cursor Blob Metadata
+
+Each cursor is identified by a `CursorBlobInfo` structure containing:
+
+| Field       | Type     | Description                                      |
+| ----------- | -------- | ------------------------------------------------ |
+| offset      | uint32_t | Byte offset of the cursor blob within ROB.GJD    |
+| paletteIdx  | uint8_t  | Index (0-6) identifying which palette to use     |
+
+The nine cursors and their purposes are:
+
+| Index | Offset  | Palette | Cursor Type         | Purpose                                    |
+| ----- | ------- | ------- | ------------------- | ------------------------------------------ |
+| 0     | 0x00000 | 0       | Skeleton Hand       | Default cursor (waving "no" gesture)       |
+| 1     | 0x0182F | 2       | Theatre Mask        | Indicates a Full Motion Video (FMV) hotspot|
+| 2     | 0x03B6D | 1       | Brain               | Puzzle interaction cursor                  |
+| 3     | 0x050CC | 0       | Skeleton Hand       | Pointing forward (move forward)            |
+| 4     | 0x06E79 | 0       | Skeleton Hand       | Turn right navigation                      |
+| 5     | 0x0825D | 0       | Skeleton Hand       | Turn left navigation                       |
+| 6     | 0x096D7 | 3       | Chattering Teeth    | Easter egg indicator                       |
+| 7     | 0x0A455 | 5       | Pyramid             | Special puzzle cursor                      |
+| 8     | 0x0A776 | 4       | Eyeball             | Puzzle action/examination cursor           |
+
+### Cursor Compression
+
+Each cursor blob uses a custom LZSS-based compression algorithm optimized for small image data. The decompression algorithm (`decompressCursorBlob`) processes the data as follows:
+
+1. **Control Bytes**: Each control byte contains 8 flag bits (processed LSB to MSB)
+2. **Flag Bit = 1**: Copy the next byte literally to output
+3. **Flag Bit = 0**: Read two bytes forming a back-reference:
+   - First byte (`var_8`): Low 8 bits of offset
+   - Second byte (`offsetLen`): High 4 bits contain upper offset bits, low 4 bits contain length
+   - **Length**: `(offsetLen & 0x0F) + 3` (minimum 3, maximum 18 bytes)
+   - **Offset**: `((offsetLen >> 4) << 8) + var_8` (back-reference into output buffer)
+4. **Termination**: The sequence `0x00 0x00` signals the end of compressed data
+
+### Cursor Blob Format
+
+Once decompressed, each cursor blob has the following structure:
+
+| Offset | Size    | Field        | Description                                           |
+| ------ | ------- | ------------ | ----------------------------------------------------- |
+| 0      | 1 byte  | width        | Width of cursor in pixels                             |
+| 1      | 1 byte  | height       | Height of cursor in pixels                            |
+| 2      | 1 byte  | frames       | Number of animation frames                            |
+| 3-4    | 2 bytes | (reserved)   | Purpose unknown, typically 0x00                       |
+| 5+     | varies  | pixel data   | Indexed pixel data (width × height × frames bytes)    |
+
+The pixel data is stored as a linear array of palette indices. Each byte represents one pixel using a 5-bit palette index (0-31). Index 0 is reserved for transparency.
+
+### Palette Structure
+
+The seven palettes are stored at the end of `ROB.GJD` starting at offset:
+```
+palette_block_offset = file_size - (96 * 7)
+```
+
+Each palette is exactly 96 bytes (0x60) containing 32 RGB triplets:
+
+| Offset       | Field         | Description                          |
+| ------------ | ------------- | ------------------------------------ |
+| paletteIdx×96| RGB triplets  | 32 colors × 3 bytes (R, G, B)        |
+
+To access a specific palette:
+```
+palette_offset = palette_block_offset + (paletteIdx * 96)
+```
+
+### Cursor Animation System
+
+The cursor system maintains state for all loaded cursors and handles animation timing:
+
+1. **Initialization** (`initCursors`):
+   - Reads the entire `ROB.GJD` file into memory
+   - Decompresses all nine cursor blobs
+   - Converts each frame from indexed color to RGBA format (with alpha channel)
+   - Creates Windows cursor handles (`HCURSOR`) for each frame
+   - Applies scaling based on the configured UI scale factor
+
+2. **Frame Conversion** (`cursorFrameToRGBA`):
+   - Reads each pixel's palette index (masked to 5 bits)
+   - Looks up RGB values from the cursor's associated palette
+   - Sets alpha to 0x00 for index 0 (transparent), 0xFF for all other indices
+   - Produces a 32-bit RGBA bitmap suitable for Windows cursor creation
+
+3. **Windows Cursor Creation** (`createWindowsCursor`):
+   - Creates a `BITMAPV5HEADER` with 32-bit BGRA format
+   - Converts RGBA data to BGRA (Windows native format)
+   - Generates a monochrome mask bitmap based on alpha channel
+   - Sets hotspot to the center of the cursor (width/2, height/2)
+   - Uses `CreateIconIndirect` to create the final cursor handle
+
+4. **Animation** (`updateCursorAnimation`):
+   - Runs at 15 FPS (same as VDX video playback)
+   - Advances `currentFrame` for the active cursor
+   - Wraps around when reaching the last frame
+   - Only animates cursors with multiple frames
+
+5. **Cursor Selection** (`getCurrentCursor`):
+   - Returns the appropriate `HCURSOR` for the current frame
+   - Returns a transparent 1×1 cursor during VDX playback or raycasting
+   - Falls back to Windows system arrow if cursors fail to initialize
+
+6. **Dynamic Scaling** (`recreateScaledCursors`):
+   - Destroys existing cursor handles
+   - Resamples RGBA data using nearest-neighbor scaling
+   - Recreates Windows cursors at the new scale
+   - Called when UI scale factor changes
+
+### Integration with Game Engine
+
+The cursor system integrates with the main game loop through:
+
+- **Window Message Handler**: Responds to `WM_SETCURSOR` messages to update the displayed cursor
+- **Timer Events**: `WM_TIMER` triggers cursor animation updates every frame
+- **State Management**: Hides cursor during animations (`state.animation.isPlaying`) by displaying a transparent cursor
+- **Cleanup**: `cleanupCursors()` destroys all cursor handles when the application exits
+
+### Technical Notes
+
+- All cursor animations in the original game run at 15 frames per second, matching the VDX video framerate
+- The first cursor (skeleton hand waving) is also used for the application icon (`icon.ico`)
+- The 5-bit palette index limitation means only 32 colors per cursor, with index 0 reserved for transparency
+- Cursor scaling uses nearest-neighbor interpolation to preserve the pixelated retro aesthetic
+- The transparent cursor technique (1×1 fully transparent pixel) is used instead of hiding the cursor to maintain better compatibility with Windows window management
   
 ## LZSS
 
 VDX chunks can optionally be compressed using a common variant of the LZSS algorithm. The chunks are compressed if, and only if, both `lengthMask` and `lengthBits` are not equal to zero. Decompression will occur using a circular history buffer (`his_buf`) and a sliding window with the following parameters:
 
 ```
-N (buffer size) = 1 ≪ (16 − lengthBits)
-F (window size) = 1 ≪ lengthBits
-threshold = 3
+N (buffer size) = 1 << (16 - lengthBits)
+F (window size) = 1 << lengthBits
+THRESHOLD = 3
 ```
 
 All references are relative to the current write position in the history buffer, which is tracked by `his_buf_pos`. Initially, writing begins at `N - F`. The `lengthMask` value from the Chunk Header can isolate the length portion of a buffer reference, though this seems a bit redundant since the number of bits used (`lengthBits`) is also specified.
 
-During decompression, the function `lzssDecompress` reads and processes each byte from the input `compressedData` and populates the output `decompressedData` vector. The history buffer (`his_buf`) is used to store previous data, facilitating the LZSS decompression process.
+During decompression, the function `lzssDecompress` reads and processes each byte from the input `compressedData` and populates the output buffer. The algorithm works as follows:
+
+1. Read a control byte (`flags`) containing 8 flag bits
+2. For each bit (processed LSB to MSB):
+   - **Bit = 1**: Copy next byte literally to output and history buffer
+   - **Bit = 0**: Read 2-byte back-reference:
+     - `low_byte` and `high_byte` form `ofs_len = low_byte | (high_byte << 8)`
+     - If `ofs_len == 0`, this is an **end marker**—decompression terminates
+     - Otherwise:
+       - `offset = (his_buf_pos - (ofs_len >> lengthBits)) & (N - 1)`
+       - `length = (ofs_len & lengthMask) + THRESHOLD`
+       - Copy `length` bytes from history buffer at `offset` to output
+3. Update `his_buf_pos` after each byte written using circular wrap: `(his_buf_pos + 1) & (N - 1)`
+
+The history buffer (`his_buf`) is used to store previous data, facilitating the LZSS decompression process. The compression scheme is well-suited for VDX data, which often contains repeated 4×4 pixel tiles.
 
 # Usage
 
