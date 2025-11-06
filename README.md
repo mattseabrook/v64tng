@@ -102,7 +102,6 @@
     - [Build Script Usage](#build-script-usage)
     - [Vulkan SDK Installation](#vulkan-sdk-installation)
   - [Quick Start Guide](#quick-start-guide)
-  - [Quick Start Guide](#quick-start-guide-1)
     - [Step 1: Install Prerequisites](#step-1-install-prerequisites)
     - [Step 2: Download Windows SDK](#step-2-download-windows-sdk)
     - [Step 3: Build Third-Party Libraries](#step-3-build-third-party-libraries)
@@ -1503,8 +1502,6 @@ sudo mv /opt/1.4.313.2 /opt/VulkanSDK/1.4.313.2
 **Required Components:**
 - Headers: `Include/vulkan/vulkan.h`
 - Import library: `Lib/vulkan-1.lib` (Windows version!)
-
-## Quick Start Guide
 
 ## Quick Start Guide
 
