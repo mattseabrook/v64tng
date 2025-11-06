@@ -346,7 +346,7 @@ int process_args(const std::vector<std::string> &args)
 		params.perlinScale = 1.7f;      // Domain warp frequency
 		params.worleyScale = 2.0f;      // Vein network density (cells per unit)
 		params.worleyStrength = 0.4f;   // Domain warp strength
-		params.mortarWidth = 0.005f;    // Vein thickness
+		params.mortarWidth = 0.015f;    // Vein thickness (3x thicker for more visible mortar lines)
 		params.mortarGray = 0.30f;      // Dark gray
 		// Wall height:width is fixed at 3:1 and baked into generation; no config override
 		

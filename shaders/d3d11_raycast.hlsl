@@ -170,7 +170,7 @@ float mortarMask(float globalU, float v)
     }
     f1 = sqrt(f1); f2 = sqrt(f2);
     float ridge = (f2 - f1);
-    float target = 0.005; // mortar width in world units
+    float target = 0.015; // mortar width in world units (3x thicker for more visible mortar lines)
     float m = saturate(1.0 - smoothstep(target*0.25, target*0.75, ridge));
     // Shape a bit
     return pow(m, 0.8);

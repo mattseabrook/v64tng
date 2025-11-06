@@ -188,7 +188,7 @@ float mortarMask(float globalU, float v)
     }
     f1 = sqrt(f1); f2 = sqrt(f2);
     float ridge = (f2 - f1);
-    float target = 0.005; // world units
+    float target = 0.015; // world units (3x thicker for more visible mortar lines)
     float m = clamp(1.0 - smoothstep(target*0.25, target*0.75, ridge), 0.0, 1.0);
     return pow(m, 0.8);
 }
