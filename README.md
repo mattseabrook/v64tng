@@ -1,5 +1,16 @@
 `v64tng.exe` is a Windows x86_64 executable that is an attempt at re-creating the complete 7th Guest game engine from scratch. It is written in C++ 23 and uses `VULKAN` or `DirectX` for graphics, `TBD` for audio, and `TBD` for input. The game engine is designed to work placed into the original game directory (*regardless of where you purchased it/what version you have*), and it is required to be used with the original game data files.
 
+---
+
+**Quick Navigation:**
+
+- **Want to play the game?** → [Running the Game](#running-the-game)
+- **Building from source?** → [Quick Start Guide](#quick-start-guide)
+- **Understanding the data formats?** → [Game Engine Architecture](#game-engine-architecture)
+- **Need detailed build documentation?** → [Developers](#developers)
+
+---
+
 **Table-of-Contents**
 - [Disclaimer](#disclaimer)
 - [Usage](#usage)
@@ -111,17 +122,6 @@
 
 This project is an academic endeavor, created as a technical study and homage to the original software The 7th Guest. It is important to clarify that this project is not officially affiliated with, connected to, or endorsed by the original creators or any of its subsidiaries or its affiliates. This project's primary aim is to serve as an educational resource and a platform for learning and research. It seeks to explore the underlying technology, software architecture, and design principles that informed the creation of The 7th Guest. In replicating the engine, it pays tribute to the groundbreaking work of the original developers and aspires to provide a springboard for further study, innovation, and appreciation within the realms of game development and computer science. This project does not intend to compete with or infringe upon the intellectual property rights of the original software or its creators. Its use, modification, and distribution are intended strictly for non-profit, educational purposes. All trademarks and registered trademarks mentioned herein are acknowledged as the property of their respective owners.
 
----
-
-**Quick Navigation:**
-
-- **Want to play the game?** → [Running the Game](#running-the-game)
-- **Building from source?** → [Quick Start Guide](#quick-start-guide)
-- **Understanding the data formats?** → [Game Engine Architecture](#game-engine-architecture)
-- **Need detailed build documentation?** → [Developers](#developers)
-
----
-
 # Usage
 
 ## Running the Game
@@ -220,11 +220,11 @@ The RL (Rob Landeros) file is an index file that contains information about VDX 
 - The next 4 bytes correspond to the byte offset within the GJD file (little-endian).
 - The final 4 bytes correspond to the length in bytes of the VDX data (little-endian).
 
-| Name     | Type               | Description                                           |
-| -------- | ------------------ | ----------------------------------------------------- |
-| Filename | char[12]           | Filename (null-padded or null-terminated string)      |
-| Offset   | uint32_t (4 bytes) | Little-endian unsigned integer (VDX byte offset)      |
-| Length   | uint32_t (4 bytes) | Little-endian unsigned integer (VDX data length)      |
+| Name     | Type               | Description                                      |
+| -------- | ------------------ | ------------------------------------------------ |
+| Filename | char[12]           | Filename (null-padded or null-terminated string) |
+| Offset   | uint32_t (4 bytes) | Little-endian unsigned integer (VDX byte offset) |
+| Length   | uint32_t (4 bytes) | Little-endian unsigned integer (VDX data length) |
 
 The total file size divided by 20 gives the number of entries. The engine reads RL files sequentially, parsing 20-byte blocks until EOF. Each filename typically includes a file extension (e.g., `.VDX`) but the engine may strip this extension during lookup operations.
 
@@ -234,10 +234,10 @@ The GJD (Graeme J Devine) file is an archive file format that is essentially a c
 
 It doesn't have a fixed header structure, footer, or internal metadata—it is simply a flat binary concatenation of VDX files. The `*.RL` file acts as the external index that maps filenames to byte ranges within the GJD archive. Using the `offset` and `length` from each `*.RL` entry, the VDX data is read directly from the GJD file.
 
-| Component | Type            | Description                                                                       |
-| --------- | --------------- | --------------------------------------------------------------------------------- |
-| VDX Data  | uint8_t[length] | VDX file data blob, length and offset determined by corresponding RL file entry   |
-| ...       | ...             | Additional VDX data blobs, concatenated without delimiters or padding             |
+| Component | Type            | Description                                                                     |
+| --------- | --------------- | ------------------------------------------------------------------------------- |
+| VDX Data  | uint8_t[length] | VDX file data blob, length and offset determined by corresponding RL file entry |
+| ...       | ...             | Additional VDX data blobs, concatenated without delimiters or padding           |
 
 The engine uses memory-mapped I/O (on both Windows and Unix systems) for zero-copy access to GJD files, as they can be quite large. Each VDX blob within a GJD file begins with the standard VDX header (identifier `0x6792`) followed by chunk data.
 
@@ -258,14 +258,14 @@ The VDX header is always 8 bytes total. The identifier value `0x6792` is stored 
 
 Each chunk following the VDX header has an 8-byte header followed by the chunk data:
 
-| Offset | Type   | Field      | Description                                                       |
-| ------ | ------ | ---------- | ----------------------------------------------------------------- |
-| 0      | uint8  | ChunkType  | Determines the type of data (0x20, 0x25, 0x80, 0x00, etc.)        |
-| 1      | uint8  | Unknown    | Purpose unknown (possibly related to replay or synchronization)   |
-| 2-5    | uint32 | DataSize   | Size of chunk data in bytes (little-endian, excludes 8-byte header)|
-| 6      | uint8  | LengthMask | LZSS parameter: bitmask for isolating length field (0 if uncompressed)|
-| 7      | uint8  | LengthBits | LZSS parameter: bits used for length encoding (0 if uncompressed) |
-| 8+     | uint8[]| Data       | Chunk data payload with length determined by `DataSize`           |
+| Offset | Type    | Field      | Description                                                            |
+| ------ | ------- | ---------- | ---------------------------------------------------------------------- |
+| 0      | uint8   | ChunkType  | Determines the type of data (0x20, 0x25, 0x80, 0x00, etc.)             |
+| 1      | uint8   | Unknown    | Purpose unknown (possibly related to replay or synchronization)        |
+| 2-5    | uint32  | DataSize   | Size of chunk data in bytes (little-endian, excludes 8-byte header)    |
+| 6      | uint8   | LengthMask | LZSS parameter: bitmask for isolating length field (0 if uncompressed) |
+| 7      | uint8   | LengthBits | LZSS parameter: bits used for length encoding (0 if uncompressed)      |
+| 8+     | uint8[] | Data       | Chunk data payload with length determined by `DataSize`                |
 
 **Compression Detection**: If both `LengthMask` and `LengthBits` are **non-zero**, the chunk data is LZSS-compressed and must be decompressed before further processing. If either value is zero, the data is uncompressed and can be processed directly.
 
@@ -275,13 +275,13 @@ Each chunk following the VDX header has an 8-byte header followed by the chunk d
 
 This chunk, as processed by the function `getBitmapData`, contains a static bitmap image. The chunk data (after LZSS decompression if necessary) has the following structure:
 
-| Offset    | Type          | Size (bytes) | Field       | Description                                                    |
-| --------- | ------------- | ------------ | ----------- | -------------------------------------------------------------- |
-| 0-1       | uint16_t      | 2            | numXTiles   | Number of 4×4 pixel tiles horizontally (little-endian)         |
-| 2-3       | uint16_t      | 2            | numYTiles   | Number of 4×4 pixel tiles vertically (little-endian)           |
-| 4-5       | uint16_t      | 2            | colourDepth | Bits per pixel (always 8 in practice, meaning 256-color palette)|
-| 6+        | RGBColor[]    | varies       | palette     | RGB color entries: `(1 << colourDepth) * 3` bytes (768 for 8-bit)|
-| varies    | uint8_t[]     | varies       | image       | Tile data: 4 bytes per tile (colour1, colour0, colourMap[2])   |
+| Offset | Type       | Size (bytes) | Field       | Description                                                       |
+| ------ | ---------- | ------------ | ----------- | ----------------------------------------------------------------- |
+| 0-1    | uint16_t   | 2            | numXTiles   | Number of 4×4 pixel tiles horizontally (little-endian)            |
+| 2-3    | uint16_t   | 2            | numYTiles   | Number of 4×4 pixel tiles vertically (little-endian)              |
+| 4-5    | uint16_t   | 2            | colourDepth | Bits per pixel (always 8 in practice, meaning 256-color palette)  |
+| 6+     | RGBColor[] | varies       | palette     | RGB color entries: `(1 << colourDepth) * 3` bytes (768 for 8-bit) |
+| varies | uint8_t[]  | varies       | image       | Tile data: 4 bytes per tile (colour1, colour0, colourMap[2])      |
 
 The overall bitmap dimensions are derived from these tile counts. Width is `numXTiles * 4` pixels and height is `numYTiles * 4` pixels. Most assets measure 640×320 pixels (160×80 tiles), but `Vielogo.vdx` from the Windows release uses 640×480 pixels (160×120 tiles).
 
@@ -289,10 +289,10 @@ The palette contains `(1 << colourDepth)` RGB triplets. For 8-bit color depth, t
 
 The image is split into tiles, each measuring 4×4 pixels (16 pixels total). Tiles are stored in row-major order (left-to-right, top-to-bottom). Each tile structure within the image data is as follows:
 
-| Offset | Type     | Field     | Description                                                       |
-| ------ | -------- | --------- | ----------------------------------------------------------------- |
-| 0      | uint8_t  | colour1   | Palette index used when the colourMap bit is 1                    |
-| 1      | uint8_t  | colour0   | Palette index used when the colourMap bit is 0                    |
+| Offset | Type     | Field     | Description                                                           |
+| ------ | -------- | --------- | --------------------------------------------------------------------- |
+| 0      | uint8_t  | colour1   | Palette index used when the colourMap bit is 1                        |
+| 1      | uint8_t  | colour0   | Palette index used when the colourMap bit is 0                        |
 | 2-3    | uint16_t | colourMap | 16-bit field (little-endian) mapping each pixel to colour1 or colour0 |
 
 The `colourMap` is a 16-bit little-endian value determining which of the two palette entries to use for each pixel. The bits are mapped to pixels using MSB-first ordering within the 4×4 tile:
@@ -321,12 +321,12 @@ These chunks contain animated (video) sequences. After LZSS decompression (if ap
 
 Each `0x25` chunk has the following structure:
 
-| Offset    | Size (bytes) | Field         | Description                                                          |
-| --------- | ------------ | ------------- | -------------------------------------------------------------------- |
-| 0-1       | 2            | localPalSize  | Number of palette entries to update (little-endian, 0 if no changes) |
-| 2-33      | 32           | palBitField   | 256-bit field (16×uint16_t) specifying which palette entries change  |
-| 34+       | 3×N          | localColours  | N RGB triplets, where N = number of bits set in palBitField          |
-| varies    | varies       | image         | Opcode stream encoding pixel modifications                           |
+| Offset | Size (bytes) | Field        | Description                                                          |
+| ------ | ------------ | ------------ | -------------------------------------------------------------------- |
+| 0-1    | 2            | localPalSize | Number of palette entries to update (little-endian, 0 if no changes) |
+| 2-33   | 32           | palBitField  | 256-bit field (16×uint16_t) specifying which palette entries change  |
+| 34+    | 3×N          | localColours | N RGB triplets, where N = number of bits set in palBitField          |
+| varies | varies       | image        | Opcode stream encoding pixel modifications                           |
 
 **Palette Update Process:**
 
@@ -743,24 +743,24 @@ The file contains:
 
 Each cursor is identified by a `CursorBlobInfo` structure containing:
 
-| Field       | Type     | Description                                      |
-| ----------- | -------- | ------------------------------------------------ |
-| offset      | uint32_t | Byte offset of the cursor blob within ROB.GJD    |
-| paletteIdx  | uint8_t  | Index (0-6) identifying which palette to use     |
+| Field      | Type     | Description                                   |
+| ---------- | -------- | --------------------------------------------- |
+| offset     | uint32_t | Byte offset of the cursor blob within ROB.GJD |
+| paletteIdx | uint8_t  | Index (0-6) identifying which palette to use  |
 
 The nine cursors and their purposes are:
 
-| Index | Offset  | Palette | Cursor Type         | Purpose                                    |
-| ----- | ------- | ------- | ------------------- | ------------------------------------------ |
-| 0     | 0x00000 | 0       | Skeleton Hand       | Default cursor (waving "no" gesture)       |
-| 1     | 0x0182F | 2       | Theatre Mask        | Indicates a Full Motion Video (FMV) hotspot|
-| 2     | 0x03B6D | 1       | Brain               | Puzzle interaction cursor                  |
-| 3     | 0x050CC | 0       | Skeleton Hand       | Pointing forward (move forward)            |
-| 4     | 0x06E79 | 0       | Skeleton Hand       | Turn right navigation                      |
-| 5     | 0x0825D | 0       | Skeleton Hand       | Turn left navigation                       |
-| 6     | 0x096D7 | 3       | Chattering Teeth    | Easter egg indicator                       |
-| 7     | 0x0A455 | 5       | Pyramid             | Special puzzle cursor                      |
-| 8     | 0x0A776 | 4       | Eyeball             | Puzzle action/examination cursor           |
+| Index | Offset  | Palette | Cursor Type      | Purpose                                     |
+| ----- | ------- | ------- | ---------------- | ------------------------------------------- |
+| 0     | 0x00000 | 0       | Skeleton Hand    | Default cursor (waving "no" gesture)        |
+| 1     | 0x0182F | 2       | Theatre Mask     | Indicates a Full Motion Video (FMV) hotspot |
+| 2     | 0x03B6D | 1       | Brain            | Puzzle interaction cursor                   |
+| 3     | 0x050CC | 0       | Skeleton Hand    | Pointing forward (move forward)             |
+| 4     | 0x06E79 | 0       | Skeleton Hand    | Turn right navigation                       |
+| 5     | 0x0825D | 0       | Skeleton Hand    | Turn left navigation                        |
+| 6     | 0x096D7 | 3       | Chattering Teeth | Easter egg indicator                        |
+| 7     | 0x0A455 | 5       | Pyramid          | Special puzzle cursor                       |
+| 8     | 0x0A776 | 4       | Eyeball          | Puzzle action/examination cursor            |
 
 ### Cursor Compression
 
@@ -779,13 +779,13 @@ Each cursor blob uses a custom LZSS-based compression algorithm optimized for sm
 
 Once decompressed, each cursor blob has the following structure:
 
-| Offset | Size    | Field        | Description                                           |
-| ------ | ------- | ------------ | ----------------------------------------------------- |
-| 0      | 1 byte  | width        | Width of cursor in pixels                             |
-| 1      | 1 byte  | height       | Height of cursor in pixels                            |
-| 2      | 1 byte  | frames       | Number of animation frames                            |
-| 3-4    | 2 bytes | (reserved)   | Purpose unknown, typically 0x00                       |
-| 5+     | varies  | pixel data   | Indexed pixel data (width × height × frames bytes)    |
+| Offset | Size    | Field      | Description                                        |
+| ------ | ------- | ---------- | -------------------------------------------------- |
+| 0      | 1 byte  | width      | Width of cursor in pixels                          |
+| 1      | 1 byte  | height     | Height of cursor in pixels                         |
+| 2      | 1 byte  | frames     | Number of animation frames                         |
+| 3-4    | 2 bytes | (reserved) | Purpose unknown, typically 0x00                    |
+| 5+     | varies  | pixel data | Indexed pixel data (width × height × frames bytes) |
 
 The pixel data is stored as a linear array of palette indices. Each byte represents one pixel using a 5-bit palette index (0-31). Index 0 is reserved for transparency.
 
@@ -798,9 +798,9 @@ palette_block_offset = file_size - (96 * 7)
 
 Each palette is exactly 96 bytes (0x60) containing 32 RGB triplets:
 
-| Offset       | Field         | Description                          |
-| ------------ | ------------- | ------------------------------------ |
-| paletteIdx×96| RGB triplets  | 32 colors × 3 bytes (R, G, B)        |
+| Offset        | Field        | Description                   |
+| ------------- | ------------ | ----------------------------- |
+| paletteIdx×96 | RGB triplets | 32 colors × 3 bytes (R, G, B) |
 
 To access a specific palette:
 ```
