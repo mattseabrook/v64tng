@@ -63,8 +63,7 @@
   - [Build System Overview](#build-system-overview)
     - [Key Features](#key-features)
   - [Prerequisites](#prerequisites)
-    - [Linux Development Environment (Cross-Compilation)](#linux-development-environment-cross-compilation)
-    - [Windows Development Environment (Native Builds)](#windows-development-environment-native-builds)
+    - [Linux Development Environment](#linux-development-environment)
     - [Third-Party Dependencies](#third-party-dependencies)
   - [Linux Cross-Compilation Build System](#linux-cross-compilation-build-system)
     - [Architecture Overview](#architecture-overview)
@@ -91,21 +90,37 @@
     - [Cross-Compilation Testing](#cross-compilation-testing)
     - [Build Script Usage](#build-script-usage)
     - [Vulkan SDK Installation](#vulkan-sdk-installation)
-  - [Windows Native Build System](#windows-native-build-system)
-    - [Prerequisites](#prerequisites-1)
-    - [Usage](#usage-1)
-  - [Development Workflow](#development-workflow)
-    - [Typical Development Cycle](#typical-development-cycle)
+  - [Quick Start Guide](#quick-start-guide)
+  - [Quick Start Guide](#quick-start-guide-1)
+    - [Step 1: Install Prerequisites](#step-1-install-prerequisites)
+    - [Step 2: Download Windows SDK](#step-2-download-windows-sdk)
+    - [Step 3: Build Third-Party Libraries](#step-3-build-third-party-libraries)
+    - [Step 4: Install Vulkan SDK](#step-4-install-vulkan-sdk)
+    - [Step 5: Build the Engine](#step-5-build-the-engine)
+    - [Step 6: Deploy and Test](#step-6-deploy-and-test)
+    - [Daily Development Workflow](#daily-development-workflow)
+    - [Common Tasks](#common-tasks)
+    - [Testing and Debugging](#testing-and-debugging)
     - [Performance Tuning](#performance-tuning)
-    - [Debugging on Windows](#debugging-on-windows)
-    - [Contributing](#contributing)
-    - [Build System Maintenance](#build-system-maintenance)
     - [Troubleshooting](#troubleshooting)
+    - [Contributing](#contributing)
+    - [Advanced Topics](#advanced-topics)
     - [Build System Architecture](#build-system-architecture)
 
 # Disclaimer
 
 This project is an academic endeavor, created as a technical study and homage to the original software The 7th Guest. It is important to clarify that this project is not officially affiliated with, connected to, or endorsed by the original creators or any of its subsidiaries or its affiliates. This project's primary aim is to serve as an educational resource and a platform for learning and research. It seeks to explore the underlying technology, software architecture, and design principles that informed the creation of The 7th Guest. In replicating the engine, it pays tribute to the groundbreaking work of the original developers and aspires to provide a springboard for further study, innovation, and appreciation within the realms of game development and computer science. This project does not intend to compete with or infringe upon the intellectual property rights of the original software or its creators. Its use, modification, and distribution are intended strictly for non-profit, educational purposes. All trademarks and registered trademarks mentioned herein are acknowledged as the property of their respective owners.
+
+---
+
+**Quick Navigation:**
+
+- **Want to play the game?** → [Running the Game](#running-the-game)
+- **Building from source?** → [Quick Start Guide](#quick-start-guide)
+- **Understanding the data formats?** → [Game Engine Architecture](#game-engine-architecture)
+- **Need detailed build documentation?** → [Developers](#developers)
+
+---
 
 # Usage
 
@@ -905,9 +920,9 @@ All build scripts are designed for **zero-configuration builds** on supported pl
 
 ## Prerequisites
 
-### Linux Development Environment (Cross-Compilation)
+### Linux Development Environment
 
-The primary development environment uses Arch Linux (or derivatives) with the following toolchain:
+The v64tng engine is built exclusively on Linux, cross-compiling to Windows executables. The recommended distribution is Arch Linux (or derivatives like Manjaro), though any distribution with a modern Clang/LLVM toolchain will work.
 
 ```bash
 # Core compilation toolchain
@@ -922,40 +937,23 @@ sudo pacman -S cmake ninja git wget xxd
 # Shader compilation
 sudo pacman -S vulkan-tools shaderc
 
-# Optional: Rust toolchain for xwin (Windows SDK downloader)
+# Rust toolchain for xwin (Windows SDK downloader)
 sudo pacman -S rust cargo
 cargo install xwin
 ```
 
-### Windows Development Environment (Native Builds)
-
-For native Windows builds using `build.ps1`:
-
-```powershell
-# Install LLVM/Clang for Windows
-winget install LLVM.LLVM
-
-# Ensure PowerShell 7+ is installed
-winget install Microsoft.PowerShell
-
-# Visual Studio 2022 Build Tools (for Windows SDK and MSVC libraries)
-# Download from: https://visualstudio.microsoft.com/downloads/
-# Required components:
-#   - MSVC v143 - VS 2022 C++ x64/x86 build tools
-#   - Windows 10/11 SDK (10.0.22621.0 or newer)
-#   - C++ CMake tools for Windows
-```
+**Note**: For non-Arch distributions, install equivalent packages through your package manager (apt, dnf, zypper, etc.).
 
 ### Third-Party Dependencies
 
-The engine requires three third-party libraries, all built as Windows static libraries:
+The engine requires these third-party libraries, all built as Windows static libraries:
 
 - **zlib 1.3.1**: Compression library (for PNG support)
 - **libpng 1.6.50**: PNG image encoding/decoding
 - **libADLMIDI**: OPL2/OPL3 FM synthesis for MIDI playback
 - **Vulkan SDK 1.4.313.2**: Graphics API headers and runtime
 
-The `build_windows_libs.sh` script automates building these from source.
+The `build_windows_libs.sh` script automates building these from source. See [Build Script Usage](#build-script-usage) for details.
 
 ## Linux Cross-Compilation Build System
 
@@ -1506,195 +1504,233 @@ sudo mv /opt/1.4.313.2 /opt/VulkanSDK/1.4.313.2
 - Headers: `Include/vulkan/vulkan.h`
 - Import library: `Lib/vulkan-1.lib` (Windows version!)
 
-## Windows Native Build System
+## Quick Start Guide
 
-The `build.ps1` PowerShell script provides native Windows builds using the same Clang/LLVM toolchain. This is the original build system, now considered legacy but still fully functional.
+## Quick Start Guide
 
-### Prerequisites
+This guide will get you from a fresh Linux system to a working build in under 10 minutes. Each step links to detailed documentation if you want to understand what's happening under the hood.
 
-```powershell
-# Install LLVM for Windows
-winget install LLVM.LLVM
+### Step 1: Install Prerequisites
 
-# Install Visual Studio 2022 Build Tools (for Windows SDK)
-# Required components:
-#   - MSVC v143 build tools
-#   - Windows 11 SDK (10.0.22621.0+)
-#   - C++ CMake tools
-```
-
-### Usage
-
-```powershell
-# Release build
-.\build.ps1
-
-# Debug build
-.\build.ps1 debug
-
-# Clean
-.\build.ps1 clean
-```
-
-**Key Differences from Linux Build:**
-- Uses native PowerShell path handling
-- Directly accesses Windows SDK in `C:\Program Files (x86)\Windows Kits\10\`
-- Uses Windows-native `rc.exe` for resource compilation
-- Writes output to `C:\T7G\` (typical game install location)
-
-The PowerShell script is maintained for Windows developers who prefer native builds, but the Linux cross-compilation system is the primary development environment.
-
-## Development Workflow
-
-### Typical Development Cycle
-
-1. **Initial Setup** (once):
-   ```bash
-   cargo install xwin
-   xwin --accept-license splat --output /opt/winsdk
-   ./build_windows_libs.sh all
-   ```
-
-2. **Daily Development**:
-   ```bash
-   # Edit source files in your favorite editor
-   vim src/game.cpp
-   
-   # Quick rebuild (incremental)
-   ./build.sh
-   
-   # Test in game directory
-   cd /mnt/T7G
-   ./v64tng.exe !
-   ```
-
-3. **Debug Build**:
-   ```bash
-   ./build.sh debug
-   # Use x64dbg or WinDbg for debugging on Windows machine
-   ```
-
-4. **Full Rebuild** (after major changes):
-   ```bash
-   ./build.sh clean
-   ./build.sh
-   ```
-
-### Performance Tuning
-
-The build system is optimized for rapid iteration:
-
-- **Parallel Compilation**: Utilizes all CPU cores (16 parallel jobs on Ryzen 9 5950X)
-- **Smart Caching**: Only recompiles changed files and their dependents
-- **Shader Caching**: Embedded shaders regenerated only on source changes
-- **Resource Caching**: Windows resources recompiled only when `.rc` changes
-
-**Optimization Tips:**
-- Keep header dependencies minimal to reduce cascading rebuilds
-- Use forward declarations instead of `#include` where possible
-- Precompiled headers not used (incremental compilation is already fast enough)
-
-### Debugging on Windows
-
-Since cross-compilation produces native Windows PE executables with CodeView debug info, you can debug using:
-
-**x64dbg** (Recommended for game engine):
-```powershell
-# Install
-winget install x64dbg.x64dbg
-
-# Launch with executable
-x64dbg.exe C:\T7G\v64tng-debug.exe
-```
-
-**WinDbg Preview** (Advanced kernel debugging):
-```powershell
-# Install from Microsoft Store
-winget install Microsoft.WinDbg
-
-# Launch
-windbgx.exe C:\T7G\v64tng-debug.exe
-```
-
-**Visual Studio** (Full IDE experience):
-```powershell
-# Open Visual Studio 2022
-# File → Open → Project/Solution → Select v64tng-debug.exe
-# Set breakpoints, press F5
-```
-
-### Contributing
-
-When submitting patches or pull requests:
-
-1. Ensure both Release and Debug builds compile without warnings
-2. Run the build on a clean system to verify dependency handling
-3. Test on actual Windows hardware (not just Wine)
-4. Document any new third-party dependencies
-5. Keep build times fast—avoid adding expensive compile-time operations
-
-### Build System Maintenance
-
-**Updating Library Versions:**
 ```bash
-# Edit build_windows_libs.sh
-# Change version numbers in wget/git clone commands
-# Rebuild affected libraries
+# Install core toolchain (Arch Linux - adjust for your distro)
+sudo pacman -S clang lld llvm mingw-w64-binutils cmake ninja git wget xxd vulkan-tools shaderc
+
+# Install Rust toolchain for xwin
+sudo pacman -S rust cargo
+cargo install xwin
+```
+
+**What this does**: Installs the Clang/LLVM cross-compiler, build tools, and xwin for downloading the Windows SDK.  
+**More info**: [Prerequisites](#prerequisites)
+
+### Step 2: Download Windows SDK
+
+```bash
+# Install Windows SDK via xwin (~500 MB download)
+sudo mkdir -p /opt/winsdk
+sudo chown $USER:$USER /opt/winsdk
+xwin --accept-license splat --output /opt/winsdk
+```
+
+**What this does**: Downloads official Microsoft Windows SDK headers and libraries needed for Windows API calls.  
+**More info**: [Windows SDK Acquisition](#windows-sdk-acquisition)
+
+### Step 3: Build Third-Party Libraries
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/v64tng.git
+cd v64tng
+
+# Build all required libraries (takes ~5 minutes)
+./build_windows_libs.sh all
+```
+
+**What this does**: Compiles zlib, libpng, and libADLMIDI as Windows static libraries.  
+**More info**: [Third-Party Library Builder](#third-party-library-builder)
+
+### Step 4: Install Vulkan SDK
+
+```bash
+# Download and extract Vulkan SDK
+wget https://sdk.lunarg.com/sdk/download/1.4.313.2/linux/vulkansdk-linux-x86_64-1.4.313.2.tar.xz
+sudo tar -xf vulkansdk-linux-x86_64-1.4.313.2.tar.xz -C /opt
+sudo mv /opt/1.4.313.2 /opt/VulkanSDK/1.4.313.2
+```
+
+**What this does**: Installs Vulkan headers and libraries for graphics API support.  
+**More info**: [Vulkan SDK Installation](#vulkan-sdk-installation)
+
+### Step 5: Build the Engine
+
+```bash
+# Build release version
+./build.sh
+
+# Or build debug version with symbols
+./build.sh debug
+```
+
+**What this does**: Compiles all source files, links libraries, embeds shaders, and produces `v64tng.exe`.  
+**Build time**: 3-5 seconds on modern hardware (incremental builds ~0.5s)  
+**More info**: [Build Process Walkthrough](#build-process-walkthrough)
+
+### Step 6: Deploy and Test
+
+```bash
+# Copy to your 7th Guest installation directory
+# (Adjust path to your game installation)
+sudo cp v64tng.exe /mnt/T7G/
+
+# Test the executable
+cd /mnt/T7G
+./v64tng.exe !
+```
+
+**What this does**: Copies the executable to your game directory and launches it.
+
+---
+
+### Daily Development Workflow
+
+Once set up, your typical development cycle is fast and simple:
+
+```bash
+# 1. Edit source files
+vim src/game.cpp
+
+# 2. Rebuild (incremental, ~0.5s)
+./build.sh
+
+# 3. Test immediately
+cd /mnt/T7G && ./v64tng.exe !
+```
+
+**Incremental builds are fast** because the system only recompiles changed files and their dependencies.
+
+---
+
+### Common Tasks
+
+**Clean rebuild:**
+```bash
+./build.sh clean
+./build.sh
+```
+
+**Update a library:**
+```bash
 ./build_windows_libs.sh libpng
+./build.sh
 ```
 
-**Updating Windows SDK:**
+**Update Windows SDK:**
 ```bash
-# Re-run xwin to get latest SDK
 xwin --accept-license splat --output /opt/winsdk --sdk-version 10.0.26100
 ```
 
-**Adding New Source Files:**
-- Simply add `.cpp` files to `src/` directory
-- Build system auto-discovers via `find src -name "*.cpp"`
-- Add corresponding `.h` headers to `include/`
+**Add new source files:**
+- Add `.cpp` to `src/` directory
+- Add `.h` to `include/` directory  
+- Build system auto-discovers new files
 
-**Adding New Libraries:**
-1. Add library builder section to `build_windows_libs.sh`
-2. Update `build.sh` linker flags to include new library
-3. Add include path to `USER_INCLUDES` array
-4. Document the library in this README
+---
+
+### Testing and Debugging
+
+The engine produces native Windows executables that run on any Windows machine (or Wine on Linux). For debugging:
+
+**On Windows:**
+- Use x64dbg, WinDbg, or Visual Studio
+- Debug builds (`./build.sh debug`) include full CodeView debug symbols
+- PDB files generated for all debug builds
+
+**On Linux with Wine:**
+```bash
+wine /mnt/T7G/v64tng.exe !
+```
+
+**Note**: Wine testing is useful for quick validation, but always test on real Windows hardware before releases.
+
+---
+
+### Performance Tuning
+
+The build system is already optimized, but you can further improve build times:
+
+**Tips:**
+- Minimize `#include` directives in headers—use forward declarations
+- Avoid including heavy STL headers in frequently-used headers
+- Keep header dependency chains short
+- Use `-j` flag explicitly if you want to control parallel jobs (default: all cores)
+
+**Typical build times** (Ryzen 9 5950X, 16 cores):
+- Full clean build: ~4-6 seconds
+- Incremental (1 file): ~0.5 seconds
+- Library builds: ~5 minutes (one-time)
+
+---
 
 ### Troubleshooting
 
 **"SDK not found" errors:**
 ```bash
-# Verify xwin installation
 ls -la /opt/winsdk/
-# Re-run setup if needed
-./build_windows_libs.sh setup
+# If empty, re-run: xwin --accept-license splat --output /opt/winsdk
 ```
 
 **Linker errors about missing symbols:**
-- Check if library was built with `/MT` flag (static CRT)
-- Verify no `__declspec(dllimport)` in library symbols using `llvm-objdump`
-- Ensure library path is in `LINKER_ARGS` array
+- Verify libraries built with `/MT` (static CRT)
+- Check for DLL import symbols: `llvm-objdump --syms /opt/windows-libs/libpng/lib/libpng.lib | grep dllimport`
 
-**"Permission denied" during deployment:**
+**Permission errors during deployment:**
 ```bash
-# Mount game directory with correct permissions
 sudo chown -R $USER:$USER /mnt/T7G
 ```
 
-**Slow builds after adding headers:**
+**Slow builds after header changes:**
 - Review `#include` statements—minimize dependencies
-- Check if headers are including heavy STL headers unnecessarily
-- Use forward declarations in headers, full includes in `.cpp`
+- Use forward declarations instead of full includes where possible
+
+**Build warnings/errors:**
+- Check `build.log` for detailed diagnostics
+- All warnings are logged even if not shown during build
+
+---
+
+### Contributing
+
+When submitting patches:
+
+1. Ensure both Release and Debug builds compile cleanly
+2. Test on real Windows hardware (not just Wine)
+3. Run `./build.sh clean && ./build.sh` to verify fresh builds
+4. Document any new dependencies or build requirements
+5. Keep build times fast—avoid expensive compile-time operations
+
+**Code style**: Follow existing conventions in the codebase (automated formatting coming soon).
+
+---
+
+### Advanced Topics
+
+For deeper understanding of the build system internals:
+
+- **Detailed build process**: [Build Process Walkthrough](#build-process-walkthrough)
+- **Library compilation details**: [Library Build Processes](#library-build-processes)
+- **Compiler flag explanations**: [Compiler Flags Construction](#5-compiler-flags-construction)
+- **Parallel compilation strategy**: [Parallel Compilation](#6-parallel-compilation)
+- **SDK detection logic**: [Windows SDK Setup](#1-windows-sdk-setup)
 
 ### Build System Architecture
 
-The build systems were designed with enterprise-grade practices:
+The build system demonstrates enterprise-grade practices:
 
-- **Modularity**: Each build phase (compilation, linking, shader processing) is independent
+- **Modularity**: Independent build phases (compilation, linking, shader processing)
 - **Reproducibility**: Identical inputs produce identical outputs across machines
-- **Scalability**: Handles hundreds of source files efficiently
-- **Maintainability**: Clear separation of concerns, extensive commenting
-- **Portability**: Works on any Linux distribution with Clang/LLVM
+- **Scalability**: Efficiently handles hundreds of source files
 - **Zero-Configuration**: Automatic detection and validation of all dependencies
+- **Maintainability**: Clear separation of concerns with extensive inline documentation
 
-These techniques—parallel compilation, dependency tracking, incremental builds, and cross-platform SDK management—are the same approaches used in AAA game studios and major software companies to maintain rapid iteration speeds on large codebases.
+These techniques mirror those used in AAA game studios and major software companies for maintaining rapid iteration on large codebases.
