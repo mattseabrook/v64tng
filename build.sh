@@ -5,6 +5,51 @@
 
 set -e  # Exit on any error
 
+# --- Color & Emoji Support ------------------------------------------------
+# Check if terminal supports colors
+if [[ -t 1 ]] && command -v tput >/dev/null 2>&1 && [[ $(tput colors 2>/dev/null || echo 0) -ge 8 ]]; then
+  COLOR_RESET="\033[0m"
+  COLOR_BOLD="\033[1m"
+  COLOR_DIM="\033[2m"
+  COLOR_RED="\033[31m"
+  COLOR_GREEN="\033[32m"
+  COLOR_YELLOW="\033[33m"
+  COLOR_BLUE="\033[34m"
+  COLOR_MAGENTA="\033[35m"
+  COLOR_CYAN="\033[36m"
+else
+  COLOR_RESET=""
+  COLOR_BOLD=""
+  COLOR_DIM=""
+  COLOR_RED=""
+  COLOR_GREEN=""
+  COLOR_YELLOW=""
+  COLOR_BLUE=""
+  COLOR_MAGENTA=""
+  COLOR_CYAN=""
+fi
+
+# Emoji support (fallback to ASCII if needed)
+if [[ "${LANG:-}" =~ UTF-8 ]] || [[ "${LC_ALL:-}" =~ UTF-8 ]]; then
+  EMOJI_SUCCESS="✅"
+  EMOJI_CACHED="⚡"
+  EMOJI_FAILED="❌"
+  EMOJI_WARNING="⚠️"
+  EMOJI_ROCKET="🚀"
+  EMOJI_WRENCH="🔧"
+  EMOJI_PACKAGE="📦"
+  EMOJI_FIRE="🔥"
+else
+  EMOJI_SUCCESS="[OK]"
+  EMOJI_CACHED="[==]"
+  EMOJI_FAILED="[!!]"
+  EMOJI_WARNING="[!]"
+  EMOJI_ROCKET=">>>"
+  EMOJI_WRENCH="[*]"
+  EMOJI_PACKAGE="[+]"
+  EMOJI_FIRE="[X]"
+fi
+
 # Configuration
 TARGET_TRIPLE="x86_64-pc-windows-msvc"
 BUILD_DIR="build"
@@ -32,9 +77,9 @@ BUILD_LOG="build.log"
 banner() {
     local w=78
     local line="$(printf '%*s' "$w" | tr ' ' '=')"
-    printf "\n%s\n" "$line"
+    printf "\n${COLOR_BOLD}${COLOR_CYAN}%s\n" "$line"
     printf "  %s\n" "$1"
-    printf "%s\n\n" "$line"
+    printf "%s${COLOR_RESET}\n\n" "$line"
 }
 
 # Initialize build log (clear it)
@@ -60,7 +105,7 @@ log_output() {
 
 # Setup Windows SDK
 setup_winsdk() {
-    banner "Setting up Windows SDK"
+    banner "${EMOJI_WRENCH} Setting up Windows SDK"
     
     if [[ ! -d "$WINSDK_BASE" ]]; then
         echo "Windows SDK not found at $WINSDK_BASE"
@@ -204,10 +249,10 @@ setup_winsdk() {
     echo "Verifying critical paths..."
     for path in "${critical_paths[@]}"; do
         if [[ ! -d "$path" ]]; then
-            echo "ERROR: Critical SDK path missing: $path"
+            echo -e "${COLOR_RED}${EMOJI_FAILED} ERROR: Critical SDK path missing: $path${COLOR_RESET}"
             exit 1
         else
-            echo "✓ Found: $path"
+            echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Found: $path${COLOR_RESET}"
         fi
     done
     
@@ -221,9 +266,9 @@ setup_winsdk() {
     
     export DETECTED_LIB_ARCH="$detected_lib_arch"
     
-    echo "✓ SDK version: $DETECTED_SDK_VERSION"
-    echo "✓ Library arch: $detected_lib_arch"
-    echo "✓ All critical paths verified"
+    echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} SDK version: $DETECTED_SDK_VERSION${COLOR_RESET}"
+    echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Library arch: $detected_lib_arch${COLOR_RESET}"
+    echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} All critical paths verified${COLOR_RESET}"
 }
 
 #===============================================================================
@@ -231,15 +276,15 @@ setup_winsdk() {
 #===============================================================================
 
 clean() {
-    banner "Cleaning Build Artifacts"
+    banner "${EMOJI_FIRE} Cleaning Build Artifacts"
     
     rm -rf "$BUILD_DIR"
     rm -f v64tng.exe v64tng-debug.exe *.pdb
     rm -f "$BUILD_LOG"
     
-    echo "✓ Cleaned build directory"
-    echo "✓ Removed executables"
-    echo "✓ Removed build log"
+    echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Cleaned build directory${COLOR_RESET}"
+    echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Removed executables${COLOR_RESET}"
+    echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Removed build log${COLOR_RESET}"
 }
 
 #===============================================================================
@@ -271,7 +316,7 @@ fi
 mkdir -p "$BUILD_DIR"
 
 # Compile resources using mingw windres (only thing we use from mingw)
-banner "Compiling Resources"
+banner "${EMOJI_PACKAGE} Compiling Resources"
 
 RESOURCE_RES="$BUILD_DIR/resource.res"
 RESOURCE_RC="resource.rc"
@@ -286,22 +331,22 @@ if [[ -f "$RESOURCE_RC" ]] && ([[ ! -f "$RESOURCE_RES" ]] || [[ "$RESOURCE_RC" -
         -I "$DETECTED_CRT_INCLUDE" \
         -o "$RESOURCE_RES" "$RESOURCE_RC" 2>"$res_log"; then
         log_output "$res_log"
-        echo "✓ Resource compiled"
+        echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Resource compiled${COLOR_RESET}"
     else
         log_output "$res_log"
         cat "$res_log"
-        echo "ERROR: Resource compilation failed"
+        echo -e "${COLOR_RED}${EMOJI_FAILED} ERROR: Resource compilation failed${COLOR_RESET}"
         exit 1
     fi
 else
-    echo "✓ Resource up to date"
+    echo -e "${COLOR_DIM}${EMOJI_CACHED} Resource up to date${COLOR_RESET}"
 fi
 
 #===============================================================================
 # Shader Compilation
 #===============================================================================
 
-banner "Compiling Shaders"
+banner "${EMOJI_FIRE} Compiling Shaders"
 
 # Helper function to compile Vulkan GLSL to SPIR-V header
 compile_vulkan_shader() {
@@ -315,17 +360,17 @@ compile_vulkan_shader() {
     if [[ -f "$shader_src" && -f "$header_out" && "$shader_src" -nt "$header_out" ]]; then regen=true; fi
     
     if [[ "$regen" == true ]]; then
-        echo "Compiling Vulkan shader: $shader_name..."
+        echo -e "${COLOR_CYAN}${EMOJI_WRENCH} Compiling Vulkan shader: $shader_name...${COLOR_RESET}"
         glslc -fshader-stage=compute "$shader_src" -o "$spv_out"
         if command -v xxd >/dev/null 2>&1; then
             xxd -i "$spv_out" > "$header_out"
         else
-            echo "ERROR: xxd not found (often provided by vim-common). Please install it."
+            echo -e "${COLOR_RED}${EMOJI_FAILED} ERROR: xxd not found (often provided by vim-common). Please install it.${COLOR_RESET}"
             exit 1
         fi
-        echo "  Generated: $header_out"
+        echo -e "${COLOR_DIM}  Generated: $header_out${COLOR_RESET}"
     else
-        echo "Vulkan shader cached: $shader_name"
+        echo -e "${COLOR_DIM}${EMOJI_CACHED} Vulkan shader cached: $shader_name${COLOR_RESET}"
     fi
 }
 
@@ -341,7 +386,7 @@ embed_shader_source() {
     if [[ -f "$shader_src" && -f "$header_out" && "$shader_src" -nt "$header_out" ]]; then regen=true; fi
     
     if [[ "$regen" == true ]]; then
-        echo "Embedding shader source: $shader_name..."
+        echo -e "${COLOR_CYAN}${EMOJI_WRENCH} Embedding shader source: $shader_name...${COLOR_RESET}"
         
         # Read shader file and escape for C string
         local escaped_content=$(cat "$shader_src" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | awk '{printf "%s\\n", $0}')
@@ -358,9 +403,9 @@ $(cat "$shader_src")
 
 #endif // ${var_name}_H
 EOF
-        echo "  Generated: $header_out"
+        echo -e "${COLOR_DIM}  Generated: $header_out${COLOR_RESET}"
     else
-        echo "Shader source cached: $shader_name"
+        echo -e "${COLOR_DIM}${EMOJI_CACHED} Shader source cached: $shader_name${COLOR_RESET}"
     fi
 }
 
@@ -396,13 +441,13 @@ compile_d3d11_shader \
     "$BUILD_DIR/d3d11_raycast.h" \
     "g_d3d11_raycast_hlsl"
 
-echo "✓ Shader compilation complete"
+echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Shader compilation complete${COLOR_RESET}"
 
 #===============================================================================
 # Source File Scanning
 #===============================================================================
 
-banner "Scanning Source Files"
+banner "${EMOJI_WRENCH} Scanning Source Files"
 
 # Get source files
 SOURCES=($(find src -name "*.cpp" | sort))
@@ -559,15 +604,15 @@ compile_batch() {
             
             {
                 if clang-cl -c "$src" -o "$obj" "${CLANG_FLAGS[@]}" 2>"$temp_out"; then
-                    echo "  ✓ $(basename "$src")" > "$temp_out.status"
+                    echo -e "  ${COLOR_GREEN}${EMOJI_SUCCESS} $(basename "$src")${COLOR_RESET}" > "$temp_out.status"
                 else
-                    echo "  ✗ FAILED: $(basename "$src")" > "$temp_out.status"
+                    echo -e "  ${COLOR_RED}${EMOJI_FAILED} FAILED: $(basename "$src")${COLOR_RESET}" > "$temp_out.status"
                     echo "1" > "$temp_out.failed"
                 fi
             } &
             pids+=($!)
         else
-            echo "  ≡ $(basename "$src") (cached)"
+            echo -e "  ${COLOR_DIM}${EMOJI_CACHED} $(basename "$src") (cached)${COLOR_RESET}"
         fi
     done
     
@@ -608,7 +653,7 @@ compile_batch() {
 # Parallel Compilation
 #===============================================================================
 
-banner "Parallel Compilation ($COMPILE_JOBS jobs)"
+banner "${EMOJI_FIRE} Parallel Compilation ($COMPILE_JOBS jobs)"
 
 # Set environment variables for clang-cl to find headers (same as library builds)
 include_paths=""
@@ -625,6 +670,19 @@ lib_paths=""
 export INCLUDE="$include_paths"
 export LIB="$lib_paths"
 
+# Detect flag changes to force rebuild
+flags_file="$BUILD_DIR/.cxxflags"
+new_flags="CLANG_FLAGS=${CLANG_FLAGS[*]}
+INCLUDE=$include_paths
+LIB=$lib_paths"
+
+if [[ ! -f "$flags_file" ]] || ! cmp -s <(printf "%s" "$new_flags") "$flags_file"; then
+    echo -e "${COLOR_YELLOW}${EMOJI_WARNING} Build flags changed, forcing full rebuild${COLOR_RESET}"
+    printf "%s" "$new_flags" > "$flags_file"
+    # Clean objects to force rebuild
+    rm -f "$BUILD_DIR"/*.o "$BUILD_DIR"/*.d
+fi
+
 START_TIME=$(date +%s)
 
 # Process sources in batches
@@ -639,13 +697,13 @@ FAILED_COUNT=0
 for src in "${SOURCES[@]}"; do
     obj="$BUILD_DIR/$(basename "${src%.cpp}").o"
     if [[ ! -f "$obj" ]] || [[ ! -s "$obj" ]]; then
-        echo "ERROR: Compilation failed for $(basename "$src")"
+        echo -e "${COLOR_RED}${EMOJI_FAILED} ERROR: Compilation failed for $(basename "$src")${COLOR_RESET}"
         ((FAILED_COUNT++))
     fi
 done
 
 if [[ $FAILED_COUNT -gt 0 ]]; then
-    echo "ERROR: $FAILED_COUNT source files failed to compile"
+    echo -e "${COLOR_RED}${EMOJI_FAILED} ERROR: $FAILED_COUNT source files failed to compile${COLOR_RESET}"
     exit 1
 fi
 
@@ -653,13 +711,24 @@ END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
 
 echo ""
-echo "✓ Compilation completed in ${DURATION}s"
+echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Compilation completed in ${DURATION}s${COLOR_RESET}"
 
 #===============================================================================
 # Linking
 #===============================================================================
 
-banner "Linking Executable"
+banner "${EMOJI_WRENCH} Linking Executable"
+
+# Count objects
+obj_count=$(find "$BUILD_DIR" -name '*.o' 2>/dev/null | wc -l)
+res_count=0
+[[ -f "$RESOURCE_RES" ]] && res_count=1
+obj_count_total=$((obj_count + res_count))
+
+echo -e "${COLOR_DIM}Source objects:   ${obj_count}${COLOR_RESET}"
+echo -e "${COLOR_DIM}Resource objects: ${res_count}${COLOR_RESET}"
+echo -e "${COLOR_CYAN}Total objects:    ${obj_count_total}${COLOR_RESET}"
+echo ""
 
 # Compiler arguments
 COMPILER_ARGS=(
@@ -713,13 +782,39 @@ fi
 
 LINK_LOG="$BUILD_DIR/link.log"
 
+echo -e "${COLOR_MAGENTA}Linking ${OUTPUT_EXE}...${COLOR_RESET}"
+echo -e "${COLOR_DIM}Linker:   clang-cl${COLOR_RESET}"
+echo -e "${COLOR_DIM}Subsystem: Windows${COLOR_RESET}"
+if [[ "$BUILD_TYPE" == "Debug" ]]; then
+    echo -e "${COLOR_DIM}Debug:    Full symbols${COLOR_RESET}"
+else
+    echo -e "${COLOR_DIM}Optimize: /opt:ref${COLOR_RESET}"
+fi
+echo ""
+
+LINK_START=$(date +%s)
+
 if clang-cl "${COMPILER_ARGS[@]}" -o "$OUTPUT_EXE" /link "${LINKER_ARGS[@]}" 2>"$LINK_LOG"; then
     log_output "$LINK_LOG"
-    echo "✓ Linked: $OUTPUT_EXE"
+    
+    LINK_END=$(date +%s)
+    LINK_DURATION=$((LINK_END - LINK_START))
+    
+    if [[ -f "$OUTPUT_EXE" ]]; then
+        bin_size=$(stat -c%s "$OUTPUT_EXE" 2>/dev/null || stat -f%z "$OUTPUT_EXE" 2>/dev/null || echo "0")
+        bin_size_human="$bin_size bytes"
+        if command -v numfmt >/dev/null 2>&1; then
+            bin_size_human=$(echo "$bin_size" | numfmt --to=iec-i --suffix=B)
+        fi
+        
+        echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Linked: $OUTPUT_EXE${COLOR_RESET}"
+        echo -e "${COLOR_DIM}Size:     ${bin_size_human}${COLOR_RESET}"
+        echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Link completed in ${LINK_DURATION}s${COLOR_RESET}"
+    fi
 else
     log_output "$LINK_LOG"
     cat "$LINK_LOG"
-    echo "ERROR: Linking failed"
+    echo -e "${COLOR_RED}${EMOJI_FAILED} ERROR: Linking failed${COLOR_RESET}"
     exit 1
 fi
 
@@ -727,28 +822,36 @@ fi
 # Deployment
 #===============================================================================
 
-banner "Deployment"
+banner "${EMOJI_ROCKET} Deployment"
 
 mkdir -p "$TARGET_DIR"
 sudo rm -f "$TARGET_DIR"/*.exe "$TARGET_DIR"/*.pdb
 sudo cp "$OUTPUT_EXE" "$TARGET_DIR/"
 
-echo "✓ Deployed to $TARGET_DIR"
+echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Deployed to $TARGET_DIR${COLOR_RESET}"
 
 #===============================================================================
 # Build Complete
 #===============================================================================
 
-banner "Build Complete"
+banner "${EMOJI_ROCKET} Build Complete"
 
-echo "Output:     $OUTPUT_EXE"
-echo "Size:       $(stat -c%s "$OUTPUT_EXE" | numfmt --to=iec-i --suffix=B)"
-echo "Build type: $BUILD_TYPE"
+bin_size=$(stat -c%s "$OUTPUT_EXE" 2>/dev/null || stat -f%z "$OUTPUT_EXE" 2>/dev/null || echo "0")
+bin_size_human="$bin_size bytes"
+if command -v numfmt >/dev/null 2>&1; then
+    bin_size_human=$(echo "$bin_size" | numfmt --to=iec-i --suffix=B)
+fi
+
+echo -e "${COLOR_DIM}Build dir:  $BUILD_DIR${COLOR_RESET}"
+echo -e "${COLOR_DIM}Target dir: $TARGET_DIR${COLOR_RESET}"
+echo -e "${COLOR_GREEN}${COLOR_BOLD}Output:     $OUTPUT_EXE${COLOR_RESET}"
+echo -e "${COLOR_CYAN}Size:       ${bin_size_human}${COLOR_RESET}"
+echo -e "${COLOR_CYAN}Build type: $BUILD_TYPE${COLOR_RESET}"
 echo ""
 
 # Check if there were any warnings/errors logged
 if [[ -s "$BUILD_LOG" ]]; then
-    echo "⚠  Warnings/errors logged to: $BUILD_LOG"
+    echo -e "${COLOR_YELLOW}${EMOJI_WARNING} Warnings/errors logged to: $BUILD_LOG${COLOR_RESET}"
 else
-    echo "✓ No warnings or errors"
+    echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} No warnings or errors${COLOR_RESET}"
 fi
