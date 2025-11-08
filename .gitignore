@@ -37,3 +37,6 @@ config.json
 /N/
 /P/
 /XMI/
+
+# Ignore crap
+examples/
