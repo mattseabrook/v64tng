@@ -479,7 +479,7 @@ void handleRaycastMouseMove()
         // Reset cursor to center immediately
         SetCursorPos(clientCenter.x, clientCenter.y);
 
-        state.dirtyFrame = true;
+        state.frameTiming.dirtyFrame = true;
     }
 }
 
@@ -506,7 +506,7 @@ void updateRaycasterMovement()
     static std::chrono::steady_clock::time_point lastRaycastUpdate = std::chrono::steady_clock::now();
     auto currentTime = std::chrono::steady_clock::now();
     auto elapsedTime = currentTime - lastRaycastUpdate;
-    auto frameDuration = std::chrono::microseconds(static_cast<long long>(1000000.0 / state.currentFPS));
+    auto frameDuration = std::chrono::microseconds(static_cast<long long>(1000000.0 / state.frameTiming.currentFPS));
 
     if (elapsedTime < frameDuration)
         return; // Not enough time has passed
@@ -607,7 +607,7 @@ void updateRaycasterMovement()
         if (canMoveY)
             state.raycast.player.y = newY;
 
-        state.dirtyFrame = true;
+        state.frameTiming.dirtyFrame = true;
     }
 
     lastRaycastUpdate = currentTime;
@@ -626,7 +626,7 @@ void initRaycaster()
 {
     state.raycast.enabled = true;
     state.raycast.map = &map;
-    state.currentFPS = 60.0;
+    state.frameTiming.currentFPS = 60.0;
     float fovDeg = config.contains("raycastFov") ? static_cast<float>(config["raycastFov"]) : 90.0f;
     state.raycast.player.fov = deg2rad(fovDeg);
 

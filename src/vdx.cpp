@@ -250,7 +250,7 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 	}
 
 	// Save state
-	double prevFPS = state.currentFPS;
+	double prevFPS = state.frameTiming.currentFPS;
 	VDXFile *prevVDX = state.currentVDX;
 	size_t prevFrame = state.currentFrameIndex;
 	AnimationState prevAnim = state.animation;
@@ -258,7 +258,7 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 	// Setup playback
 	if (!vdxToUse->audioData.empty())
 	{
-		state.currentFPS = 15.0;
+				state.frameTiming.currentFPS = 15.0;
 		wavPlay(std::span{vdxToUse->audioData});
 	}
 
@@ -282,7 +282,7 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 
 		auto now = std::chrono::steady_clock::now();
 		auto elapsed = now - state.animation.lastFrameTime;
-		auto frameDuration = state.animation.getFrameDuration(state.currentFPS);
+				auto frameDuration = state.animation.getFrameDuration(state.frameTiming.currentFPS);
 		if (elapsed >= frameDuration)
 		{
 			state.currentFrameIndex++;
@@ -292,7 +292,7 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 				state.currentFrameIndex = state.animation.totalFrames - 1;
 			}
 			state.animation.lastFrameTime += frameDuration;
-			state.dirtyFrame = true;
+						state.frameTiming.dirtyFrame = true;
 		}
 
 		maybeRenderFrame();
@@ -303,11 +303,11 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 
 	// Restore
 	wavStop();
-	state.currentFPS = prevFPS;
+	state.frameTiming.currentFPS = prevFPS;
 	state.currentVDX = prevVDX;
 	state.currentFrameIndex = prevFrame;
 	state.animation = prevAnim;
-	state.dirtyFrame = true;
+	state.frameTiming.dirtyFrame = true;
 }
 
 /*

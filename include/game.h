@@ -100,6 +100,16 @@ struct ViewGroup
 };
 
 ///////////////////////////////////////////////////////////////////////////////
+//     Per-frame timing state kept hot in cache
+///////////////////////////////////////////////////////////////////////////////
+struct FrameTiming
+{
+	std::chrono::steady_clock::time_point lastRenderTime{};
+	bool dirtyFrame = true;
+	double currentFPS = 24.0;
+};
+
+///////////////////////////////////////////////////////////////////////////////
 //		Struct for managing game state
 ///////////////////////////////////////////////////////////////////////////////
 struct GameState
@@ -161,11 +171,9 @@ struct GameState
 	const View *view; // Current view object
 
 	//
-	// Rendering state
+	// Rendering state (moved hot fields into FrameTiming)
 	//
-	std::chrono::steady_clock::time_point lastRenderTime{};
-	bool dirtyFrame = true;
-	double currentFPS = 24.0; // Current target FPS, adjustable during gameplay
+	FrameTiming frameTiming;
 
 	// Selected SIMD level for conversion paths
 	SIMDLevel simd = SIMDLevel::Scalar;

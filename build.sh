@@ -308,6 +308,9 @@ BUILD_TYPE="Release"
 if [[ "$1" == "debug" ]]; then
     BUILD_TYPE="Debug"
     echo "Debug build selected."
+elif [[ "$1" == "super" ]]; then
+    BUILD_TYPE="SuperRelease"
+    echo "Super-release (LTO) build selected."
 else
     echo "Release build selected."
 fi
@@ -550,6 +553,16 @@ if [[ "$BUILD_TYPE" == "Debug" ]]; then
         "-g"
         "-gcodeview"
     )
+elif [[ "$BUILD_TYPE" == "SuperRelease" ]]; then
+    CLANG_FLAGS=(
+        "${COMMON_FLAGS[@]}"
+        "${SYSTEM_INCLUDES[@]}"
+        "${USER_INCLUDES[@]}"
+        "-O3"
+        "-DNDEBUG"
+        "-fno-rtti"
+        "-flto"
+    )
 else
     CLANG_FLAGS=(
         "${COMMON_FLAGS[@]}"
@@ -775,6 +788,9 @@ LINKER_ARGS=(
 if [[ "$BUILD_TYPE" == "Debug" ]]; then
     OUTPUT_EXE="v64tng-debug.exe"
     LINKER_ARGS+=("/debug:full")
+elif [[ "$BUILD_TYPE" == "SuperRelease" ]]; then
+    OUTPUT_EXE="v64tng.exe"
+    LINKER_ARGS+=("/opt:ref" "/LTCG")
 else
     OUTPUT_EXE="v64tng.exe"
     LINKER_ARGS+=("/opt:ref")
@@ -787,6 +803,8 @@ echo -e "${COLOR_DIM}Linker:   clang-cl${COLOR_RESET}"
 echo -e "${COLOR_DIM}Subsystem: Windows${COLOR_RESET}"
 if [[ "$BUILD_TYPE" == "Debug" ]]; then
     echo -e "${COLOR_DIM}Debug:    Full symbols${COLOR_RESET}"
+elif [[ "$BUILD_TYPE" == "SuperRelease" ]]; then
+    echo -e "${COLOR_DIM}Optimize: /opt:ref + /LTCG (LTO)${COLOR_RESET}"
 else
     echo -e "${COLOR_DIM}Optimize: /opt:ref${COLOR_RESET}"
 fi

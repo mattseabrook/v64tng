@@ -314,7 +314,7 @@ int process_args(const std::vector<std::string> &args)
 		// Enable raycasting mode - Development/Testing purposes only
 		state.raycast.enabled = true;
 		state.raycast.map = &map; // From basement.h * make dynamic later
-		state.currentFPS = 60.0;
+				state.frameTiming.currentFPS = 60.0;
 		float fovDeg = config.contains("raycastFov") ? static_cast<float>(config["raycastFov"]) : 90.0f;
 		state.raycast.player.fov = deg2rad(fovDeg);
 

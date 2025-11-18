@@ -117,7 +117,7 @@ static void setupView(const std::string &view_name, bool is_static, auto now)
 	state.animation.isPlaying = !is_static && state.animation.totalFrames > 0;
 	state.animation.lastFrameTime = now;
 	state.previous_view = state.current_view;
-	state.dirtyFrame = true;
+	state.frameTiming.dirtyFrame = true;
 }
 
 /*
@@ -152,7 +152,7 @@ void viewHandler()
 		if (!state.transient_animation.totalFrames)
 			state.transient_animation.totalFrames = state.transientVDX->frameData.size();
 
-		if (now - state.transient_animation.lastFrameTime >= state.transient_animation.getFrameDuration(state.currentFPS))
+			if (now - state.transient_animation.lastFrameTime >= state.transient_animation.getFrameDuration(state.frameTiming.currentFPS))
 		{
 			if (++state.transient_frame_index >= state.transient_animation.totalFrames)
 			{
@@ -164,7 +164,7 @@ void viewHandler()
 				unloadVDX(state.transient_animation_name);
 				state.transient_animation_name.clear();
 				state.transientVDX = nullptr;
-				state.dirtyFrame = true; // Ensure re-render after transient
+				state.frameTiming.dirtyFrame = true; // Ensure re-render after transient
 
 				// FIXED: Refresh view to restore hotspots without restarting animation
 				auto [room, view, is_static, action] = parseToken(state.current_view);
@@ -179,8 +179,8 @@ void viewHandler()
 			}
 			else
 			{
-				state.transient_animation.lastFrameTime += state.transient_animation.getFrameDuration(state.currentFPS);
-				state.dirtyFrame = true;
+				state.transient_animation.lastFrameTime += state.transient_animation.getFrameDuration(state.frameTiming.currentFPS);
+				state.frameTiming.dirtyFrame = true;
 			}
 		}
 		updateCursorAnimation();
@@ -244,7 +244,7 @@ void viewHandler()
 
 	// Update animation
 	if (state.animation.isPlaying && state.currentVDX &&
-		now - state.animation.lastFrameTime >= state.animation.getFrameDuration(state.currentFPS))
+		now - state.animation.lastFrameTime >= state.animation.getFrameDuration(state.frameTiming.currentFPS))
 	{
 		if (++state.currentFrameIndex >= state.animation.totalFrames)
 		{
@@ -309,8 +309,8 @@ void viewHandler()
 		}
 		else
 		{
-			state.animation.lastFrameTime += state.animation.getFrameDuration(state.currentFPS);
-			state.dirtyFrame = true;
+			state.animation.lastFrameTime += state.animation.getFrameDuration(state.frameTiming.currentFPS);
+			state.frameTiming.dirtyFrame = true;
 		}
 	}
 
@@ -335,11 +335,11 @@ void maybeRenderFrame(bool force)
 	using namespace std::chrono;
 
 	auto frameDuration = microseconds(
-		static_cast<long long>(1000000.0 / state.currentFPS));
+		static_cast<long long>(1000000.0 / state.frameTiming.currentFPS));
 	auto now = steady_clock::now();
-	auto timeSinceLast = now - state.lastRenderTime;
+	auto timeSinceLast = now - state.frameTiming.lastRenderTime;
 
-	if (!force && timeSinceLast < frameDuration && !state.dirtyFrame)
+	if (!force && timeSinceLast < frameDuration && !state.frameTiming.dirtyFrame)
 		return;
 
 	if (timeSinceLast < frameDuration)
@@ -376,8 +376,8 @@ void maybeRenderFrame(bool force)
 	}
 
 	renderFrame();
-	state.lastRenderTime = steady_clock::now();
-	state.dirtyFrame = false;
+	state.frameTiming.lastRenderTime = steady_clock::now();
+	state.frameTiming.dirtyFrame = false;
 }
 
 /*
