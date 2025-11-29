@@ -234,7 +234,7 @@ static void blitToBackbuffer(float destX, float destY, float destW, float destH,
     d2dCtx.currentBackbuffer = d2dCtx.swapchain->GetCurrentBackBufferIndex();
     ID3D11RenderTargetView* rtv = d2dCtx.backbufferRTVs[d2dCtx.currentBackbuffer].Get();
     
-    // Set render target
+    // Set render target (must rebind each frame with FLIP swap chains)
     d2dCtx.d3dContext->OMSetRenderTargets(1, &rtv, nullptr);
     
     // With FLIP_DISCARD, always clear when letterboxing to ensure clean black bars
@@ -286,15 +286,16 @@ static void blitToBackbuffer(float destX, float destY, float destW, float destH,
         }
     }
     
-    // Set pipeline state
+    // Always bind shaders - compute shader path changes GPU state and D3D11 doesn't
+    // track VS/PS state separately from CS state reliably across all drivers
     d2dCtx.d3dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     d2dCtx.d3dContext->IASetInputLayout(nullptr);  // No vertex buffer needed
     d2dCtx.d3dContext->VSSetShader(d2dCtx.blitVertexShader.Get(), nullptr, 0);
     d2dCtx.d3dContext->PSSetShader(d2dCtx.blitPixelShader.Get(), nullptr, 0);
+    d2dCtx.d3dContext->PSSetSamplers(0, 1, d2dCtx.pointSampler.GetAddressOf());
     d2dCtx.d3dContext->PSSetConstantBuffers(0, 1, d2dCtx.blitConstantBuffer.GetAddressOf());
     d2dCtx.d3dContext->VSSetConstantBuffers(0, 1, d2dCtx.blitConstantBuffer.GetAddressOf());
     d2dCtx.d3dContext->PSSetShaderResources(0, 1, d2dCtx.frameTextureSRV.GetAddressOf());
-    d2dCtx.d3dContext->PSSetSamplers(0, 1, d2dCtx.pointSampler.GetAddressOf());
     
     // Draw quad (6 vertices = 2 triangles, no vertex buffer)
     d2dCtx.d3dContext->Draw(6, 0);
@@ -730,7 +731,8 @@ void renderFrameD2D()
             ID3D11Texture2D* currentStaging = d2dCtx.stagingTextures[stagingIdx].Get();
             
             D3D11_MAPPED_SUBRESOURCE mapped;
-            HRESULT hr = d2dCtx.d3dContext->Map(currentStaging, 0, D3D11_MAP_WRITE, 0, &mapped);
+            // Use WRITE_DISCARD to avoid GPU stall - tells driver we don't care about previous contents
+            HRESULT hr = d2dCtx.d3dContext->Map(currentStaging, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
             if (SUCCEEDED(hr))
             {
                 uint8_t* stagingData = static_cast<uint8_t*>(mapped.pData);
