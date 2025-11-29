@@ -91,7 +91,13 @@ size_t lzssDecompress(std::span<const uint8_t> compressedData, std::span<uint8_t
     const uint16_t F = 1 << lengthBits;
     const uint8_t THRESHOLD = 3;
 
-    std::vector<uint8_t> his_buf(N);
+    // Thread-local history buffer - allocated once per thread, reused across all calls
+    // Eliminates heap allocation on every frame during video playback
+    alignas(64) static thread_local std::vector<uint8_t> his_buf;
+    if (his_buf.size() < N)
+        his_buf.resize(N);
+    std::fill_n(his_buf.begin(), N, uint8_t{0});  // Zero-init required for correct decompression
+    
     size_t his_buf_pos = N - F;
     size_t in_buf_pos = 0;
     size_t out_pos = 0;
