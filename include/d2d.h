@@ -7,9 +7,14 @@
 #include <d2d1_1.h>
 #include <d3d11.h>
 #include <dxgi1_2.h>
+#include <dxgi1_3.h>
+#include <dxgi1_4.h>
 #include <wrl/client.h>
 
 #include "render.h"
+
+// Maximum frames in flight for pipelining (matches Vulkan)
+static constexpr UINT D2D_MAX_FRAMES_IN_FLIGHT = 2;
 
 struct D2DContext
 {
@@ -18,11 +23,21 @@ struct D2DContext
     Microsoft::WRL::ComPtr<ID2D1DeviceContext> dc;
     Microsoft::WRL::ComPtr<ID3D11Device> d3dDevice;
     Microsoft::WRL::ComPtr<ID3D11DeviceContext> d3dContext;
-    Microsoft::WRL::ComPtr<IDXGISwapChain1> swapchain;
+    Microsoft::WRL::ComPtr<IDXGISwapChain3> swapchain;  // Upgraded to SwapChain3 for GetCurrentBackBufferIndex
+    HANDLE frameLatencyWaitableObject = nullptr;        // Waitable object for frame pacing
     Microsoft::WRL::ComPtr<ID3D11Texture2D> frameTexture;
     Microsoft::WRL::ComPtr<IDXGISurface> frameSurface;
     Microsoft::WRL::ComPtr<ID2D1Bitmap1> frameBitmap;
-    Microsoft::WRL::ComPtr<ID2D1Bitmap1> targetBitmap;
+    
+    // Cached per-backbuffer render targets (avoid per-frame recreation)
+    Microsoft::WRL::ComPtr<ID2D1Bitmap1> backbufferTargets[D2D_MAX_FRAMES_IN_FLIGHT];
+    UINT currentBackbuffer = 0;
+    
+    // Staging buffer for batched row uploads
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> stagingTexture;
+    D3D11_MAPPED_SUBRESOURCE mappedStaging{};
+    bool stagingMapped = false;
+    
     std::vector<uint8_t> rowBuffer;
     std::vector<uint8_t> previousFrameData; // For dirty-row detection in 2D path
     std::vector<uint8_t> frameBGRA;         // CPU-side full BGRA buffer (accumulate changed rows)
@@ -62,6 +77,7 @@ void renderFrameRaycast();
 void renderFrameRaycastGPU();
 void resizeTexture(UINT width, UINT height);
 void cleanupD2D();
+void recreateBackbufferTargets();
 
 // Renderer-specific resize entry (called from window.cpp)
 void handleResizeD2D(int newW, int newH);
