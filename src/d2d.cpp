@@ -66,6 +66,249 @@ static Microsoft::WRL::ComPtr<ID3DBlob> compileShaderFromSource(const char* sour
 }
 
 //
+// Embedded fullscreen blit shaders (replaces D2D1 DrawBitmap for lower overhead)
+// Draws a quad (two triangles) covering the destination rectangle
+//
+static const char* g_blitShaderSource = R"(
+// Constant buffer for destination rect
+cbuffer BlitConstants : register(b0)
+{
+    float4 destRect;    // x, y, width, height normalized [0,1]
+    float2 srcSize;     // source texture dimensions (unused)
+    float2 viewportSize; // viewport dimensions (unused)
+};
+
+Texture2D<float4> srcTexture : register(t0);
+SamplerState pointSampler : register(s0);
+
+struct VSOutput
+{
+    float4 pos : SV_Position;
+    float2 uv : TEXCOORD0;
+};
+
+// Generate a quad as two triangles (6 vertices)
+// Triangle 1: 0,1,2  Triangle 2: 3,4,5
+// Vertices: TL(0), TR(1), BL(2), TR(3), BR(4), BL(5)
+VSOutput VSMain(uint vertexId : SV_VertexID)
+{
+    VSOutput output;
+    
+    // Quad corners: top-left, top-right, bottom-left, bottom-right
+    // Triangle 1: TL, TR, BL (0, 1, 2)
+    // Triangle 2: TR, BR, BL (3, 4, 5)
+    float2 corners[6];
+    corners[0] = float2(0.0, 0.0); // TL
+    corners[1] = float2(1.0, 0.0); // TR
+    corners[2] = float2(0.0, 1.0); // BL
+    corners[3] = float2(1.0, 0.0); // TR
+    corners[4] = float2(1.0, 1.0); // BR
+    corners[5] = float2(0.0, 1.0); // BL
+    
+    float2 corner = corners[vertexId];
+    
+    // UV matches corner position exactly [0,1]
+    output.uv = corner;
+    
+    // Scale and offset position to destination rect
+    float2 screenPos;
+    screenPos.x = destRect.x + corner.x * destRect.z;
+    screenPos.y = destRect.y + corner.y * destRect.w;
+    
+    // Convert to clip space [-1, 1]
+    output.pos.x = screenPos.x * 2.0 - 1.0;
+    output.pos.y = -(screenPos.y * 2.0 - 1.0); // Flip Y for D3D
+    output.pos.z = 0.0;
+    output.pos.w = 1.0;
+    
+    return output;
+}
+
+float4 PSMain(VSOutput input) : SV_Target
+{
+    return srcTexture.Sample(pointSampler, input.uv);
+}
+)";
+
+//
+// Initialize the D3D11 blit pipeline for direct rendering (bypasses D2D1)
+//
+static void initializeBlitPipeline()
+{
+    // Compile vertex shader
+    auto vsBlob = compileShaderFromSource(g_blitShaderSource, "VSMain", "vs_5_0");
+    HRESULT hr = d2dCtx.d3dDevice->CreateVertexShader(
+        vsBlob->GetBufferPointer(),
+        vsBlob->GetBufferSize(),
+        nullptr,
+        d2dCtx.blitVertexShader.GetAddressOf()
+    );
+    if (FAILED(hr))
+        throw std::runtime_error("Failed to create blit vertex shader");
+    
+    // Compile pixel shader
+    auto psBlob = compileShaderFromSource(g_blitShaderSource, "PSMain", "ps_5_0");
+    hr = d2dCtx.d3dDevice->CreatePixelShader(
+        psBlob->GetBufferPointer(),
+        psBlob->GetBufferSize(),
+        nullptr,
+        d2dCtx.blitPixelShader.GetAddressOf()
+    );
+    if (FAILED(hr))
+        throw std::runtime_error("Failed to create blit pixel shader");
+    
+    // Create point sampler (nearest neighbor filtering)
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+    samplerDesc.MinLOD = 0;
+    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+    
+    hr = d2dCtx.d3dDevice->CreateSamplerState(&samplerDesc, d2dCtx.pointSampler.GetAddressOf());
+    if (FAILED(hr))
+        throw std::runtime_error("Failed to create point sampler");
+    
+    // Create constant buffer for blit parameters
+    D3D11_BUFFER_DESC cbDesc = {};
+    cbDesc.ByteWidth = sizeof(float) * 8; // destRect(4) + srcSize(2) + viewportSize(2)
+    cbDesc.Usage = D3D11_USAGE_DYNAMIC;
+    cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    
+    hr = d2dCtx.d3dDevice->CreateBuffer(&cbDesc, nullptr, d2dCtx.blitConstantBuffer.GetAddressOf());
+    if (FAILED(hr))
+        throw std::runtime_error("Failed to create blit constant buffer");
+}
+
+//
+// Create RTVs and SRV for the blit pipeline
+//
+static void recreateBlitResources()
+{
+    // Create RTVs for each backbuffer
+    for (UINT i = 0; i < D2D_MAX_FRAMES_IN_FLIGHT; ++i)
+    {
+        d2dCtx.backbufferRTVs[i].Reset();
+        
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
+        HRESULT hr = d2dCtx.swapchain->GetBuffer(i, IID_PPV_ARGS(backBuffer.GetAddressOf()));
+        if (FAILED(hr)) continue;
+        
+        hr = d2dCtx.d3dDevice->CreateRenderTargetView(backBuffer.Get(), nullptr, d2dCtx.backbufferRTVs[i].GetAddressOf());
+        if (FAILED(hr))
+            throw std::runtime_error("Failed to create backbuffer RTV");
+    }
+}
+
+//
+// Create SRV for frame texture (called when texture is resized)
+//
+static void createFrameTextureSRV()
+{
+    d2dCtx.frameTextureSRV.Reset();
+    
+    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+    srvDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MipLevels = 1;
+    srvDesc.Texture2D.MostDetailedMip = 0;
+    
+    HRESULT hr = d2dCtx.d3dDevice->CreateShaderResourceView(
+        d2dCtx.frameTexture.Get(),
+        &srvDesc,
+        d2dCtx.frameTextureSRV.GetAddressOf()
+    );
+    if (FAILED(hr))
+        throw std::runtime_error("Failed to create frame texture SRV");
+}
+
+//
+// Blit frame texture to backbuffer using D3D11 directly (low overhead)
+//
+static void blitToBackbuffer(float destX, float destY, float destW, float destH, 
+                              float srcW, float srcH, bool needsLetterbox)
+{
+    d2dCtx.currentBackbuffer = d2dCtx.swapchain->GetCurrentBackBufferIndex();
+    ID3D11RenderTargetView* rtv = d2dCtx.backbufferRTVs[d2dCtx.currentBackbuffer].Get();
+    
+    // Set render target
+    d2dCtx.d3dContext->OMSetRenderTargets(1, &rtv, nullptr);
+    
+    // With FLIP_DISCARD, always clear when letterboxing to ensure clean black bars
+    if (needsLetterbox)
+    {
+        float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        d2dCtx.d3dContext->ClearRenderTargetView(rtv, clearColor);
+    }
+    
+    // Set viewport
+    D3D11_VIEWPORT viewport = {};
+    viewport.TopLeftX = 0.0f;
+    viewport.TopLeftY = 0.0f;
+    viewport.Width = static_cast<float>(state.ui.width);
+    viewport.Height = static_cast<float>(state.ui.height);
+    viewport.MinDepth = 0.0f;
+    viewport.MaxDepth = 1.0f;
+    d2dCtx.d3dContext->RSSetViewports(1, &viewport);
+    
+    // Update constant buffer only if values changed
+    bool needsUpdate = (destX != d2dCtx.lastBlitDestX || destY != d2dCtx.lastBlitDestY ||
+                        destW != d2dCtx.lastBlitDestW || destH != d2dCtx.lastBlitDestH ||
+                        srcW != d2dCtx.lastBlitSrcW || srcH != d2dCtx.lastBlitSrcH);
+    
+    if (needsUpdate)
+    {
+        D3D11_MAPPED_SUBRESOURCE mapped;
+        HRESULT hr = d2dCtx.d3dContext->Map(d2dCtx.blitConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+        if (SUCCEEDED(hr))
+        {
+            float* data = static_cast<float*>(mapped.pData);
+            // Convert pixel coordinates to normalized [0,1] for the shader
+            data[0] = destX / static_cast<float>(state.ui.width);   // destRect.x
+            data[1] = destY / static_cast<float>(state.ui.height);  // destRect.y
+            data[2] = destW / static_cast<float>(state.ui.width);   // destRect.width
+            data[3] = destH / static_cast<float>(state.ui.height);  // destRect.height
+            data[4] = srcW;                                          // srcSize.x
+            data[5] = srcH;                                          // srcSize.y
+            data[6] = static_cast<float>(state.ui.width);           // viewportSize.x
+            data[7] = static_cast<float>(state.ui.height);          // viewportSize.y
+            d2dCtx.d3dContext->Unmap(d2dCtx.blitConstantBuffer.Get(), 0);
+            
+            d2dCtx.lastBlitDestX = destX;
+            d2dCtx.lastBlitDestY = destY;
+            d2dCtx.lastBlitDestW = destW;
+            d2dCtx.lastBlitDestH = destH;
+            d2dCtx.lastBlitSrcW = srcW;
+            d2dCtx.lastBlitSrcH = srcH;
+        }
+    }
+    
+    // Set pipeline state
+    d2dCtx.d3dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    d2dCtx.d3dContext->IASetInputLayout(nullptr);  // No vertex buffer needed
+    d2dCtx.d3dContext->VSSetShader(d2dCtx.blitVertexShader.Get(), nullptr, 0);
+    d2dCtx.d3dContext->PSSetShader(d2dCtx.blitPixelShader.Get(), nullptr, 0);
+    d2dCtx.d3dContext->PSSetConstantBuffers(0, 1, d2dCtx.blitConstantBuffer.GetAddressOf());
+    d2dCtx.d3dContext->VSSetConstantBuffers(0, 1, d2dCtx.blitConstantBuffer.GetAddressOf());
+    d2dCtx.d3dContext->PSSetShaderResources(0, 1, d2dCtx.frameTextureSRV.GetAddressOf());
+    d2dCtx.d3dContext->PSSetSamplers(0, 1, d2dCtx.pointSampler.GetAddressOf());
+    
+    // Draw quad (6 vertices = 2 triangles, no vertex buffer)
+    d2dCtx.d3dContext->Draw(6, 0);
+    
+    // Unbind SRV to allow texture to be written next frame
+    ID3D11ShaderResourceView* nullSRV = nullptr;
+    d2dCtx.d3dContext->PSSetShaderResources(0, 1, &nullSRV);
+    
+    // Unbind render target
+    ID3D11RenderTargetView* nullRTV = nullptr;
+    d2dCtx.d3dContext->OMSetRenderTargets(1, &nullRTV, nullptr);
+}
+
+//
 // Initialize GPU compute pipeline for RGB to BGRA conversion
 //
 static void initializeGPUPipeline()
@@ -240,8 +483,12 @@ void initializeD2D()
     d2dCtx.swapchain->SetMaximumFrameLatency(1);
     d2dCtx.frameLatencyWaitableObject = d2dCtx.swapchain->GetFrameLatencyWaitableObject();
 
-    // Create cached backbuffer targets
+    // Create cached backbuffer targets (legacy D2D1 path)
     recreateBackbufferTargets();
+    
+    // Initialize D3D11 blit pipeline (replaces D2D1 DrawBitmap)
+    initializeBlitPipeline();
+    recreateBlitResources();
 
     // Mirror Vulkan texture sizing logic
     UINT texW = state.raycast.enabled ? state.ui.width : MIN_CLIENT_WIDTH;
@@ -293,7 +540,8 @@ void resizeTexture(UINT width, UINT height)
     d2dCtx.frameSurface.Reset();
     d2dCtx.frameTexture.Reset();
     d2dCtx.frameTextureUAV.Reset();
-    d2dCtx.stagingTexture.Reset();
+    for (UINT i = 0; i < D2D_MAX_FRAMES_IN_FLIGHT; ++i)
+        d2dCtx.stagingTextures[i].Reset();
 
     D3D11_TEXTURE2D_DESC texDesc = {};
     texDesc.Width = width;
@@ -311,15 +559,19 @@ void resizeTexture(UINT width, UINT height)
     if (FAILED(hr))
         throw std::runtime_error("Failed D3D texture");
 
-    // Create staging texture for batched CPU-to-GPU uploads
+    // Create double-buffered staging textures for pipelined CPU-to-GPU uploads
+    // This avoids GPU stalls by writing to one staging texture while GPU reads from another
     D3D11_TEXTURE2D_DESC stagingDesc = texDesc;
     stagingDesc.Usage = D3D11_USAGE_STAGING;
     stagingDesc.BindFlags = 0;
     stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     
-    hr = d2dCtx.d3dDevice->CreateTexture2D(&stagingDesc, nullptr, d2dCtx.stagingTexture.GetAddressOf());
-    if (FAILED(hr))
-        throw std::runtime_error("Failed D3D staging texture");
+    for (UINT i = 0; i < D2D_MAX_FRAMES_IN_FLIGHT; ++i)
+    {
+        hr = d2dCtx.d3dDevice->CreateTexture2D(&stagingDesc, nullptr, d2dCtx.stagingTextures[i].GetAddressOf());
+        if (FAILED(hr))
+            throw std::runtime_error("Failed D3D staging texture");
+    }
 
     d2dCtx.frameTexture.As(&d2dCtx.frameSurface);
 
@@ -343,6 +595,9 @@ void resizeTexture(UINT width, UINT height)
     if (FAILED(hr))
         throw std::runtime_error("Failed to create frame texture UAV");
 
+    // Create SRV for the blit pipeline
+    createFrameTextureSRV();
+
     d2dCtx.rowBuffer.resize(width * 4);
     d2dCtx.frameBGRA.resize(static_cast<size_t>(width) * height * 4);
     resizeFrameBuffers(d2dCtx.previousFrameData, d2dCtx.forceFullUpdate, width, height);
@@ -352,6 +607,10 @@ void resizeTexture(UINT width, UINT height)
     {
         resizeGPUBuffers(width, height);
     }
+    
+    // Invalidate cached blit constants since texture size changed
+    d2dCtx.lastBlitSrcW = -1.0f;
+    d2dCtx.lastBlitSrcH = -1.0f;
     
     d2dCtx.textureWidth = width;
     d2dCtx.textureHeight = height;
@@ -402,7 +661,7 @@ void renderFrameD2D()
         {
             // GPU compute path: Upload RGB data and dispatch compute shader
             
-            // Upload RGB data to GPU buffer
+            // Upload RGB data to GPU buffer using WRITE_DISCARD (most efficient)
             D3D11_MAPPED_SUBRESOURCE mappedResource;
             HRESULT hr = d2dCtx.d3dContext->Map(
                 d2dCtx.inputRGBBuffer.Get(),
@@ -419,48 +678,59 @@ void renderFrameD2D()
                 memcpy(mappedResource.pData, pixels.data(), copySize);
                 d2dCtx.d3dContext->Unmap(d2dCtx.inputRGBBuffer.Get(), 0);
                 
-                // Update constant buffer with dimensions
-                D3D11_MAPPED_SUBRESOURCE cbMapped;
-                hr = d2dCtx.d3dContext->Map(
-                    d2dCtx.constantBuffer.Get(),
-                    0,
-                    D3D11_MAP_WRITE_DISCARD,
-                    0,
-                    &cbMapped
-                );
-                
-                if (SUCCEEDED(hr))
+                // Only update constant buffer when dimensions change (avoids redundant Map/Unmap)
+                if (d2dCtx.lastConstantWidth != d2dCtx.textureWidth || 
+                    d2dCtx.lastConstantHeight != d2dCtx.textureHeight)
                 {
-                    UINT* constants = static_cast<UINT*>(cbMapped.pData);
-                    constants[0] = d2dCtx.textureWidth;
-                    constants[1] = d2dCtx.textureHeight;
-                    constants[2] = 0; // padding
-                    constants[3] = 0; // padding
-                    d2dCtx.d3dContext->Unmap(d2dCtx.constantBuffer.Get(), 0);
+                    D3D11_MAPPED_SUBRESOURCE cbMapped;
+                    hr = d2dCtx.d3dContext->Map(
+                        d2dCtx.constantBuffer.Get(),
+                        0,
+                        D3D11_MAP_WRITE_DISCARD,
+                        0,
+                        &cbMapped
+                    );
                     
-                    // Bind resources and dispatch compute shader
-                    d2dCtx.d3dContext->CSSetShader(d2dCtx.computeShader.Get(), nullptr, 0);
-                    d2dCtx.d3dContext->CSSetConstantBuffers(0, 1, d2dCtx.constantBuffer.GetAddressOf());
-                    d2dCtx.d3dContext->CSSetShaderResources(0, 1, d2dCtx.inputRGBSRV.GetAddressOf());
-                    d2dCtx.d3dContext->CSSetUnorderedAccessViews(0, 1, d2dCtx.frameTextureUAV.GetAddressOf(), nullptr);
-                    
-                    // Dispatch compute shader (8x8 thread groups)
-                    UINT dispatchX = (d2dCtx.textureWidth + 7) / 8;
-                    UINT dispatchY = (d2dCtx.textureHeight + 7) / 8;
-                    d2dCtx.d3dContext->Dispatch(dispatchX, dispatchY, 1);
-                    
-                    // Unbind UAV only (keep shader bound for potential next dispatch)
-                    ID3D11UnorderedAccessView* nullUAV[] = { nullptr };
-                    d2dCtx.d3dContext->CSSetUnorderedAccessViews(0, 1, nullUAV, nullptr);
+                    if (SUCCEEDED(hr))
+                    {
+                        UINT* constants = static_cast<UINT*>(cbMapped.pData);
+                        constants[0] = d2dCtx.textureWidth;
+                        constants[1] = d2dCtx.textureHeight;
+                        constants[2] = 0; // padding
+                        constants[3] = 0; // padding
+                        d2dCtx.d3dContext->Unmap(d2dCtx.constantBuffer.Get(), 0);
+                        d2dCtx.lastConstantWidth = d2dCtx.textureWidth;
+                        d2dCtx.lastConstantHeight = d2dCtx.textureHeight;
+                    }
                 }
+                
+                // Bind resources and dispatch compute shader
+                d2dCtx.d3dContext->CSSetShader(d2dCtx.computeShader.Get(), nullptr, 0);
+                d2dCtx.d3dContext->CSSetConstantBuffers(0, 1, d2dCtx.constantBuffer.GetAddressOf());
+                d2dCtx.d3dContext->CSSetShaderResources(0, 1, d2dCtx.inputRGBSRV.GetAddressOf());
+                d2dCtx.d3dContext->CSSetUnorderedAccessViews(0, 1, d2dCtx.frameTextureUAV.GetAddressOf(), nullptr);
+                
+                // Dispatch compute shader (8x8 thread groups)
+                UINT dispatchX = (d2dCtx.textureWidth + 7) / 8;
+                UINT dispatchY = (d2dCtx.textureHeight + 7) / 8;
+                d2dCtx.d3dContext->Dispatch(dispatchX, dispatchY, 1);
+                
+                // Unbind UAV only (keep shader bound for potential next dispatch)
+                ID3D11UnorderedAccessView* nullUAV[] = { nullptr };
+                d2dCtx.d3dContext->CSSetUnorderedAccessViews(0, 1, nullUAV, nullptr);
             }
         }
         else
         {
-            // CPU SIMD path with batched staging texture upload
-            // Map staging texture, write all changed rows, then single CopySubresourceRegion
+            // CPU SIMD path with double-buffered staging texture for pipelined uploads
+            // Use alternating staging textures to avoid GPU stalls (similar to Vulkan approach)
+            UINT stagingIdx = d2dCtx.currentStagingIndex;
+            d2dCtx.currentStagingIndex = (d2dCtx.currentStagingIndex + 1) % D2D_MAX_FRAMES_IN_FLIGHT;
+            
+            ID3D11Texture2D* currentStaging = d2dCtx.stagingTextures[stagingIdx].Get();
+            
             D3D11_MAPPED_SUBRESOURCE mapped;
-            HRESULT hr = d2dCtx.d3dContext->Map(d2dCtx.stagingTexture.Get(), 0, D3D11_MAP_WRITE, 0, &mapped);
+            HRESULT hr = d2dCtx.d3dContext->Map(currentStaging, 0, D3D11_MAP_WRITE, 0, &mapped);
             if (SUCCEEDED(hr))
             {
                 uint8_t* stagingData = static_cast<uint8_t*>(mapped.pData);
@@ -472,7 +742,7 @@ void renderFrameD2D()
                     convertRGBRowToBGRA(pixels.data() + y * d2dCtx.textureWidth * 3, destRow, d2dCtx.textureWidth);
                 }
                 
-                d2dCtx.d3dContext->Unmap(d2dCtx.stagingTexture.Get(), 0);
+                d2dCtx.d3dContext->Unmap(currentStaging, 0);
                 
                 // Find contiguous regions and batch copy
                 if (!changed.empty())
@@ -495,7 +765,7 @@ void renderFrameD2D()
                         d2dCtx.d3dContext->CopySubresourceRegion(
                             d2dCtx.frameTexture.Get(), 0,
                             0, static_cast<UINT>(start), 0,
-                            d2dCtx.stagingTexture.Get(), 0,
+                            currentStaging, 0,
                             &box);
                     };
                     
@@ -521,49 +791,38 @@ void renderFrameD2D()
         }
     }
 
-    // Get current backbuffer index and use cached target
-    d2dCtx.currentBackbuffer = d2dCtx.swapchain->GetCurrentBackBufferIndex();
-    ID2D1Bitmap1* target = d2dCtx.backbufferTargets[d2dCtx.currentBackbuffer].Get();
-    
-    d2dCtx.dc->SetTarget(target);
-    d2dCtx.dc->BeginDraw();
-    // Skip Clear() when drawing full-screen - DrawBitmap will overwrite everything
-
     // Mirror Vulkan behavior precisely:
     // - Raycast: fill entire client area.
     // - FMV/2D: keep 640x320 logical content, scale to window width and letterbox vertically.
-    D2D1_RECT_F src = {0.0f, 0.0f, static_cast<float>(d2dCtx.textureWidth), static_cast<float>(d2dCtx.textureHeight)};
-    D2D1_RECT_F dest;
+    float destX, destY, destW, destH;
     bool needsClear = false;
     
     if (state.raycast.enabled)
     {
-        dest = {0.0f, 0.0f, static_cast<float>(state.ui.width), static_cast<float>(state.ui.height)};
+        destX = 0.0f;
+        destY = 0.0f;
+        destW = static_cast<float>(state.ui.width);
+        destH = static_cast<float>(state.ui.height);
     }
     else
     {
         float scaledH = MIN_CLIENT_HEIGHT * scaleFactor;
         float offsetY = (static_cast<float>(state.ui.height) - scaledH) * 0.5f;
-        dest = {0.0f, offsetY, static_cast<float>(state.ui.width), offsetY + scaledH};
+        destX = 0.0f;
+        destY = offsetY;
+        destW = static_cast<float>(state.ui.width);
+        destH = scaledH;
         // Only clear if letterboxing is visible
         needsClear = (offsetY > 0.5f);
     }
 
-    if (needsClear)
-    {
-        d2dCtx.dc->Clear(D2D1::ColorF(D2D1::ColorF::Black));
-    }
-
-    d2dCtx.dc->DrawBitmap(d2dCtx.frameBitmap.Get(), &dest, 1.0f, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, &src);
-
-    HRESULT hr = d2dCtx.dc->EndDraw();
-    if (FAILED(hr))
-        throw std::runtime_error("Failed draw");
-
-    d2dCtx.dc->SetTarget(nullptr);
+    // Use direct D3D11 blit (lower overhead than D2D1 DrawBitmap)
+    blitToBackbuffer(destX, destY, destW, destH,
+                     static_cast<float>(d2dCtx.textureWidth),
+                     static_cast<float>(d2dCtx.textureHeight),
+                     needsClear);
     
-    // Present with ALLOW_TEARING for lower latency when not letterboxing
-    // Use sync interval 1 for vsync
+    // Present with vsync
     d2dCtx.swapchain->Present(1, 0);
 }
 
@@ -598,24 +857,14 @@ void renderFrameRaycast()
         pitch,
         0);
 
-    // Use cached backbuffer target
-    d2dCtx.currentBackbuffer = d2dCtx.swapchain->GetCurrentBackBufferIndex();
-    ID2D1Bitmap1* target = d2dCtx.backbufferTargets[d2dCtx.currentBackbuffer].Get();
+    // Use direct D3D11 blit (lower overhead than D2D1 DrawBitmap)
+    blitToBackbuffer(0.0f, 0.0f,
+                     static_cast<float>(state.ui.width),
+                     static_cast<float>(state.ui.height),
+                     static_cast<float>(state.ui.width),
+                     static_cast<float>(state.ui.height),
+                     false);  // No clear needed - covers entire surface
     
-    d2dCtx.dc->SetTarget(target);
-    d2dCtx.dc->BeginDraw();
-    // No Clear() needed - drawing covers entire surface
-
-    D2D1_RECT_F dest = {0.0f, 0.0f, static_cast<float>(state.ui.width), static_cast<float>(state.ui.height)};
-    D2D1_RECT_F src = {0.0f, 0.0f, static_cast<float>(state.ui.width), static_cast<float>(state.ui.height)};
-
-    d2dCtx.dc->DrawBitmap(d2dCtx.frameBitmap.Get(), &dest, 1.0f, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, &src);
-
-    HRESULT hr = d2dCtx.dc->EndDraw();
-    if (FAILED(hr))
-        throw std::runtime_error("Failed draw raycast");
-
-    d2dCtx.dc->SetTarget(nullptr);
     d2dCtx.swapchain->Present(1, 0);
 }
 
@@ -842,24 +1091,14 @@ void renderFrameRaycastGPU()
     ID3D11UnorderedAccessView* nullUAV = nullptr;
     d2dCtx.d3dContext->CSSetUnorderedAccessViews(0, 1, &nullUAV, nullptr);
     
-    // Use cached backbuffer target
-    d2dCtx.currentBackbuffer = d2dCtx.swapchain->GetCurrentBackBufferIndex();
-    ID2D1Bitmap1* target = d2dCtx.backbufferTargets[d2dCtx.currentBackbuffer].Get();
+    // Use direct D3D11 blit (lower overhead than D2D1 DrawBitmap)
+    blitToBackbuffer(0.0f, 0.0f,
+                     static_cast<float>(state.ui.width),
+                     static_cast<float>(state.ui.height),
+                     static_cast<float>(state.ui.width),
+                     static_cast<float>(state.ui.height),
+                     false);  // No clear needed - covers entire surface
     
-    d2dCtx.dc->SetTarget(target);
-    d2dCtx.dc->BeginDraw();
-    // No Clear() needed - drawing covers entire surface
-    
-    D2D1_RECT_F dest = {0.0f, 0.0f, static_cast<float>(state.ui.width), static_cast<float>(state.ui.height)};
-    D2D1_RECT_F src = {0.0f, 0.0f, static_cast<float>(state.ui.width), static_cast<float>(state.ui.height)};
-    
-    d2dCtx.dc->DrawBitmap(d2dCtx.frameBitmap.Get(), &dest, 1.0f, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, &src);
-    
-    hr = d2dCtx.dc->EndDraw();
-    if (FAILED(hr))
-        throw std::runtime_error("Failed draw raycast GPU");
-    
-    d2dCtx.dc->SetTarget(nullptr);
     d2dCtx.swapchain->Present(1, 0);
 }
 
@@ -890,10 +1129,11 @@ void handleResizeD2D(int newW, int newH)
         d2dCtx.dc->Flush();
     }
     
-    // Release cached backbuffer targets
+    // Release cached backbuffer targets (both D2D1 and D3D11 RTVs)
     for (UINT i = 0; i < D2D_MAX_FRAMES_IN_FLIGHT; ++i)
     {
         d2dCtx.backbufferTargets[i].Reset();
+        d2dCtx.backbufferRTVs[i].Reset();
     }
 
     HRESULT hr = d2dCtx.swapchain->ResizeBuffers(
@@ -910,14 +1150,19 @@ void handleResizeD2D(int newW, int newH)
         for (UINT i = 0; i < D2D_MAX_FRAMES_IN_FLIGHT; ++i)
         {
             d2dCtx.backbufferTargets[i].Reset();
+            d2dCtx.backbufferRTVs[i].Reset();
         }
         d2dCtx.swapchain->ResizeBuffers(
             D2D_MAX_FRAMES_IN_FLIGHT, newW, newH, DXGI_FORMAT_UNKNOWN,
             DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT);
     }
 
-    // Recreate cached backbuffer targets
+    // Recreate cached backbuffer targets (both D2D1 and D3D11 RTVs)
     recreateBackbufferTargets();
+    recreateBlitResources();
+    
+    // Invalidate cached blit constants since viewport changed
+    d2dCtx.lastBlitDestX = -1.0f;
 
     // Texture sizing: raycast = window size, 2D = MIN_CLIENT size
     UINT texW = state.raycast.enabled ? static_cast<UINT>(newW) : MIN_CLIENT_WIDTH;
