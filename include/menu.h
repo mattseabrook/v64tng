@@ -3,6 +3,9 @@
 #ifndef MENU_H
 #define MENU_H
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 
 enum class MenuCommands

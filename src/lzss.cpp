@@ -15,7 +15,7 @@ std::vector<uint8_t> lzssCompress(const std::vector<uint8_t> &inputData, uint8_t
 
     std::vector<uint8_t> compressedData;
     compressedData.reserve(inputData.size() / 2); // Heuristic for compression size
-    std::vector<uint8_t> his_buf(N, 0);
+    std::vector<uint8_t> his_buf(N);
     size_t his_buf_pos = N - F;
     size_t pos = 0;
 
@@ -91,7 +91,7 @@ size_t lzssDecompress(std::span<const uint8_t> compressedData, std::span<uint8_t
     const uint16_t F = 1 << lengthBits;
     const uint8_t THRESHOLD = 3;
 
-    std::vector<uint8_t> his_buf(N); // Local history.
+    std::vector<uint8_t> his_buf(N);
     size_t his_buf_pos = N - F;
     size_t in_buf_pos = 0;
     size_t out_pos = 0;

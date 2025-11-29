@@ -3,6 +3,9 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 
 /*

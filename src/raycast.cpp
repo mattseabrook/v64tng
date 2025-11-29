@@ -13,14 +13,8 @@
 #include "basement.h"
 #include "megatexture.h"
 
-#ifdef WIN32
-#undef min
-#undef max
-#endif
-
 // Local state for raycasting
 bool g_keys[256] = {false};
-std::mutex mutex;
 
 //
 // Initialize player position and orientation from the map
@@ -378,7 +372,7 @@ void renderChunk(const std::vector<std::vector<uint8_t>> &tileMap,
             // hit.distance *= std::cos(rayAngle - player.angle); // Fisheye correction
             accumulateColumn(x, hit, screenHeight, halfWidth, halfHeight, maxRadius, torchRange, accumR, accumG, accumB);
         }
-        std::lock_guard lock(mutex);
+        // No mutex needed - each thread writes to distinct columns, no overlap
         for (int y = 0; y < screenHeight; ++y)
         {
             size_t idx = static_cast<size_t>(y) * pitch + static_cast<size_t>(x) * 4;
@@ -408,7 +402,7 @@ void renderRaycastView(const std::vector<std::vector<uint8_t>> &tileMap,
     {
         int s = i * chunk;
         int e = (i + 1 == nThreads) ? w : s + chunk;
-        threads.emplace_back([=, &tileMap, &p, &fb]
+        threads.emplace_back([&tileMap, &p, fb, pitch, w, h, ss, s, e]
                              { renderChunk(tileMap, p, fb, pitch, w, h, ss, s, e); });
     }
     // Wait for threads to finish

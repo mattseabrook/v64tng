@@ -1,5 +1,8 @@
 // system.cpp
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 #include <intrin.h>
 #include <string>

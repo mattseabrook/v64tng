@@ -1,19 +1,14 @@
 // d2d.cpp
 
 #include <stdexcept>
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 #include <fstream>
 #include <vector>
 #include <algorithm>
 #include <d3dcompiler.h>
-
-// Undefine Windows min/max macros that conflict with std::min/std::max
-#ifdef min
-#undef min
-#endif
-#ifdef max
-#undef max
-#endif
 
 #include "d2d.h"
 #include "config.h"

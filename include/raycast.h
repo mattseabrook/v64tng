@@ -5,6 +5,9 @@
 
 #include <vector>
 #include <cstdint>
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 
 //

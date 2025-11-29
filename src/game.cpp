@@ -21,6 +21,12 @@
 #include "fh.h"
 #include "dr.h"
 
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#endif
+
 // Global game state
 GameState state;
 

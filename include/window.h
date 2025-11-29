@@ -2,6 +2,9 @@
 #ifndef WINDOW_H
 #define WINDOW_H
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 
 enum class RendererType

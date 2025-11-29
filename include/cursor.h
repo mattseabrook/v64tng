@@ -10,6 +10,9 @@
 #include <span>
 #include <stdexcept>
 #include <unordered_set>
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 
 /*

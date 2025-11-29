@@ -3,6 +3,9 @@
 #ifndef MAP_OVERLAY_H
 #define MAP_OVERLAY_H
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 #include <vector>
 #include <string>
