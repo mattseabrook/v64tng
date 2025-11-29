@@ -28,15 +28,13 @@ float scaleFactor = 1.0f;
 DWORD g_windowedStyle = WS_OVERLAPPEDWINDOW;
 WINDOWPLACEMENT g_windowedPlacement = {sizeof(WINDOWPLACEMENT)};
 
-std::map<RendererType, void (*)()> initializeRenderer = {
-	{RendererType::VULKAN, initializeVulkan}, {RendererType::DIRECTX, initializeD2D}};
-std::map<RendererType, void (*)()> renderFrameFuncs = {
-	{RendererType::VULKAN, renderFrameVk}, {RendererType::DIRECTX, renderFrameD2D}};
-std::map<RendererType, void (*)()> renderRaycastFuncs = {
-	{RendererType::VULKAN, renderFrameRaycastVkGPU}, {RendererType::DIRECTX, renderFrameRaycastGPU}};
-
-std::map<RendererType, void (*)()> cleanupFuncs = {
-	{RendererType::VULKAN, cleanupVulkan}, {RendererType::DIRECTX, cleanupD2D}};
+// Use arrays indexed by enum for O(1) lookup instead of std::map O(log n)
+// RendererType::VULKAN = 0, RendererType::DIRECTX = 1
+using RenderFunc = void(*)();
+static constexpr RenderFunc initializeRendererFuncs[] = { initializeVulkan, initializeD2D };
+static constexpr RenderFunc renderFrameFuncsArr[] = { renderFrameVk, renderFrameD2D };
+static constexpr RenderFunc renderRaycastFuncsArr[] = { renderFrameRaycastVkGPU, renderFrameRaycastGPU };
+static constexpr RenderFunc cleanupFuncsArr[] = { cleanupVulkan, cleanupD2D };
 
 LRESULT HandleMove(HWND hwnd)
 {
@@ -79,6 +77,9 @@ void HandleSizing(WPARAM wParam, LPARAM lParam)
 	(wParam == WMSZ_TOP || wParam == WMSZ_TOPLEFT || wParam == WMSZ_TOPRIGHT) ? rect->top = rect->bottom - reqH : rect->bottom = rect->top + reqH;
 }
 
+// Cached cursor scale to avoid redundant cursor recreation
+static float s_lastCursorScale = -1.0f;
+
 LRESULT HandleSize(HWND hwnd, WPARAM wParam)
 {
 	// Allow resizing even before UI is fully enabled so intros scale correctly
@@ -88,9 +89,11 @@ LRESULT HandleSize(HWND hwnd, WPARAM wParam)
 	GetClientRect(hwnd, &client);
 	int newW = client.right, newH = client.bottom;
 	scaleFactor = state.raycast.enabled ? 1.0f : static_cast<float>(newW) / MIN_CLIENT_WIDTH;
-	if (!g_userIsResizing && g_cursorsInitialized)
+	// Only recreate cursors if scale actually changed (expensive operation)
+	if (!g_userIsResizing && g_cursorsInitialized && scaleFactor != s_lastCursorScale)
 	{
 		recreateScaledCursors(scaleFactor);
+		s_lastCursorScale = scaleFactor;
 		forceUpdateCursor();
 	}
 	if (renderer == RendererType::DIRECTX)
@@ -177,7 +180,8 @@ LRESULT HandleMouseMove(LPARAM lParam)
 
 LRESULT HandleLButtonDown(LPARAM lParam)
 {
-	POINT pt = {LOWORD(lParam), HIWORD(lParam)};
+	// Use GET_X/Y_LPARAM for proper signed coordinate handling (multi-monitor support)
+	POINT pt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
 	float nx = static_cast<float>(pt.x) / state.ui.width * 100.0f;
 	float ny = static_cast<float>(pt.y) / state.ui.height * 100.0f;
 	if (state.animation.isPlaying || state.transient_animation.isPlaying || !state.currentVDX || !state.view)
@@ -314,9 +318,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		RECT client;
 		GetClientRect(hwnd, &client);
 		float scale = state.raycast.enabled ? 1.0f : static_cast<float>(client.right - client.left) / MIN_CLIENT_WIDTH;
-		if (g_cursorsInitialized)
+		// Only recreate cursors if scale actually changed
+		if (g_cursorsInitialized && scale != s_lastCursorScale)
 		{
 			recreateScaledCursors(scale);
+			s_lastCursorScale = scale;
 			forceUpdateCursor();
 		}
 		break;
@@ -461,7 +467,7 @@ void initWindow()
 	if (!config["fullscreen"])
 		initMenu(g_hwnd);
 	renderer = (config["renderer"] == "VULKAN") ? RendererType::VULKAN : RendererType::DIRECTX;
-	initializeRenderer[renderer]();
+	initializeRendererFuncs[static_cast<int>(renderer)]();
 	ShowWindow(g_hwnd, SW_SHOW);
 	g_mouseHook = SetWindowsHookEx(WH_MOUSE, MouseHookProc, NULL, GetCurrentThreadId());
 	SetTimer(g_hwnd, CURSOR_TIMER_ID, CURSOR_TIMER_INTERVAL, NULL);
@@ -540,7 +546,8 @@ void updateCursorBasedOnPosition(POINT clientPos)
 
 void renderFrame()
 {
-	state.raycast.enabled ? renderRaycastFuncs[renderer]() : renderFrameFuncs[renderer]();
+	const int idx = static_cast<int>(renderer);
+	state.raycast.enabled ? renderRaycastFuncsArr[idx]() : renderFrameFuncsArr[idx]();
 }
 
 void cleanupWindow()
@@ -548,5 +555,5 @@ void cleanupWindow()
 	// Restore the OS cursor visibility
 	if (state.raycast.enabled)
 		ShowCursor(TRUE);
-	cleanupFuncs[renderer]();
+	cleanupFuncsArr[static_cast<int>(renderer)]();
 }

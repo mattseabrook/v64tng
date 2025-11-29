@@ -242,34 +242,29 @@ HCURSOR createWindowsCursor(const std::vector<uint8_t> &rgbaData, int width, int
     }
 
     // Create monochrome mask bitmap (required for cursors)
-    HBITMAP mask = CreateBitmap(width, height, 1, 1, NULL);
-
-    // Fill mask bitmap based on alpha values
-    HDC hdcMask = CreateCompatibleDC(hdc);
-    HDC hdcColor = CreateCompatibleDC(hdc);
-    HBITMAP oldMask = static_cast<HBITMAP>(SelectObject(hdcMask, mask));
-    HBITMAP oldColor = static_cast<HBITMAP>(SelectObject(hdcColor, color));
-
-    // Set mask based on alpha channel (transparent where alpha > 0)
+    // Build mask bits directly instead of using slow SetPixel calls
+    // Monochrome bitmap: 1 bit per pixel, rows padded to WORD boundary
+    int maskRowBytes = ((width + 15) / 16) * 2;  // WORD-aligned row size
+    std::vector<uint8_t> maskBits(maskRowBytes * height, 0);
+    
+    // Build mask: 1 = transparent, 0 = opaque (inverted from what you'd expect)
     for (int y = 0; y < height; y++)
     {
         for (int x = 0; x < width; x++)
         {
             int idx = (y * width + x) * 4;
             BYTE alpha = rgbaData[idx + 3];
-
+            
             if (alpha < 128)
             {
-                // Transparent pixel
-                SetPixel(hdcMask, x, y, RGB(255, 255, 255));
+                // Transparent pixel - set bit to 1
+                maskBits[y * maskRowBytes + x / 8] |= (0x80 >> (x % 8));
             }
-            else
-            {
-                // Opaque pixel
-                SetPixel(hdcMask, x, y, RGB(0, 0, 0));
-            }
+            // Opaque pixels leave bit as 0
         }
     }
+    
+    HBITMAP mask = CreateBitmap(width, height, 1, 1, maskBits.data());
 
     // Create the icon info
     ICONINFO ii{};
@@ -283,10 +278,6 @@ HCURSOR createWindowsCursor(const std::vector<uint8_t> &rgbaData, int width, int
     HCURSOR hCursor = CreateIconIndirect(&ii);
 
     // Clean up
-    SelectObject(hdcMask, oldMask);
-    SelectObject(hdcColor, oldColor);
-    DeleteDC(hdcMask);
-    DeleteDC(hdcColor);
     DeleteObject(mask);
     DeleteObject(color);
     ReleaseDC(NULL, hdc);
