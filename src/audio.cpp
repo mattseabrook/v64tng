@@ -4,6 +4,9 @@
 #include <chrono>
 #include <algorithm>
 #include <span>
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -16,6 +19,14 @@
 #include "audio.h"
 #include "game.h"
 #include "config.h"
+
+// Atomic flag for thread-safe stop signaling
+static std::atomic<bool> g_audioStopRequested{false};
+
+// Synchronization for A/V sync - audio signals when playback actually starts
+static std::mutex g_audioStartMutex;
+static std::condition_variable g_audioStartCV;
+static std::atomic<bool> g_audioStarted{false};
 
 /*
 ===============================================================================
@@ -41,22 +52,24 @@ void wavPlay(std::span<const uint8_t> audioData)
 
     float volume = std::clamp(pcmVolume / 100.0f, 0.0f, 1.0f);
 
-    // Copy data only when necessary for the playback thread
-    std::vector<uint8_t> buffer{audioData.begin(), audioData.end()};
+    // Pre-process volume scaling BEFORE spawning thread for better A/V sync
+    // This ensures audio starts immediately when thread runs
+    std::vector<uint8_t> buffer(audioData.size());
+    for (size_t i = 0; i < audioData.size(); ++i)
+    {
+        int s = static_cast<int>(audioData[i]) - 128;
+        s = static_cast<int>(static_cast<float>(s) * volume);
+        s = std::clamp(s + 128, 0, 255);
+        buffer[i] = static_cast<uint8_t>(s);
+    }
 
+    g_audioStopRequested.store(false, std::memory_order_release);
+    g_audioStarted.store(false, std::memory_order_release);
     state.pcm_playing = true;
-    state.pcm_thread = std::thread([buffer = std::move(buffer), volume]() mutable
+    
+    state.pcm_thread = std::thread([buffer = std::move(buffer)]() mutable
                                    {
 #ifdef _WIN32
-                                       // Apply volume scaling
-                                       for (auto &sample : buffer)
-                                       {
-                                           int s = static_cast<int>(sample) - 128;
-                                           s = static_cast<int>(s * volume);
-                                           s = std::clamp(s + 128, 0, 255);
-                                           sample = static_cast<uint8_t>(s);
-                                       }
-
                                        WAVEFORMATEX wfx{};
                                        wfx.wFormatTag = WAVE_FORMAT_PCM;
                                        wfx.nChannels = 1;
@@ -65,9 +78,15 @@ void wavPlay(std::span<const uint8_t> audioData)
                                        wfx.nBlockAlign = static_cast<WORD>(wfx.nChannels * wfx.wBitsPerSample / 8);
                                        wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
 
-                                       HWAVEOUT hWaveOut;
+                                       HWAVEOUT hWaveOut = nullptr;
                                        if (waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR)
+                                       {
+                                           state.pcm_playing = false;
+                                           // Signal start even on failure so caller doesn't block forever
+                                           g_audioStarted.store(true, std::memory_order_release);
+                                           g_audioStartCV.notify_one();
                                            return;
+                                       }
 
                                        state.pcm_handle = hWaveOut;
                                        
@@ -79,25 +98,54 @@ void wavPlay(std::span<const uint8_t> audioData)
                                        if (waveOutPrepareHeader(hWaveOut, &hdr, sizeof(hdr)) != MMSYSERR_NOERROR)
                                        {
                                            waveOutClose(hWaveOut);
+                                           state.pcm_handle = nullptr;
+                                           state.pcm_playing = false;
+                                           g_audioStarted.store(true, std::memory_order_release);
+                                           g_audioStartCV.notify_one();
                                            return;
                                        }
 
-                                       if (waveOutWrite(hWaveOut, &hdr, sizeof(hdr)) == MMSYSERR_NOERROR)
+                                       if (waveOutWrite(hWaveOut, &hdr, sizeof(hdr)) != MMSYSERR_NOERROR)
                                        {
-                                           while (state.pcm_playing && !(hdr.dwFlags & WHDR_DONE))
-                                               std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                                           waveOutUnprepareHeader(hWaveOut, &hdr, sizeof(hdr));
+                                           waveOutClose(hWaveOut);
+                                           state.pcm_handle = nullptr;
+                                           state.pcm_playing = false;
+                                           g_audioStarted.store(true, std::memory_order_release);
+                                           g_audioStartCV.notify_one();
+                                           return;
                                        }
 
-                                       if (!state.pcm_playing)
-                                           waveOutReset(hWaveOut);
+                                       // Signal that audio has actually started playing
+                                       g_audioStarted.store(true, std::memory_order_release);
+                                       g_audioStartCV.notify_one();
+
+                                       // Poll for completion or stop request
+                                       while (!(hdr.dwFlags & WHDR_DONE))
+                                       {
+                                           if (g_audioStopRequested.load(std::memory_order_acquire))
+                                           {
+                                               waveOutReset(hWaveOut);  // Stop playback immediately
+                                               break;
+                                           }
+                                           std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                                       }
 
                                        waveOutUnprepareHeader(hWaveOut, &hdr, sizeof(hdr));
                                        waveOutClose(hWaveOut);
-                                       state.pcm_handle = NULL;
-#else
-                                       (void)volume;
+                                       state.pcm_handle = nullptr;
 #endif
-                                        state.pcm_playing = false; });
+                                       state.pcm_playing = false;
+                                   });
+    
+    // Wait for audio to actually start playing (or fail) for proper A/V sync
+    // Timeout after 500ms to avoid hanging if something goes wrong
+    {
+        std::unique_lock<std::mutex> lock(g_audioStartMutex);
+        g_audioStartCV.wait_for(lock, std::chrono::milliseconds(500), [] {
+            return g_audioStarted.load(std::memory_order_acquire);
+        });
+    }
 }
 
 //
@@ -105,7 +153,16 @@ void wavPlay(std::span<const uint8_t> audioData)
 //
 void wavStop()
 {
+    if (!state.pcm_playing && !state.pcm_thread.joinable())
+        return;
+    
+    // Signal stop request via atomic (thread-safe, no race condition)
+    g_audioStopRequested.store(true, std::memory_order_release);
+    
+    // Also set the flag for any code that checks it
     state.pcm_playing = false;
+    
+    // Wait for thread to finish (it will call waveOutReset and clean up)
     if (state.pcm_thread.joinable())
         state.pcm_thread.join();
 }
