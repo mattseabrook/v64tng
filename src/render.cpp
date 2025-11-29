@@ -114,31 +114,45 @@ static TARGET_AVX2 void convertRGBtoBGRA_AVX2(const uint8_t *rgbData, uint8_t *b
 
 /*
 ===============================================================================
-Function Name: resizeTexture
+Function Name: convertRGBRowToBGRA
 
 Description:
-    - Resizes the Direct2D texture and related resources.
-    - This is called when the window size changes or when initializing.
+    - Converts a row of RGB pixels to BGRA format using the best available
+      SIMD instruction set. Uses cached function pointer for zero-overhead
+      dispatch after initialization.
 
 Parameters:
-    - width: New width of the texture.
-    - height: New height of the texture.
+    - rgbRow: Source RGB pixel data.
+    - bgraRow: Destination BGRA pixel data.
+    - width: Number of pixels to convert.
 ===============================================================================
 */
+
+// Function pointer type for SIMD converters
+using ConvertFunc = void(*)(const uint8_t*, uint8_t*, size_t);
+
+// Cached function pointer - set once based on SIMD level
+static ConvertFunc s_convertFunc = nullptr;
+
 void convertRGBRowToBGRA(const uint8_t *rgbRow, uint8_t *bgraRow, size_t width)
 {
-    switch (state.simd)
+    // Initialize function pointer on first call (branch predictor friendly)
+    if (!s_convertFunc) [[unlikely]]
     {
-    case GameState::SIMDLevel::AVX2:
-        convertRGBtoBGRA_AVX2(rgbRow, bgraRow, width);
-        break;
-    case GameState::SIMDLevel::SSSE3:
-        convertRGBtoBGRA_SSE(rgbRow, bgraRow, width);
-        break;
-    default:
-        convertRGBtoBGRA_Scalar(rgbRow, bgraRow, width);
-        break;
+        switch (state.simd)
+        {
+        case GameState::SIMDLevel::AVX2:
+            s_convertFunc = convertRGBtoBGRA_AVX2;
+            break;
+        case GameState::SIMDLevel::SSSE3:
+            s_convertFunc = convertRGBtoBGRA_SSE;
+            break;
+        default:
+            s_convertFunc = convertRGBtoBGRA_Scalar;
+            break;
+        }
     }
+    s_convertFunc(rgbRow, bgraRow, width);
 }
 
 /*

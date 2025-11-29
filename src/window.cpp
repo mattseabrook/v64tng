@@ -111,6 +111,10 @@ LRESULT HandleSize(HWND hwnd, WPARAM wParam)
 	return 0;
 }
 
+// Cached cursor position for timer optimization
+static POINT s_lastCursorPt = {LONG_MIN, LONG_MIN};
+static bool s_cursorInClient = false;
+
 LRESULT HandleTimer(HWND hwnd, WPARAM wParam)
 {
 	if (wParam == 0x7C0B)
@@ -130,13 +134,21 @@ LRESULT HandleTimer(HWND hwnd, WPARAM wParam)
 		{
 			POINT pt;
 			GetCursorPos(&pt);
-			ScreenToClient(hwnd, &pt);
-			RECT rc;
-			GetClientRect(hwnd, &rc);
-			if (PtInRect(&rc, pt))
+			
+			// Only recalculate client rect if cursor position changed
+			if (pt.x != s_lastCursorPt.x || pt.y != s_lastCursorPt.y)
 			{
-				// Trigger a WM_SETCURSOR message
-				SendMessage(hwnd, WM_SETCURSOR, (WPARAM)hwnd, MAKELPARAM(HTCLIENT, WM_MOUSEMOVE));
+				s_lastCursorPt = pt;
+				ScreenToClient(hwnd, &pt);
+				RECT rc;
+				GetClientRect(hwnd, &rc);
+				s_cursorInClient = PtInRect(&rc, pt) != 0;
+			}
+			
+			if (s_cursorInClient)
+			{
+				// Use PostMessage for non-blocking cursor update
+				PostMessage(hwnd, WM_SETCURSOR, (WPARAM)hwnd, MAKELPARAM(HTCLIENT, WM_MOUSEMOVE));
 			}
 		}
 	}

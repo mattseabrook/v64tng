@@ -40,7 +40,8 @@ Parameters:
 std::vector<uint8_t> decompressCursorBlob(std::span<const uint8_t> compressed)
 {
     std::vector<uint8_t> output;
-    output.reserve(65536);
+    // Cursor blobs decompress to ~4-8KB typically, start smaller than 64KB
+    output.reserve(8192);
 
     size_t inPos = 0;
     bool finished = false;
@@ -309,19 +310,21 @@ HCURSOR getTransparentCursor()
 //
 std::vector<uint8_t> scaleRGBA(const std::vector<uint8_t> &src, int srcW, int srcH, int dstW, int dstH)
 {
-    std::vector<uint8_t> dst;
-    dst.reserve(dstW * dstH * 4);
+    const size_t dstSize = static_cast<size_t>(dstW) * dstH * 4;
+    std::vector<uint8_t> dst(dstSize);
+    size_t dstIdx = 0;
     for (int y = 0; y < dstH; ++y)
     {
-        int srcY = y * srcH / dstH;
+        const int srcY = y * srcH / dstH;
+        const int srcRowBase = srcY * srcW;
         for (int x = 0; x < dstW; ++x)
         {
-            int srcX = x * srcW / dstW;
-            int srcIdx = (srcY * srcW + srcX) * 4;
-            dst.push_back(src[srcIdx + 0]);
-            dst.push_back(src[srcIdx + 1]);
-            dst.push_back(src[srcIdx + 2]);
-            dst.push_back(src[srcIdx + 3]);
+            const int srcX = x * srcW / dstW;
+            const size_t srcIdx = static_cast<size_t>(srcRowBase + srcX) * 4;
+            dst[dstIdx++] = src[srcIdx + 0];
+            dst[dstIdx++] = src[srcIdx + 1];
+            dst[dstIdx++] = src[srcIdx + 2];
+            dst[dstIdx++] = src[srcIdx + 3];
         }
     }
     return dst;
