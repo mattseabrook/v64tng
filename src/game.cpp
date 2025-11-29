@@ -415,7 +415,7 @@ void init()
 	buildViewMap();
 
 	// Intro Videos and initial music: skip entirely in raycast mode
-	if (!state.raycast.enabled)
+	if (!state.raycast.enabled && !g_quitRequested)
 	{
 		// Intro Videos
 		{
@@ -432,34 +432,39 @@ void init()
 
 				vdxPlay("Vielogo.vdx", &vdx);
 			}
-			vdxPlay("TRILOGO.VDX");
+			if (!g_quitRequested)
+				vdxPlay("TRILOGO.VDX");
 		}
 
-		xmiPlay("gu61");
+		if (!g_quitRequested)
+			xmiPlay("gu61");
 	}
 
-	viewHandler();
-	maybeRenderFrame(true);
-
-	if (!initCursors("ROB.GJD", scaleFactor))
+	if (!g_quitRequested)
 	{
-		std::cerr << "WARNING: Failed to initialize cursors, using system defaults\n";
-	}
-	else
-	{
-		// Ensure the correctly scaled cursor is shown immediately at startup
-		forceUpdateCursor();
-	}
-
-	state.previous_room = state.current_room;
-	state.ui.enabled = true;
-
-	bool running = true;
-	while (running)
-	{
-		running = processEvents();
 		viewHandler();
-		maybeRenderFrame();
+		maybeRenderFrame(true);
+
+		if (!initCursors("ROB.GJD", scaleFactor))
+		{
+			std::cerr << "WARNING: Failed to initialize cursors, using system defaults\n";
+		}
+		else
+		{
+			// Ensure the correctly scaled cursor is shown immediately at startup
+			forceUpdateCursor();
+		}
+
+		state.previous_room = state.current_room;
+		state.ui.enabled = true;
+
+		bool running = true;
+		while (running)
+		{
+			running = processEvents();
+			viewHandler();
+			maybeRenderFrame();
+		}
 	}
 
 	save_config("config.json");

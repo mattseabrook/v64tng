@@ -24,6 +24,7 @@ extern HWND g_hwnd;
 extern float scaleFactor;
 extern HCURSOR currentCursor;
 extern bool g_menuActive;
+extern bool g_quitRequested;  // Set when WM_QUIT received, checked to exit early
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam);

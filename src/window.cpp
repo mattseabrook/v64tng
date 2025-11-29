@@ -474,13 +474,18 @@ void initWindow()
 	}
 }
 
+bool g_quitRequested = false;
+
 bool processEvents()
 {
 	MSG msg;
 	while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 	{
 		if (msg.message == WM_QUIT)
+		{
+			g_quitRequested = true;
 			return false;
+		}
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
