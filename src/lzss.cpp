@@ -102,34 +102,34 @@ size_t lzssDecompress(std::span<const uint8_t> compressedData, std::span<uint8_t
     size_t in_buf_pos = 0;
     size_t out_pos = 0;
 
-    while (in_buf_pos < compressedData.size() && out_pos < outputBuffer.size())
+    while (in_buf_pos < compressedData.size() && out_pos < outputBuffer.size()) [[likely]]
     {
         uint8_t flags = compressedData[in_buf_pos++];
         for (int i = 0; i < 8 && in_buf_pos < compressedData.size(); ++i, flags >>= 1)
         {
-            if (flags & 1)
+            if (flags & 1) [[likely]]  // Literal bytes are common
             {
                 const uint8_t b = compressedData[in_buf_pos++];
-                if (out_pos < outputBuffer.size())
+                if (out_pos < outputBuffer.size()) [[likely]]
                     outputBuffer[out_pos++] = b;
                 his_buf[his_buf_pos] = b;
                 his_buf_pos = (his_buf_pos + 1) & (N - 1);
             }
             else
             {
-                if (in_buf_pos + 1 >= compressedData.size())
+                if (in_buf_pos + 1 >= compressedData.size()) [[unlikely]]
                     break;
                 const uint16_t low_byte = compressedData[in_buf_pos++];
                 const uint16_t high_byte = compressedData[in_buf_pos++];
                 const uint16_t ofs_len = low_byte | (high_byte << 8);
-                if (ofs_len == 0)
+                if (ofs_len == 0) [[unlikely]]
                     return out_pos;  // End marker - terminate decompression
                 const uint16_t offset = (his_buf_pos - (ofs_len >> lengthBits)) & (N - 1);
                 const uint16_t length = (ofs_len & lengthMask) + THRESHOLD;
                 for (uint16_t j = 0; j < length; ++j)
                 {
                     const uint8_t b = his_buf[(offset + j) & (N - 1)];
-                    if (out_pos < outputBuffer.size())
+                    if (out_pos < outputBuffer.size()) [[likely]]
                         outputBuffer[out_pos++] = b;
                     his_buf[his_buf_pos] = b;
                     his_buf_pos = (his_buf_pos + 1) & (N - 1);

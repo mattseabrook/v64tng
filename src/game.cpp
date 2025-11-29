@@ -33,9 +33,14 @@ GameState state;
 //=====================================================
 
 //
-// Lookup map for views
+// Lookup map for views - uses transparent hash for string_view lookups without allocation
 //
-std::unordered_map<std::string, const View *> view_map;
+struct StringHash {
+    using is_transparent = void;
+    size_t operator()(std::string_view sv) const { return std::hash<std::string_view>{}(sv); }
+    size_t operator()(const std::string& s) const { return std::hash<std::string_view>{}(s); }
+};
+std::unordered_map<std::string, const View *, StringHash, std::equal_to<>> view_map;
 
 //
 // Lookup table for named actions
@@ -71,8 +76,9 @@ void buildViewMap()
 
 //
 // Retrieves the current view based on the current_view string
+// Uses string_view for zero-allocation lookups via transparent hash
 //
-const View *getView(const std::string &current_view) // FIXED: Corrected param name from "¤t_view"
+const View *getView(std::string_view current_view)
 {
 	auto it = view_map.find(current_view);
 	return (it != view_map.end()) ? it->second : nullptr;

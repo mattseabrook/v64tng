@@ -160,9 +160,6 @@ void parseVDXChunks(VDXFile &vdxFile)
 			const size_t frameSize = static_cast<size_t>(vdxFile.width) * vdxFile.height * 3;
 			std::vector<uint8_t> newFrame(frameSize);
 
-			std::span<uint8_t> bitmapSpan;
-			std::span<RGBColor> palSpan;
-
 			if (chunk.chunkType == 0x20)
 			{
 				// Static: Process in place

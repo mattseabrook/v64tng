@@ -6,9 +6,11 @@
 #include <map>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <chrono>
 #include <vector>
 #include <thread>
+#include <memory>
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -159,13 +161,13 @@ struct GameState
 	//
 	// 2D & FMV Graphics
 	//
-	VDXFile *currentVDX = nullptr;		  // Pointer to current VDXFile object
+	VDXFile *currentVDX = nullptr;		  // Pointer to current VDXFile object (owned, must be deleted)
 	size_t currentFrameIndex = 30;		  // Normally 0 - hard-coded to 30 for testing
 	AnimationState animation;			  // Animation state management
 	std::string transient_animation_name; // e.g., "dr_r"
 	AnimationState transient_animation;	  // Playback state for transient
 	size_t transient_frame_index = 0;	  // Current frame of transient
-	VDXFile *transientVDX = nullptr;	  // Pointer to transient VDXFile object
+	VDXFile *transientVDX = nullptr;	  // Non-owning pointer to transient VDXFile (managed by getOrLoadVDX)
 
 	std::vector<std::string> animation_sequence; // Stores the sequence of animations
 	size_t animation_queue_index = 0;			 // Current position in the animation sequence
@@ -232,7 +234,7 @@ extern GameState state;
 //=============================================================================
 
 // Function prototypes
-const View *getView(const std::string &current_view);
+const View *getView(std::string_view current_view);
 void buildViewMap();
 void viewHandler();
 void maybeRenderFrame(bool force = false);
