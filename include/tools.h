@@ -16,12 +16,11 @@
 
     7th Guest - Tools Window
 
-    GUI-based extraction and information tools replacing CLI switches.
+    GUI-based extraction and information tools.
     Provides file pickers, list views with sortable columns for:
-    - Archive Info (RL/GJD) - combined view of archive contents
-    - VDX Info - chunk-level view of VDX files
-    - Extract Cursors (-c)
-    - Extract VDX (-g) with selective extraction
+    - Archive Info (RL/GJD) - view archive contents
+    - VDX Info - chunk-level view of VDX files with extraction
+    - Cursors - extract cursor images from ROB.GJD
 
 ===============================================================================
 */
@@ -31,8 +30,4 @@ void ShowToolsWindow(HWND hParent);
 void CloseToolsWindow();
 void RegisterToolsWindowClass(HINSTANCE hInstance);
 
-// Selective extraction function
-bool extractSingleVDX(const std::string& rlFilename, const std::string& vdxName, const std::string& outputDir);
-
 #endif // TOOLS_H
-

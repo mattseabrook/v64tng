@@ -23,21 +23,18 @@ void initMenu(HWND hwnd)
 {
     HMENU hMenu = CreateMenu();
     HMENU hFileMenu = CreatePopupMenu();
-    HMENU hToolsMenu = CreatePopupMenu();
     HMENU hHelpMenu = CreatePopupMenu();
 
-    AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_FILE_OPEN), L"Open");
-    AppendMenu(hFileMenu, MF_SEPARATOR, 0, nullptr);
+    AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_FILE_LOAD), L"Load");
     AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_FILE_SAVE), L"Save");
     AppendMenu(hFileMenu, MF_SEPARATOR, 0, nullptr);
+    AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_TOOLS_WINDOW), L"Tools...");
+    AppendMenu(hFileMenu, MF_SEPARATOR, 0, nullptr);
     AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_FILE_EXIT), L"Exit");
-    
-    AppendMenu(hToolsMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_TOOLS_WINDOW), L"Extraction Tools...");
     
     AppendMenu(hHelpMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_HELP_ABOUT), L"About");
 
     AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hFileMenu), L"File");
-    AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hToolsMenu), L"Tools");
     AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hHelpMenu), L"Help");
 
     SetMenu(hwnd, hMenu);
@@ -117,11 +114,11 @@ LRESULT HandleMenuCommand(HWND hwnd, WPARAM wParam)
 {
     switch (static_cast<int>(LOWORD(wParam)))
     {
-    case static_cast<int>(MenuCommands::MC_FILE_OPEN):
-        MessageBox(hwnd, L"Open selected", L"File Menu", MB_OK);
+    case static_cast<int>(MenuCommands::MC_FILE_LOAD):
+        // Load functionality - placeholder
         break;
     case static_cast<int>(MenuCommands::MC_FILE_SAVE):
-        MessageBox(hwnd, L"Save selected", L"File Menu", MB_OK);
+        // Save functionality - placeholder
         break;
     case static_cast<int>(MenuCommands::MC_FILE_EXIT):
         save_config("config.json");

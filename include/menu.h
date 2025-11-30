@@ -10,7 +10,7 @@
 
 enum class MenuCommands
 {
-    MC_FILE_OPEN = 1,
+    MC_FILE_LOAD = 1,
     MC_FILE_SAVE,
     MC_FILE_EXIT,
     MC_TOOLS_WINDOW,
