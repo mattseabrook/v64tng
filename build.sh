@@ -783,6 +783,8 @@ LINKER_ARGS=(
     "ole32.lib"
     "uuid.lib"
     "winmm.lib"
+    "comdlg32.lib"
+    "comctl32.lib"
 )
 
 if [[ "$BUILD_TYPE" == "Debug" ]]; then

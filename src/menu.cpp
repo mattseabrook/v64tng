@@ -5,6 +5,7 @@
 #include "menu.h"
 #include "window.h"
 #include "config.h"
+#include "tools.h"
 
 /*
 ===============================================================================
@@ -22,6 +23,7 @@ void initMenu(HWND hwnd)
 {
     HMENU hMenu = CreateMenu();
     HMENU hFileMenu = CreatePopupMenu();
+    HMENU hToolsMenu = CreatePopupMenu();
     HMENU hHelpMenu = CreatePopupMenu();
 
     AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_FILE_OPEN), L"Open");
@@ -29,9 +31,13 @@ void initMenu(HWND hwnd)
     AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_FILE_SAVE), L"Save");
     AppendMenu(hFileMenu, MF_SEPARATOR, 0, nullptr);
     AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_FILE_EXIT), L"Exit");
+    
+    AppendMenu(hToolsMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_TOOLS_WINDOW), L"Extraction Tools...");
+    
     AppendMenu(hHelpMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_HELP_ABOUT), L"About");
 
     AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hFileMenu), L"File");
+    AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hToolsMenu), L"Tools");
     AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hHelpMenu), L"Help");
 
     SetMenu(hwnd, hMenu);
@@ -120,6 +126,9 @@ LRESULT HandleMenuCommand(HWND hwnd, WPARAM wParam)
     case static_cast<int>(MenuCommands::MC_FILE_EXIT):
         save_config("config.json");
         ::PostQuitMessage(0);
+        break;
+    case static_cast<int>(MenuCommands::MC_TOOLS_WINDOW):
+        ShowToolsWindow(hwnd);
         break;
     case static_cast<int>(MenuCommands::MC_HELP_ABOUT):
         DialogBox(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDD_ABOUT_DIALOG), hwnd, AboutDialogProc);

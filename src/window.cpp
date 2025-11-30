@@ -14,6 +14,7 @@
 #include "menu.h"
 #include "map_overlay.h"
 #include "raycast.h"
+#include "tools.h"
 
 constexpr UINT CURSOR_TIMER_ID = 0x7C0A;
 constexpr UINT CURSOR_TIMER_INTERVAL = static_cast<UINT>(1000.0 / CURSOR_FPS);
@@ -263,6 +264,7 @@ LRESULT HandleExitMenuLoop(HWND hwnd)
 
 LRESULT HandleDestroy()
 {
+	CloseToolsWindow();  // Close tools window if open
 	if (g_mouseHook)
 		UnhookWindowsHookEx(g_mouseHook), g_mouseHook = NULL;
 	KillTimer(g_hwnd, CURSOR_TIMER_ID);
