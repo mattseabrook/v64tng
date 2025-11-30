@@ -38,5 +38,7 @@ void forceUpdateCursor();
 void updateCursorBasedOnPosition(POINT clientPos);
 void toggleFullscreen();
 void cleanupWindow();
+void pauseCursorTimer();
+void resumeCursorTimer();
 
 #endif // WINDOW_H

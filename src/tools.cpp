@@ -212,7 +212,7 @@ void ShowToolsWindow(HWND hParent)
         WS_EX_OVERLAPPEDWINDOW,
         TOOLS_CLASS_NAME,
         L"v64tng Tools",
-        WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+        WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_CLIPCHILDREN,
         x, y, WINDOW_WIDTH, WINDOW_HEIGHT,
         hParent,  // Set parent so it closes with main window
         nullptr,
@@ -276,6 +276,7 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
     switch (msg) {
     case WM_CREATE:
         g_menuActive = true;  // Use normal Windows cursors while Tools window is open
+        pauseCursorTimer();   // Stop the animated cursor timer
         CreateTabs(hwnd);
         CreateArchiveInfoTab(hwnd);
         CreateVDXInfoTab(hwnd);
@@ -283,6 +284,11 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         CreateExtractVDXTab(hwnd);
         SwitchTab(TAB_ARCHIVE_INFO);
         return 0;
+    
+    case WM_SETCURSOR:
+        // Always use arrow cursor in Tools window
+        SetCursor(LoadCursor(nullptr, IDC_ARROW));
+        return TRUE;
         
     case WM_SIZE: {
         RECT rc;
@@ -467,6 +473,7 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         
     case WM_DESTROY:
         g_menuActive = false;  // Restore animated cursors
+        resumeCursorTimer();   // Restart the animated cursor timer
         g_toolsWindow = nullptr;
         g_hTab = nullptr;
         memset(g_archiveControls, 0, sizeof(g_archiveControls));

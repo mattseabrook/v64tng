@@ -272,6 +272,17 @@ LRESULT HandleDestroy()
 	return 0;
 }
 
+void pauseCursorTimer()
+{
+	KillTimer(g_hwnd, CURSOR_TIMER_ID);
+	KillTimer(g_hwnd, 0x7C0B);  // Kill the menu delay timer too
+}
+
+void resumeCursorTimer()
+{
+	SetTimer(g_hwnd, CURSOR_TIMER_ID, CURSOR_TIMER_INTERVAL, NULL);
+}
+
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
