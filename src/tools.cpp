@@ -23,6 +23,7 @@
 #include "extract.h"
 #include "cursor.h"
 #include "lzss.h"
+#include "bitmap.h"
 
 #pragma comment(lib, "comctl32.lib")
 
@@ -50,6 +51,12 @@ static bool g_vdxSortAscending = true;
 static uint8_t g_palette[768] = {0};  // 256 colors * 3 bytes (RGB)
 static bool g_hasPalette = false;
 
+// Bitmap data for 0x20 display
+static std::vector<uint8_t> g_bitmapData;  // RGB pixel data
+static int g_bitmapWidth = 0;
+static int g_bitmapHeight = 0;
+static HBITMAP g_hBitmap = nullptr;
+
 // Tab indices (only 3 tabs now - removed Extract VDX)
 enum TabIndex {
     TAB_ARCHIVE_INFO = 0,
@@ -76,6 +83,8 @@ enum ControlID {
     IDC_VDX_0x20_LIST = 1026,
     IDC_VDX_PALETTE_LABEL = 1033,
     IDC_VDX_PALETTE = 1034,
+    IDC_VDX_BITMAP_LABEL = 1035,
+    IDC_VDX_BITMAP = 1036,
     IDC_VDX_0x25_LABEL = 1027,
     IDC_VDX_0x25_LIST = 1028,
     IDC_VDX_0x80_LABEL = 1029,
@@ -93,8 +102,9 @@ static HWND g_hTab = nullptr;
 static HWND g_archiveControls[4] = {0};  // edit, browse btn, listview, status
 // VDX controls: [0]=edit, [1]=browse, [2]=header info, [3]=0x20 label, [4]=0x20 info,
 //               [5]=0x20 list, [6]=palette label, [7]=palette, [8]=0x25 label, [9]=0x25 list, 
-//               [10]=0x80 label, [11]=0x80 info, [12]=0x80 list, [13]=status
-static HWND g_vdxControls[14] = {0};
+//               [10]=0x80 label, [11]=0x80 info, [12]=0x80 list, [13]=status,
+//               [14]=bitmap label, [15]=bitmap display
+static HWND g_vdxControls[16] = {0};
 static HWND g_cursorControls[2] = {0};    // status, extract btn
 static HWND g_currentVDXSortList = nullptr;  // Track which VDX list is being sorted
 
@@ -112,6 +122,7 @@ static std::string g_currentVDXFile;
 // Forward declarations
 static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 static LRESULT CALLBACK PaletteWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+static LRESULT CALLBACK BitmapWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 static void CreateTabs(HWND hwnd);
 static void SwitchTab(int tabIndex);
 static void CreateArchiveInfoTab(HWND hwnd);
@@ -204,8 +215,9 @@ void ShowToolsWindow(HWND hParent)
     HINSTANCE hInstance = GetModuleHandle(nullptr);
     RegisterToolsWindowClass(hInstance);
     
-    const int WINDOW_WIDTH = 900;
-    const int WINDOW_HEIGHT = 650;
+    // Window size to accommodate 640px bitmap + left panel + margins
+    const int WINDOW_WIDTH = 1050;
+    const int WINDOW_HEIGHT = 520;
     
     int x = CW_USEDEFAULT;
     int y = CW_USEDEFAULT;
@@ -334,6 +346,56 @@ static LRESULT CALLBACK PaletteWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
                     DeleteObject(brush);
                 }
             }
+        }
+        
+        EndPaint(hwnd, &ps);
+        return 0;
+    }
+    }
+    return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+/*
+===============================================================================
+Function: BitmapWndProc - Custom control to display 0x20 bitmap at 1:1 scale
+===============================================================================
+*/
+static LRESULT CALLBACK BitmapWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    switch (msg) {
+    case WM_PAINT: {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hwnd, &ps);
+        
+        RECT rc;
+        GetClientRect(hwnd, &rc);
+        
+        // Fill background
+        HBRUSH bgBrush = CreateSolidBrush(RGB(0, 0, 0));
+        FillRect(hdc, &rc, bgBrush);
+        DeleteObject(bgBrush);
+        
+        if (!g_bitmapData.empty() && g_bitmapWidth > 0 && g_bitmapHeight > 0) {
+            // Create DIB section for display
+            BITMAPINFO bmi = {};
+            bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+            bmi.bmiHeader.biWidth = g_bitmapWidth;
+            bmi.bmiHeader.biHeight = -g_bitmapHeight;  // Negative for top-down
+            bmi.bmiHeader.biPlanes = 1;
+            bmi.bmiHeader.biBitCount = 24;
+            bmi.bmiHeader.biCompression = BI_RGB;
+            
+            // Convert RGB to BGR for Windows
+            std::vector<uint8_t> bgrData(g_bitmapData.size());
+            for (size_t i = 0; i < g_bitmapData.size(); i += 3) {
+                bgrData[i + 0] = g_bitmapData[i + 2];  // B
+                bgrData[i + 1] = g_bitmapData[i + 1];  // G
+                bgrData[i + 2] = g_bitmapData[i + 0];  // R
+            }
+            
+            // Draw 1:1 at origin
+            SetDIBitsToDevice(hdc, 0, 0, g_bitmapWidth, g_bitmapHeight,
+                0, 0, 0, g_bitmapHeight, bgrData.data(), &bmi, DIB_RGB_COLORS);
         }
         
         EndPaint(hwnd, &ps);
@@ -641,7 +703,7 @@ static void CreateArchiveInfoTab(HWND hwnd)
 
 /*
 ===============================================================================
-Function: CreateVDXInfoTab - Compact VDX viewer with palette visualization
+Function: CreateVDXInfoTab - VDX viewer with palette and bitmap display
 ===============================================================================
 */
 static void CreateVDXInfoTab(HWND hwnd)
@@ -660,23 +722,36 @@ static void CreateVDXInfoTab(HWND hwnd)
     wc.hbrBackground = (HBRUSH)(COLOR_3DFACE + 1);
     RegisterClassW(&wc);
     
+    // Register bitmap window class
+    WNDCLASSW wcBmp = {};
+    wcBmp.lpfnWndProc = BitmapWndProc;
+    wcBmp.hInstance = hInst;
+    wcBmp.lpszClassName = L"VDXBitmapClass";
+    wcBmp.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
+    RegisterClassW(&wcBmp);
+    
+    // Layout: Left side = controls/lists, Right side = bitmap (640x320)
+    // Left column width ~320, gap 10, bitmap starts at 340
+    
     // [0] File path edit
     g_vdxControls[0] = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
         WS_CHILD | ES_AUTOHSCROLL | ES_READONLY,
-        10, 45, 680, 22, hwnd, (HMENU)IDC_VDX_FILE_EDIT, hInst, nullptr);
+        10, 45, 900, 22, hwnd, (HMENU)IDC_VDX_FILE_EDIT, hInst, nullptr);
     SendMessage(g_vdxControls[0], WM_SETFONT, (WPARAM)hFont, TRUE);
     
     // [1] Browse button
     g_vdxControls[1] = CreateWindowExW(0, L"BUTTON", L"Browse...",
         WS_CHILD | BS_PUSHBUTTON,
-        700, 45, 80, 22, hwnd, (HMENU)IDC_VDX_BROWSE_BTN, hInst, nullptr);
+        920, 45, 80, 22, hwnd, (HMENU)IDC_VDX_BROWSE_BTN, hInst, nullptr);
     SendMessage(g_vdxControls[1], WM_SETFONT, (WPARAM)hFont, TRUE);
     
     // [2] VDX Header info (identifier + unknown)
     g_vdxControls[2] = CreateWindowExW(0, L"STATIC", L"",
         WS_CHILD | SS_LEFT,
-        10, 72, 770, 16, hwnd, (HMENU)IDC_VDX_HEADER_INFO, hInst, nullptr);
+        10, 72, 500, 16, hwnd, (HMENU)IDC_VDX_HEADER_INFO, hInst, nullptr);
     SendMessage(g_vdxControls[2], WM_SETFONT, (WPARAM)hFont, TRUE);
+    
+    // LEFT COLUMN - Lists and Palette
     
     // [3] 0x20 Bitmap label (bold)
     g_vdxControls[3] = CreateWindowExW(0, L"STATIC", L"0x20 Bitmap",
@@ -687,78 +762,90 @@ static void CreateVDXInfoTab(HWND hwnd)
     // [4] 0x20 info (dimensions, color depth)
     g_vdxControls[4] = CreateWindowExW(0, L"STATIC", L"",
         WS_CHILD | SS_LEFT,
-        10, 108, 300, 16, hwnd, (HMENU)IDC_VDX_0x20_INFO, hInst, nullptr);
+        10, 108, 200, 16, hwnd, (HMENU)IDC_VDX_0x20_INFO, hInst, nullptr);
     SendMessage(g_vdxControls[4], WM_SETFONT, (WPARAM)hFont, TRUE);
     
-    // [5] 0x20 ListView - compact, 4 columns only (#, Offset, Size, LZSS)
+    // [5] 0x20 ListView
     g_vdxControls[5] = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
         WS_CHILD | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL | LVS_NOCOLUMNHEADER,
-        10, 126, 300, 48, hwnd, (HMENU)IDC_VDX_0x20_LIST, hInst, nullptr);
+        10, 126, 200, 48, hwnd, (HMENU)IDC_VDX_0x20_LIST, hInst, nullptr);
     ListView_SetExtendedListViewStyle(g_vdxControls[5],
         LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
+    
+    // [6] Palette label
+    g_vdxControls[6] = CreateWindowExW(0, L"STATIC", L"Palette",
+        WS_CHILD | SS_LEFT,
+        220, 92, 100, 16, hwnd, (HMENU)IDC_VDX_PALETTE_LABEL, hInst, nullptr);
+    SendMessage(g_vdxControls[6], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
+    
+    // [7] Palette grid (128x128 = 8px per cell)
+    g_vdxControls[7] = CreateWindowExW(WS_EX_CLIENTEDGE, L"VDXPaletteClass", L"",
+        WS_CHILD,
+        220, 108, 128, 128, hwnd, (HMENU)IDC_VDX_PALETTE, hInst, nullptr);
     
     // [8] 0x25/0x00 Delta label (bold)
     g_vdxControls[8] = CreateWindowExW(0, L"STATIC", L"0x25 Delta / 0x00 Duplicate",
         WS_CHILD | SS_LEFT,
-        10, 180, 300, 16, hwnd, (HMENU)IDC_VDX_0x25_LABEL, hInst, nullptr);
+        10, 180, 200, 16, hwnd, (HMENU)IDC_VDX_0x25_LABEL, hInst, nullptr);
     SendMessage(g_vdxControls[8], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
     
-    // [9] 0x25/0x00 ListView - compact
+    // [9] 0x25/0x00 ListView
     g_vdxControls[9] = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
         WS_CHILD | LVS_REPORT | LVS_SHOWSELALWAYS | WS_VSCROLL,
-        10, 198, 300, 150, hwnd, (HMENU)IDC_VDX_0x25_LIST, hInst, nullptr);
+        10, 198, 340, 130, hwnd, (HMENU)IDC_VDX_0x25_LIST, hInst, nullptr);
     ListView_SetExtendedListViewStyle(g_vdxControls[9],
         LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
-    
-    // [6] Palette label - positioned to the right of lists
-    g_vdxControls[6] = CreateWindowExW(0, L"STATIC", L"Palette",
-        WS_CHILD | SS_LEFT,
-        320, 92, 100, 16, hwnd, (HMENU)IDC_VDX_PALETTE_LABEL, hInst, nullptr);
-    SendMessage(g_vdxControls[6], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
-    
-    // [7] Palette grid - spans height of 0x20 + 0x25 areas (126 to 348 = 222 pixels)
-    // Width proportional: 222 pixels tall, 16 cells = 13.875 per cell, use 224 for 14px cells
-    g_vdxControls[7] = CreateWindowExW(WS_EX_CLIENTEDGE, L"VDXPaletteClass", L"",
-        WS_CHILD,
-        320, 108, 224, 240, hwnd, (HMENU)IDC_VDX_PALETTE, hInst, nullptr);
     
     // [10] 0x80 Audio label (bold)
     g_vdxControls[10] = CreateWindowExW(0, L"STATIC", L"0x80 Audio",
         WS_CHILD | SS_LEFT,
-        10, 355, 200, 16, hwnd, (HMENU)IDC_VDX_0x80_LABEL, hInst, nullptr);
+        10, 335, 200, 16, hwnd, (HMENU)IDC_VDX_0x80_LABEL, hInst, nullptr);
     SendMessage(g_vdxControls[10], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
     
     // [11] 0x80 info (format details)
     g_vdxControls[11] = CreateWindowExW(0, L"STATIC", L"",
         WS_CHILD | SS_LEFT,
-        10, 371, 400, 16, hwnd, (HMENU)IDC_VDX_0x80_INFO, hInst, nullptr);
+        10, 351, 340, 16, hwnd, (HMENU)IDC_VDX_0x80_INFO, hInst, nullptr);
     SendMessage(g_vdxControls[11], WM_SETFONT, (WPARAM)hFont, TRUE);
     
-    // [12] 0x80 ListView - compact
+    // [12] 0x80 ListView
     g_vdxControls[12] = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
         WS_CHILD | LVS_REPORT | LVS_SHOWSELALWAYS | WS_VSCROLL,
-        10, 389, 300, 100, hwnd, (HMENU)IDC_VDX_0x80_LIST, hInst, nullptr);
+        10, 369, 340, 80, hwnd, (HMENU)IDC_VDX_0x80_LIST, hInst, nullptr);
     ListView_SetExtendedListViewStyle(g_vdxControls[12],
         LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
     
     // [13] Status
     g_vdxControls[13] = CreateWindowExW(0, L"STATIC", L"Select a VDX file or double-click an entry in Archive Info.",
         WS_CHILD | SS_LEFT,
-        10, 495, 600, 18, hwnd, (HMENU)IDC_VDX_STATUS, hInst, nullptr);
+        10, 455, 340, 18, hwnd, (HMENU)IDC_VDX_STATUS, hInst, nullptr);
     SendMessage(g_vdxControls[13], WM_SETFONT, (WPARAM)hFont, TRUE);
+    
+    // RIGHT COLUMN - Bitmap display (1:1)
+    
+    // [14] Bitmap label
+    g_vdxControls[14] = CreateWindowExW(0, L"STATIC", L"0x20 Bitmap Preview",
+        WS_CHILD | SS_LEFT,
+        360, 92, 200, 16, hwnd, (HMENU)IDC_VDX_BITMAP_LABEL, hInst, nullptr);
+    SendMessage(g_vdxControls[14], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
+    
+    // [15] Bitmap display (640x320 for standard VDX, or 640x480 for Vielogo)
+    g_vdxControls[15] = CreateWindowExW(WS_EX_CLIENTEDGE, L"VDXBitmapClass", L"",
+        WS_CHILD,
+        360, 108, 644, 324, hwnd, (HMENU)IDC_VDX_BITMAP, hInst, nullptr);
     
     // Setup columns for all ListViews
     LVCOLUMNW lvc = {};
     lvc.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
     
-    // 0x20 ListView columns: #, Offset, Size, LZSS
+    // 0x20 ListView columns: #, Size, LZSS (no offset, compact)
     lvc.iSubItem = 0; lvc.pszText = (LPWSTR)L"#"; lvc.cx = 30;
     ListView_InsertColumn(g_vdxControls[5], 0, &lvc);
-    lvc.iSubItem = 1; lvc.pszText = (LPWSTR)L"Offset"; lvc.cx = 85;
+    lvc.iSubItem = 1; lvc.pszText = (LPWSTR)L"Offset"; lvc.cx = 60;
     ListView_InsertColumn(g_vdxControls[5], 1, &lvc);
-    lvc.iSubItem = 2; lvc.pszText = (LPWSTR)L"Size"; lvc.cx = 85;
+    lvc.iSubItem = 2; lvc.pszText = (LPWSTR)L"Size"; lvc.cx = 60;
     ListView_InsertColumn(g_vdxControls[5], 2, &lvc);
-    lvc.iSubItem = 3; lvc.pszText = (LPWSTR)L"LZSS"; lvc.cx = 45;
+    lvc.iSubItem = 3; lvc.pszText = (LPWSTR)L"LZSS"; lvc.cx = 35;
     ListView_InsertColumn(g_vdxControls[5], 3, &lvc);
     
     // 0x25/0x00 ListView columns: #, Type, Offset, Size, LZSS
@@ -766,9 +853,9 @@ static void CreateVDXInfoTab(HWND hwnd)
     ListView_InsertColumn(g_vdxControls[9], 0, &lvc);
     lvc.iSubItem = 1; lvc.pszText = (LPWSTR)L"Type"; lvc.cx = 45;
     ListView_InsertColumn(g_vdxControls[9], 1, &lvc);
-    lvc.iSubItem = 2; lvc.pszText = (LPWSTR)L"Offset"; lvc.cx = 75;
+    lvc.iSubItem = 2; lvc.pszText = (LPWSTR)L"Offset"; lvc.cx = 80;
     ListView_InsertColumn(g_vdxControls[9], 2, &lvc);
-    lvc.iSubItem = 3; lvc.pszText = (LPWSTR)L"Size"; lvc.cx = 75;
+    lvc.iSubItem = 3; lvc.pszText = (LPWSTR)L"Size"; lvc.cx = 80;
     ListView_InsertColumn(g_vdxControls[9], 3, &lvc);
     lvc.iSubItem = 4; lvc.pszText = (LPWSTR)L"LZSS"; lvc.cx = 40;
     ListView_InsertColumn(g_vdxControls[9], 4, &lvc);
@@ -776,9 +863,9 @@ static void CreateVDXInfoTab(HWND hwnd)
     // 0x80 ListView columns: #, Offset, Size, Duration
     lvc.iSubItem = 0; lvc.pszText = (LPWSTR)L"#"; lvc.cx = 30;
     ListView_InsertColumn(g_vdxControls[12], 0, &lvc);
-    lvc.iSubItem = 1; lvc.pszText = (LPWSTR)L"Offset"; lvc.cx = 85;
+    lvc.iSubItem = 1; lvc.pszText = (LPWSTR)L"Offset"; lvc.cx = 90;
     ListView_InsertColumn(g_vdxControls[12], 1, &lvc);
-    lvc.iSubItem = 2; lvc.pszText = (LPWSTR)L"Size"; lvc.cx = 85;
+    lvc.iSubItem = 2; lvc.pszText = (LPWSTR)L"Size"; lvc.cx = 90;
     ListView_InsertColumn(g_vdxControls[12], 2, &lvc);
     lvc.iSubItem = 3; lvc.pszText = (LPWSTR)L"Duration"; lvc.cx = 65;
     ListView_InsertColumn(g_vdxControls[12], 3, &lvc);
@@ -817,7 +904,7 @@ static void HideAllTabs()
     for (int i = 0; i < 4; i++) {
         if (g_archiveControls[i]) ShowWindow(g_archiveControls[i], SW_HIDE);
     }
-    for (int i = 0; i < 14; i++) {
+    for (int i = 0; i < 16; i++) {
         if (g_vdxControls[i]) ShowWindow(g_vdxControls[i], SW_HIDE);
     }
     for (int i = 0; i < 2; i++) {
@@ -842,14 +929,15 @@ static void ShowTab(int tabIndex)
         }
         break;
     case TAB_VDX_INFO:
-        for (int i = 0; i < 14; i++) {
+        for (int i = 0; i < 16; i++) {
             if (g_vdxControls[i]) {
                 ShowWindow(g_vdxControls[i], SW_SHOW);
                 BringWindowToTop(g_vdxControls[i]);
             }
         }
-        // Refresh palette
+        // Refresh palette and bitmap
         if (g_vdxControls[7]) InvalidateRect(g_vdxControls[7], nullptr, TRUE);
+        if (g_vdxControls[15]) InvalidateRect(g_vdxControls[15], nullptr, TRUE);
         break;
     case TAB_CURSORS:
         for (int i = 0; i < 2; i++) {
@@ -983,6 +1071,9 @@ static void PopulateVDXInfoList(const std::string& filename)
     g_currentVDXFile = filename;
     g_hasPalette = false;
     memset(g_palette, 0, sizeof(g_palette));
+    g_bitmapData.clear();
+    g_bitmapWidth = 0;
+    g_bitmapHeight = 0;
     
     // Clear info texts
     SetWindowTextA(g_vdxControls[2], "");   // VDX header info
@@ -1070,11 +1161,16 @@ static void PopulateVDXInfoList(const std::string& filename)
                         bitmapWidth = numXTiles * 4;
                         bitmapHeight = numYTiles * 4;
                         
-                        // Copy palette and scale from 6-bit (0-63) to 8-bit (0-255)
-                        for (int i = 0; i < 768; i++) {
-                            g_palette[i] = static_cast<uint8_t>((dataToRead[6 + i] & 0x3F) * 255 / 63);
-                        }
+                        // Copy palette (raw 8-bit RGB values)
+                        memcpy(g_palette, dataToRead.data() + 6, 768);
                         g_hasPalette = true;
+                        
+                        // Decode the full bitmap using getBitmapData
+                        g_bitmapWidth = bitmapWidth;
+                        g_bitmapHeight = bitmapHeight;
+                        g_bitmapData.resize(static_cast<size_t>(bitmapWidth) * bitmapHeight * 3);
+                        std::vector<RGBColor> tempPalette(256);
+                        getBitmapData(dataToRead, tempPalette, g_bitmapData);
                     }
                 }
             } else if (chunk.chunkType == 0x25 || chunk.chunkType == 0x00) {
@@ -1141,9 +1237,12 @@ static void PopulateVDXInfoList(const std::string& filename)
                 bitmapWidth, bitmapHeight, colorDepth);
             SetWindowTextA(g_vdxControls[4], bitmapInfo);
             
-            // Redraw palette
+            // Redraw palette and bitmap
             if (g_vdxControls[7]) {
                 InvalidateRect(g_vdxControls[7], nullptr, TRUE);
+            }
+            if (g_vdxControls[15]) {
+                InvalidateRect(g_vdxControls[15], nullptr, TRUE);
             }
         }
         
@@ -1213,6 +1312,9 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
         g_currentVDXFile = entry.filename;
         g_hasPalette = false;
         memset(g_palette, 0, sizeof(g_palette));
+        g_bitmapData.clear();
+        g_bitmapWidth = 0;
+        g_bitmapHeight = 0;
         
         // Clear info texts
         SetWindowTextA(g_vdxControls[2], "");   // VDX header
@@ -1277,10 +1379,16 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
                         bitmapWidth = numXTiles * 4;
                         bitmapHeight = numYTiles * 4;
                         
-                        for (int i = 0; i < 768; i++) {
-                            g_palette[i] = static_cast<uint8_t>((dataToRead[6 + i] & 0x3F) * 255 / 63);
-                        }
+                        // Copy palette (raw 8-bit RGB values)
+                        memcpy(g_palette, dataToRead.data() + 6, 768);
                         g_hasPalette = true;
+                        
+                        // Decode the full bitmap using getBitmapData
+                        g_bitmapWidth = bitmapWidth;
+                        g_bitmapHeight = bitmapHeight;
+                        g_bitmapData.resize(static_cast<size_t>(bitmapWidth) * bitmapHeight * 3);
+                        std::vector<RGBColor> tempPalette(256);
+                        getBitmapData(dataToRead, tempPalette, g_bitmapData);
                     }
                 }
             } else if (chunk.chunkType == 0x25 || chunk.chunkType == 0x00) {
@@ -1340,6 +1448,7 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
                 bitmapWidth, bitmapHeight, colorDepth);
             SetWindowTextA(g_vdxControls[4], bitmapInfo);
             if (g_vdxControls[7]) InvalidateRect(g_vdxControls[7], nullptr, TRUE);
+            if (g_vdxControls[15]) InvalidateRect(g_vdxControls[15], nullptr, TRUE);
         }
         
         if (count0x80 > 0) {
