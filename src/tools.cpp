@@ -61,7 +61,8 @@ static HBITMAP g_hBitmap = nullptr;
 
 // Delta visualization
 static bool g_deltaVisualization = false;
-static std::vector<RGBColor> g_currentPalette(256);  // Current palette for delta frames
+static std::vector<RGBColor> g_basePalette(256);     // Original palette from 0x20 (never modified)
+static std::vector<RGBColor> g_currentPalette(256);  // Working palette for delta frames (gets modified)
 
 // Store decompressed chunk data for delta frame rendering
 struct DecompressedChunk {
@@ -235,7 +236,7 @@ void ShowToolsWindow(HWND hParent)
     
     // Window size to accommodate 640px bitmap + left panel + margins
     const int WINDOW_WIDTH = 1050;
-    const int WINDOW_HEIGHT = 520;
+    const int WINDOW_HEIGHT = 580;
     
     int x = CW_USEDEFAULT;
     int y = CW_USEDEFAULT;
@@ -540,8 +541,9 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                 // Item was selected
                 int selIdx = pnmv->iItem;
                 if (selIdx >= 0 && selIdx < (int)g_decompressedChunks.size() && g_baseFrame.size() > 0) {
-                    // Start from base frame
+                    // Reset to base frame AND base palette
                     g_bitmapData = g_baseFrame;
+                    g_currentPalette = g_basePalette;
                     
                     // Apply all delta frames up to and including selected one
                     for (int i = 0; i <= selIdx; i++) {
@@ -558,57 +560,110 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                                 std::span<const uint8_t> buffer(dc.data);
                                 const uint16_t localPaletteSize = buffer[0] | (buffer[1] << 8);
                                 
-                                int xPos = 0, yPos = 0;
+                                int tilesPerRow = g_bitmapWidth / 4;
+                                int numRows = g_bitmapHeight / 4;
+                                
+                                // Helper to paint a tile pink
+                                auto paintTilePink = [&](int tileX, int tileY) {
+                                    for (int ty = 0; ty < 4; ty++) {
+                                        for (int tx = 0; tx < 4; tx++) {
+                                            int px = tileX * 4 + tx;
+                                            int py = tileY * 4 + ty;
+                                            size_t pixelIndex = (py * g_bitmapWidth + px) * 3;
+                                            if (pixelIndex + 2 < g_bitmapData.size()) {
+                                                g_bitmapData[pixelIndex] = 255;     // R
+                                                g_bitmapData[pixelIndex + 1] = 0;   // G
+                                                g_bitmapData[pixelIndex + 2] = 255; // B (fuchsia)
+                                            }
+                                        }
+                                    }
+                                };
+                                
+                                int xTile = 0, yTile = 0;  // Track in tile coordinates
                                 for (size_t bufferIndex = localPaletteSize + 2; bufferIndex < buffer.size();) {
                                     const uint8_t opcode = buffer[bufferIndex++];
                                     
                                     if (opcode >= 0x62 && opcode <= 0x6B) {
-                                        // Skip tiles - highlight in pink (fuchsia)
+                                        // Skip N tiles - these are unchanged, paint pink
                                         int skipCount = opcode - 0x62;
                                         for (int s = 0; s < skipCount; s++) {
-                                            for (int ty = 0; ty < 4; ty++) {
-                                                for (int tx = 0; tx < 4; tx++) {
-                                                    size_t pixelIndex = ((yPos + ty) * g_bitmapWidth + (xPos + tx)) * 3;
-                                                    if (pixelIndex + 2 < g_bitmapData.size()) {
-                                                        g_bitmapData[pixelIndex] = 255;     // R
-                                                        g_bitmapData[pixelIndex + 1] = 0;   // G
-                                                        g_bitmapData[pixelIndex + 2] = 255; // B (fuchsia)
-                                                    }
-                                                }
+                                            if (xTile < tilesPerRow && yTile < numRows) {
+                                                paintTilePink(xTile, yTile);
                                             }
-                                            xPos += 4;
+                                            xTile++;
                                         }
                                     } else if (opcode == 0x61) {
-                                        // New row
-                                        yPos += 4;
-                                        xPos = 0;
+                                        // New row - all remaining tiles on current row are unchanged
+                                        while (xTile < tilesPerRow) {
+                                            if (yTile < numRows) {
+                                                paintTilePink(xTile, yTile);
+                                            }
+                                            xTile++;
+                                        }
+                                        yTile++;
+                                        xTile = 0;
                                     } else {
-                                        // Other opcodes advance position
+                                        // Other opcodes - tile was changed, just advance position
                                         if (opcode <= 0x5F) {
-                                            xPos += 4;
+                                            xTile++;
                                             bufferIndex += 2;
                                         } else if (opcode == 0x60) {
-                                            xPos += 4;
+                                            xTile++;
                                             bufferIndex += 16;
                                         } else if (opcode >= 0x6C && opcode <= 0x75) {
                                             int repeatCount = opcode - 0x6B;
-                                            xPos += repeatCount * 4;
+                                            xTile += repeatCount;
                                             bufferIndex += 1;
                                         } else if (opcode >= 0x76 && opcode <= 0x7F) {
                                             int colorCount = opcode - 0x75;
-                                            xPos += colorCount * 4;
+                                            xTile += colorCount;
                                             bufferIndex += colorCount;
                                         } else {
-                                            // Default case
-                                            xPos += 4;
+                                            // Default case (0x80+)
+                                            xTile++;
                                             bufferIndex += 3;
                                         }
                                     }
+                                }
+                                
+                                // After processing, fill remaining tiles on current row
+                                while (xTile < tilesPerRow && yTile < numRows) {
+                                    paintTilePink(xTile, yTile);
+                                    xTile++;
+                                }
+                                // Fill all remaining rows
+                                yTile++;
+                                while (yTile < numRows) {
+                                    for (xTile = 0; xTile < tilesPerRow; xTile++) {
+                                        paintTilePink(xTile, yTile);
+                                    }
+                                    yTile++;
                                 }
                             }
                         }
                         // 0x00 chunks are duplicates - no change needed
                     }
+                    
+                    // Refresh bitmap display
+                    if (g_vdxControls[15]) {
+                        InvalidateRect(g_vdxControls[15], nullptr, TRUE);
+                    }
+                }
+            }
+            return 0;
+        }
+        
+        // Handle 0x20 bitmap selection - reset to base frame
+        if (nmhdr->code == LVN_ITEMCHANGED && nmhdr->idFrom == IDC_VDX_0x20_LIST) {
+            NMLISTVIEW* pnmv = (NMLISTVIEW*)lParam;
+            if ((pnmv->uNewState & LVIS_SELECTED) && !(pnmv->uOldState & LVIS_SELECTED)) {
+                if (g_baseFrame.size() > 0) {
+                    // Reset to base frame and base palette
+                    g_bitmapData = g_baseFrame;
+                    g_currentPalette = g_basePalette;
+                    
+                    // Deselect any delta frame
+                    ListView_SetItemState(g_vdxControls[9], -1, 0, LVIS_SELECTED);
                     
                     // Refresh bitmap display
                     if (g_vdxControls[15]) {
@@ -692,8 +747,9 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             // Re-render current selection if any
             int selIdx = ListView_GetNextItem(g_vdxControls[9], -1, LVNI_SELECTED);
             if (selIdx >= 0 && selIdx < (int)g_decompressedChunks.size() && g_baseFrame.size() > 0) {
-                // Start from base frame
+                // Reset to base frame AND base palette
                 g_bitmapData = g_baseFrame;
+                g_currentPalette = g_basePalette;
                 
                 // Apply all delta frames up to and including selected one
                 for (int i = 0; i <= selIdx; i++) {
@@ -710,48 +766,81 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                             std::span<const uint8_t> buffer(dc.data);
                             const uint16_t localPaletteSize = buffer[0] | (buffer[1] << 8);
                             
-                            int xPos = 0, yPos = 0;
+                            int tilesPerRow = g_bitmapWidth / 4;
+                            int numRows = g_bitmapHeight / 4;
+                            
+                            // Helper to paint a tile pink
+                            auto paintTilePink = [&](int tileX, int tileY) {
+                                for (int ty = 0; ty < 4; ty++) {
+                                    for (int tx = 0; tx < 4; tx++) {
+                                        int px = tileX * 4 + tx;
+                                        int py = tileY * 4 + ty;
+                                        size_t pixelIndex = (py * g_bitmapWidth + px) * 3;
+                                        if (pixelIndex + 2 < g_bitmapData.size()) {
+                                            g_bitmapData[pixelIndex] = 255;
+                                            g_bitmapData[pixelIndex + 1] = 0;
+                                            g_bitmapData[pixelIndex + 2] = 255;
+                                        }
+                                    }
+                                }
+                            };
+                            
+                            int xTile = 0, yTile = 0;
                             for (size_t bufferIndex = localPaletteSize + 2; bufferIndex < buffer.size();) {
                                 const uint8_t opcode = buffer[bufferIndex++];
                                 
                                 if (opcode >= 0x62 && opcode <= 0x6B) {
                                     int skipCount = opcode - 0x62;
                                     for (int s = 0; s < skipCount; s++) {
-                                        for (int ty = 0; ty < 4; ty++) {
-                                            for (int tx = 0; tx < 4; tx++) {
-                                                size_t pixelIndex = ((yPos + ty) * g_bitmapWidth + (xPos + tx)) * 3;
-                                                if (pixelIndex + 2 < g_bitmapData.size()) {
-                                                    g_bitmapData[pixelIndex] = 255;
-                                                    g_bitmapData[pixelIndex + 1] = 0;
-                                                    g_bitmapData[pixelIndex + 2] = 255;
-                                                }
-                                            }
+                                        if (xTile < tilesPerRow && yTile < numRows) {
+                                            paintTilePink(xTile, yTile);
                                         }
-                                        xPos += 4;
+                                        xTile++;
                                     }
                                 } else if (opcode == 0x61) {
-                                    yPos += 4;
-                                    xPos = 0;
+                                    // Fill remaining tiles on current row
+                                    while (xTile < tilesPerRow) {
+                                        if (yTile < numRows) {
+                                            paintTilePink(xTile, yTile);
+                                        }
+                                        xTile++;
+                                    }
+                                    yTile++;
+                                    xTile = 0;
                                 } else {
                                     if (opcode <= 0x5F) {
-                                        xPos += 4;
+                                        xTile++;
                                         bufferIndex += 2;
                                     } else if (opcode == 0x60) {
-                                        xPos += 4;
+                                        xTile++;
                                         bufferIndex += 16;
                                     } else if (opcode >= 0x6C && opcode <= 0x75) {
                                         int repeatCount = opcode - 0x6B;
-                                        xPos += repeatCount * 4;
+                                        xTile += repeatCount;
                                         bufferIndex += 1;
                                     } else if (opcode >= 0x76 && opcode <= 0x7F) {
                                         int colorCount = opcode - 0x75;
-                                        xPos += colorCount * 4;
+                                        xTile += colorCount;
                                         bufferIndex += colorCount;
                                     } else {
-                                        xPos += 4;
+                                        xTile++;
                                         bufferIndex += 3;
                                     }
                                 }
+                            }
+                            
+                            // Fill remaining tiles on current row
+                            while (xTile < tilesPerRow && yTile < numRows) {
+                                paintTilePink(xTile, yTile);
+                                xTile++;
+                            }
+                            // Fill all remaining rows
+                            yTile++;
+                            while (yTile < numRows) {
+                                for (xTile = 0; xTile < tilesPerRow; xTile++) {
+                                    paintTilePink(xTile, yTile);
+                                }
+                                yTile++;
                             }
                         }
                     }
@@ -961,10 +1050,10 @@ static void CreateVDXInfoTab(HWND hwnd)
         10, 158, 60, 16, hwnd, (HMENU)IDC_VDX_PALETTE_LABEL, hInst, nullptr);
     SendMessage(g_vdxControls[6], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
     
-    // [7] Palette grid (128x128 = 8px per cell)
+    // [7] Palette grid (128x128 = 8px per cell, no extra border)
     g_vdxControls[7] = CreateWindowExW(WS_EX_CLIENTEDGE, L"VDXPaletteClass", L"",
         WS_CHILD,
-        10, 176, 130, 130, hwnd, (HMENU)IDC_VDX_PALETTE, hInst, nullptr);
+        10, 176, 128, 128, hwnd, (HMENU)IDC_VDX_PALETTE, hInst, nullptr);
     
     // [8] 0x25/0x00 Delta label (bold)
     g_vdxControls[8] = CreateWindowExW(0, L"STATIC", L"0x25 Delta / 0x00 Dup",
@@ -972,43 +1061,43 @@ static void CreateVDXInfoTab(HWND hwnd)
         150, 158, 200, 16, hwnd, (HMENU)IDC_VDX_0x25_LABEL, hInst, nullptr);
     SendMessage(g_vdxControls[8], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
     
-    // [9] 0x25/0x00 ListView - next to palette, extends to bottom
+    // [9] 0x25/0x00 ListView - next to palette, extends down
     g_vdxControls[9] = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
         WS_CHILD | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL | WS_VSCROLL,
-        150, 176, 200, 254, hwnd, (HMENU)IDC_VDX_0x25_LIST, hInst, nullptr);
+        150, 176, 200, 258, hwnd, (HMENU)IDC_VDX_0x25_LIST, hInst, nullptr);
     ListView_SetExtendedListViewStyle(g_vdxControls[9],
         LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
     
     // [16] Delta Visualization checkbox - below palette
     g_vdxControls[16] = CreateWindowExW(0, L"BUTTON", L"Show unchanged",
         WS_CHILD | BS_AUTOCHECKBOX,
-        10, 312, 130, 20, hwnd, (HMENU)IDC_VDX_DELTA_VIS_CHECK, hInst, nullptr);
+        10, 310, 128, 20, hwnd, (HMENU)IDC_VDX_DELTA_VIS_CHECK, hInst, nullptr);
     SendMessage(g_vdxControls[16], WM_SETFONT, (WPARAM)hFont, TRUE);
     
-    // [10] 0x80 Audio label (bold) - below palette
-    g_vdxControls[10] = CreateWindowExW(0, L"STATIC", L"0x80 Audio",
-        WS_CHILD | SS_LEFT,
-        10, 340, 80, 16, hwnd, (HMENU)IDC_VDX_0x80_LABEL, hInst, nullptr);
-    SendMessage(g_vdxControls[10], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
-    
-    // [11] 0x80 info (format details)
-    g_vdxControls[11] = CreateWindowExW(0, L"STATIC", L"",
-        WS_CHILD | SS_LEFT,
-        10, 358, 130, 32, hwnd, (HMENU)IDC_VDX_0x80_INFO, hInst, nullptr);
-    SendMessage(g_vdxControls[11], WM_SETFONT, (WPARAM)hFont, TRUE);
-    
-    // [12] 0x80 ListView - below 0x80 info
-    g_vdxControls[12] = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
-        WS_CHILD | LVS_REPORT | LVS_SHOWSELALWAYS | WS_VSCROLL,
-        10, 392, 130, 38, hwnd, (HMENU)IDC_VDX_0x80_LIST, hInst, nullptr);
-    ListView_SetExtendedListViewStyle(g_vdxControls[12],
-        LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
-    
-    // [13] Status - at bottom
+    // [13] Status - at bottom of window
     g_vdxControls[13] = CreateWindowExW(0, L"STATIC", L"Select a VDX file or double-click an entry in Archive Info.",
         WS_CHILD | SS_LEFT,
-        10, 436, 990, 18, hwnd, (HMENU)IDC_VDX_STATUS, hInst, nullptr);
+        10, 500, 990, 18, hwnd, (HMENU)IDC_VDX_STATUS, hInst, nullptr);
     SendMessage(g_vdxControls[13], WM_SETFONT, (WPARAM)hFont, TRUE);
+    
+    // [10] 0x80 Audio label (bold) - at bottom, spanning full width
+    g_vdxControls[10] = CreateWindowExW(0, L"STATIC", L"0x80 Audio",
+        WS_CHILD | SS_LEFT,
+        10, 440, 80, 16, hwnd, (HMENU)IDC_VDX_0x80_LABEL, hInst, nullptr);
+    SendMessage(g_vdxControls[10], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
+    
+    // [11] 0x80 info (format details) - next to label
+    g_vdxControls[11] = CreateWindowExW(0, L"STATIC", L"",
+        WS_CHILD | SS_LEFT,
+        100, 440, 250, 16, hwnd, (HMENU)IDC_VDX_0x80_INFO, hInst, nullptr);
+    SendMessage(g_vdxControls[11], WM_SETFONT, (WPARAM)hFont, TRUE);
+    
+    // [12] 0x80 ListView - wide at bottom
+    g_vdxControls[12] = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
+        WS_CHILD | LVS_REPORT | LVS_SHOWSELALWAYS | WS_HSCROLL,
+        10, 458, 340, 38, hwnd, (HMENU)IDC_VDX_0x80_LIST, hInst, nullptr);
+    ListView_SetExtendedListViewStyle(g_vdxControls[12],
+        LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
     
     // RIGHT COLUMN - Bitmap display (1:1)
     
@@ -1047,11 +1136,15 @@ static void CreateVDXInfoTab(HWND hwnd)
     lvc.iSubItem = 3; lvc.pszText = (LPWSTR)L"LZSS"; lvc.cx = 35;
     ListView_InsertColumn(g_vdxControls[9], 3, &lvc);
     
-    // 0x80 ListView columns: #, Size (very compact)
-    lvc.iSubItem = 0; lvc.pszText = (LPWSTR)L"#"; lvc.cx = 30;
+    // 0x80 ListView columns: #, Offset, Size, Duration (now wider)
+    lvc.iSubItem = 0; lvc.pszText = (LPWSTR)L"#"; lvc.cx = 35;
     ListView_InsertColumn(g_vdxControls[12], 0, &lvc);
-    lvc.iSubItem = 1; lvc.pszText = (LPWSTR)L"Size"; lvc.cx = 70;
+    lvc.iSubItem = 1; lvc.pszText = (LPWSTR)L"Offset"; lvc.cx = 80;
     ListView_InsertColumn(g_vdxControls[12], 1, &lvc);
+    lvc.iSubItem = 2; lvc.pszText = (LPWSTR)L"Size"; lvc.cx = 80;
+    ListView_InsertColumn(g_vdxControls[12], 2, &lvc);
+    lvc.iSubItem = 3; lvc.pszText = (LPWSTR)L"Duration"; lvc.cx = 70;
+    ListView_InsertColumn(g_vdxControls[12], 3, &lvc);
 }
 
 /*
@@ -1355,6 +1448,8 @@ static void PopulateVDXInfoList(const std::string& filename)
                         for (int i = 0; i < 256; i++) {
                             g_currentPalette[i] = {g_palette[i*3], g_palette[i*3+1], g_palette[i*3+2]};
                         }
+                        // Save base palette (never modified)
+                        g_basePalette = g_currentPalette;
                         
                         // Decode the full bitmap using getBitmapData
                         g_bitmapWidth = bitmapWidth;
@@ -1421,8 +1516,13 @@ static void PopulateVDXInfoList(const std::string& filename)
                     ListView_SetItemText(targetList, itemIdx, 3, data.lzssCompressed ? (LPWSTR)L"\u2713" : (LPWSTR)L"");
                 }
                 else if (targetList == hList0x80) {
-                    // 0x80 columns: #, Size (2 columns)
-                    ListView_SetItemText(targetList, itemIdx, 1, const_cast<LPWSTR>(wSize.c_str()));
+                    // 0x80 columns: #, Offset, Size, Duration (4 columns)
+                    double chunkDuration = static_cast<double>(data.size) / 22050.0;
+                    wchar_t durationStr[32];
+                    swprintf(durationStr, 32, L"%.2fs", chunkDuration);
+                    ListView_SetItemText(targetList, itemIdx, 1, const_cast<LPWSTR>(wOffset.c_str()));
+                    ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wSize.c_str()));
+                    ListView_SetItemText(targetList, itemIdx, 3, durationStr);
                 }
                 
                 (*targetCount)++;
@@ -1592,6 +1692,8 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
                         for (int i = 0; i < 256; i++) {
                             g_currentPalette[i] = {g_palette[i*3], g_palette[i*3+1], g_palette[i*3+2]};
                         }
+                        // Save base palette (never modified)
+                        g_basePalette = g_currentPalette;
                         
                         // Decode the full bitmap using getBitmapData
                         g_bitmapWidth = bitmapWidth;
@@ -1655,8 +1757,13 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
                     ListView_SetItemText(targetList, itemIdx, 3, data.lzssCompressed ? (LPWSTR)L"\u2713" : (LPWSTR)L"");
                 }
                 else if (targetList == hList0x80) {
-                    // 0x80 columns: #, Size (2 columns)
-                    ListView_SetItemText(targetList, itemIdx, 1, const_cast<LPWSTR>(wSize.c_str()));
+                    // 0x80 columns: #, Offset, Size, Duration (4 columns)
+                    double chunkDuration = static_cast<double>(data.size) / 22050.0;
+                    wchar_t durationStr[32];
+                    swprintf(durationStr, 32, L"%.2fs", chunkDuration);
+                    ListView_SetItemText(targetList, itemIdx, 1, const_cast<LPWSTR>(wOffset.c_str()));
+                    ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wSize.c_str()));
+                    ListView_SetItemText(targetList, itemIdx, 3, durationStr);
                 }
                 
                 (*targetCount)++;
