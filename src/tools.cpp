@@ -61,24 +61,35 @@ enum ControlID {
     IDC_ARCHIVE_LIST = 1012,
     IDC_ARCHIVE_STATUS = 1013,
     
-    // VDX Info tab
+    // VDX Info tab - new multi-section layout
     IDC_VDX_FILE_EDIT = 1020,
     IDC_VDX_BROWSE_BTN = 1021,
-    IDC_VDX_HEADER_INFO = 1022,
-    IDC_VDX_LIST = 1023,
-    IDC_VDX_STATUS = 1024,
-    IDC_VDX_EXTRACT_BTN = 1025,
+    IDC_VDX_EXTRACT_BTN = 1022,
+    IDC_VDX_HEADER_INFO = 1023,
+    IDC_VDX_0x20_LABEL = 1024,
+    IDC_VDX_0x20_INFO = 1025,
+    IDC_VDX_0x20_LIST = 1026,
+    IDC_VDX_0x25_LABEL = 1027,
+    IDC_VDX_0x25_LIST = 1028,
+    IDC_VDX_0x80_LABEL = 1029,
+    IDC_VDX_0x80_INFO = 1030,
+    IDC_VDX_0x80_LIST = 1031,
+    IDC_VDX_STATUS = 1032,
     
     // Cursors tab
-    IDC_CURSOR_STATUS = 1030,
-    IDC_CURSOR_EXTRACT_BTN = 1031
+    IDC_CURSOR_STATUS = 1040,
+    IDC_CURSOR_EXTRACT_BTN = 1041
 };
 
 // Tab controls
 static HWND g_hTab = nullptr;
 static HWND g_archiveControls[4] = {0};  // edit, browse btn, listview, status
-static HWND g_vdxControls[6] = {0};       // edit, browse btn, header info, listview, status, extract btn
+// VDX controls: [0]=edit, [1]=browse, [2]=extract btn, [3]=header info, [4]=0x20 label, [5]=0x20 info,
+//               [6]=0x20 list, [7]=0x25 label, [8]=0x25 list, [9]=0x80 label, [10]=0x80 info,
+//               [11]=0x80 list, [12]=status
+static HWND g_vdxControls[13] = {0};
 static HWND g_cursorControls[2] = {0};    // status, extract btn
+static HWND g_currentVDXSortList = nullptr;  // Track which VDX list is being sorted
 
 // VDX chunk data for sorting
 struct VDXChunkData {
@@ -280,7 +291,7 @@ Function: ExtractSelectedVDXChunks - Extract VDX frames from current file
 static void ExtractSelectedVDXChunks()
 {
     if (g_currentVDXFile.empty()) {
-        SetWindowTextA(g_vdxControls[4], "No VDX file loaded.");
+        SetWindowTextA(g_vdxControls[12], "No VDX file loaded.");
         return;
     }
     
@@ -289,14 +300,14 @@ static void ExtractSelectedVDXChunks()
     std::string outputDir = vdxPath.parent_path().string();
     std::string baseName = vdxPath.stem().string();
     
-    SetWindowTextA(g_vdxControls[4], "Extracting frames...");
-    UpdateWindow(g_vdxControls[4]);
+    SetWindowTextA(g_vdxControls[12], "Extracting frames...");
+    UpdateWindow(g_vdxControls[12]);
     
     try {
         // Read VDX file
         std::ifstream file(g_currentVDXFile, std::ios::binary);
         if (!file) {
-            SetWindowTextA(g_vdxControls[4], "Error: Cannot open VDX file.");
+            SetWindowTextA(g_vdxControls[12], "Error: Cannot open VDX file.");
             return;
         }
         
@@ -328,12 +339,12 @@ static void ExtractSelectedVDXChunks()
         
         char status[256];
         snprintf(status, sizeof(status), "Extracted %d frames to %s", frameCount, outDir.string().c_str());
-        SetWindowTextA(g_vdxControls[4], status);
+        SetWindowTextA(g_vdxControls[12], status);
     }
     catch (const std::exception& e) {
         char error[512];
         snprintf(error, sizeof(error), "Error: %s", e.what());
-        SetWindowTextA(g_vdxControls[4], error);
+        SetWindowTextA(g_vdxControls[12], error);
     }
 }
 
@@ -374,9 +385,7 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         if (g_archiveControls[2]) {
             SetWindowPos(g_archiveControls[2], nullptr, 20, 90, listWidth, listHeight, SWP_NOZORDER);
         }
-        if (g_vdxControls[3]) {
-            SetWindowPos(g_vdxControls[3], nullptr, 20, 130, listWidth, listHeight - 50, SWP_NOZORDER);
-        }
+        // VDX tab uses fixed layout with multiple sections - no resize needed
         return 0;
     }
     
@@ -407,14 +416,18 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                 ListView_SortItemsEx(g_archiveControls[2], ArchiveListCompare, 
                     (LPARAM)(g_archiveSortColumn | (g_archiveSortAscending ? 0 : 0x1000)));
             }
-            else if (nmhdr->idFrom == IDC_VDX_LIST) {
+            else if (nmhdr->idFrom == IDC_VDX_0x20_LIST || 
+                     nmhdr->idFrom == IDC_VDX_0x25_LIST || 
+                     nmhdr->idFrom == IDC_VDX_0x80_LIST) {
                 if (g_vdxSortColumn == pnmv->iSubItem) {
                     g_vdxSortAscending = !g_vdxSortAscending;
                 } else {
                     g_vdxSortColumn = pnmv->iSubItem;
                     g_vdxSortAscending = true;
                 }
-                ListView_SortItemsEx(g_vdxControls[3], VDXListCompare,
+                HWND hList = (HWND)nmhdr->hwndFrom;
+                g_currentVDXSortList = hList;
+                ListView_SortItemsEx(hList, VDXListCompare,
                     (LPARAM)(g_vdxSortColumn | (g_vdxSortAscending ? 0 : 0x1000)));
             }
             return 0;
@@ -581,79 +594,133 @@ static void CreateArchiveInfoTab(HWND hwnd)
 
 /*
 ===============================================================================
-Function: CreateVDXInfoTab - ListView for VDX chunk info with header display
+Function: CreateVDXInfoTab - Multi-section VDX viewer grouped by chunk type
 ===============================================================================
 */
 static void CreateVDXInfoTab(HWND hwnd)
 {
     HINSTANCE hInst = GetModuleHandle(nullptr);
     HFONT hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+    HFONT hBoldFont = CreateFontW(-14, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
     
-    // File path edit
+    // [0] File path edit
     g_vdxControls[0] = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
         WS_CHILD | ES_AUTOHSCROLL | ES_READONLY,
         20, 50, 580, 24, hwnd, (HMENU)IDC_VDX_FILE_EDIT, hInst, nullptr);
     SendMessage(g_vdxControls[0], WM_SETFONT, (WPARAM)hFont, TRUE);
     
-    // Browse button
+    // [1] Browse button
     g_vdxControls[1] = CreateWindowExW(0, L"BUTTON", L"Browse...",
         WS_CHILD | BS_PUSHBUTTON,
         610, 50, 80, 24, hwnd, (HMENU)IDC_VDX_BROWSE_BTN, hInst, nullptr);
     SendMessage(g_vdxControls[1], WM_SETFONT, (WPARAM)hFont, TRUE);
     
-    // Extract button
-    g_vdxControls[5] = CreateWindowExW(0, L"BUTTON", L"Extract Frames",
+    // [2] Extract button
+    g_vdxControls[2] = CreateWindowExW(0, L"BUTTON", L"Extract Frames",
         WS_CHILD | BS_PUSHBUTTON,
         700, 50, 100, 24, hwnd, (HMENU)IDC_VDX_EXTRACT_BTN, hInst, nullptr);
-    SendMessage(g_vdxControls[5], WM_SETFONT, (WPARAM)hFont, TRUE);
-    
-    // VDX Header info display
-    g_vdxControls[2] = CreateWindowExW(0, L"STATIC", L"",
-        WS_CHILD | SS_LEFT,
-        20, 85, 770, 40, hwnd, (HMENU)IDC_VDX_HEADER_INFO, hInst, nullptr);
     SendMessage(g_vdxControls[2], WM_SETFONT, (WPARAM)hFont, TRUE);
     
-    // ListView
-    g_vdxControls[3] = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
-        WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SHOWSELALWAYS | WS_CLIPSIBLINGS,
-        20, 130, 770, 400, hwnd, (HMENU)IDC_VDX_LIST, hInst, nullptr);
-    ListView_SetExtendedListViewStyle(g_vdxControls[3],
-        LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_HEADERDRAGDROP | LVS_EX_DOUBLEBUFFER);
+    // [3] VDX Header info (just identifier + unknown)
+    g_vdxControls[3] = CreateWindowExW(0, L"STATIC", L"",
+        WS_CHILD | SS_LEFT,
+        20, 82, 770, 18, hwnd, (HMENU)IDC_VDX_HEADER_INFO, hInst, nullptr);
+    SendMessage(g_vdxControls[3], WM_SETFONT, (WPARAM)hFont, TRUE);
     
-    // Add columns
+    // [4] 0x20 Bitmap label (bold)
+    g_vdxControls[4] = CreateWindowExW(0, L"STATIC", L"0x20 Bitmap",
+        WS_CHILD | SS_LEFT,
+        20, 105, 200, 18, hwnd, (HMENU)IDC_VDX_0x20_LABEL, hInst, nullptr);
+    SendMessage(g_vdxControls[4], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
+    
+    // [5] 0x20 info (dimensions, palette, etc.)
+    g_vdxControls[5] = CreateWindowExW(0, L"STATIC", L"",
+        WS_CHILD | SS_LEFT,
+        20, 123, 770, 35, hwnd, (HMENU)IDC_VDX_0x20_INFO, hInst, nullptr);
+    SendMessage(g_vdxControls[5], WM_SETFONT, (WPARAM)hFont, TRUE);
+    
+    // [6] 0x20 ListView (usually just 1 row)
+    g_vdxControls[6] = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
+        WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SHOWSELALWAYS | WS_CLIPSIBLINGS,
+        20, 160, 770, 50, hwnd, (HMENU)IDC_VDX_0x20_LIST, hInst, nullptr);
+    ListView_SetExtendedListViewStyle(g_vdxControls[6],
+        LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
+    
+    // [7] 0x25/0x00 Delta label (bold)
+    g_vdxControls[7] = CreateWindowExW(0, L"STATIC", L"0x25 Delta / 0x00 Duplicate",
+        WS_CHILD | SS_LEFT,
+        20, 218, 300, 18, hwnd, (HMENU)IDC_VDX_0x25_LABEL, hInst, nullptr);
+    SendMessage(g_vdxControls[7], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
+    
+    // [8] 0x25/0x00 ListView
+    g_vdxControls[8] = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
+        WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SHOWSELALWAYS | WS_CLIPSIBLINGS,
+        20, 238, 770, 130, hwnd, (HMENU)IDC_VDX_0x25_LIST, hInst, nullptr);
+    ListView_SetExtendedListViewStyle(g_vdxControls[8],
+        LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
+    
+    // [9] 0x80 Audio label (bold)
+    g_vdxControls[9] = CreateWindowExW(0, L"STATIC", L"0x80 Audio",
+        WS_CHILD | SS_LEFT,
+        20, 375, 200, 18, hwnd, (HMENU)IDC_VDX_0x80_LABEL, hInst, nullptr);
+    SendMessage(g_vdxControls[9], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
+    
+    // [10] 0x80 info (WAV header details)
+    g_vdxControls[10] = CreateWindowExW(0, L"STATIC", L"Format: 8-bit PCM Mono @ 22,050 Hz",
+        WS_CHILD | SS_LEFT,
+        20, 393, 770, 18, hwnd, (HMENU)IDC_VDX_0x80_INFO, hInst, nullptr);
+    SendMessage(g_vdxControls[10], WM_SETFONT, (WPARAM)hFont, TRUE);
+    
+    // [11] 0x80 ListView
+    g_vdxControls[11] = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
+        WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SHOWSELALWAYS | WS_CLIPSIBLINGS,
+        20, 413, 770, 100, hwnd, (HMENU)IDC_VDX_0x80_LIST, hInst, nullptr);
+    ListView_SetExtendedListViewStyle(g_vdxControls[11],
+        LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
+    
+    // [12] Status
+    g_vdxControls[12] = CreateWindowExW(0, L"STATIC", L"Select a VDX file to view chunk info.",
+        WS_CHILD | SS_LEFT,
+        20, 520, 600, 20, hwnd, (HMENU)IDC_VDX_STATUS, hInst, nullptr);
+    SendMessage(g_vdxControls[12], WM_SETFONT, (WPARAM)hFont, TRUE);
+    
+    // Setup columns for all ListViews
     LVCOLUMNW lvc = {};
     lvc.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
     
-    lvc.iSubItem = 0;
-    lvc.pszText = (LPWSTR)L"#";
-    lvc.cx = 50;
-    ListView_InsertColumn(g_vdxControls[3], 0, &lvc);
+    // 0x20 ListView columns
+    lvc.iSubItem = 0; lvc.pszText = (LPWSTR)L"#"; lvc.cx = 40;
+    ListView_InsertColumn(g_vdxControls[6], 0, &lvc);
+    lvc.iSubItem = 1; lvc.pszText = (LPWSTR)L"Offset"; lvc.cx = 100;
+    ListView_InsertColumn(g_vdxControls[6], 1, &lvc);
+    lvc.iSubItem = 2; lvc.pszText = (LPWSTR)L"Size"; lvc.cx = 100;
+    ListView_InsertColumn(g_vdxControls[6], 2, &lvc);
+    lvc.iSubItem = 3; lvc.pszText = (LPWSTR)L"LZSS"; lvc.cx = 50;
+    ListView_InsertColumn(g_vdxControls[6], 3, &lvc);
     
-    lvc.iSubItem = 1;
-    lvc.pszText = (LPWSTR)L"Type";
-    lvc.cx = 80;
-    ListView_InsertColumn(g_vdxControls[3], 1, &lvc);
+    // 0x25/0x00 ListView columns
+    lvc.iSubItem = 0; lvc.pszText = (LPWSTR)L"#"; lvc.cx = 40;
+    ListView_InsertColumn(g_vdxControls[8], 0, &lvc);
+    lvc.iSubItem = 1; lvc.pszText = (LPWSTR)L"Type"; lvc.cx = 60;
+    ListView_InsertColumn(g_vdxControls[8], 1, &lvc);
+    lvc.iSubItem = 2; lvc.pszText = (LPWSTR)L"Offset"; lvc.cx = 100;
+    ListView_InsertColumn(g_vdxControls[8], 2, &lvc);
+    lvc.iSubItem = 3; lvc.pszText = (LPWSTR)L"Size"; lvc.cx = 100;
+    ListView_InsertColumn(g_vdxControls[8], 3, &lvc);
+    lvc.iSubItem = 4; lvc.pszText = (LPWSTR)L"LZSS"; lvc.cx = 50;
+    ListView_InsertColumn(g_vdxControls[8], 4, &lvc);
     
-    lvc.iSubItem = 2;
-    lvc.pszText = (LPWSTR)L"Offset";
-    lvc.cx = 120;
-    ListView_InsertColumn(g_vdxControls[3], 2, &lvc);
-    
-    lvc.iSubItem = 3;
-    lvc.pszText = (LPWSTR)L"Size";
-    lvc.cx = 100;
-    ListView_InsertColumn(g_vdxControls[3], 3, &lvc);
-    
-    lvc.iSubItem = 4;
-    lvc.pszText = (LPWSTR)L"LZSS";
-    lvc.cx = 60;
-    ListView_InsertColumn(g_vdxControls[3], 4, &lvc);
-    
-    // Status
-    g_vdxControls[4] = CreateWindowExW(0, L"STATIC", L"Select a VDX file to view chunk info.",
-        WS_CHILD | SS_LEFT,
-        20, 540, 600, 20, hwnd, (HMENU)IDC_VDX_STATUS, hInst, nullptr);
-    SendMessage(g_vdxControls[4], WM_SETFONT, (WPARAM)hFont, TRUE);
+    // 0x80 ListView columns
+    lvc.iSubItem = 0; lvc.pszText = (LPWSTR)L"#"; lvc.cx = 40;
+    ListView_InsertColumn(g_vdxControls[11], 0, &lvc);
+    lvc.iSubItem = 1; lvc.pszText = (LPWSTR)L"Offset"; lvc.cx = 100;
+    ListView_InsertColumn(g_vdxControls[11], 1, &lvc);
+    lvc.iSubItem = 2; lvc.pszText = (LPWSTR)L"Size"; lvc.cx = 100;
+    ListView_InsertColumn(g_vdxControls[11], 2, &lvc);
+    lvc.iSubItem = 3; lvc.pszText = (LPWSTR)L"Duration"; lvc.cx = 80;
+    ListView_InsertColumn(g_vdxControls[11], 3, &lvc);
 }
 
 /*
@@ -689,7 +756,7 @@ static void HideAllTabs()
     for (int i = 0; i < 4; i++) {
         if (g_archiveControls[i]) ShowWindow(g_archiveControls[i], SW_HIDE);
     }
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 13; i++) {
         if (g_vdxControls[i]) ShowWindow(g_vdxControls[i], SW_HIDE);
     }
     for (int i = 0; i < 2; i++) {
@@ -714,7 +781,7 @@ static void ShowTab(int tabIndex)
         }
         break;
     case TAB_VDX_INFO:
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < 13; i++) {
             if (g_vdxControls[i]) {
                 ShowWindow(g_vdxControls[i], SW_SHOW);
                 BringWindowToTop(g_vdxControls[i]);
@@ -828,16 +895,26 @@ Function: PopulateVDXInfoList - Load VDX and show header + chunk info
 */
 static void PopulateVDXInfoList(const std::string& filename)
 {
-    HWND hList = g_vdxControls[3];
-    ListView_DeleteAllItems(hList);
+    HWND hList0x20 = g_vdxControls[6];   // 0x20 Bitmap ListView
+    HWND hList0x25 = g_vdxControls[8];   // 0x25 Delta / 0x00 Duplicate ListView
+    HWND hList0x80 = g_vdxControls[11];  // 0x80 Audio ListView
+    
+    ListView_DeleteAllItems(hList0x20);
+    ListView_DeleteAllItems(hList0x25);
+    ListView_DeleteAllItems(hList0x80);
     g_vdxChunks.clear();
     g_currentVDXFile = filename;
+    
+    // Clear info texts
+    SetWindowTextA(g_vdxControls[3], "");   // VDX header info
+    SetWindowTextA(g_vdxControls[5], "");   // 0x20 info
+    SetWindowTextA(g_vdxControls[10], "");  // 0x80 info
+    SetWindowTextA(g_vdxControls[12], "");  // Status
     
     try {
         std::ifstream file(filename, std::ios::binary);
         if (!file) {
-            SetWindowTextA(g_vdxControls[4], "Error: Cannot open file.");
-            SetWindowTextA(g_vdxControls[2], "");
+            SetWindowTextA(g_vdxControls[12], "Error: Cannot open file.");
             return;
         }
         
@@ -852,15 +929,20 @@ static void PopulateVDXInfoList(const std::string& filename)
         // Parse VDX
         VDXFile vdx = parseVDXFile(filename, buffer);
         
-        // Display VDX Header information
-        char headerInfo[512];
+        // Display VDX Header information (only identifier + unknown bytes)
+        char headerInfo[256];
         snprintf(headerInfo, sizeof(headerInfo),
-            "Identifier: 0x%04X   Unknown: {0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X}   Width: %dpx   Height: %dpx",
+            "Identifier: 0x%04X   Unknown: {0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X}",
             vdx.identifier,
             vdx.unknown[0], vdx.unknown[1], vdx.unknown[2],
-            vdx.unknown[3], vdx.unknown[4], vdx.unknown[5],
-            vdx.width, vdx.height);
-        SetWindowTextA(g_vdxControls[2], headerInfo);
+            vdx.unknown[3], vdx.unknown[4], vdx.unknown[5]);
+        SetWindowTextA(g_vdxControls[3], headerInfo);
+        
+        // Track counts for each type
+        int count0x20 = 0, count0x25 = 0, count0x80 = 0;
+        bool foundBitmapHeader = false;
+        int bitmapWidth = 0, bitmapHeight = 0, colorDepth = 0;
+        size_t totalAudioBytes = 0;
         
         int idx = 0;
         size_t currentOffset = 8;  // VDX header is 8 bytes
@@ -877,41 +959,112 @@ static void PopulateVDXInfoList(const std::string& filename)
             
             g_vdxChunks.push_back(data);
             
-            // Add to ListView
-            std::wstring wIndex = std::to_wstring(idx);
-            LVITEMW lvi = {};
-            lvi.mask = LVIF_TEXT | LVIF_PARAM;
-            lvi.iItem = idx;
-            lvi.lParam = static_cast<LPARAM>(idx);
-            lvi.pszText = const_cast<LPWSTR>(wIndex.c_str());
-            ListView_InsertItem(hList, &lvi);
+            // Determine which ListView to add to
+            HWND targetList = nullptr;
+            int* targetCount = nullptr;
             
-            // Type as hex
-            wchar_t typeHex[16];
-            swprintf(typeHex, 16, L"0x%02X", chunk.chunkType);
-            ListView_SetItemText(hList, idx, 1, typeHex);
+            if (chunk.chunkType == 0x20) {
+                targetList = hList0x20;
+                targetCount = &count0x20;
+                
+                // Extract bitmap header from first 0x20 chunk
+                if (!foundBitmapHeader && !chunk.data.empty()) {
+                    foundBitmapHeader = true;
+                    if (chunk.data.size() >= 4) {
+                        // Bitmap header: numXTiles (1), numYTiles (1), colorDepth (2)
+                        uint8_t numXTiles = chunk.data[0];
+                        uint8_t numYTiles = chunk.data[1];
+                        colorDepth = chunk.data[2] | (chunk.data[3] << 8);
+                        // Each tile is 4x4 pixels
+                        bitmapWidth = numXTiles * 4;
+                        bitmapHeight = numYTiles * 4;
+                    }
+                }
+            } else if (chunk.chunkType == 0x25 || chunk.chunkType == 0x00) {
+                // 0x25 = delta, 0x00 = duplicate previous
+                targetList = hList0x25;
+                targetCount = &count0x25;
+            } else if (chunk.chunkType == 0x80) {
+                targetList = hList0x80;
+                targetCount = &count0x80;
+                totalAudioBytes += chunk.dataSize;
+            }
             
-            std::wstring wOffset = FormatOffset(data.offset);
-            ListView_SetItemText(hList, idx, 2, const_cast<LPWSTR>(wOffset.c_str()));
-            
-            std::wstring wSize = FormatSize(data.size);
-            ListView_SetItemText(hList, idx, 3, const_cast<LPWSTR>(wSize.c_str()));
-            
-            // LZSS indicator
-            ListView_SetItemText(hList, idx, 4, data.lzssCompressed ? (LPWSTR)L"\u2713" : (LPWSTR)L"");
+            if (targetList && targetCount) {
+                int itemIdx = *targetCount;
+                
+                // Add to ListView - Index column (column 0 for all)
+                std::wstring wIndex = std::to_wstring(idx);
+                LVITEMW lvi = {};
+                lvi.mask = LVIF_TEXT | LVIF_PARAM;
+                lvi.iItem = itemIdx;
+                lvi.lParam = static_cast<LPARAM>(idx);
+                lvi.pszText = const_cast<LPWSTR>(wIndex.c_str());
+                ListView_InsertItem(targetList, &lvi);
+                
+                std::wstring wOffset = FormatOffset(data.offset);
+                std::wstring wSize = FormatSize(data.size);
+                
+                if (targetList == hList0x20) {
+                    // 0x20 columns: #, Offset, Size, LZSS (no type - always 0x20)
+                    ListView_SetItemText(targetList, itemIdx, 1, const_cast<LPWSTR>(wOffset.c_str()));
+                    ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wSize.c_str()));
+                    ListView_SetItemText(targetList, itemIdx, 3, data.lzssCompressed ? (LPWSTR)L"\u2713" : (LPWSTR)L"");
+                }
+                else if (targetList == hList0x25) {
+                    // 0x25/0x00 columns: #, Type, Offset, Size, LZSS (needs type since both 0x25 and 0x00)
+                    wchar_t typeHex[16];
+                    swprintf(typeHex, 16, L"0x%02X", chunk.chunkType);
+                    ListView_SetItemText(targetList, itemIdx, 1, typeHex);
+                    ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wOffset.c_str()));
+                    ListView_SetItemText(targetList, itemIdx, 3, const_cast<LPWSTR>(wSize.c_str()));
+                    ListView_SetItemText(targetList, itemIdx, 4, data.lzssCompressed ? (LPWSTR)L"\u2713" : (LPWSTR)L"");
+                }
+                else if (targetList == hList0x80) {
+                    // 0x80 columns: #, Offset, Size, Duration (no LZSS - audio is never compressed)
+                    double chunkDuration = static_cast<double>(data.size) / 22050.0;
+                    wchar_t durationStr[32];
+                    swprintf(durationStr, 32, L"%.2fs", chunkDuration);
+                    ListView_SetItemText(targetList, itemIdx, 1, const_cast<LPWSTR>(wOffset.c_str()));
+                    ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wSize.c_str()));
+                    ListView_SetItemText(targetList, itemIdx, 3, durationStr);
+                }
+                
+                (*targetCount)++;
+            }
             
             idx++;
         }
         
+        // Display 0x20 bitmap info
+        if (foundBitmapHeader) {
+            char bitmapInfo[256];
+            snprintf(bitmapInfo, sizeof(bitmapInfo),
+                "Dimensions: %d x %d pixels   Color Depth: %d-bit",
+                bitmapWidth, bitmapHeight, colorDepth);
+            SetWindowTextA(g_vdxControls[5], bitmapInfo);
+        }
+        
+        // Display 0x80 audio info
+        if (count0x80 > 0) {
+            double duration = static_cast<double>(totalAudioBytes) / 22050.0;
+            char audioInfo[256];
+            snprintf(audioInfo, sizeof(audioInfo),
+                "Sample Rate: 22,050 Hz   Bit Depth: 8-bit   Channels: Mono   Duration: %.2f seconds",
+                duration);
+            SetWindowTextA(g_vdxControls[10], audioInfo);
+        }
+        
         char status[256];
-        snprintf(status, sizeof(status), "Loaded %zu chunks.", vdx.chunks.size());
-        SetWindowTextA(g_vdxControls[4], status);
+        snprintf(status, sizeof(status), 
+            "Loaded %zu chunks: %d bitmap, %d delta/dup, %d audio",
+            vdx.chunks.size(), count0x20, count0x25, count0x80);
+        SetWindowTextA(g_vdxControls[12], status);
     }
     catch (const std::exception& e) {
         char error[512];
         snprintf(error, sizeof(error), "Error: %s", e.what());
-        SetWindowTextA(g_vdxControls[4], error);
-        SetWindowTextA(g_vdxControls[2], "");
+        SetWindowTextA(g_vdxControls[12], error);
     }
 }
 
@@ -971,7 +1124,8 @@ Function: VDXListCompare - Sort callback for VDX ListView
 */
 static int CALLBACK VDXListCompare(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort)
 {
-    HWND hList = g_vdxControls[3];
+    if (!g_currentVDXSortList) return 0;
+    HWND hList = g_currentVDXSortList;
     int col = lParamSort & 0xFFF;
     bool ascending = (lParamSort & 0x1000) == 0;
     
