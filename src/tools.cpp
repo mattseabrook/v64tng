@@ -24,6 +24,7 @@
 #include "cursor.h"
 #include "lzss.h"
 #include "bitmap.h"
+#include "delta.h"
 
 #pragma comment(lib, "comctl32.lib")
 
@@ -52,10 +53,26 @@ static uint8_t g_palette[768] = {0};  // 256 colors * 3 bytes (RGB)
 static bool g_hasPalette = false;
 
 // Bitmap data for 0x20 display
-static std::vector<uint8_t> g_bitmapData;  // RGB pixel data
+static std::vector<uint8_t> g_bitmapData;  // RGB pixel data (current frame for display)
+static std::vector<uint8_t> g_baseFrame;   // Base 0x20 frame for delta application
 static int g_bitmapWidth = 0;
 static int g_bitmapHeight = 0;
 static HBITMAP g_hBitmap = nullptr;
+
+// Delta visualization
+static bool g_deltaVisualization = false;
+static std::vector<RGBColor> g_currentPalette(256);  // Current palette for delta frames
+
+// Store decompressed chunk data for delta frame rendering
+struct DecompressedChunk {
+    std::vector<uint8_t> data;
+    uint8_t chunkType;
+    int chunkIndex;  // Original chunk index
+};
+static std::vector<DecompressedChunk> g_decompressedChunks;
+
+// Current VDX for delta processing
+static VDXFile g_currentVDX;
 
 // Tab indices (only 3 tabs now - removed Extract VDX)
 enum TabIndex {
@@ -87,6 +104,7 @@ enum ControlID {
     IDC_VDX_BITMAP = 1036,
     IDC_VDX_0x25_LABEL = 1027,
     IDC_VDX_0x25_LIST = 1028,
+    IDC_VDX_DELTA_VIS_CHECK = 1037,
     IDC_VDX_0x80_LABEL = 1029,
     IDC_VDX_0x80_INFO = 1030,
     IDC_VDX_0x80_LIST = 1031,
@@ -103,8 +121,8 @@ static HWND g_archiveControls[4] = {0};  // edit, browse btn, listview, status
 // VDX controls: [0]=edit, [1]=browse, [2]=header info, [3]=0x20 label, [4]=0x20 info,
 //               [5]=0x20 list, [6]=palette label, [7]=palette, [8]=0x25 label, [9]=0x25 list, 
 //               [10]=0x80 label, [11]=0x80 info, [12]=0x80 list, [13]=status,
-//               [14]=bitmap label, [15]=bitmap display
-static HWND g_vdxControls[16] = {0};
+//               [14]=bitmap label, [15]=bitmap display, [16]=delta vis checkbox
+static HWND g_vdxControls[17] = {0};
 static HWND g_cursorControls[2] = {0};    // status, extract btn
 static HWND g_currentVDXSortList = nullptr;  // Track which VDX list is being sorted
 
@@ -515,6 +533,92 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             return 0;
         }
         
+        // Handle delta frame selection
+        if (nmhdr->code == LVN_ITEMCHANGED && nmhdr->idFrom == IDC_VDX_0x25_LIST) {
+            NMLISTVIEW* pnmv = (NMLISTVIEW*)lParam;
+            if ((pnmv->uNewState & LVIS_SELECTED) && !(pnmv->uOldState & LVIS_SELECTED)) {
+                // Item was selected
+                int selIdx = pnmv->iItem;
+                if (selIdx >= 0 && selIdx < (int)g_decompressedChunks.size() && g_baseFrame.size() > 0) {
+                    // Start from base frame
+                    g_bitmapData = g_baseFrame;
+                    
+                    // Apply all delta frames up to and including selected one
+                    for (int i = 0; i <= selIdx; i++) {
+                        const auto& dc = g_decompressedChunks[i];
+                        if (dc.chunkType == 0x25 && !dc.data.empty()) {
+                            // First apply the delta normally
+                            getDeltaBitmapData(std::span<const uint8_t>(dc.data), 
+                                std::span<RGBColor>(g_currentPalette), 
+                                std::span<uint8_t>(g_bitmapData), 
+                                g_bitmapWidth);
+                            
+                            // If visualization enabled and this is the selected frame, highlight skipped tiles
+                            if (g_deltaVisualization && i == selIdx) {
+                                std::span<const uint8_t> buffer(dc.data);
+                                const uint16_t localPaletteSize = buffer[0] | (buffer[1] << 8);
+                                
+                                int xPos = 0, yPos = 0;
+                                for (size_t bufferIndex = localPaletteSize + 2; bufferIndex < buffer.size();) {
+                                    const uint8_t opcode = buffer[bufferIndex++];
+                                    
+                                    if (opcode >= 0x62 && opcode <= 0x6B) {
+                                        // Skip tiles - highlight in pink (fuchsia)
+                                        int skipCount = opcode - 0x62;
+                                        for (int s = 0; s < skipCount; s++) {
+                                            for (int ty = 0; ty < 4; ty++) {
+                                                for (int tx = 0; tx < 4; tx++) {
+                                                    size_t pixelIndex = ((yPos + ty) * g_bitmapWidth + (xPos + tx)) * 3;
+                                                    if (pixelIndex + 2 < g_bitmapData.size()) {
+                                                        g_bitmapData[pixelIndex] = 255;     // R
+                                                        g_bitmapData[pixelIndex + 1] = 0;   // G
+                                                        g_bitmapData[pixelIndex + 2] = 255; // B (fuchsia)
+                                                    }
+                                                }
+                                            }
+                                            xPos += 4;
+                                        }
+                                    } else if (opcode == 0x61) {
+                                        // New row
+                                        yPos += 4;
+                                        xPos = 0;
+                                    } else {
+                                        // Other opcodes advance position
+                                        if (opcode <= 0x5F) {
+                                            xPos += 4;
+                                            bufferIndex += 2;
+                                        } else if (opcode == 0x60) {
+                                            xPos += 4;
+                                            bufferIndex += 16;
+                                        } else if (opcode >= 0x6C && opcode <= 0x75) {
+                                            int repeatCount = opcode - 0x6B;
+                                            xPos += repeatCount * 4;
+                                            bufferIndex += 1;
+                                        } else if (opcode >= 0x76 && opcode <= 0x7F) {
+                                            int colorCount = opcode - 0x75;
+                                            xPos += colorCount * 4;
+                                            bufferIndex += colorCount;
+                                        } else {
+                                            // Default case
+                                            xPos += 4;
+                                            bufferIndex += 3;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // 0x00 chunks are duplicates - no change needed
+                    }
+                    
+                    // Refresh bitmap display
+                    if (g_vdxControls[15]) {
+                        InvalidateRect(g_vdxControls[15], nullptr, TRUE);
+                    }
+                }
+            }
+            return 0;
+        }
+        
         if (nmhdr->code == LVN_COLUMNCLICK) {
             NMLISTVIEW* pnmv = (NMLISTVIEW*)lParam;
             
@@ -578,6 +682,85 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             UpdateWindow(g_cursorControls[0]);
             extractCursors("ROB.GJD");
             SetWindowTextA(g_cursorControls[0], "Extraction complete!");
+            break;
+        }
+        
+        case IDC_VDX_DELTA_VIS_CHECK: {
+            // Toggle delta visualization
+            g_deltaVisualization = (SendMessage(g_vdxControls[16], BM_GETCHECK, 0, 0) == BST_CHECKED);
+            
+            // Re-render current selection if any
+            int selIdx = ListView_GetNextItem(g_vdxControls[9], -1, LVNI_SELECTED);
+            if (selIdx >= 0 && selIdx < (int)g_decompressedChunks.size() && g_baseFrame.size() > 0) {
+                // Start from base frame
+                g_bitmapData = g_baseFrame;
+                
+                // Apply all delta frames up to and including selected one
+                for (int i = 0; i <= selIdx; i++) {
+                    const auto& dc = g_decompressedChunks[i];
+                    if (dc.chunkType == 0x25 && !dc.data.empty()) {
+                        // First apply the delta normally
+                        getDeltaBitmapData(std::span<const uint8_t>(dc.data), 
+                            std::span<RGBColor>(g_currentPalette), 
+                            std::span<uint8_t>(g_bitmapData), 
+                            g_bitmapWidth);
+                        
+                        // If visualization enabled and this is the selected frame, highlight skipped tiles
+                        if (g_deltaVisualization && i == selIdx) {
+                            std::span<const uint8_t> buffer(dc.data);
+                            const uint16_t localPaletteSize = buffer[0] | (buffer[1] << 8);
+                            
+                            int xPos = 0, yPos = 0;
+                            for (size_t bufferIndex = localPaletteSize + 2; bufferIndex < buffer.size();) {
+                                const uint8_t opcode = buffer[bufferIndex++];
+                                
+                                if (opcode >= 0x62 && opcode <= 0x6B) {
+                                    int skipCount = opcode - 0x62;
+                                    for (int s = 0; s < skipCount; s++) {
+                                        for (int ty = 0; ty < 4; ty++) {
+                                            for (int tx = 0; tx < 4; tx++) {
+                                                size_t pixelIndex = ((yPos + ty) * g_bitmapWidth + (xPos + tx)) * 3;
+                                                if (pixelIndex + 2 < g_bitmapData.size()) {
+                                                    g_bitmapData[pixelIndex] = 255;
+                                                    g_bitmapData[pixelIndex + 1] = 0;
+                                                    g_bitmapData[pixelIndex + 2] = 255;
+                                                }
+                                            }
+                                        }
+                                        xPos += 4;
+                                    }
+                                } else if (opcode == 0x61) {
+                                    yPos += 4;
+                                    xPos = 0;
+                                } else {
+                                    if (opcode <= 0x5F) {
+                                        xPos += 4;
+                                        bufferIndex += 2;
+                                    } else if (opcode == 0x60) {
+                                        xPos += 4;
+                                        bufferIndex += 16;
+                                    } else if (opcode >= 0x6C && opcode <= 0x75) {
+                                        int repeatCount = opcode - 0x6B;
+                                        xPos += repeatCount * 4;
+                                        bufferIndex += 1;
+                                    } else if (opcode >= 0x76 && opcode <= 0x7F) {
+                                        int colorCount = opcode - 0x75;
+                                        xPos += colorCount * 4;
+                                        bufferIndex += colorCount;
+                                    } else {
+                                        xPos += 4;
+                                        bufferIndex += 3;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if (g_vdxControls[15]) {
+                    InvalidateRect(g_vdxControls[15], nullptr, TRUE);
+                }
+            }
             break;
         }
         }
@@ -751,124 +934,124 @@ static void CreateVDXInfoTab(HWND hwnd)
         10, 72, 500, 16, hwnd, (HMENU)IDC_VDX_HEADER_INFO, hInst, nullptr);
     SendMessage(g_vdxControls[2], WM_SETFONT, (WPARAM)hFont, TRUE);
     
-    // LEFT COLUMN - Lists and Palette
+    // LEFT COLUMN - Bitmap info, Palette, Delta list
     
     // [3] 0x20 Bitmap label (bold)
     g_vdxControls[3] = CreateWindowExW(0, L"STATIC", L"0x20 Bitmap",
         WS_CHILD | SS_LEFT,
-        10, 92, 200, 16, hwnd, (HMENU)IDC_VDX_0x20_LABEL, hInst, nullptr);
+        10, 92, 80, 16, hwnd, (HMENU)IDC_VDX_0x20_LABEL, hInst, nullptr);
     SendMessage(g_vdxControls[3], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
     
-    // [4] 0x20 info (dimensions, color depth)
+    // [4] 0x20 info (dimensions, color depth) - on same line
     g_vdxControls[4] = CreateWindowExW(0, L"STATIC", L"",
         WS_CHILD | SS_LEFT,
-        10, 108, 200, 16, hwnd, (HMENU)IDC_VDX_0x20_INFO, hInst, nullptr);
+        90, 92, 250, 16, hwnd, (HMENU)IDC_VDX_0x20_INFO, hInst, nullptr);
     SendMessage(g_vdxControls[4], WM_SETFONT, (WPARAM)hFont, TRUE);
     
-    // [5] 0x20 ListView
+    // [5] 0x20 ListView (with column headers) - single row height
     g_vdxControls[5] = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
-        WS_CHILD | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL | LVS_NOCOLUMNHEADER,
-        10, 126, 200, 48, hwnd, (HMENU)IDC_VDX_0x20_LIST, hInst, nullptr);
+        WS_CHILD | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL,
+        10, 110, 340, 42, hwnd, (HMENU)IDC_VDX_0x20_LIST, hInst, nullptr);
     ListView_SetExtendedListViewStyle(g_vdxControls[5],
         LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
     
     // [6] Palette label
     g_vdxControls[6] = CreateWindowExW(0, L"STATIC", L"Palette",
         WS_CHILD | SS_LEFT,
-        220, 92, 100, 16, hwnd, (HMENU)IDC_VDX_PALETTE_LABEL, hInst, nullptr);
+        10, 158, 60, 16, hwnd, (HMENU)IDC_VDX_PALETTE_LABEL, hInst, nullptr);
     SendMessage(g_vdxControls[6], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
     
     // [7] Palette grid (128x128 = 8px per cell)
     g_vdxControls[7] = CreateWindowExW(WS_EX_CLIENTEDGE, L"VDXPaletteClass", L"",
         WS_CHILD,
-        220, 108, 128, 128, hwnd, (HMENU)IDC_VDX_PALETTE, hInst, nullptr);
+        10, 176, 130, 130, hwnd, (HMENU)IDC_VDX_PALETTE, hInst, nullptr);
     
     // [8] 0x25/0x00 Delta label (bold)
-    g_vdxControls[8] = CreateWindowExW(0, L"STATIC", L"0x25 Delta / 0x00 Duplicate",
+    g_vdxControls[8] = CreateWindowExW(0, L"STATIC", L"0x25 Delta / 0x00 Dup",
         WS_CHILD | SS_LEFT,
-        10, 180, 200, 16, hwnd, (HMENU)IDC_VDX_0x25_LABEL, hInst, nullptr);
+        150, 158, 200, 16, hwnd, (HMENU)IDC_VDX_0x25_LABEL, hInst, nullptr);
     SendMessage(g_vdxControls[8], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
     
-    // [9] 0x25/0x00 ListView
+    // [9] 0x25/0x00 ListView - next to palette, extends to bottom
     g_vdxControls[9] = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
-        WS_CHILD | LVS_REPORT | LVS_SHOWSELALWAYS | WS_VSCROLL,
-        10, 198, 340, 130, hwnd, (HMENU)IDC_VDX_0x25_LIST, hInst, nullptr);
+        WS_CHILD | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL | WS_VSCROLL,
+        150, 176, 200, 254, hwnd, (HMENU)IDC_VDX_0x25_LIST, hInst, nullptr);
     ListView_SetExtendedListViewStyle(g_vdxControls[9],
         LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
     
-    // [10] 0x80 Audio label (bold)
+    // [16] Delta Visualization checkbox - below palette
+    g_vdxControls[16] = CreateWindowExW(0, L"BUTTON", L"Show unchanged",
+        WS_CHILD | BS_AUTOCHECKBOX,
+        10, 312, 130, 20, hwnd, (HMENU)IDC_VDX_DELTA_VIS_CHECK, hInst, nullptr);
+    SendMessage(g_vdxControls[16], WM_SETFONT, (WPARAM)hFont, TRUE);
+    
+    // [10] 0x80 Audio label (bold) - below palette
     g_vdxControls[10] = CreateWindowExW(0, L"STATIC", L"0x80 Audio",
         WS_CHILD | SS_LEFT,
-        10, 335, 200, 16, hwnd, (HMENU)IDC_VDX_0x80_LABEL, hInst, nullptr);
+        10, 340, 80, 16, hwnd, (HMENU)IDC_VDX_0x80_LABEL, hInst, nullptr);
     SendMessage(g_vdxControls[10], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
     
     // [11] 0x80 info (format details)
     g_vdxControls[11] = CreateWindowExW(0, L"STATIC", L"",
         WS_CHILD | SS_LEFT,
-        10, 351, 340, 16, hwnd, (HMENU)IDC_VDX_0x80_INFO, hInst, nullptr);
+        10, 358, 130, 32, hwnd, (HMENU)IDC_VDX_0x80_INFO, hInst, nullptr);
     SendMessage(g_vdxControls[11], WM_SETFONT, (WPARAM)hFont, TRUE);
     
-    // [12] 0x80 ListView
+    // [12] 0x80 ListView - below 0x80 info
     g_vdxControls[12] = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
         WS_CHILD | LVS_REPORT | LVS_SHOWSELALWAYS | WS_VSCROLL,
-        10, 369, 340, 80, hwnd, (HMENU)IDC_VDX_0x80_LIST, hInst, nullptr);
+        10, 392, 130, 38, hwnd, (HMENU)IDC_VDX_0x80_LIST, hInst, nullptr);
     ListView_SetExtendedListViewStyle(g_vdxControls[12],
         LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
     
-    // [13] Status
+    // [13] Status - at bottom
     g_vdxControls[13] = CreateWindowExW(0, L"STATIC", L"Select a VDX file or double-click an entry in Archive Info.",
         WS_CHILD | SS_LEFT,
-        10, 455, 340, 18, hwnd, (HMENU)IDC_VDX_STATUS, hInst, nullptr);
+        10, 436, 990, 18, hwnd, (HMENU)IDC_VDX_STATUS, hInst, nullptr);
     SendMessage(g_vdxControls[13], WM_SETFONT, (WPARAM)hFont, TRUE);
     
     // RIGHT COLUMN - Bitmap display (1:1)
     
-    // [14] Bitmap label
-    g_vdxControls[14] = CreateWindowExW(0, L"STATIC", L"0x20 Bitmap Preview",
+    // [14] Bitmap label - renamed to just "Preview"
+    g_vdxControls[14] = CreateWindowExW(0, L"STATIC", L"Preview",
         WS_CHILD | SS_LEFT,
         360, 92, 200, 16, hwnd, (HMENU)IDC_VDX_BITMAP_LABEL, hInst, nullptr);
     SendMessage(g_vdxControls[14], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
     
-    // [15] Bitmap display (640x320 for standard VDX, or 640x480 for Vielogo)
+    // [15] Bitmap display (640x320 for standard VDX)
     g_vdxControls[15] = CreateWindowExW(WS_EX_CLIENTEDGE, L"VDXBitmapClass", L"",
         WS_CHILD,
-        360, 108, 644, 324, hwnd, (HMENU)IDC_VDX_BITMAP, hInst, nullptr);
+        360, 110, 644, 324, hwnd, (HMENU)IDC_VDX_BITMAP, hInst, nullptr);
     
     // Setup columns for all ListViews
     LVCOLUMNW lvc = {};
     lvc.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
     
-    // 0x20 ListView columns: #, Size, LZSS (no offset, compact)
+    // 0x20 ListView columns: #, Offset, Size, LZSS
     lvc.iSubItem = 0; lvc.pszText = (LPWSTR)L"#"; lvc.cx = 30;
     ListView_InsertColumn(g_vdxControls[5], 0, &lvc);
-    lvc.iSubItem = 1; lvc.pszText = (LPWSTR)L"Offset"; lvc.cx = 60;
+    lvc.iSubItem = 1; lvc.pszText = (LPWSTR)L"Offset"; lvc.cx = 80;
     ListView_InsertColumn(g_vdxControls[5], 1, &lvc);
-    lvc.iSubItem = 2; lvc.pszText = (LPWSTR)L"Size"; lvc.cx = 60;
+    lvc.iSubItem = 2; lvc.pszText = (LPWSTR)L"Size"; lvc.cx = 80;
     ListView_InsertColumn(g_vdxControls[5], 2, &lvc);
-    lvc.iSubItem = 3; lvc.pszText = (LPWSTR)L"LZSS"; lvc.cx = 35;
+    lvc.iSubItem = 3; lvc.pszText = (LPWSTR)L"LZSS"; lvc.cx = 40;
     ListView_InsertColumn(g_vdxControls[5], 3, &lvc);
     
-    // 0x25/0x00 ListView columns: #, Type, Offset, Size, LZSS
-    lvc.iSubItem = 0; lvc.pszText = (LPWSTR)L"#"; lvc.cx = 30;
+    // 0x25/0x00 ListView columns: #, Type, Size (compact)
+    lvc.iSubItem = 0; lvc.pszText = (LPWSTR)L"#"; lvc.cx = 35;
     ListView_InsertColumn(g_vdxControls[9], 0, &lvc);
     lvc.iSubItem = 1; lvc.pszText = (LPWSTR)L"Type"; lvc.cx = 45;
     ListView_InsertColumn(g_vdxControls[9], 1, &lvc);
-    lvc.iSubItem = 2; lvc.pszText = (LPWSTR)L"Offset"; lvc.cx = 80;
+    lvc.iSubItem = 2; lvc.pszText = (LPWSTR)L"Size"; lvc.cx = 70;
     ListView_InsertColumn(g_vdxControls[9], 2, &lvc);
-    lvc.iSubItem = 3; lvc.pszText = (LPWSTR)L"Size"; lvc.cx = 80;
+    lvc.iSubItem = 3; lvc.pszText = (LPWSTR)L"LZSS"; lvc.cx = 35;
     ListView_InsertColumn(g_vdxControls[9], 3, &lvc);
-    lvc.iSubItem = 4; lvc.pszText = (LPWSTR)L"LZSS"; lvc.cx = 40;
-    ListView_InsertColumn(g_vdxControls[9], 4, &lvc);
     
-    // 0x80 ListView columns: #, Offset, Size, Duration
+    // 0x80 ListView columns: #, Size (very compact)
     lvc.iSubItem = 0; lvc.pszText = (LPWSTR)L"#"; lvc.cx = 30;
     ListView_InsertColumn(g_vdxControls[12], 0, &lvc);
-    lvc.iSubItem = 1; lvc.pszText = (LPWSTR)L"Offset"; lvc.cx = 90;
+    lvc.iSubItem = 1; lvc.pszText = (LPWSTR)L"Size"; lvc.cx = 70;
     ListView_InsertColumn(g_vdxControls[12], 1, &lvc);
-    lvc.iSubItem = 2; lvc.pszText = (LPWSTR)L"Size"; lvc.cx = 90;
-    ListView_InsertColumn(g_vdxControls[12], 2, &lvc);
-    lvc.iSubItem = 3; lvc.pszText = (LPWSTR)L"Duration"; lvc.cx = 65;
-    ListView_InsertColumn(g_vdxControls[12], 3, &lvc);
 }
 
 /*
@@ -904,7 +1087,7 @@ static void HideAllTabs()
     for (int i = 0; i < 4; i++) {
         if (g_archiveControls[i]) ShowWindow(g_archiveControls[i], SW_HIDE);
     }
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 17; i++) {
         if (g_vdxControls[i]) ShowWindow(g_vdxControls[i], SW_HIDE);
     }
     for (int i = 0; i < 2; i++) {
@@ -929,7 +1112,7 @@ static void ShowTab(int tabIndex)
         }
         break;
     case TAB_VDX_INFO:
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < 17; i++) {
             if (g_vdxControls[i]) {
                 ShowWindow(g_vdxControls[i], SW_SHOW);
                 BringWindowToTop(g_vdxControls[i]);
@@ -1068,10 +1251,12 @@ static void PopulateVDXInfoList(const std::string& filename)
     ListView_DeleteAllItems(hList0x25);
     ListView_DeleteAllItems(hList0x80);
     g_vdxChunks.clear();
+    g_decompressedChunks.clear();
     g_currentVDXFile = filename;
     g_hasPalette = false;
     memset(g_palette, 0, sizeof(g_palette));
     g_bitmapData.clear();
+    g_baseFrame.clear();
     g_bitmapWidth = 0;
     g_bitmapHeight = 0;
     
@@ -1096,8 +1281,9 @@ static void PopulateVDXInfoList(const std::string& filename)
         file.read(reinterpret_cast<char*>(buffer.data()), fileSize);
         file.close();
         
-        // Parse VDX
-        VDXFile vdx = parseVDXFile(filename, buffer);
+        // Parse VDX and store for delta processing
+        g_currentVDX = parseVDXFile(filename, buffer);
+        VDXFile& vdx = g_currentVDX;
         
         // Display VDX Header information (only identifier + unknown bytes)
         char headerInfo[256];
@@ -1165,18 +1351,40 @@ static void PopulateVDXInfoList(const std::string& filename)
                         memcpy(g_palette, dataToRead.data() + 6, 768);
                         g_hasPalette = true;
                         
+                        // Build palette for delta processing
+                        for (int i = 0; i < 256; i++) {
+                            g_currentPalette[i] = {g_palette[i*3], g_palette[i*3+1], g_palette[i*3+2]};
+                        }
+                        
                         // Decode the full bitmap using getBitmapData
                         g_bitmapWidth = bitmapWidth;
                         g_bitmapHeight = bitmapHeight;
                         g_bitmapData.resize(static_cast<size_t>(bitmapWidth) * bitmapHeight * 3);
-                        std::vector<RGBColor> tempPalette(256);
-                        getBitmapData(dataToRead, tempPalette, g_bitmapData);
+                        g_baseFrame.resize(static_cast<size_t>(bitmapWidth) * bitmapHeight * 3);
+                        getBitmapData(dataToRead, g_currentPalette, g_bitmapData);
+                        // Copy base frame for delta application
+                        g_baseFrame = g_bitmapData;
                     }
                 }
             } else if (chunk.chunkType == 0x25 || chunk.chunkType == 0x00) {
                 // 0x25 = delta, 0x00 = duplicate previous
                 targetList = hList0x25;
                 targetCount = &count0x25;
+                
+                // Store decompressed chunk data for later delta rendering
+                DecompressedChunk dc;
+                dc.chunkType = chunk.chunkType;
+                dc.chunkIndex = idx;
+                if (chunk.chunkType == 0x25 && chunk.data.size() > 0) {
+                    if (chunk.lengthBits != 0 && chunk.lengthMask != 0) {
+                        dc.data.resize(chunk.dataSize * 20);
+                        size_t decompSize = lzssDecompress(chunk.data, dc.data, chunk.lengthMask, chunk.lengthBits);
+                        dc.data.resize(decompSize);
+                    } else {
+                        dc.data = std::vector<uint8_t>(chunk.data.begin(), chunk.data.end());
+                    }
+                }
+                g_decompressedChunks.push_back(std::move(dc));
             } else if (chunk.chunkType == 0x80) {
                 targetList = hList0x80;
                 targetCount = &count0x80;
@@ -1205,22 +1413,16 @@ static void PopulateVDXInfoList(const std::string& filename)
                     ListView_SetItemText(targetList, itemIdx, 3, data.lzssCompressed ? (LPWSTR)L"\u2713" : (LPWSTR)L"");
                 }
                 else if (targetList == hList0x25) {
-                    // 0x25/0x00 columns: #, Type, Offset, Size, LZSS
+                    // 0x25/0x00 columns: #, Type, Size, LZSS (4 columns)
                     wchar_t typeHex[16];
                     swprintf(typeHex, 16, L"0x%02X", chunk.chunkType);
                     ListView_SetItemText(targetList, itemIdx, 1, typeHex);
-                    ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wOffset.c_str()));
-                    ListView_SetItemText(targetList, itemIdx, 3, const_cast<LPWSTR>(wSize.c_str()));
-                    ListView_SetItemText(targetList, itemIdx, 4, data.lzssCompressed ? (LPWSTR)L"\u2713" : (LPWSTR)L"");
+                    ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wSize.c_str()));
+                    ListView_SetItemText(targetList, itemIdx, 3, data.lzssCompressed ? (LPWSTR)L"\u2713" : (LPWSTR)L"");
                 }
                 else if (targetList == hList0x80) {
-                    // 0x80 columns: #, Offset, Size, Duration
-                    double chunkDuration = static_cast<double>(data.size) / 22050.0;
-                    wchar_t durationStr[32];
-                    swprintf(durationStr, 32, L"%.2fs", chunkDuration);
-                    ListView_SetItemText(targetList, itemIdx, 1, const_cast<LPWSTR>(wOffset.c_str()));
-                    ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wSize.c_str()));
-                    ListView_SetItemText(targetList, itemIdx, 3, durationStr);
+                    // 0x80 columns: #, Size (2 columns)
+                    ListView_SetItemText(targetList, itemIdx, 1, const_cast<LPWSTR>(wSize.c_str()));
                 }
                 
                 (*targetCount)++;
@@ -1309,10 +1511,12 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
         ListView_DeleteAllItems(hList0x25);
         ListView_DeleteAllItems(hList0x80);
         g_vdxChunks.clear();
+        g_decompressedChunks.clear();
         g_currentVDXFile = entry.filename;
         g_hasPalette = false;
         memset(g_palette, 0, sizeof(g_palette));
         g_bitmapData.clear();
+        g_baseFrame.clear();
         g_bitmapWidth = 0;
         g_bitmapHeight = 0;
         
@@ -1321,8 +1525,9 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
         SetWindowTextA(g_vdxControls[4], "");   // 0x20 info
         SetWindowTextA(g_vdxControls[11], "");  // 0x80 info
         
-        // Parse VDX
-        VDXFile vdx = parseVDXFile(entry.filename, buffer);
+        // Parse VDX and store for delta processing
+        g_currentVDX = parseVDXFile(entry.filename, buffer);
+        VDXFile& vdx = g_currentVDX;
         
         // Display VDX Header
         char headerInfo[256];
@@ -1383,17 +1588,39 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
                         memcpy(g_palette, dataToRead.data() + 6, 768);
                         g_hasPalette = true;
                         
+                        // Build palette for delta processing
+                        for (int i = 0; i < 256; i++) {
+                            g_currentPalette[i] = {g_palette[i*3], g_palette[i*3+1], g_palette[i*3+2]};
+                        }
+                        
                         // Decode the full bitmap using getBitmapData
                         g_bitmapWidth = bitmapWidth;
                         g_bitmapHeight = bitmapHeight;
                         g_bitmapData.resize(static_cast<size_t>(bitmapWidth) * bitmapHeight * 3);
-                        std::vector<RGBColor> tempPalette(256);
-                        getBitmapData(dataToRead, tempPalette, g_bitmapData);
+                        g_baseFrame.resize(static_cast<size_t>(bitmapWidth) * bitmapHeight * 3);
+                        getBitmapData(dataToRead, g_currentPalette, g_bitmapData);
+                        // Copy base frame for delta application
+                        g_baseFrame = g_bitmapData;
                     }
                 }
             } else if (chunk.chunkType == 0x25 || chunk.chunkType == 0x00) {
                 targetList = hList0x25;
                 targetCount = &count0x25;
+                
+                // Store decompressed chunk data for later delta rendering
+                DecompressedChunk dc;
+                dc.chunkType = chunk.chunkType;
+                dc.chunkIndex = idx;
+                if (chunk.chunkType == 0x25 && chunk.data.size() > 0) {
+                    if (chunk.lengthBits != 0 && chunk.lengthMask != 0) {
+                        dc.data.resize(chunk.dataSize * 20);
+                        size_t decompSize = lzssDecompress(chunk.data, dc.data, chunk.lengthMask, chunk.lengthBits);
+                        dc.data.resize(decompSize);
+                    } else {
+                        dc.data = std::vector<uint8_t>(chunk.data.begin(), chunk.data.end());
+                    }
+                }
+                g_decompressedChunks.push_back(std::move(dc));
             } else if (chunk.chunkType == 0x80) {
                 targetList = hList0x80;
                 targetCount = &count0x80;
@@ -1420,20 +1647,16 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
                     ListView_SetItemText(targetList, itemIdx, 3, data.lzssCompressed ? (LPWSTR)L"\u2713" : (LPWSTR)L"");
                 }
                 else if (targetList == hList0x25) {
+                    // 0x25/0x00 columns: #, Type, Size, LZSS (4 columns)
                     wchar_t typeHex[16];
                     swprintf(typeHex, 16, L"0x%02X", chunk.chunkType);
                     ListView_SetItemText(targetList, itemIdx, 1, typeHex);
-                    ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wOffset.c_str()));
-                    ListView_SetItemText(targetList, itemIdx, 3, const_cast<LPWSTR>(wSize.c_str()));
-                    ListView_SetItemText(targetList, itemIdx, 4, data.lzssCompressed ? (LPWSTR)L"\u2713" : (LPWSTR)L"");
+                    ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wSize.c_str()));
+                    ListView_SetItemText(targetList, itemIdx, 3, data.lzssCompressed ? (LPWSTR)L"\u2713" : (LPWSTR)L"");
                 }
                 else if (targetList == hList0x80) {
-                    double chunkDuration = static_cast<double>(data.size) / 22050.0;
-                    wchar_t durationStr[32];
-                    swprintf(durationStr, 32, L"%.2fs", chunkDuration);
-                    ListView_SetItemText(targetList, itemIdx, 1, const_cast<LPWSTR>(wOffset.c_str()));
-                    ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wSize.c_str()));
-                    ListView_SetItemText(targetList, itemIdx, 3, durationStr);
+                    // 0x80 columns: #, Size (2 columns)
+                    ListView_SetItemText(targetList, itemIdx, 1, const_cast<LPWSTR>(wSize.c_str()));
                 }
                 
                 (*targetCount)++;
