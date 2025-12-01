@@ -534,6 +534,66 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             return 0;
         }
         
+        // Right-click on 0x20 or 0x25 list shows save context menu
+        if (nmhdr->code == NM_RCLICK && 
+            (nmhdr->idFrom == IDC_VDX_0x20_LIST || nmhdr->idFrom == IDC_VDX_0x25_LIST)) {
+            // Only show menu if we have bitmap data to save
+            if (g_bitmapData.size() > 0) {
+                POINT pt;
+                GetCursorPos(&pt);
+                
+                HMENU hMenu = CreatePopupMenu();
+                AppendMenuW(hMenu, MF_STRING, 1, L"Save RAW...");
+                AppendMenuW(hMenu, MF_STRING, 2, L"Save PNG...");
+                
+                int cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
+                    pt.x, pt.y, 0, hwnd, nullptr);
+                DestroyMenu(hMenu);
+                
+                if (cmd == 1) {
+                    // Save RAW
+                    wchar_t filename[MAX_PATH] = L"bitmap.raw";
+                    OPENFILENAMEW ofn = {};
+                    ofn.lStructSize = sizeof(ofn);
+                    ofn.hwndOwner = hwnd;
+                    ofn.lpstrFilter = L"RAW Files\0*.raw\0All Files\0*.*\0";
+                    ofn.lpstrFile = filename;
+                    ofn.nMaxFile = MAX_PATH;
+                    ofn.lpstrDefExt = L"raw";
+                    ofn.Flags = OFN_OVERWRITEPROMPT;
+                    
+                    if (GetSaveFileNameW(&ofn)) {
+                        std::ofstream file(filename, std::ios::binary);
+                        if (file) {
+                            file.write(reinterpret_cast<const char*>(g_bitmapData.data()), 
+                                       g_bitmapData.size());
+                        }
+                    }
+                }
+                else if (cmd == 2) {
+                    // Save PNG
+                    wchar_t filename[MAX_PATH] = L"bitmap.png";
+                    OPENFILENAMEW ofn = {};
+                    ofn.lStructSize = sizeof(ofn);
+                    ofn.hwndOwner = hwnd;
+                    ofn.lpstrFilter = L"PNG Files\0*.png\0All Files\0*.*\0";
+                    ofn.lpstrFile = filename;
+                    ofn.nMaxFile = MAX_PATH;
+                    ofn.lpstrDefExt = L"png";
+                    ofn.Flags = OFN_OVERWRITEPROMPT;
+                    
+                    if (GetSaveFileNameW(&ofn)) {
+                        // Convert wide string to narrow for savePNG
+                        char narrowFilename[MAX_PATH];
+                        WideCharToMultiByte(CP_UTF8, 0, filename, -1, 
+                                           narrowFilename, MAX_PATH, nullptr, nullptr);
+                        savePNG(narrowFilename, g_bitmapData, g_bitmapWidth, g_bitmapHeight, false);
+                    }
+                }
+            }
+            return 0;
+        }
+        
         // Handle delta frame selection
         if (nmhdr->code == LVN_ITEMCHANGED && nmhdr->idFrom == IDC_VDX_0x25_LIST) {
             NMLISTVIEW* pnmv = (NMLISTVIEW*)lParam;
@@ -641,7 +701,28 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                                 }
                             }
                         }
-                        // 0x00 chunks are duplicates - no change needed
+                        // 0x00 chunks are duplicates - if this is the selected frame with visualization,
+                        // paint entire frame pink since nothing changed
+                        else if (dc.chunkType == 0x00 && g_deltaVisualization && i == selIdx) {
+                            int tilesPerRow = g_bitmapWidth / 4;
+                            int numRows = g_bitmapHeight / 4;
+                            for (int yTile = 0; yTile < numRows; yTile++) {
+                                for (int xTile = 0; xTile < tilesPerRow; xTile++) {
+                                    for (int ty = 0; ty < 4; ty++) {
+                                        for (int tx = 0; tx < 4; tx++) {
+                                            int px = xTile * 4 + tx;
+                                            int py = yTile * 4 + ty;
+                                            size_t pixelIndex = (py * g_bitmapWidth + px) * 3;
+                                            if (pixelIndex + 2 < g_bitmapData.size()) {
+                                                g_bitmapData[pixelIndex] = 255;     // R
+                                                g_bitmapData[pixelIndex + 1] = 0;   // G
+                                                g_bitmapData[pixelIndex + 2] = 255; // B (fuchsia)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                     
                     // Refresh bitmap display
@@ -841,6 +922,28 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                                     paintTilePink(xTile, yTile);
                                 }
                                 yTile++;
+                            }
+                        }
+                    }
+                    // 0x00 chunks are duplicates - if this is the selected frame with visualization,
+                    // paint entire frame pink since nothing changed
+                    else if (dc.chunkType == 0x00 && g_deltaVisualization && i == selIdx) {
+                        int tilesPerRow = g_bitmapWidth / 4;
+                        int numRows = g_bitmapHeight / 4;
+                        for (int yTile = 0; yTile < numRows; yTile++) {
+                            for (int xTile = 0; xTile < tilesPerRow; xTile++) {
+                                for (int ty = 0; ty < 4; ty++) {
+                                    for (int tx = 0; tx < 4; tx++) {
+                                        int px = xTile * 4 + tx;
+                                        int py = yTile * 4 + ty;
+                                        size_t pixelIndex = (py * g_bitmapWidth + px) * 3;
+                                        if (pixelIndex + 2 < g_bitmapData.size()) {
+                                            g_bitmapData[pixelIndex] = 255;     // R
+                                            g_bitmapData[pixelIndex + 1] = 0;   // G
+                                            g_bitmapData[pixelIndex + 2] = 255; // B (fuchsia)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
