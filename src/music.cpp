@@ -20,7 +20,10 @@
 #include <windows.h>
 #include <audioclient.h>
 #include <mmdeviceapi.h>
+#include <mmsystem.h>
 #include <functiondiscoverykeys_devpkey.h>
+
+#pragma comment(lib, "winmm.lib")
 
 //
 // MIDI Library
@@ -404,19 +407,235 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 
 /*
 ===============================================================================
-Function Name: PlayMIDI
+Function Name: PlayMIDI_GeneralMIDI
 
 Description:
-	- Plays the MIDI data using the Windows Audio API. This function initializes
-	  the audio client, sets up the audio format, and plays the MIDI data in a
-	  loop until the song ends or is stopped.
+	- Plays the MIDI data using the Windows MIDI API (General MIDI).
+	  This uses the default Windows MIDI synthesizer.
 
 Parameters:
 	- const std::vector<uint8_t> &midiData: The MIDI data to be played.
 	- bool isTransient: Indicates whether the song is transient or not.
 ===============================================================================
 */
-void PlayMIDI(const std::vector<uint8_t> &midiData, bool isTransient)
+void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient)
+{
+#ifdef _WIN32
+	// Parse MIDI file header
+	if (midiData.size() < 14)
+	{
+		std::cerr << "ERROR: MIDI data too small." << std::endl;
+		return;
+	}
+
+	// Verify MIDI header
+	if (midiData[0] != 'M' || midiData[1] != 'T' || midiData[2] != 'h' || midiData[3] != 'd')
+	{
+		std::cerr << "ERROR: Invalid MIDI header." << std::endl;
+		return;
+	}
+
+	// Get time division (ticks per quarter note)
+	uint16_t timeDivision = (static_cast<uint16_t>(midiData[12]) << 8) | midiData[13];
+
+	// Find MTrk chunk
+	size_t trackStart = 14;
+	while (trackStart + 8 < midiData.size())
+	{
+		if (midiData[trackStart] == 'M' && midiData[trackStart + 1] == 'T' &&
+			midiData[trackStart + 2] == 'r' && midiData[trackStart + 3] == 'k')
+		{
+			break;
+		}
+		trackStart++;
+	}
+
+	if (trackStart + 8 >= midiData.size())
+	{
+		std::cerr << "ERROR: Could not find MIDI track." << std::endl;
+		return;
+	}
+
+	uint32_t trackLength = (static_cast<uint32_t>(midiData[trackStart + 4]) << 24) |
+						   (static_cast<uint32_t>(midiData[trackStart + 5]) << 16) |
+						   (static_cast<uint32_t>(midiData[trackStart + 6]) << 8) |
+						   static_cast<uint32_t>(midiData[trackStart + 7]);
+
+	size_t dataStart = trackStart + 8;
+	size_t dataEnd = dataStart + trackLength;
+	if (dataEnd > midiData.size())
+		dataEnd = midiData.size();
+
+	// Open MIDI output device
+	HMIDIOUT hMidiOut = nullptr;
+	MMRESULT result = midiOutOpen(&hMidiOut, MIDI_MAPPER, 0, 0, CALLBACK_NULL);
+	if (result != MMSYSERR_NOERROR)
+	{
+		std::cerr << "ERROR: Failed to open MIDI output device." << std::endl;
+		return;
+	}
+
+	// Set volume (Windows MIDI volume is 0-0xFFFF for each channel)
+	uint16_t vol = static_cast<uint16_t>(state.music_volume * 0xFFFF);
+	DWORD volume = (static_cast<DWORD>(vol) << 16) | vol;
+	midiOutSetVolume(hMidiOut, volume);
+
+	// Parse and play MIDI events
+	state.music_playing = true;
+	size_t pos = dataStart;
+	uint32_t tempo = 500000; // Default: 120 BPM (microseconds per quarter note)
+	uint8_t runningStatus = 0;
+
+	// Helper to read variable-length value
+	auto readVarLen = [&]() -> uint32_t
+	{
+		uint32_t value = 0;
+		uint8_t byte;
+		do
+		{
+			if (pos >= dataEnd)
+				return value;
+			byte = midiData[pos++];
+			value = (value << 7) | (byte & 0x7F);
+		} while (byte & 0x80);
+		return value;
+	};
+
+	while (pos < dataEnd && state.music_playing)
+	{
+		// Read delta time
+		uint32_t deltaTime = readVarLen();
+
+		// Calculate delay in microseconds, then sleep
+		if (deltaTime > 0)
+		{
+			uint64_t delayUs = (static_cast<uint64_t>(deltaTime) * tempo) / timeDivision;
+			std::this_thread::sleep_for(std::chrono::microseconds(delayUs));
+		}
+
+		if (pos >= dataEnd)
+			break;
+
+		// Read event
+		uint8_t eventByte = midiData[pos];
+
+		if (eventByte == 0xFF)
+		{
+			// Meta event
+			pos++;
+			if (pos >= dataEnd)
+				break;
+			uint8_t metaType = midiData[pos++];
+			uint32_t metaLen = readVarLen();
+
+			if (metaType == 0x2F)
+			{
+				// End of track
+				break;
+			}
+			else if (metaType == 0x51 && metaLen == 3 && pos + 3 <= dataEnd)
+			{
+				// Tempo change
+				tempo = (static_cast<uint32_t>(midiData[pos]) << 16) |
+						(static_cast<uint32_t>(midiData[pos + 1]) << 8) |
+						static_cast<uint32_t>(midiData[pos + 2]);
+			}
+			pos += metaLen;
+		}
+		else if (eventByte == 0xF0 || eventByte == 0xF7)
+		{
+			// SysEx event - skip
+			pos++;
+			uint32_t sysexLen = readVarLen();
+			pos += sysexLen;
+		}
+		else if (eventByte & 0x80)
+		{
+			// MIDI channel message
+			runningStatus = eventByte;
+			pos++;
+
+			uint8_t cmd = runningStatus & 0xF0;
+			DWORD msg = runningStatus;
+
+			if (cmd == 0x80 || cmd == 0x90 || cmd == 0xA0 || cmd == 0xB0 || cmd == 0xE0)
+			{
+				// 2 data bytes
+				if (pos + 2 <= dataEnd)
+				{
+					msg |= (static_cast<DWORD>(midiData[pos]) << 8);
+					msg |= (static_cast<DWORD>(midiData[pos + 1]) << 16);
+					pos += 2;
+					midiOutShortMsg(hMidiOut, msg);
+				}
+			}
+			else if (cmd == 0xC0 || cmd == 0xD0)
+			{
+				// 1 data byte
+				if (pos + 1 <= dataEnd)
+				{
+					msg |= (static_cast<DWORD>(midiData[pos]) << 8);
+					pos++;
+					midiOutShortMsg(hMidiOut, msg);
+				}
+			}
+		}
+		else
+		{
+			// Running status
+			uint8_t cmd = runningStatus & 0xF0;
+			DWORD msg = runningStatus;
+
+			if (cmd == 0x80 || cmd == 0x90 || cmd == 0xA0 || cmd == 0xB0 || cmd == 0xE0)
+			{
+				if (pos + 2 <= dataEnd)
+				{
+					msg |= (static_cast<DWORD>(midiData[pos]) << 8);
+					msg |= (static_cast<DWORD>(midiData[pos + 1]) << 16);
+					pos += 2;
+					midiOutShortMsg(hMidiOut, msg);
+				}
+			}
+			else if (cmd == 0xC0 || cmd == 0xD0)
+			{
+				if (pos + 1 <= dataEnd)
+				{
+					msg |= (static_cast<DWORD>(midiData[pos]) << 8);
+					pos++;
+					midiOutShortMsg(hMidiOut, msg);
+				}
+			}
+		}
+	}
+
+	// Send All Notes Off on all channels
+	for (int ch = 0; ch < 16; ch++)
+	{
+		midiOutShortMsg(hMidiOut, 0xB0 | ch | (123 << 8)); // All Notes Off
+		midiOutShortMsg(hMidiOut, 0xB0 | ch | (121 << 8)); // Reset All Controllers
+	}
+
+	// Cleanup
+	state.music_playing = false;
+	midiOutClose(hMidiOut);
+#endif
+}
+
+/*
+===============================================================================
+Function Name: PlayMIDI_OPL
+
+Description:
+	- Plays the MIDI data using libADLMIDI (OPL2/OPL3 FM synthesis).
+	  This function initializes the audio client, sets up the audio format,
+	  and plays the MIDI data in a loop until the song ends or is stopped.
+
+Parameters:
+	- const std::vector<uint8_t> &midiData: The MIDI data to be played.
+	- bool isTransient: Indicates whether the song is transient or not.
+===============================================================================
+*/
+void PlayMIDI_OPL(const std::vector<uint8_t> &midiData, bool isTransient)
 {
 #ifdef _WIN32
 	HRESULT hr;
@@ -684,6 +903,34 @@ void PlayMIDI(const std::vector<uint8_t> &midiData, bool isTransient)
 	pEnumerator->Release();
 	CoUninitialize();
 #endif
+}
+
+/*
+===============================================================================
+Function Name: PlayMIDI
+
+Description:
+	- Dispatcher function that routes MIDI playback to the appropriate backend
+	  based on the configured midiMode:
+	  - "general": Uses Windows MIDI API (General MIDI synthesizer)
+	  - "opl2", "dual_opl2", "opl3": Uses libADLMIDI (FM synthesis)
+
+Parameters:
+	- const std::vector<uint8_t> &midiData: The MIDI data to be played.
+	- bool isTransient: Indicates whether the song is transient or not.
+===============================================================================
+*/
+void PlayMIDI(const std::vector<uint8_t> &midiData, bool isTransient)
+{
+	if (state.music_mode == "general")
+	{
+		PlayMIDI_GeneralMIDI(midiData, isTransient);
+	}
+	else
+	{
+		// Default to OPL synthesis for opl2, dual_opl2, opl3, or any other value
+		PlayMIDI_OPL(midiData, isTransient);
+	}
 }
 
 /*
