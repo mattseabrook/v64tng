@@ -428,28 +428,22 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 		return;
 	}
 
-	// Verify MIDI header
 	if (midiData[0] != 'M' || midiData[1] != 'T' || midiData[2] != 'h' || midiData[3] != 'd')
 	{
 		std::cerr << "ERROR: Invalid MIDI header." << std::endl;
 		return;
 	}
 
-	// Get time division (ticks per quarter note)
 	uint16_t timeDivision = (static_cast<uint16_t>(midiData[12]) << 8) | midiData[13];
 
-	// Find MTrk chunk
 	size_t trackStart = 14;
 	while (trackStart + 8 < midiData.size())
 	{
 		if (midiData[trackStart] == 'M' && midiData[trackStart + 1] == 'T' &&
 			midiData[trackStart + 2] == 'r' && midiData[trackStart + 3] == 'k')
-		{
 			break;
-		}
 		trackStart++;
 	}
-
 	if (trackStart + 8 >= midiData.size())
 	{
 		std::cerr << "ERROR: Could not find MIDI track." << std::endl;
@@ -462,162 +456,253 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 						   static_cast<uint32_t>(midiData[trackStart + 7]);
 
 	size_t dataStart = trackStart + 8;
-	size_t dataEnd = dataStart + trackLength;
-	if (dataEnd > midiData.size())
-		dataEnd = midiData.size();
+	size_t dataEnd = std::min(dataStart + static_cast<size_t>(trackLength), midiData.size());
 
-	// Open MIDI output device
-	HMIDIOUT hMidiOut = nullptr;
-	MMRESULT result = midiOutOpen(&hMidiOut, MIDI_MAPPER, 0, 0, CALLBACK_NULL);
-	if (result != MMSYSERR_NOERROR)
+	// First pass: find the first tempo so we can set the initial tempo property
+	auto readVarLen = [&](size_t &pos) -> uint32_t
 	{
-		std::cerr << "ERROR: Failed to open MIDI output device." << std::endl;
-		return;
-	}
-
-	// Set volume (Windows MIDI volume is 0-0xFFFF for each channel)
-	uint16_t vol = static_cast<uint16_t>(state.music_volume * 0xFFFF);
-	DWORD volume = (static_cast<DWORD>(vol) << 16) | vol;
-	midiOutSetVolume(hMidiOut, volume);
-
-	// Parse and play MIDI events
-	state.music_playing = true;
-	size_t pos = dataStart;
-	uint32_t tempo = 500000; // Default: 120 BPM (microseconds per quarter note)
-	uint8_t runningStatus = 0;
-
-	// Helper to read variable-length value
-	auto readVarLen = [&]() -> uint32_t
-	{
-		uint32_t value = 0;
-		uint8_t byte;
+		uint32_t v = 0;
+		uint8_t b;
 		do
 		{
 			if (pos >= dataEnd)
-				return value;
-			byte = midiData[pos++];
-			value = (value << 7) | (byte & 0x7F);
-		} while (byte & 0x80);
-		return value;
+				return v;
+			b = midiData[pos++];
+			v = (v << 7) | (b & 0x7F);
+		} while (b & 0x80);
+		return v;
 	};
 
-	while (pos < dataEnd && state.music_playing)
+	uint32_t initialTempo = 500000; // default 120 BPM
 	{
-		// Read delta time
-		uint32_t deltaTime = readVarLen();
-
-		// Calculate delay in microseconds, then sleep
-		if (deltaTime > 0)
+		size_t pos = dataStart;
+		uint8_t runningStatus = 0;
+		while (pos < dataEnd)
 		{
-			uint64_t delayUs = (static_cast<uint64_t>(deltaTime) * tempo) / timeDivision;
-			std::this_thread::sleep_for(std::chrono::microseconds(delayUs));
-		}
+			( void ) readVarLen(pos); // skip delta
+			if (pos >= dataEnd)
+				break;
 
+			uint8_t b = midiData[pos];
+			if (b == 0xFF)
+			{
+				pos++;
+				if (pos >= dataEnd)
+					break;
+				uint8_t metaType = midiData[pos++];
+				uint32_t metaLen = readVarLen(pos);
+				if (metaType == 0x51 && metaLen >= 3 && pos + 3 <= dataEnd)
+				{
+					initialTempo = (static_cast<uint32_t>(midiData[pos]) << 16) |
+									(static_cast<uint32_t>(midiData[pos + 1]) << 8) |
+									static_cast<uint32_t>(midiData[pos + 2]);
+					break; // first tempo found
+				}
+				pos += metaLen;
+				continue;
+			}
+			else if (b == 0xF0 || b == 0xF7)
+			{
+				pos++;
+				uint32_t sysexLen = readVarLen(pos);
+				pos += sysexLen;
+				continue;
+			}
+
+			uint8_t status = b;
+			if (status & 0x80)
+			{
+				runningStatus = status;
+				pos++;
+			}
+			else
+			{
+				status = runningStatus;
+			}
+
+			uint8_t cmd = status & 0xF0;
+			if (cmd == 0x80 || cmd == 0x90 || cmd == 0xA0 || cmd == 0xB0 || cmd == 0xE0)
+			{
+				pos += 2;
+			}
+			else if (cmd == 0xC0 || cmd == 0xD0)
+			{
+				pos += 1;
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+
+	HMIDISTRM hStream = nullptr;
+	UINT deviceId = static_cast<UINT>(MIDI_MAPPER);
+	MMRESULT r = midiStreamOpen(&hStream, &deviceId, 1, 0, 0, CALLBACK_NULL);
+	if (r != MMSYSERR_NOERROR || !hStream)
+	{
+		std::cerr << "ERROR: midiStreamOpen failed." << std::endl;
+		return;
+	}
+
+	// Set time division and initial tempo
+	MIDIPROPTIMEDIV divProp = {};
+	divProp.cbStruct = sizeof(divProp);
+	divProp.dwTimeDiv = timeDivision;
+	midiStreamProperty(hStream, reinterpret_cast<LPBYTE>(&divProp), MIDIPROP_SET | MIDIPROP_TIMEDIV);
+
+	MIDIPROPTEMPO tempoProp = {};
+	tempoProp.cbStruct = sizeof(tempoProp);
+	tempoProp.dwTempo = initialTempo;
+	midiStreamProperty(hStream, reinterpret_cast<LPBYTE>(&tempoProp), MIDIPROP_SET | MIDIPROP_TEMPO);
+
+	// Volume
+	uint16_t vol = static_cast<uint16_t>(state.music_volume * 0xFFFF);
+	DWORD volume = (static_cast<DWORD>(vol) << 16) | vol;
+	midiOutSetVolume(reinterpret_cast<HMIDIOUT>(hStream), volume);
+
+	// Build stream events
+	// NOTE: WinMM MIDI streaming buffers are an array of DWORDs.
+	// Each SHORT event is exactly 3 DWORDs: delta, streamId, dwEvent.
+	// Writing sizeof(MIDIEVENT) adds an extra DWORD and corrupts the stream.
+	std::vector<DWORD> stream;
+	stream.reserve((dataEnd - dataStart) * 2);
+
+	auto appendEvent = [&](DWORD delta, DWORD evt)
+	{
+		stream.push_back(delta);
+		stream.push_back(0);
+		stream.push_back(evt);
+	};
+
+	state.music_playing = true;
+	uint8_t runningStatus = 0;
+	bool wroteTempo = false;
+
+	// Inject the initial tempo at delta 0 to ensure correct speed from the start
+	appendEvent(0, MEVT_TEMPO | initialTempo);
+	wroteTempo = true;
+
+	size_t pos = dataStart;
+	while (pos < dataEnd)
+	{
+		uint32_t delta = readVarLen(pos);
 		if (pos >= dataEnd)
 			break;
 
-		// Read event
-		uint8_t eventByte = midiData[pos];
-
-		if (eventByte == 0xFF)
+		uint8_t b = midiData[pos];
+		if (b == 0xFF)
 		{
-			// Meta event
 			pos++;
 			if (pos >= dataEnd)
 				break;
 			uint8_t metaType = midiData[pos++];
-			uint32_t metaLen = readVarLen();
+			uint32_t metaLen = readVarLen(pos);
 
 			if (metaType == 0x2F)
 			{
-				// End of track
-				break;
+				break; // End of track
 			}
 			else if (metaType == 0x51 && metaLen == 3 && pos + 3 <= dataEnd)
 			{
-				// Tempo change
-				tempo = (static_cast<uint32_t>(midiData[pos]) << 16) |
-						(static_cast<uint32_t>(midiData[pos + 1]) << 8) |
-						static_cast<uint32_t>(midiData[pos + 2]);
+				uint32_t tempo = (static_cast<uint32_t>(midiData[pos]) << 16) |
+								(static_cast<uint32_t>(midiData[pos + 1]) << 8) |
+								static_cast<uint32_t>(midiData[pos + 2]);
+				appendEvent(delta, MEVT_TEMPO | tempo);
+				wroteTempo = true;
 			}
 			pos += metaLen;
+			continue;
 		}
-		else if (eventByte == 0xF0 || eventByte == 0xF7)
+		else if (b == 0xF0 || b == 0xF7)
 		{
-			// SysEx event - skip
 			pos++;
-			uint32_t sysexLen = readVarLen();
+			uint32_t sysexLen = readVarLen(pos);
 			pos += sysexLen;
+			continue;
 		}
-		else if (eventByte & 0x80)
+
+		uint8_t status = b;
+		if (status & 0x80)
 		{
-			// MIDI channel message
-			runningStatus = eventByte;
+			runningStatus = status;
 			pos++;
-
-			uint8_t cmd = runningStatus & 0xF0;
-			DWORD msg = runningStatus;
-
-			if (cmd == 0x80 || cmd == 0x90 || cmd == 0xA0 || cmd == 0xB0 || cmd == 0xE0)
-			{
-				// 2 data bytes
-				if (pos + 2 <= dataEnd)
-				{
-					msg |= (static_cast<DWORD>(midiData[pos]) << 8);
-					msg |= (static_cast<DWORD>(midiData[pos + 1]) << 16);
-					pos += 2;
-					midiOutShortMsg(hMidiOut, msg);
-				}
-			}
-			else if (cmd == 0xC0 || cmd == 0xD0)
-			{
-				// 1 data byte
-				if (pos + 1 <= dataEnd)
-				{
-					msg |= (static_cast<DWORD>(midiData[pos]) << 8);
-					pos++;
-					midiOutShortMsg(hMidiOut, msg);
-				}
-			}
 		}
 		else
 		{
-			// Running status
-			uint8_t cmd = runningStatus & 0xF0;
-			DWORD msg = runningStatus;
+			status = runningStatus;
+		}
 
-			if (cmd == 0x80 || cmd == 0x90 || cmd == 0xA0 || cmd == 0xB0 || cmd == 0xE0)
-			{
-				if (pos + 2 <= dataEnd)
-				{
-					msg |= (static_cast<DWORD>(midiData[pos]) << 8);
-					msg |= (static_cast<DWORD>(midiData[pos + 1]) << 16);
-					pos += 2;
-					midiOutShortMsg(hMidiOut, msg);
-				}
-			}
-			else if (cmd == 0xC0 || cmd == 0xD0)
-			{
-				if (pos + 1 <= dataEnd)
-				{
-					msg |= (static_cast<DWORD>(midiData[pos]) << 8);
-					pos++;
-					midiOutShortMsg(hMidiOut, msg);
-				}
-			}
+		uint8_t cmd = status & 0xF0;
+		DWORD msg = status;
+		if (cmd == 0x80 || cmd == 0x90 || cmd == 0xA0 || cmd == 0xB0 || cmd == 0xE0)
+		{
+			if (pos + 2 > dataEnd)
+				break;
+			msg |= (static_cast<DWORD>(midiData[pos]) << 8);
+			msg |= (static_cast<DWORD>(midiData[pos + 1]) << 16);
+			pos += 2;
+			appendEvent(delta, MEVT_SHORTMSG | msg);
+		}
+		else if (cmd == 0xC0 || cmd == 0xD0)
+		{
+			if (pos + 1 > dataEnd)
+				break;
+			msg |= (static_cast<DWORD>(midiData[pos]) << 8);
+			pos += 1;
+			appendEvent(delta, MEVT_SHORTMSG | msg);
+		}
+		else
+		{
+			break;
 		}
 	}
 
-	// Send All Notes Off on all channels
-	for (int ch = 0; ch < 16; ch++)
+	if (!wroteTempo)
 	{
-		midiOutShortMsg(hMidiOut, 0xB0 | ch | (123 << 8)); // All Notes Off
-		midiOutShortMsg(hMidiOut, 0xB0 | ch | (121 << 8)); // Reset All Controllers
+		appendEvent(0, MEVT_TEMPO | 500000);
 	}
 
-	// Cleanup
+	MIDIHDR hdr{};
+	hdr.lpData = reinterpret_cast<LPSTR>(stream.data());
+	hdr.dwBufferLength = static_cast<DWORD>(stream.size() * sizeof(DWORD));
+	hdr.dwBytesRecorded = hdr.dwBufferLength;
+
+	if (midiOutPrepareHeader(reinterpret_cast<HMIDIOUT>(hStream), &hdr, sizeof(MIDIHDR)) != MMSYSERR_NOERROR)
+	{
+		std::cerr << "ERROR: midiOutPrepareHeader failed." << std::endl;
+		midiStreamClose(hStream);
+		state.music_playing = false;
+		return;
+	}
+
+	if (midiStreamOut(hStream, &hdr, sizeof(MIDIHDR)) != MMSYSERR_NOERROR)
+	{
+		std::cerr << "ERROR: midiStreamOut failed." << std::endl;
+		midiOutUnprepareHeader(reinterpret_cast<HMIDIOUT>(hStream), &hdr, sizeof(MIDIHDR));
+		midiStreamClose(hStream);
+		state.music_playing = false;
+		return;
+	}
+
+	midiStreamRestart(hStream);
+
+	while ((hdr.dwFlags & MHDR_DONE) == 0 && state.music_playing)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+
+	if ((hdr.dwFlags & MHDR_DONE) == 0)
+	{
+		midiStreamStop(hStream);
+		midiOutReset(reinterpret_cast<HMIDIOUT>(hStream));
+	}
+
+	midiOutUnprepareHeader(reinterpret_cast<HMIDIOUT>(hStream), &hdr, sizeof(MIDIHDR));
+	midiOutReset(reinterpret_cast<HMIDIOUT>(hStream));
+	midiStreamClose(hStream);
+
 	state.music_playing = false;
-	midiOutClose(hMidiOut);
 #endif
 }
 
