@@ -64,6 +64,78 @@
 #include "music.h"
 #include "rl.h"
 
+//==============================================================================
+// Persistent Audio Subsystem State (for instant playback)
+//==============================================================================
+namespace {
+	// General MIDI persistent stream
+	HMIDISTRM g_midiStream = nullptr;
+	bool g_midiStreamReady = false;
+
+	// Wavetable persistent soundfont
+	tsf* g_soundfont = nullptr;
+	bool g_soundfontReady = false;
+}
+
+//==============================================================================
+// Music System Initialization / Shutdown
+//==============================================================================
+void musicInit()
+{
+#ifdef _WIN32
+	// Read config to determine which systems to pre-initialize
+	std::string mode = config.value("midiMode", "opl3");
+	
+	// Pre-initialize General MIDI stream for instant playback
+	if (mode == "general")
+	{
+		UINT deviceId = static_cast<UINT>(MIDI_MAPPER);
+		MMRESULT r = midiStreamOpen(&g_midiStream, &deviceId, 1, 0, 0, CALLBACK_NULL);
+		if (r == MMSYSERR_NOERROR && g_midiStream)
+		{
+			g_midiStreamReady = true;
+		}
+	}
+	
+	// Pre-load soundfont for wavetable mode
+	if (mode == "wavetable")
+	{
+		std::string sfPath = config.value("soundFont", "default.sf2");
+		g_soundfont = tsf_load_filename(sfPath.c_str());
+		if (g_soundfont)
+		{
+			// Set up for stereo output at 44100Hz
+			tsf_set_output(g_soundfont, TSF_STEREO_INTERLEAVED, 44100, 0.0f);
+			tsf_channel_set_bank_preset(g_soundfont, 9, 128, 0); // Drums on channel 10
+			g_soundfontReady = true;
+		}
+	}
+#endif
+}
+
+void musicShutdown()
+{
+#ifdef _WIN32
+	// Close General MIDI stream
+	if (g_midiStream)
+	{
+		midiStreamStop(g_midiStream);
+		midiOutReset(reinterpret_cast<HMIDIOUT>(g_midiStream));
+		midiStreamClose(g_midiStream);
+		g_midiStream = nullptr;
+		g_midiStreamReady = false;
+	}
+	
+	// Close soundfont
+	if (g_soundfont)
+	{
+		tsf_close(g_soundfont);
+		g_soundfont = nullptr;
+		g_soundfontReady = false;
+	}
+#endif
+}
+
 /*
 ===============================================================================
 Function Name: xmiConverter
@@ -417,7 +489,7 @@ Function Name: PlayMIDI_GeneralMIDI
 
 Description:
 	- Plays the MIDI data using the Windows MIDI API (General MIDI).
-	  This uses the default Windows MIDI synthesizer.
+	  Uses persistent MIDI stream for instant playback with zero startup lag.
 
 Parameters:
 	- const std::vector<uint8_t> &midiData: The MIDI data to be played.
@@ -464,7 +536,7 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 	size_t dataStart = trackStart + 8;
 	size_t dataEnd = std::min(dataStart + static_cast<size_t>(trackLength), midiData.size());
 
-	// First pass: find the first tempo so we can set the initial tempo property
+	// Helper to read variable length values
 	auto readVarLen = [&](size_t &pos) -> uint32_t
 	{
 		uint32_t v = 0;
@@ -479,13 +551,14 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 		return v;
 	};
 
+	// First pass: find the first tempo
 	uint32_t initialTempo = 500000; // default 120 BPM
 	{
 		size_t pos = dataStart;
 		uint8_t runningStatus = 0;
 		while (pos < dataEnd)
 		{
-			( void ) readVarLen(pos); // skip delta
+			(void)readVarLen(pos);
 			if (pos >= dataEnd)
 				break;
 
@@ -500,9 +573,9 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 				if (metaType == 0x51 && metaLen >= 3 && pos + 3 <= dataEnd)
 				{
 					initialTempo = (static_cast<uint32_t>(midiData[pos]) << 16) |
-									(static_cast<uint32_t>(midiData[pos + 1]) << 8) |
-									static_cast<uint32_t>(midiData[pos + 2]);
-					break; // first tempo found
+								   (static_cast<uint32_t>(midiData[pos + 1]) << 8) |
+								   static_cast<uint32_t>(midiData[pos + 2]);
+					break;
 				}
 				pos += metaLen;
 				continue;
@@ -510,8 +583,7 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 			else if (b == 0xF0 || b == 0xF7)
 			{
 				pos++;
-				uint32_t sysexLen = readVarLen(pos);
-				pos += sysexLen;
+				pos += readVarLen(pos);
 				continue;
 			}
 
@@ -528,27 +600,34 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 
 			uint8_t cmd = status & 0xF0;
 			if (cmd == 0x80 || cmd == 0x90 || cmd == 0xA0 || cmd == 0xB0 || cmd == 0xE0)
-			{
 				pos += 2;
-			}
 			else if (cmd == 0xC0 || cmd == 0xD0)
-			{
 				pos += 1;
-			}
 			else
-			{
 				break;
-			}
 		}
 	}
 
-	HMIDISTRM hStream = nullptr;
-	UINT deviceId = static_cast<UINT>(MIDI_MAPPER);
-	MMRESULT r = midiStreamOpen(&hStream, &deviceId, 1, 0, 0, CALLBACK_NULL);
-	if (r != MMSYSERR_NOERROR || !hStream)
+	// Use persistent stream or open new one
+	HMIDISTRM hStream = g_midiStream;
+	bool ownStream = false;
+	
+	if (!hStream || !g_midiStreamReady)
 	{
-		std::cerr << "ERROR: midiStreamOpen failed." << std::endl;
-		return;
+		UINT deviceId = static_cast<UINT>(MIDI_MAPPER);
+		MMRESULT r = midiStreamOpen(&hStream, &deviceId, 1, 0, 0, CALLBACK_NULL);
+		if (r != MMSYSERR_NOERROR || !hStream)
+		{
+			std::cerr << "ERROR: midiStreamOpen failed." << std::endl;
+			return;
+		}
+		ownStream = true;
+	}
+	else
+	{
+		// Reset persistent stream for new song
+		midiStreamStop(hStream);
+		midiOutReset(reinterpret_cast<HMIDIOUT>(hStream));
 	}
 
 	// Set time division and initial tempo
@@ -567,10 +646,7 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 	DWORD volume = (static_cast<DWORD>(vol) << 16) | vol;
 	midiOutSetVolume(reinterpret_cast<HMIDIOUT>(hStream), volume);
 
-	// Build stream events
-	// NOTE: WinMM MIDI streaming buffers are an array of DWORDs.
-	// Each SHORT event is exactly 3 DWORDs: delta, streamId, dwEvent.
-	// Writing sizeof(MIDIEVENT) adds an extra DWORD and corrupts the stream.
+	// Build stream events (3 DWORDs per event: delta, streamId, dwEvent)
 	std::vector<DWORD> stream;
 	stream.reserve((dataEnd - dataStart) * 2);
 
@@ -583,11 +659,9 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 
 	state.music_playing = true;
 	uint8_t runningStatus = 0;
-	bool wroteTempo = false;
 
-	// Inject the initial tempo at delta 0 to ensure correct speed from the start
+	// Inject the initial tempo at delta 0
 	appendEvent(0, MEVT_TEMPO | initialTempo);
-	wroteTempo = true;
 
 	size_t pos = dataStart;
 	while (pos < dataEnd)
@@ -606,16 +680,13 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 			uint32_t metaLen = readVarLen(pos);
 
 			if (metaType == 0x2F)
-			{
 				break; // End of track
-			}
 			else if (metaType == 0x51 && metaLen == 3 && pos + 3 <= dataEnd)
 			{
 				uint32_t tempo = (static_cast<uint32_t>(midiData[pos]) << 16) |
-								(static_cast<uint32_t>(midiData[pos + 1]) << 8) |
-								static_cast<uint32_t>(midiData[pos + 2]);
+								 (static_cast<uint32_t>(midiData[pos + 1]) << 8) |
+								 static_cast<uint32_t>(midiData[pos + 2]);
 				appendEvent(delta, MEVT_TEMPO | tempo);
-				wroteTempo = true;
 			}
 			pos += metaLen;
 			continue;
@@ -623,8 +694,7 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 		else if (b == 0xF0 || b == 0xF7)
 		{
 			pos++;
-			uint32_t sysexLen = readVarLen(pos);
-			pos += sysexLen;
+			pos += readVarLen(pos);
 			continue;
 		}
 
@@ -664,11 +734,6 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 		}
 	}
 
-	if (!wroteTempo)
-	{
-		appendEvent(0, MEVT_TEMPO | 500000);
-	}
-
 	MIDIHDR hdr{};
 	hdr.lpData = reinterpret_cast<LPSTR>(stream.data());
 	hdr.dwBufferLength = static_cast<DWORD>(stream.size() * sizeof(DWORD));
@@ -677,7 +742,8 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 	if (midiOutPrepareHeader(reinterpret_cast<HMIDIOUT>(hStream), &hdr, sizeof(MIDIHDR)) != MMSYSERR_NOERROR)
 	{
 		std::cerr << "ERROR: midiOutPrepareHeader failed." << std::endl;
-		midiStreamClose(hStream);
+		if (ownStream)
+			midiStreamClose(hStream);
 		state.music_playing = false;
 		return;
 	}
@@ -686,7 +752,8 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 	{
 		std::cerr << "ERROR: midiStreamOut failed." << std::endl;
 		midiOutUnprepareHeader(reinterpret_cast<HMIDIOUT>(hStream), &hdr, sizeof(MIDIHDR));
-		midiStreamClose(hStream);
+		if (ownStream)
+			midiStreamClose(hStream);
 		state.music_playing = false;
 		return;
 	}
@@ -705,8 +772,13 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 	}
 
 	midiOutUnprepareHeader(reinterpret_cast<HMIDIOUT>(hStream), &hdr, sizeof(MIDIHDR));
-	midiOutReset(reinterpret_cast<HMIDIOUT>(hStream));
-	midiStreamClose(hStream);
+
+	// Only close if we own this stream (not persistent)
+	if (ownStream)
+	{
+		midiOutReset(reinterpret_cast<HMIDIOUT>(hStream));
+		midiStreamClose(hStream);
+	}
 
 	state.music_playing = false;
 #endif
@@ -1132,9 +1204,21 @@ void PlayMIDI_Wavetable(const std::vector<uint8_t> &midiData, bool isTransient)
 		}
 	}
 
-	// Configure TinySoundFont
-	tsf_set_output(synth, TSF_STEREO_INTERLEAVED, sampleRate, 0.0f); // 0 = no global gain adjustment
-	tsf_set_volume(synth, state.music_volume);
+	// Configure TinySoundFont for General MIDI playback
+	tsf_set_output(synth, TSF_STEREO_INTERLEAVED, sampleRate, 0.0f);
+	
+	// Set global volume (attenuate to prevent clipping - SF2 samples can be hot)
+	tsf_set_volume(synth, state.music_volume * 0.5f);
+	
+	// Initialize all 16 MIDI channels for General MIDI bank mode
+	// This ensures program changes work correctly and prevents crazy volume
+	for (int ch = 0; ch < 16; ch++)
+	{
+		tsf_channel_set_bank(synth, ch, (ch == 9) ? 128 : 0); // Bank 128 = drums for channel 10
+		tsf_channel_set_presetnumber(synth, ch, 0, (ch == 9)); // Default to piano, drums on ch10
+		tsf_channel_set_pan(synth, ch, 0.5f); // Center pan
+		tsf_channel_set_volume(synth, ch, 1.0f); // Full channel volume (master controls overall)
+	}
 
 	hr = pAudioClient->GetService(__uuidof(IAudioRenderClient), reinterpret_cast<void **>(&pRenderClient));
 	if (FAILED(hr))

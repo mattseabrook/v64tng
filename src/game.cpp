@@ -411,6 +411,7 @@ void init()
 	SetPriorityClass(GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS);
 #endif
 	initWindow();
+	musicInit();
 
 	buildViewMap();
 
@@ -479,6 +480,7 @@ void init()
 	{
 		state.music_thread.join();
 	}
+	musicShutdown();
 
 	// PCM
 	wavStop();
