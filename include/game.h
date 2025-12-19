@@ -208,7 +208,8 @@ struct GameState
 	std::string current_song;								// Name of the currently playing song (e.g., "gu39")
 	std::string transient_song;								// Transient song (if any)
 	double main_song_position = 0.0;						// Position to resume from
-	std::string music_mode;									// Playback mode: "opl2", "dual_opl2", "opl3"
+	std::string music_mode;									// Playback mode: "opl2", "dual_opl2", "opl3", "general", "wavetable"
+	std::string soundfont_path;								// Path to SF2 soundfont (for wavetable mode)
 	int midi_bank = 0;										// ADLMIDI built-in bank index
 	std::thread music_thread;								// Thread for non-blocking music playback
 	bool music_playing = false;								// Flag to indicate if music is playing

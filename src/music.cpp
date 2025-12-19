@@ -29,6 +29,12 @@
 // MIDI Library
 //
 #include <adlmidi.h>
+
+//
+// TinySoundFont for SF2 Wavetable synthesis
+//
+#define TSF_IMPLEMENTATION
+#include "schellingb/tsf.h"
 //------------------------------------------------------------------------------
 // Choose the most widely available emulator IDs for OPL2 and OPL3.  Older
 // versions of libADLMIDI may not define the newer YMFM constants, so fall back
@@ -992,12 +998,393 @@ void PlayMIDI_OPL(const std::vector<uint8_t> &midiData, bool isTransient)
 
 /*
 ===============================================================================
+Function Name: PlayMIDI_Wavetable
+
+Description:
+	- Plays the MIDI data using TinySoundFont with an SF2 soundfont.
+	  This provides high-quality wavetable synthesis output via WASAPI.
+
+Parameters:
+	- const std::vector<uint8_t> &midiData: The MIDI data to be played.
+	- bool isTransient: Indicates whether the song is transient or not.
+===============================================================================
+*/
+void PlayMIDI_Wavetable(const std::vector<uint8_t> &midiData, bool isTransient)
+{
+#ifdef _WIN32
+	// Load soundfont
+	tsf *synth = tsf_load_filename(state.soundfont_path.c_str());
+	if (!synth)
+	{
+		std::cerr << "ERROR: Failed to load soundfont: " << state.soundfont_path << std::endl;
+		std::cerr << "Falling back to OPL3 synthesis." << std::endl;
+		PlayMIDI_OPL(midiData, isTransient);
+		return;
+	}
+
+	// Parse MIDI header
+	if (midiData.size() < 14 ||
+		midiData[0] != 'M' || midiData[1] != 'T' || midiData[2] != 'h' || midiData[3] != 'd')
+	{
+		std::cerr << "ERROR: Invalid MIDI header for wavetable." << std::endl;
+		tsf_close(synth);
+		return;
+	}
+
+	uint16_t timeDivision = (static_cast<uint16_t>(midiData[12]) << 8) | midiData[13];
+
+	// Find track
+	size_t trackStart = 14;
+	while (trackStart + 8 < midiData.size())
+	{
+		if (midiData[trackStart] == 'M' && midiData[trackStart + 1] == 'T' &&
+			midiData[trackStart + 2] == 'r' && midiData[trackStart + 3] == 'k')
+			break;
+		trackStart++;
+	}
+	if (trackStart + 8 >= midiData.size())
+	{
+		std::cerr << "ERROR: Could not find MIDI track for wavetable." << std::endl;
+		tsf_close(synth);
+		return;
+	}
+
+	uint32_t trackLength = (static_cast<uint32_t>(midiData[trackStart + 4]) << 24) |
+						   (static_cast<uint32_t>(midiData[trackStart + 5]) << 16) |
+						   (static_cast<uint32_t>(midiData[trackStart + 6]) << 8) |
+						   static_cast<uint32_t>(midiData[trackStart + 7]);
+
+	size_t dataStart = trackStart + 8;
+	size_t dataEnd = std::min(dataStart + static_cast<size_t>(trackLength), midiData.size());
+
+	// Initialize WASAPI
+	HRESULT hr;
+	IMMDeviceEnumerator *pEnumerator = nullptr;
+	IMMDevice *pDevice = nullptr;
+	IAudioClient *pAudioClient = nullptr;
+	IAudioRenderClient *pRenderClient = nullptr;
+
+	hr = CoInitialize(nullptr);
+	if (FAILED(hr))
+	{
+		std::cerr << "ERROR: CoInitialize failed for wavetable." << std::endl;
+		tsf_close(synth);
+		return;
+	}
+
+	hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+						  __uuidof(IMMDeviceEnumerator), reinterpret_cast<void **>(&pEnumerator));
+	if (FAILED(hr))
+	{
+		std::cerr << "ERROR: CoCreateInstance failed for wavetable." << std::endl;
+		tsf_close(synth);
+		CoUninitialize();
+		return;
+	}
+
+	hr = pEnumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &pDevice);
+	if (FAILED(hr))
+	{
+		std::cerr << "ERROR: GetDefaultAudioEndpoint failed for wavetable." << std::endl;
+		pEnumerator->Release();
+		tsf_close(synth);
+		CoUninitialize();
+		return;
+	}
+
+	hr = pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void **>(&pAudioClient));
+	if (FAILED(hr))
+	{
+		std::cerr << "ERROR: Activate audio client failed for wavetable." << std::endl;
+		pDevice->Release();
+		pEnumerator->Release();
+		tsf_close(synth);
+		CoUninitialize();
+		return;
+	}
+
+	int sampleRate = 44100;
+	WAVEFORMATEX wfx = {
+		.wFormatTag = WAVE_FORMAT_IEEE_FLOAT,
+		.nChannels = 2,
+		.nSamplesPerSec = static_cast<DWORD>(sampleRate),
+		.nAvgBytesPerSec = static_cast<DWORD>(sampleRate * 2 * sizeof(float)),
+		.nBlockAlign = static_cast<WORD>(2 * sizeof(float)),
+		.wBitsPerSample = 32,
+		.cbSize = 0};
+
+	hr = pAudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, 500000, 0, &wfx, nullptr);
+	if (FAILED(hr))
+	{
+		sampleRate = 48000;
+		wfx.nSamplesPerSec = sampleRate;
+		wfx.nAvgBytesPerSec = sampleRate * 2 * sizeof(float);
+		hr = pAudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, 500000, 0, &wfx, nullptr);
+		if (FAILED(hr))
+		{
+			std::cerr << "ERROR: Audio client Initialize failed for wavetable." << std::endl;
+			pAudioClient->Release();
+			pDevice->Release();
+			pEnumerator->Release();
+			tsf_close(synth);
+			CoUninitialize();
+			return;
+		}
+	}
+
+	// Configure TinySoundFont
+	tsf_set_output(synth, TSF_STEREO_INTERLEAVED, sampleRate, 0.0f); // 0 = no global gain adjustment
+	tsf_set_volume(synth, state.music_volume);
+
+	hr = pAudioClient->GetService(__uuidof(IAudioRenderClient), reinterpret_cast<void **>(&pRenderClient));
+	if (FAILED(hr))
+	{
+		std::cerr << "ERROR: GetService for IAudioRenderClient failed for wavetable." << std::endl;
+		pAudioClient->Release();
+		pDevice->Release();
+		pEnumerator->Release();
+		tsf_close(synth);
+		CoUninitialize();
+		return;
+	}
+
+	UINT32 bufferFrameCount;
+	hr = pAudioClient->GetBufferSize(&bufferFrameCount);
+	if (FAILED(hr))
+	{
+		std::cerr << "ERROR: GetBufferSize failed for wavetable." << std::endl;
+		pRenderClient->Release();
+		pAudioClient->Release();
+		pDevice->Release();
+		pEnumerator->Release();
+		tsf_close(synth);
+		CoUninitialize();
+		return;
+	}
+
+	hr = pAudioClient->Start();
+	if (FAILED(hr))
+	{
+		std::cerr << "ERROR: Audio client Start failed for wavetable." << std::endl;
+		pRenderClient->Release();
+		pAudioClient->Release();
+		pDevice->Release();
+		pEnumerator->Release();
+		tsf_close(synth);
+		CoUninitialize();
+		return;
+	}
+
+	// MIDI parsing helpers
+	auto readVarLen = [&](size_t &pos) -> uint32_t
+	{
+		uint32_t v = 0;
+		uint8_t b;
+		do
+		{
+			if (pos >= dataEnd)
+				return v;
+			b = midiData[pos++];
+			v = (v << 7) | (b & 0x7F);
+		} while (b & 0x80);
+		return v;
+	};
+
+	// Playback state
+	state.music_playing = true;
+	size_t pos = dataStart;
+	uint8_t runningStatus = 0;
+	uint32_t tempo = 500000; // microseconds per quarter note (120 BPM default)
+	double ticksPerSecond = static_cast<double>(timeDivision) * 1000000.0 / tempo;
+	double samplesPerTick = sampleRate / ticksPerSecond;
+	double sampleAccum = 0.0;
+
+	while (state.music_playing && pos < dataEnd)
+	{
+		// Read delta time
+		uint32_t delta = readVarLen(pos);
+		if (pos >= dataEnd)
+			break;
+
+		// Render audio for this delta
+		double samplesToRender = delta * samplesPerTick + sampleAccum;
+		int wholeSamples = static_cast<int>(samplesToRender);
+		sampleAccum = samplesToRender - wholeSamples;
+
+		while (wholeSamples > 0 && state.music_playing)
+		{
+			UINT32 padding;
+			hr = pAudioClient->GetCurrentPadding(&padding);
+			if (FAILED(hr))
+				break;
+
+			UINT32 framesAvailable = bufferFrameCount - padding;
+			if (framesAvailable == 0)
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				continue;
+			}
+
+			UINT32 framesToRender = std::min(framesAvailable, static_cast<UINT32>(wholeSamples));
+
+			BYTE *pData;
+			hr = pRenderClient->GetBuffer(framesToRender, &pData);
+			if (FAILED(hr))
+				break;
+
+			tsf_render_float(synth, reinterpret_cast<float *>(pData), static_cast<int>(framesToRender), 0);
+
+			hr = pRenderClient->ReleaseBuffer(framesToRender, 0);
+			if (FAILED(hr))
+				break;
+
+			wholeSamples -= framesToRender;
+		}
+
+		if (!state.music_playing)
+			break;
+
+		// Process MIDI event
+		uint8_t b = midiData[pos];
+		if (b == 0xFF)
+		{
+			// Meta event
+			pos++;
+			if (pos >= dataEnd)
+				break;
+			uint8_t metaType = midiData[pos++];
+			uint32_t metaLen = readVarLen(pos);
+
+			if (metaType == 0x2F)
+			{
+				break; // End of track
+			}
+			else if (metaType == 0x51 && metaLen >= 3 && pos + 3 <= dataEnd)
+			{
+				// Tempo change
+				tempo = (static_cast<uint32_t>(midiData[pos]) << 16) |
+						(static_cast<uint32_t>(midiData[pos + 1]) << 8) |
+						static_cast<uint32_t>(midiData[pos + 2]);
+				ticksPerSecond = static_cast<double>(timeDivision) * 1000000.0 / tempo;
+				samplesPerTick = sampleRate / ticksPerSecond;
+			}
+			pos += metaLen;
+			continue;
+		}
+		else if (b == 0xF0 || b == 0xF7)
+		{
+			// SysEx - skip
+			pos++;
+			uint32_t sysexLen = readVarLen(pos);
+			pos += sysexLen;
+			continue;
+		}
+
+		// Channel message
+		uint8_t status = b;
+		if (status & 0x80)
+		{
+			runningStatus = status;
+			pos++;
+		}
+		else
+		{
+			status = runningStatus;
+		}
+
+		uint8_t cmd = status & 0xF0;
+		uint8_t channel = status & 0x0F;
+
+		if (cmd == 0x80)
+		{
+			// Note Off
+			if (pos + 2 > dataEnd)
+				break;
+			uint8_t note = midiData[pos++];
+			pos++; // velocity ignored for note off
+			tsf_note_off(synth, static_cast<int>(channel), static_cast<int>(note));
+		}
+		else if (cmd == 0x90)
+		{
+			// Note On
+			if (pos + 2 > dataEnd)
+				break;
+			uint8_t note = midiData[pos++];
+			uint8_t velocity = midiData[pos++];
+			if (velocity == 0)
+			{
+				tsf_note_off(synth, static_cast<int>(channel), static_cast<int>(note));
+			}
+			else
+			{
+				tsf_note_on(synth, static_cast<int>(channel), static_cast<int>(note), velocity / 127.0f);
+			}
+		}
+		else if (cmd == 0xA0)
+		{
+			// Aftertouch - skip
+			pos += 2;
+		}
+		else if (cmd == 0xB0)
+		{
+			// Control Change
+			if (pos + 2 > dataEnd)
+				break;
+			uint8_t controller = midiData[pos++];
+			uint8_t value = midiData[pos++];
+			tsf_channel_midi_control(synth, static_cast<int>(channel), static_cast<int>(controller), static_cast<int>(value));
+		}
+		else if (cmd == 0xC0)
+		{
+			// Program Change
+			if (pos + 1 > dataEnd)
+				break;
+			uint8_t program = midiData[pos++];
+			tsf_channel_set_presetnumber(synth, static_cast<int>(channel), static_cast<int>(program), (channel == 9));
+		}
+		else if (cmd == 0xD0)
+		{
+			// Channel Pressure - skip
+			pos += 1;
+		}
+		else if (cmd == 0xE0)
+		{
+			// Pitch Bend
+			if (pos + 2 > dataEnd)
+				break;
+			uint8_t lsb = midiData[pos++];
+			uint8_t msb = midiData[pos++];
+			int pitchBend = (static_cast<int>(msb) << 7) | lsb;
+			tsf_channel_set_pitchwheel(synth, static_cast<int>(channel), pitchBend);
+		}
+		else
+		{
+			// Unknown - skip
+			break;
+		}
+	}
+
+	// Cleanup
+	state.music_playing = false;
+	pAudioClient->Stop();
+	pRenderClient->Release();
+	pAudioClient->Release();
+	pDevice->Release();
+	pEnumerator->Release();
+	tsf_close(synth);
+	CoUninitialize();
+#endif
+}
+
+/*
+===============================================================================
 Function Name: PlayMIDI
 
 Description:
 	- Dispatcher function that routes MIDI playback to the appropriate backend
 	  based on the configured midiMode:
 	  - "general": Uses Windows MIDI API (General MIDI synthesizer)
+	  - "wavetable": Uses TinySoundFont with SF2 soundfont
 	  - "opl2", "dual_opl2", "opl3": Uses libADLMIDI (FM synthesis)
 
 Parameters:
@@ -1010,6 +1397,10 @@ void PlayMIDI(const std::vector<uint8_t> &midiData, bool isTransient)
 	if (state.music_mode == "general")
 	{
 		PlayMIDI_GeneralMIDI(midiData, isTransient);
+	}
+	else if (state.music_mode == "wavetable")
+	{
+		PlayMIDI_Wavetable(midiData, isTransient);
 	}
 	else
 	{
@@ -1039,6 +1430,7 @@ void xmiPlay(const std::string &songName, bool isTransient)
 	state.music_volume = std::clamp(midi_volume / 100.0f, 0.0f, 1.0f);
 	state.music_mode = config.value("midiMode", "opl3");
 	state.midi_bank = config.value("midiBank", 0);
+	state.soundfont_path = config.value("soundFont", "default.sf2");
 
 	if (midi_enabled)
 	{
