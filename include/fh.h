@@ -266,7 +266,7 @@ const std::vector<ViewGroup> foyer = {
 			 {{33.0f, 0.0f, 33.0f, 85.0f, CURSOR_FORWARD, 0}, "f1_6"},		// Forward
 			 {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "f_1fc"},		// Right
 			 {{0.0f, 50.0f, 17.0f, 30.0f, CURSOR_FORWARD, 1}, "f1_2"},		// Dining Room
-			 {{80.0f, 50.0f, 20.0f, 30.0f, CURSOR_FORWARD, 0}, "f1_5,f5_4"} // Music Room
+			 {{72.2f, 49.7f, 14.9f, 30.0f, CURSOR_FORWARD, 0}, "f1_5,f5_4"} // Music Room
 		 }}},
 	//
 	// front door, turning left

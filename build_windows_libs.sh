@@ -363,7 +363,71 @@ build_adlmidi() {
     cd build_windows
     
     create_toolchain_file
- 
+
+build_glslang() {
+    echo "=== Building glslang ==="
+    cd "$BUILD_DIR"
+
+    if [[ ! -d "glslang" ]]; then
+        git clone https://github.com/KhronosGroup/glslang.git
+    fi
+
+    cd glslang
+    git submodule update --init --recursive
+
+    rm -rf build_windows
+    mkdir build_windows
+    cd build_windows
+
+    create_toolchain_file
+
+    cmake .. \
+        -DCMAKE_TOOLCHAIN_FILE=windows-cross.cmake \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX/glslang" \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DENABLE_SPVREMAPPER=ON \
+        -DENABLE_GLSLANG_BINARIES=OFF \
+        -DENABLE_HLSL=ON
+
+    cmake --build . --config Release -j"$(nproc)"
+    cmake --install .
+
+    echo "glslang build complete"
+}
+
+build_spirv_cross() {
+    echo "=== Building SPIRV-Cross ==="
+    cd "$BUILD_DIR"
+
+    if [[ ! -d "SPIRV-Cross" ]]; then
+        git clone https://github.com/KhronosGroup/SPIRV-Cross.git
+    fi
+
+    cd SPIRV-Cross
+
+    rm -rf build_windows
+    mkdir build_windows
+    cd build_windows
+
+    create_toolchain_file
+
+    cmake .. \
+        -DCMAKE_TOOLCHAIN_FILE=windows-cross.cmake \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX/spirv-cross" \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DSPIRV_CROSS_STATIC=ON \
+        -DSPIRV_CROSS_SHARED=OFF \
+        -DSPIRV_CROSS_CLI=OFF \
+        -DSPIRV_CROSS_ENABLE_TESTS=OFF
+
+    cmake --build . --config Release -j"$(nproc)"
+    cmake --install .
+
+    echo "SPIRV-Cross build complete"
+}
+
 cmake .. \
   -DCMAKE_TOOLCHAIN_FILE=windows-cross.cmake \
   -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX/ADLMIDI" \
@@ -757,11 +821,21 @@ case "$1" in
         setup_winsdk
         build_adlmidi
         ;;
+    "glslang")
+        setup_winsdk
+        build_glslang
+        ;;
+    "spirv-cross")
+        setup_winsdk
+        build_spirv_cross
+        ;;
     "all")
         setup_winsdk
         test_cross_compilation || exit 1
         build_zlib
         build_libpng
+        build_glslang
+        build_spirv_cross
         build_adlmidi
         echo "=== All libraries built successfully ==="
         ;;
