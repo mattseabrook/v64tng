@@ -845,7 +845,7 @@ fi
 banner "${EMOJI_ROCKET} Deployment"
 
 mkdir -p "$TARGET_DIR"
-sudo rm -f "$TARGET_DIR"/*.exe "$TARGET_DIR"/*.pdb
+sudo rm -f "$TARGET_DIR"/v64tng*.exe "$TARGET_DIR"/v64tng*.pdb
 sudo cp "$OUTPUT_EXE" "$TARGET_DIR/"
 
 echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Deployed to $TARGET_DIR${COLOR_RESET}"
