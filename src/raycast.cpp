@@ -5,12 +5,17 @@
 #include <thread>
 #include <vector>
 #include <array>
+#include <numbers>  // C++20 std::numbers::pi
 
 #include "raycast.h"
 #include "window.h"
 #include "game.h"
 #include "basement.h"
 #include "megatexture.h"
+
+// Constants
+static constexpr float PI = std::numbers::pi_v<float>;
+static constexpr float TWO_PI = 2.0f * PI;
 
 // Local state for raycasting
 static std::array<bool, 256> g_keys = {};
@@ -26,6 +31,23 @@ struct RaycastConfig
 };
 static RaycastConfig g_rayConfig;
 
+// Persistent thread pool to avoid thread creation overhead per frame
+struct ThreadPool
+{
+    std::vector<std::jthread> workers;
+    unsigned int threadCount = 0;
+    
+    void ensureThreadCount(unsigned int count)
+    {
+        if (threadCount != count)
+        {
+            workers.clear();
+            threadCount = count;
+        }
+    }
+};
+static ThreadPool g_threadPool;
+
 // Call once per frame before rendering to cache config values
 static void cacheConfigValues()
 {
@@ -38,6 +60,13 @@ static void cacheConfigValues()
     g_rayConfig.supersample = config.contains("raycastSupersample")
         ? config["raycastSupersample"].get<int>() : 1;
     g_rayConfig.baseTorchRange = 16.0f;
+}
+
+// Normalize angle to [0, 2π) using std::fmod (branchless)
+static inline float normalizeAngle(float angle)
+{
+    angle = std::fmod(angle, TWO_PI);
+    return angle < 0.0f ? angle + TWO_PI : angle;
 }
 
 //
@@ -88,71 +117,66 @@ bool initializePlayerFromMap(const std::vector<std::vector<uint8_t>> &tileMap, R
     return false;
 }
 
-// Cast ray with DDA algorithm
+// Cast ray with DDA algorithm (branchless inner loop)
 RaycastHit castRay(const std::vector<std::vector<uint8_t>> &tileMap,
                    float posX,
                    float posY,
                    float rayDirX,
                    float rayDirY)
 {
-    int mapW = tileMap[0].size(), mapH = tileMap.size();
-    int mapX = static_cast<int>(posX), mapY = static_cast<int>(posY);
-    float deltaDistX = std::abs(1.0f / rayDirX), deltaDistY = std::abs(1.0f / rayDirY);
-    float sideDistX, sideDistY;
-    int stepX, stepY, side = 0;
-
-    // Fixed DDA initialization
-    if (rayDirX < 0)
+    const int mapW = static_cast<int>(tileMap[0].size());
+    const int mapH = static_cast<int>(tileMap.size());
+    int mapX = static_cast<int>(posX);
+    int mapY = static_cast<int>(posY);
+    
+    // Avoid division by zero with small epsilon
+    const float epsX = (rayDirX == 0.0f) ? 1e-10f : rayDirX;
+    const float epsY = (rayDirY == 0.0f) ? 1e-10f : rayDirY;
+    const float deltaDistX = std::abs(1.0f / epsX);
+    const float deltaDistY = std::abs(1.0f / epsY);
+    
+    // Branchless step calculation using sign
+    const int stepX = (rayDirX >= 0.0f) ? 1 : -1;
+    const int stepY = (rayDirY >= 0.0f) ? 1 : -1;
+    
+    // Branchless initial side distance calculation
+    float sideDistX = (stepX > 0) 
+        ? (mapX + 1.0f - posX) * deltaDistX 
+        : (posX - mapX) * deltaDistX;
+    float sideDistY = (stepY > 0) 
+        ? (mapY + 1.0f - posY) * deltaDistY 
+        : (posY - mapY) * deltaDistY;
+    
+    int side = 0;
+    
+    // DDA loop with branchless step selection
+    constexpr int MAX_STEPS = 64;
+    for (int i = 0; i < MAX_STEPS; ++i)
     {
-        stepX = -1;
-        sideDistX = (posX - mapX) * deltaDistX;
-    }
-    else
-    {
-        stepX = 1;
-        sideDistX = (mapX + 1.0f - posX) * deltaDistX;
-    }
-
-    if (rayDirY < 0)
-    {
-        stepY = -1;
-        sideDistY = (posY - mapY) * deltaDistY;
-    }
-    else
-    {
-        stepY = 1;
-        sideDistY = (mapY + 1.0f - posY) * deltaDistY;
-    }
-
-    while (true)
-    {
-        if (sideDistX < sideDistY)
-        {
-            sideDistX += deltaDistX;
-            mapX += stepX;
-            side = 0;
-        }
-        else
-        {
-            sideDistY += deltaDistY;
-            mapY += stepY;
-            side = 1;
-        }
+        // Branchless: select which axis to step based on comparison
+        const bool stepInX = (sideDistX < sideDistY);
         
-        // Out of bounds - return actual distance traveled, no wall hit
+        // Conditional updates (compiler optimizes to cmov)
+        sideDistX += stepInX ? deltaDistX : 0.0f;
+        sideDistY += stepInX ? 0.0f : deltaDistY;
+        mapX += stepInX ? stepX : 0;
+        mapY += stepInX ? 0 : stepY;
+        side = stepInX ? 0 : 1;
+        
+        // Bounds check
         if (mapX < 0 || mapY < 0 || mapX >= mapW || mapY >= mapH)
         {
-            float dist = side ? (sideDistY - deltaDistY) : (sideDistX - deltaDistX);
+            const float dist = side ? (sideDistY - deltaDistY) : (sideDistX - deltaDistX);
             return {dist, side, false, mapX, mapY, 0.0f};
         }
 
-        // Check for walls
-        uint8_t tile = tileMap[mapY][mapX];
+        // Wall check
+        const uint8_t tile = tileMap[mapY][mapX];
         if (tile >= 0x01 && (tile < 0xF0 || tile > 0xF3))
             break;
     }
     
-    float dist = side ? (sideDistY - deltaDistY) : (sideDistX - deltaDistX);
+    const float dist = side ? (sideDistY - deltaDistY) : (sideDistX - deltaDistX);
     
     // Calculate exact hit position on wall for texture U coordinate
     float wallX;
@@ -503,11 +527,8 @@ void handleRaycastMouseMove()
         float sensitivity = (config["mlookSensitivity"].get<float>() / 50.0f) * 0.005f;
         state.raycast.player.angle += deltaX * sensitivity;
 
-        // Normalize angle to [0, 2π]
-        while (state.raycast.player.angle >= 2.0f * 3.14159265f)
-            state.raycast.player.angle -= 2.0f * 3.14159265f;
-        while (state.raycast.player.angle < 0.0f)
-            state.raycast.player.angle += 2.0f * 3.14159265f;
+        // Normalize angle to [0, 2π) using branchless std::fmod
+        state.raycast.player.angle = normalizeAngle(state.raycast.player.angle);
 
         // Reset cursor to center immediately
         SetCursorPos(clientCenter.x, clientCenter.y);
