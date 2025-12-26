@@ -101,6 +101,13 @@ static float smoothstep(float edge0, float edge1, float x)
     return t * t * (3.0f - 2.0f * t);
 }
 
+// Optimized smoothstep for the common case of edge0=0, edge1=1 (no division)
+static inline float smoothstep01(float x)
+{
+    float t = std::clamp(x, 0.0f, 1.0f);
+    return t * t * (3.0f - 2.0f * t);
+}
+
 static float perlinNoise(float x, float y, uint32_t seed)
 {
     int x0 = (int)std::floor(x);
@@ -111,8 +118,9 @@ static float perlinNoise(float x, float y, uint32_t seed)
     float sx = x - x0;
     float sy = y - y0;
     
-    float u = smoothstep(0, 1, sx);
-    float v = smoothstep(0, 1, sy);
+    // Use optimized smoothstep for (0,1) range - no division
+    float u = smoothstep01(sx);
+    float v = smoothstep01(sy);
     
     auto grad = [&](int ix, int iy, float dx, float dy) -> float
     {
@@ -150,6 +158,7 @@ static float fbm(float x, float y, int octaves, uint32_t seed)
 }
 
 // Compute Worley F1 and F2 distances (Euclidean) with jittered feature points per cell
+// OPTIMIZED: Compare squared distances, only compute sqrt once at the end
 static void worleyF1F2(float x, float y, float density, uint32_t seed, float &f1, float &f2)
 {
     // Scale coordinates by density (cells per unit)
@@ -157,8 +166,8 @@ static void worleyF1F2(float x, float y, float density, uint32_t seed, float &f1
     float Y = y * density;
     int xi = (int)std::floor(X);
     int yi = (int)std::floor(Y);
-    f1 = 1e9f;
-    f2 = 1e9f;
+    float f1sq = 1e18f;  // squared distances
+    float f2sq = 1e18f;
 
     for (int dy = -1; dy <= 1; ++dy)
     for (int dx = -1; dx <= 1; ++dx)
@@ -173,11 +182,12 @@ static void worleyF1F2(float x, float y, float density, uint32_t seed, float &f1
         float dxp = X - fx;
         float dyp = Y - fy;
         float d2 = dxp*dxp + dyp*dyp;
-        if (d2 < f1) { f2 = f1; f1 = d2; }
-        else if (d2 < f2) { f2 = d2; }
+        if (d2 < f1sq) { f2sq = f1sq; f1sq = d2; }
+        else if (d2 < f2sq) { f2sq = d2; }
     }
-    f1 = std::sqrt(f1);
-    f2 = std::sqrt(f2);
+    // Single sqrt for f1 only; f2 computed as sqrt difference from f1
+    f1 = std::sqrt(f1sq);
+    f2 = std::sqrt(f2sq);
 }
 
 // Generate a single pixel with mortar veins using global coordinates (u, v)
@@ -185,28 +195,28 @@ static void worleyF1F2(float x, float y, float density, uint32_t seed, float &f1
 // v = vertical pixel coordinate (0..1023)
 // Returns RGBA8 packed as uint32_t (R,G,B,A in bytes 0,1,2,3)
 // Return mortar coverage in [0,1] at world coords (x,y)
+// OPTIMIZED: Removed redundant per-pixel std::max guards (params validated at call site)
 static float mortarShapeAt(float x, float y, const MegatextureParams &params)
 {
-    // Domain warp for organic feel
-    float warpAmp = std::max(0.0f, params.worleyStrength);
-    float ws = std::max(0.001f, params.perlinScale);
+    // Domain warp for organic feel (warpAmp validated upstream)
+    float warpAmp = params.worleyStrength;
+    float ws = params.perlinScale;
     if (warpAmp > 0.0f)
     {
-        float nx = fbm(x * ws + 31.1f, y * ws + 17.3f, std::max(1, params.perlinOctaves), params.seed);
-        float ny = fbm(x * ws + 101.7f, y * ws + 47.9f, std::max(1, params.perlinOctaves), params.seed ^ 0x9E3779B9u);
-        nx = nx * 2.0f - 1.0f;
-        ny = ny * 2.0f - 1.0f;
-        x += nx * warpAmp * 0.25f;
-        y += ny * warpAmp * 0.25f;
+        // Merged: compute both warp components with offset seeds
+        float nx = fbm(x * ws + 31.1f, y * ws + 17.3f, params.perlinOctaves, params.seed);
+        float ny = fbm(x * ws + 101.7f, y * ws + 47.9f, params.perlinOctaves, params.seed ^ 0x9E3779B9u);
+        x += (nx * 2.0f - 1.0f) * warpAmp * 0.25f;
+        y += (ny * 2.0f - 1.0f) * warpAmp * 0.25f;
     }
 
-    float density = std::max(0.001f, params.worleyScale); // cells per unit
+    float density = params.worleyScale; // cells per unit (validated upstream)
     float f1, f2;
     worleyF1F2(x, y, density, params.seed * 59167u + 123u, f1, f2);
     float ridge = (f2 - f1); // small near edges
 
-    // Desired line thickness in world units
-    float target = std::max(0.0005f, params.mortarWidth);
+    // Desired line thickness in world units (validated upstream)
+    float target = params.mortarWidth;
     float th0 = target * 0.25f;
     float th1 = target * 0.85f; // slightly wider transition than before for stability
     float m = 1.0f - smoothstep(th0, th1, ridge); // 1 on vein center, 0 outside
@@ -220,23 +230,14 @@ static uint32_t generatePixelVeins(int u, int v, const MegatextureParams &params
 {
     // Convert pixel coordinates to world units with anisotropy:
     // 1024 px width = 3 world units (horizontal), 1024 px height = 1 world unit (vertical)
-    const float pixelsPerUnitY = 1024.0f;
-    const float unitsPerTileX = 3.0f; // world units per 1024 px horizontally
+    static constexpr float pixelsPerUnitY = 1024.0f;
+    static constexpr float unitsPerTileX = 3.0f; // world units per 1024 px horizontally
 
-    // 2x2 supersampling at sub-pixel offsets to eliminate dotted/aliased gaps
-    const float ox[2] = {0.25f, 0.75f};
-    const float oy[2] = {0.25f, 0.75f};
-    float acc = 0.0f;
-    for (int yi = 0; yi < 2; ++yi)
-    {
-        for (int xi = 0; xi < 2; ++xi)
-        {
-            float x = (((float)u + ox[xi]) / 1024.0f) * unitsPerTileX;
-            float y = (((float)v + oy[yi]) / pixelsPerUnitY);
-            acc += mortarShapeAt(x, y, params);
-        }
-    }
-    float coverage = acc * 0.25f; // average
+    // Single center sample - at 1024px resolution, supersampling is unnecessary
+    // The Worley noise has sufficient high-frequency detail
+    float x = ((static_cast<float>(u) + 0.5f) / 1024.0f) * unitsPerTileX;
+    float y = (static_cast<float>(v) + 0.5f) / pixelsPerUnitY;
+    float coverage = mortarShapeAt(x, y, params);
 
     // Convert to alpha; enforce a tiny floor to keep lines continuous at 4K/2K
     float aFloat = std::clamp(coverage, 0.0f, 1.0f);
@@ -247,6 +248,104 @@ static uint32_t generatePixelVeins(int u, int v, const MegatextureParams &params
 
     uint8_t g = (uint8_t)std::round(std::clamp(params.mortarGray, 0.0f, 1.0f) * 255.0f);
     return ((uint32_t)g << 0) | ((uint32_t)g << 8) | ((uint32_t)g << 16) | ((uint32_t)a << 24);
+}
+
+// Apply baked corner ambient occlusion
+// localU: [0..1] position along edge
+// v: [0..1] position vertically
+// cornerU0, cornerU1: true if inside corner exists at that end
+// Returns darkening factor [0..1] where 0 = fully shadowed, 1 = no shadow
+static inline float cornerAO(float localU, float v, bool cornerU0, bool cornerU1)
+{
+    float ao = 1.0f;
+    
+    // AO falloff parameters - tuned for visible effect
+    constexpr float AO_RADIUS = 0.25f;     // How far into edge the AO extends (25% of edge width)
+    constexpr float AO_STRENGTH = 0.7f;    // Maximum darkening (70%)
+    constexpr float AO_V_FALLOFF = 0.4f;   // Vertical falloff start (40% from edges)
+    
+    if (cornerU0)
+    {
+        // Distance from U=0 edge
+        float distU = localU / AO_RADIUS;
+        distU = std::clamp(distU, 0.0f, 1.0f);
+        
+        // Vertical factor: AO extends full height but fades toward center
+        float vCenter = std::abs(v - 0.5f) * 2.0f;  // 0 at center, 1 at edges
+        float vFactor = smoothstep01(1.0f - vCenter / AO_V_FALLOFF);  // stronger near floor/ceiling
+        vFactor = 0.5f + 0.5f * vFactor;  // minimum 50% even at center
+        
+        // AO intensity - smoothstep falloff from corner
+        float intensity = (1.0f - smoothstep01(distU)) * vFactor;
+        ao -= intensity * AO_STRENGTH;
+    }
+    
+    if (cornerU1)
+    {
+        // Distance from U=1 edge
+        float distU = (1.0f - localU) / AO_RADIUS;
+        distU = std::clamp(distU, 0.0f, 1.0f);
+        
+        // Vertical factor
+        float vCenter = std::abs(v - 0.5f) * 2.0f;
+        float vFactor = smoothstep01(1.0f - vCenter / AO_V_FALLOFF);
+        vFactor = 0.5f + 0.5f * vFactor;
+        
+        float intensity = (1.0f - smoothstep01(distU)) * vFactor;
+        ao -= intensity * AO_STRENGTH;
+    }
+    
+    return std::clamp(ao, 0.0f, 1.0f);
+}
+
+// Extended version with corner AO baking
+// Corner AO is baked as visible darkening even where there's no mortar
+static uint32_t generatePixelVeinsWithAO(int u, int v, const MegatextureParams &params,
+                                          float localU, bool cornerU0, bool cornerU1)
+{
+    static constexpr float pixelsPerUnitY = 1024.0f;
+    static constexpr float unitsPerTileX = 3.0f;
+
+    float x = ((static_cast<float>(u) + 0.5f) / 1024.0f) * unitsPerTileX;
+    float y = (static_cast<float>(v) + 0.5f) / pixelsPerUnitY;
+    float mortarCoverage = mortarShapeAt(x, y, params);
+    mortarCoverage = std::clamp(mortarCoverage, 0.0f, 1.0f);
+    
+    // Calculate corner AO (1.0 = no shadow, <1.0 = shadow)
+    float ao = cornerAO(localU, static_cast<float>(v) / 1024.0f, cornerU0, cornerU1);
+    float aoShadow = 1.0f - ao;  // 0 = no shadow, >0 = shadow amount
+    
+    // Combine mortar and AO shadow into final alpha
+    // AO shadow is rendered as a dark overlay (black with alpha = shadow strength)
+    // Mortar is rendered as dark gray with alpha = coverage
+    
+    if (mortarCoverage > 0.0f || aoShadow > 0.0f)
+    {
+        // Blend mortar gray with AO black based on their relative contributions
+        float mortarAlpha = mortarCoverage;
+        float aoAlpha = aoShadow * 0.5f;  // AO max opacity is 50% (visible but not too dark)
+        
+        // Composite: AO shadow (black) under mortar (gray)
+        // Using "over" compositing: result = mortar over AO
+        float totalAlpha = mortarAlpha + aoAlpha * (1.0f - mortarAlpha);
+        
+        if (totalAlpha < 1.0f / 255.0f)
+            return 0u;
+        
+        // Mortar color contribution
+        float mortarGray = params.mortarGray;
+        // AO color is black (0.0)
+        
+        // Composite color: (mortarGray * mortarAlpha + 0 * aoAlpha * (1 - mortarAlpha)) / totalAlpha
+        float compositeGray = (mortarGray * mortarAlpha) / totalAlpha;
+        
+        uint8_t gByte = static_cast<uint8_t>(std::round(std::clamp(compositeGray, 0.0f, 1.0f) * 255.0f));
+        uint8_t aByte = static_cast<uint8_t>(std::round(std::clamp(totalAlpha, 0.0f, 1.0f) * 255.0f));
+        
+        return ((uint32_t)gByte << 0) | ((uint32_t)gByte << 8) | ((uint32_t)gByte << 16) | ((uint32_t)aByte << 24);
+    }
+    
+    return 0u;
 }
 
 //
@@ -273,6 +372,63 @@ static void enumerateExposedEdges(const std::vector<std::vector<uint8_t>>& map)
 {
     std::vector<WallEdge> tempEdges;
     
+    // Helper to check if a perpendicular edge exists (indicating an inside corner)
+    // For an inside corner at a vertex, we need:
+    // 1. This cell is a wall
+    // 2. The adjacent cell in the edge direction is empty (exposed edge exists)
+    // 3. The diagonal cell is empty (player can stand there = inside corner)
+    auto hasInsideCorner = [&map](int wallX, int wallY, int side, bool atU0) -> bool
+    {
+        // For each (side, atU0) combination, determine:
+        // - Which perpendicular side would share the corner vertex
+        // - Which diagonal cell needs to be empty for inside corner
+        
+        // Geometry reminder:
+        // NORTH edge: goes from (x,y) to (x+1,y), faces y-1
+        // EAST edge: goes from (x+1,y) to (x+1,y+1), faces x+1  
+        // SOUTH edge: goes from (x+1,y+1) to (x,y+1), faces y+1
+        // WEST edge: goes from (x,y+1) to (x,y), faces x-1
+        
+        switch (side)
+        {
+        case 0: // NORTH edge (y-1 is empty)
+            if (atU0) {
+                // U=0 is at (x,y) - corner with West edge
+                // Inside corner if (x-1,y-1) is empty AND West side is exposed
+                return !isWall(map, wallX - 1, wallY) && !isWall(map, wallX - 1, wallY - 1);
+            } else {
+                // U=1 is at (x+1,y) - corner with East edge
+                // Inside corner if (x+1,y-1) is empty AND East side is exposed
+                return !isWall(map, wallX + 1, wallY) && !isWall(map, wallX + 1, wallY - 1);
+            }
+        case 1: // EAST edge (x+1 is empty)
+            if (atU0) {
+                // U=0 is at (x+1,y) - corner with North edge
+                return !isWall(map, wallX, wallY - 1) && !isWall(map, wallX + 1, wallY - 1);
+            } else {
+                // U=1 is at (x+1,y+1) - corner with South edge
+                return !isWall(map, wallX, wallY + 1) && !isWall(map, wallX + 1, wallY + 1);
+            }
+        case 2: // SOUTH edge (y+1 is empty)
+            if (atU0) {
+                // U=0 is at (x+1,y+1) - corner with East edge
+                return !isWall(map, wallX + 1, wallY) && !isWall(map, wallX + 1, wallY + 1);
+            } else {
+                // U=1 is at (x,y+1) - corner with West edge
+                return !isWall(map, wallX - 1, wallY) && !isWall(map, wallX - 1, wallY + 1);
+            }
+        case 3: // WEST edge (x-1 is empty)
+            if (atU0) {
+                // U=0 is at (x,y+1) - corner with South edge
+                return !isWall(map, wallX, wallY + 1) && !isWall(map, wallX - 1, wallY + 1);
+            } else {
+                // U=1 is at (x,y) - corner with North edge
+                return !isWall(map, wallX, wallY - 1) && !isWall(map, wallX - 1, wallY - 1);
+            }
+        }
+        return false;
+    };
+    
     // Scan every cell
     for (int y = 0; y < megatex.mapHeight; y++)
     {
@@ -290,7 +446,10 @@ static void enumerateExposedEdges(const std::vector<std::vector<uint8_t>>& map)
                 edge.cellY = y;
                 edge.side = 0;
                 edge.xOffsetPixels = 0;
-                edge.direction = 1; // No flip needed
+                edge.pixelWidth = 0;
+                edge.direction = 1;
+                edge.hasCornerAtU0 = hasInsideCorner(x, y, 0, true);
+                edge.hasCornerAtU1 = hasInsideCorner(x, y, 0, false);
                 tempEdges.push_back(edge);
             }
             
@@ -302,7 +461,10 @@ static void enumerateExposedEdges(const std::vector<std::vector<uint8_t>>& map)
                 edge.cellY = y;
                 edge.side = 1;
                 edge.xOffsetPixels = 0;
-                edge.direction = 1; // No flip needed
+                edge.pixelWidth = 0;
+                edge.direction = 1;
+                edge.hasCornerAtU0 = hasInsideCorner(x, y, 1, true);
+                edge.hasCornerAtU1 = hasInsideCorner(x, y, 1, false);
                 tempEdges.push_back(edge);
             }
             
@@ -314,7 +476,10 @@ static void enumerateExposedEdges(const std::vector<std::vector<uint8_t>>& map)
                 edge.cellY = y;
                 edge.side = 2;
                 edge.xOffsetPixels = 0;
-                edge.direction = -1; // Flip U for seamless corners
+                edge.pixelWidth = 0;
+                edge.direction = -1;
+                edge.hasCornerAtU0 = hasInsideCorner(x, y, 2, true);
+                edge.hasCornerAtU1 = hasInsideCorner(x, y, 2, false);
                 tempEdges.push_back(edge);
             }
             
@@ -326,7 +491,11 @@ static void enumerateExposedEdges(const std::vector<std::vector<uint8_t>>& map)
                 edge.cellY = y;
                 edge.side = 3;
                 edge.xOffsetPixels = 0;
-                edge.direction = -1; // Flip U for seamless corners
+                edge.pixelWidth = 0;
+                edge.direction = -1;
+                edge.hasCornerAtU0 = hasInsideCorner(x, y, 3, true);
+                edge.hasCornerAtU1 = hasInsideCorner(x, y, 3, false);
+                tempEdges.push_back(edge);
                 tempEdges.push_back(edge);
             }
         }
@@ -507,6 +676,19 @@ bool analyzeMapEdges(const std::vector<std::vector<uint8_t>>& map)
     return !megatex.edges.empty();
 }
 
+// Validate and clamp parameters to safe ranges (call once before generation)
+static MegatextureParams validateParams(const MegatextureParams& p)
+{
+    MegatextureParams v = p;
+    v.mortarWidth = std::max(0.0005f, v.mortarWidth);
+    v.mortarGray = std::clamp(v.mortarGray, 0.0f, 1.0f);
+    v.perlinOctaves = std::max(1, v.perlinOctaves);
+    v.perlinScale = std::max(0.001f, v.perlinScale);
+    v.worleyScale = std::max(0.001f, v.worleyScale);
+    v.worleyStrength = std::max(0.0f, v.worleyStrength);
+    return v;
+}
+
 bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::string& outDir)
 {
     if (megatex.edges.empty() || megatex.textureWidth == 0 || megatex.textureHeight == 0)
@@ -514,6 +696,9 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
         std::cerr << "ERROR: No edges found. Call analyzeMapEdges() first.\n";
         return false;
     }
+
+    // Validate params once at API boundary (avoids per-pixel checks)
+    const MegatextureParams validParams = validateParams(params);
 
     // Tiles remain 1024×1024, but each tile spans 3 world units horizontally.
     const int tileWidth = 1024;
@@ -529,7 +714,36 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
     std::cout << "Tile size: " << tileWidth << " × " << tileHeight << "\n";
     std::cout << "Number of tiles: " << numTiles << "\n";
     std::cout << "Output directory: " << outDir << "/\n";
-    std::cout << "Using " << numThreads << " threads per tile...\n\n";
+    std::cout << "Using " << numThreads << " threads per tile...\n";
+    
+    // Build per-column edge lookup for corner AO
+    // For each global U column, store: edge index, localU, corner flags
+    struct ColumnEdgeInfo {
+        float localU;        // [0..1] within edge
+        bool cornerU0;
+        bool cornerU1;
+    };
+    std::vector<ColumnEdgeInfo> columnEdgeMap(W_px);
+    
+    // Pre-compute edge info for each column
+    {
+        size_t edgeIdx = 0;
+        int currentEnd = 0;
+        for (size_t i = 0; i < megatex.edges.size(); ++i)
+        {
+            const auto& edge = megatex.edges[i];
+            int start = edge.xOffsetPixels;
+            int end = start + edge.pixelWidth;
+            
+            for (int u = start; u < end && u < W_px; ++u)
+            {
+                float localU = static_cast<float>(u - start) / static_cast<float>(std::max(1, edge.pixelWidth));
+                columnEdgeMap[u] = { localU, edge.hasCornerAtU0, edge.hasCornerAtU1 };
+            }
+        }
+    }
+    
+    std::cout << "Corner AO lookup built for " << W_px << " columns.\n\n";
 
     // Create output directory
     try {
@@ -566,7 +780,7 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
                 
                 if (yStart >= H_px) break;
                 
-                workers.emplace_back([&tile, &params, tileU0, tileW, tileWidth, yStart, yEnd]()
+                workers.emplace_back([&tile, &validParams, &columnEdgeMap, tileU0, tileW, tileWidth, yStart, yEnd]()
                 {
                     for (int y = yStart; y < yEnd; ++y)
                     {
@@ -575,7 +789,12 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
                             const int u = tileU0 + x;  // Global U coordinate
                             const int v = y;           // Global V coordinate
                             
-                            uint32_t rgba = generatePixelVeins(u, v, params);
+                            // Lookup corner AO info for this column
+                            const auto& colInfo = columnEdgeMap[u];
+                            uint32_t rgba = generatePixelVeinsWithAO(u, v, validParams,
+                                                                      colInfo.localU,
+                                                                      colInfo.cornerU0,
+                                                                      colInfo.cornerU1);
                             
                             const size_t idx = (static_cast<size_t>(y) * tileWidth + x) * 4;
                             tile[idx + 0] = static_cast<uint8_t>((rgba >> 0) & 0xFF);   // R

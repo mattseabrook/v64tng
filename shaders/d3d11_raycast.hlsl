@@ -213,7 +213,7 @@ float3 shadePixel(uint2 pixel, RayHit hit, float halfW, float halfH, float maxRa
         float drawStart = halfH - lineHeight / 2.0;
         float drawEnd = halfH + lineHeight / 2.0;
         
-        // Base wall color: UNIFORM across all orientations (NO lighting yet)
+        // Base wall color
         float3 baseWall = float3(120.0/255.0, 120.0/255.0, 120.0/255.0);
         
         // Determine pixel color: ceiling, wall, or floor

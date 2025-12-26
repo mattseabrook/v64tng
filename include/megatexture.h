@@ -31,6 +31,11 @@ struct WallEdge
     int xOffsetPixels;      // Starting pixel offset in the megatexture strip
     int pixelWidth;         // Width in pixels assigned to this edge (341/342 alternating) so 3 edges = 1024px
     int direction;          // +1 or -1 for traversal direction consistency
+    
+    // Baked corner ambient occlusion flags
+    // True if this edge meets another wall at an inside corner
+    bool hasCornerAtU0;     // Inside corner at U=0 end (start of edge)
+    bool hasCornerAtU1;     // Inside corner at U=1 end (end of edge)
 };
 
 // Megatexture generation parameters

@@ -230,7 +230,7 @@ vec3 shadePixel(uvec2 pixel, RayHit hit, float halfW, float halfH, float maxRadi
         float drawStart = halfH - lineHeight / 2.0;
         float drawEnd = halfH + lineHeight / 2.0;
         
-        // Base wall color: UNIFORM across all orientations (NO lighting yet)
+        // Base wall color
         vec3 baseWall = vec3(120.0/255.0);
         
         // Determine pixel color: ceiling, wall, or floor
