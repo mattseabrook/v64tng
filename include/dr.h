@@ -143,7 +143,7 @@ const std::vector<ViewGroup> diningRoom = {
 	//
 	// Moving towards the table
 	//
-{
+	{
 		{"dr_mi"},
 		{// Hotspots
 		 {
@@ -154,7 +154,7 @@ const std::vector<ViewGroup> diningRoom = {
 				  state.transient_animation.isPlaying = true;
 				  state.transient_animation.lastFrameTime = std::chrono::steady_clock::now();
 				  state.transient_frame_index = 0;
- 
+
 				  xmiPlay("gu5", true);
 			  }}},
 		 // Navigation
@@ -186,7 +186,7 @@ const std::vector<ViewGroup> diningRoom = {
 	  // Navigation
 	  {
 		  {{0.0f, 0.0f, 10.0f, 100.0f, CURSOR_LEFT, 0}, "dr_tba"},	  // Left
-		  {{33.0f, 0.0f, 33.0f, 100.0f, CURSOR_FORWARD, 0}, "dr_mi"}, // Forward
+		  {{21.9f, 0.0f, 45.5f, 100.0f, CURSOR_FORWARD, 0}, "dr_mi"}, // Forward
 		  {{90.0f, 0.0f, 10.0f, 100.0f, CURSOR_RIGHT, 0}, "dr_tfc"}	  // Right
 	  }}},
 

@@ -54,14 +54,28 @@ struct MegatextureState
     std::vector<WallEdge> edges;
     int textureWidth;           // Total strip width in pixels
     int textureHeight;          // Strip height (always 1024)
-    int tileWidth;              // Tile width in pixels (3072)
+    int tileWidth;              // Tile width in pixels (1024)
     int tileHeight;             // Tile height in pixels (1024)
     int mapWidth;
     int mapHeight;
     
-    // Runtime tile cache (loaded from MTX)
-    std::vector<std::vector<uint8_t>> tileCache;  // RGBA data per tile
-    bool loaded;                                   // Is MTX loaded?
+    // Runtime tile cache (loaded from MTX) - CONTIGUOUS MEMORY POOL
+    // Single allocation for all tiles, accessed via: tileData.data() + tileIndex * bytesPerTile
+    std::vector<uint8_t> tileData;        // Contiguous RGBA data for all tiles
+    size_t tileCount;                      // Number of tiles
+    size_t bytesPerTile;                   // Cached: tileWidth * tileHeight * 4
+    bool loaded;                           // Is MTX loaded?
+    
+    // Get pointer to specific tile's data (zero-copy access)
+    [[nodiscard]] const uint8_t* getTile(size_t index) const noexcept
+    {
+        return tileData.data() + index * bytesPerTile;
+    }
+    
+    [[nodiscard]] uint8_t* getTileMutable(size_t index) noexcept
+    {
+        return tileData.data() + index * bytesPerTile;
+    }
 };
 
 // Global megatexture state

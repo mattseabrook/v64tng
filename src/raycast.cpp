@@ -4,8 +4,7 @@
 #include <algorithm>
 #include <thread>
 #include <vector>
-#include <mutex>
-#include <fstream>
+#include <array>
 
 #include "raycast.h"
 #include "window.h"
@@ -14,7 +13,32 @@
 #include "megatexture.h"
 
 // Local state for raycasting
-bool g_keys[256] = {false};
+static std::array<bool, 256> g_keys = {};
+
+// Cached config values - read once per frame, not per pixel
+struct RaycastConfig
+{
+    float visualScale = 3.0f;
+    float falloffMul = 0.85f;
+    float fovMul = 1.0f;
+    int supersample = 1;
+    float baseTorchRange = 16.0f;
+};
+static RaycastConfig g_rayConfig;
+
+// Call once per frame before rendering to cache config values
+static void cacheConfigValues()
+{
+    g_rayConfig.visualScale = config.contains("raycastScale") 
+        ? static_cast<float>(config["raycastScale"]) : 3.0f;
+    g_rayConfig.falloffMul = config.contains("raycastFalloffMul") 
+        ? static_cast<float>(config["raycastFalloffMul"]) : 0.85f;
+    g_rayConfig.fovMul = config.contains("raycastFovMul") 
+        ? static_cast<float>(config["raycastFovMul"]) : 1.0f;
+    g_rayConfig.supersample = config.contains("raycastSupersample")
+        ? config["raycastSupersample"].get<int>() : 1;
+    g_rayConfig.baseTorchRange = 16.0f;
+}
 
 //
 // Initialize player position and orientation from the map
@@ -166,9 +190,9 @@ void accumulateColumn(int x,
                       std::vector<float> &acc_g,
                       std::vector<float> &acc_b)
 {
-    // Visual scale: shrink perceived distances to make spaces feel less cavernous
-    float visualScale = config.contains("raycastScale") ? static_cast<float>(config["raycastScale"]) : 3.0f;
-    float falloffScale = config.contains("raycastFalloffMul") ? static_cast<float>(config["raycastFalloffMul"]) : 0.85f;
+    // Use cached config values (read once per frame, not per pixel)
+    const float visualScale = g_rayConfig.visualScale;
+    const float falloffMul = g_rayConfig.falloffMul;
     
     // Wall rendering parameters (only used if hitWall is true)
     float perpWallDist = 0.0f;
@@ -199,9 +223,8 @@ void accumulateColumn(int x,
         float dx = static_cast<float>(x) - halfW;
         float dy = yf - halfH;
         float screenDist = std::sqrt(dx * dx + dy * dy);
-        // Slightly reduce radial falloff so shrunken spaces still read well
-        float falloffScale = config.contains("raycastFalloffMul") ? static_cast<float>(config["raycastFalloffMul"]) : 0.85f;
-        float screenFactor = std::max(0.0f, 1.0f - (screenDist / maxRadius) * falloffScale);
+        // Use cached falloff value (was previously shadowed and read from config per-pixel)
+        float screenFactor = std::max(0.0f, 1.0f - (screenDist / maxRadius) * falloffMul);
 
         // Ceiling gradient
         float ceilingShade = 120.0f * (1.0f - yf / halfH);
@@ -338,6 +361,7 @@ void drawCrosshair(uint8_t *fb, size_t pitch, int w, int h)
 }
 
 // Render a chunk of the screen with threading
+// Uses thread-local accumulators to avoid per-column allocations
 void renderChunk(const std::vector<std::vector<uint8_t>> &tileMap,
                  const RaycastPlayer &player,
                  uint8_t *framebuffer,
@@ -348,38 +372,48 @@ void renderChunk(const std::vector<std::vector<uint8_t>> &tileMap,
                  int startX,
                  int endX)
 {
-    float halfWidth = screenWidth * 0.5f;
-    float halfHeight = screenHeight * 0.5f;
-    float maxRadius = std::sqrt(halfWidth * halfWidth + halfHeight * halfHeight);
-    // Increase torch range proportionally to visual scale so lighting feels consistent
-    float baseTorchRange = 16.0f;
-    float visualScale = config.contains("raycastScale") ? static_cast<float>(config["raycastScale"]) : 3.0f;
-    float torchRange = baseTorchRange * visualScale;
+    const float halfWidth = screenWidth * 0.5f;
+    const float halfHeight = screenHeight * 0.5f;
+    const float maxRadius = std::sqrt(halfWidth * halfWidth + halfHeight * halfHeight);
+    // Use cached config values
+    const float torchRange = g_rayConfig.baseTorchRange * g_rayConfig.visualScale;
+    const float fovMul = g_rayConfig.fovMul;
+    const float fov = state.raycast.player.fov;
+
+    // Thread-local accumulators - reuse across columns to avoid allocations
+    thread_local std::vector<float> accumR, accumG, accumB;
+    if (accumR.size() < static_cast<size_t>(screenHeight))
+    {
+        accumR.resize(screenHeight);
+        accumG.resize(screenHeight);
+        accumB.resize(screenHeight);
+    }
 
     for (int x = startX; x < endX; ++x)
     {
-        std::vector<float> accumR(screenHeight, 0.0f), accumG(screenHeight, 0.0f), accumB(screenHeight, 0.0f);
+        // Clear accumulators (faster than reallocating)
+        std::fill_n(accumR.begin(), screenHeight, 0.0f);
+        std::fill_n(accumG.begin(), screenHeight, 0.0f);
+        std::fill_n(accumB.begin(), screenHeight, 0.0f);
+        
         for (int sampleIdx = 0; sampleIdx < supersample; ++sampleIdx)
         {
             float camX = 2.0f * (x + (sampleIdx + 0.5f) / supersample) / screenWidth - 1.0f;
-            float fov = state.raycast.player.fov;
-            // Optional FOV multiplier for stylistic tuning (defaults to 1.0)
-            float fovMul = config.contains("raycastFovMul") ? static_cast<float>(config["raycastFovMul"]) : 1.0f;
             float rayAngle = player.angle + camX * (fov * 0.5f * fovMul);
             float rayDirX = std::cos(rayAngle);
             float rayDirY = std::sin(rayAngle);
             RaycastHit hit = castRay(tileMap, player.x, player.y, rayDirX, rayDirY);
-            // hit.distance *= std::cos(rayAngle - player.angle); // Fisheye correction
             accumulateColumn(x, hit, screenHeight, halfWidth, halfHeight, maxRadius, torchRange, accumR, accumG, accumB);
         }
         // No mutex needed - each thread writes to distinct columns, no overlap
+        const float invSS = 1.0f / supersample;
         for (int y = 0; y < screenHeight; ++y)
         {
             size_t idx = static_cast<size_t>(y) * pitch + static_cast<size_t>(x) * 4;
-            framebuffer[idx] = static_cast<uint8_t>(std::min(accumB[y] / supersample, 255.0f));     // Blue
-            framebuffer[idx + 1] = static_cast<uint8_t>(std::min(accumG[y] / supersample, 255.0f)); // Green
-            framebuffer[idx + 2] = static_cast<uint8_t>(std::min(accumR[y] / supersample, 255.0f)); // Red
-            framebuffer[idx + 3] = 255;                                                             // Alpha
+            framebuffer[idx] = static_cast<uint8_t>(std::min(accumB[y] * invSS, 255.0f));     // Blue
+            framebuffer[idx + 1] = static_cast<uint8_t>(std::min(accumG[y] * invSS, 255.0f)); // Green
+            framebuffer[idx + 2] = static_cast<uint8_t>(std::min(accumR[y] * invSS, 255.0f)); // Red
+            framebuffer[idx + 3] = 255;                                                       // Alpha
         }
     }
 }
@@ -394,10 +428,16 @@ void renderRaycastView(const std::vector<std::vector<uint8_t>> &tileMap,
 {
     if (tileMap.empty() || tileMap[0].empty())
         return;
-    int ss = config["raycastSupersample"].get<int>();
-    int nThreads = std::thread::hardware_concurrency();
-    int chunk = w / nThreads;
+    
+    // Cache config values once per frame (not per pixel)
+    cacheConfigValues();
+    
+    const int ss = g_rayConfig.supersample;
+    const int nThreads = static_cast<int>(std::thread::hardware_concurrency());
+    const int chunk = w / nThreads;
     std::vector<std::jthread> threads;
+    threads.reserve(nThreads);
+    
     for (int i = 0; i < nThreads; ++i)
     {
         int s = i * chunk;
@@ -412,21 +452,20 @@ void renderRaycastView(const std::vector<std::vector<uint8_t>> &tileMap,
     // Lightweight overlay via window title (avoids console/files)
 #ifdef _WIN32
     {
-        // Estimate recommended wallHeightUnits by comparing wall pixel height to pixel width of a 1-unit wall at center
-        float fovMul = config.contains("raycastFovMul") ? static_cast<float>(config["raycastFovMul"]) : 1.0f;
-        float fov = state.raycast.player.fov * fovMul;
+        // Use cached config values
+        const float fov = state.raycast.player.fov * g_rayConfig.fovMul;
         // Center ray cast
         RaycastHit centerHit = castRay(*state.raycast.map, state.raycast.player.x, state.raycast.player.y,
                                        std::cos(state.raycast.player.angle), std::sin(state.raycast.player.angle));
         float dist = std::max(centerHit.distance, 0.001f);
-        float lineHeight = static_cast<float>(h) / std::max(dist / (config.contains("raycastScale") ? static_cast<float>(config["raycastScale"]) : 3.0f), 0.01f);
+        float lineHeight = static_cast<float>(h) / std::max(dist / g_rayConfig.visualScale, 0.01f);
         // Small-angle approx for projected width of a 1-unit wall centered at distance dist
         float angularWidth = 2.0f * std::atan(0.5f / dist);
         float widthPixels = static_cast<float>(w) * (angularWidth / std::max(fov, 0.001f));
         float recommendedUnits = (widthPixels > 0.0f) ? (lineHeight / widthPixels) : 1.0f;
 
-        std::string title = "v64tng  |  Edges: " + std::to_string((int)megatex.edges.size()) +
-                            "  Tiles: " + std::to_string((int)megatex.tileCache.size()) +
+        std::string title = "v64tng  |  Edges: " + std::to_string(static_cast<int>(megatex.edges.size())) +
+                            "  Tiles: " + std::to_string(static_cast<int>(megatex.tileCount)) +
                             (megatex.loaded ? " loaded" : " not loaded") +
                             "  WH: 3.0  RecWH: " + std::to_string(recommendedUnits);
         SetWindowTextA(g_hwnd, title.c_str());

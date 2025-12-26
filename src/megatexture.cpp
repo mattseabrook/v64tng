@@ -7,10 +7,12 @@
 #include <iomanip>
 #include <fstream>
 #include <filesystem>
-#include <omp.h>
 #include <cstring>
 #include <zlib.h>
 #include <unordered_map>
+#include <thread>
+#include <atomic>
+#include <mutex>
 
 // Undefine Windows min/max macros that conflict with std::min/std::max
 #ifdef _WIN32
@@ -40,7 +42,43 @@
 */
 
 // Global megatexture state
-MegatextureState megatex = { .loaded = false };
+MegatextureState megatex = {
+    .edges = {},
+    .textureWidth = 0,
+    .textureHeight = 0,
+    .tileWidth = 1024,
+    .tileHeight = 1024,
+    .mapWidth = 0,
+    .mapHeight = 0,
+    .tileData = {},
+    .tileCount = 0,
+    .bytesPerTile = 0,
+    .loaded = false
+};
+
+// O(1) edge lookup hash map - built once after analyzeMapEdges()
+static std::unordered_map<uint64_t, size_t> g_edgeLookup;
+
+// Pack cell coordinates + side into 64-bit key for O(1) lookup
+static inline uint64_t edgeKey(int cellX, int cellY, int side)
+{
+    // Pack: cellX (20 bits) | cellY (20 bits) | side (4 bits)
+    return (static_cast<uint64_t>(static_cast<uint32_t>(cellX)) << 24) |
+           (static_cast<uint64_t>(static_cast<uint32_t>(cellY)) << 4) |
+           static_cast<uint64_t>(side & 0xF);
+}
+
+// Build the hash map after edges are computed
+static void buildEdgeLookup()
+{
+    g_edgeLookup.clear();
+    g_edgeLookup.reserve(megatex.edges.size());
+    for (size_t i = 0; i < megatex.edges.size(); ++i)
+    {
+        const auto& e = megatex.edges[i];
+        g_edgeLookup[edgeKey(e.cellX, e.cellY, e.side)] = i;
+    }
+}
 
 //
 // Internal helpers
@@ -451,55 +489,20 @@ static void computeEdgeOffsets(int pixelsPerUnit)
 
 bool analyzeMapEdges(const std::vector<std::vector<uint8_t>>& map)
 {
-    // Debug: Write IMMEDIATELY to prove function was called
-    {
-        std::ofstream f("C:\\T7G\\edge_debug.txt");
-        f << "=== analyzeMapEdges() START ===\n";
-        f.flush();
-    }
-    
     if (map.empty() || map[0].empty())
-    {
-        std::ofstream f("C:\\T7G\\edge_debug.txt", std::ios::app);
-        f << "ERROR: Map is empty!\n";
         return false;
-    }
     
-    megatex.mapHeight = (int)map.size();
-    megatex.mapWidth = (int)map[0].size();
+    megatex.mapHeight = static_cast<int>(map.size());
+    megatex.mapWidth = static_cast<int>(map[0].size());
     megatex.edges.clear();
-    
-    {
-        std::ofstream f("C:\\T7G\\edge_debug.txt", std::ios::app);
-        f << "Map size: " << megatex.mapWidth << " x " << megatex.mapHeight << "\n";
-        f << "Calling enumerateExposedEdges()...\n";
-        f.flush();
-    }
+    g_edgeLookup.clear();
     
     enumerateExposedEdges(map);
-    
-    {
-        std::ofstream f("C:\\T7G\\edge_debug.txt", std::ios::app);
-        f << "Edges after enumeration: " << megatex.edges.size() << "\n";
-        f << "Calling orderEdgesSpatially()...\n";
-        f.flush();
-    }
-    
     orderEdgesSpatially();
     computeEdgeOffsets(1024);  // 1024 pixels per unit
     
-    {
-        std::ofstream f("C:\\T7G\\edge_debug.txt", std::ios::app);
-        f << "Final edge count: " << megatex.edges.size() << "\n\n";
-        
-        for (size_t i = 0; i < std::min(megatex.edges.size(), size_t(20)); ++i)
-        {
-            const auto& e = megatex.edges[i];
-            f << "Edge " << i << ": cell(" << e.cellX << "," << e.cellY << ") side=" << e.side 
-              << " offset=" << e.xOffsetPixels << "\n";
-        }
-        f << "\n=== analyzeMapEdges() END ===\n";
-    }
+    // Build O(1) lookup hash map
+    buildEdgeLookup();
     
     return !megatex.edges.empty();
 }
@@ -519,13 +522,14 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
     const int H_px = megatex.textureHeight;    // 1024
     const int numTiles = (W_px + tileWidth - 1) / tileWidth;
 
+    const unsigned int numThreads = std::thread::hardware_concurrency();
     std::cout << "\n=== Megatexture Tile Generation ===\n";
     std::cout << "Strip dimensions: " << W_px << " × " << H_px << " px\n";
     std::cout << "Exposed edges: " << megatex.edges.size() << "\n";
     std::cout << "Tile size: " << tileWidth << " × " << tileHeight << "\n";
     std::cout << "Number of tiles: " << numTiles << "\n";
     std::cout << "Output directory: " << outDir << "/\n";
-    std::cout << "Using " << omp_get_max_threads() << " threads per tile...\n\n";
+    std::cout << "Using " << numThreads << " threads per tile...\n\n";
 
     // Create output directory
     try {
@@ -546,26 +550,43 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
                   << "] (" << tileW << " px wide)...";
         std::cout.flush();
 
-    // Allocate tile buffer (3072×1024 RGBA8)
+    // Allocate tile buffer (1024×1024 RGBA8)
     std::vector<uint8_t> tile(static_cast<size_t>(tileWidth) * tileHeight * 4, 0);
 
-        // Fill tile in parallel using global coordinates
-        #pragma omp parallel for schedule(static) num_threads(omp_get_max_threads())
-        for (int y = 0; y < H_px; ++y)
+        // Fill tile in parallel using hand-written threading
         {
-            for (int x = 0; x < tileW; ++x)
+            const int rowsPerThread = (H_px + static_cast<int>(numThreads) - 1) / static_cast<int>(numThreads);
+            std::vector<std::jthread> workers;
+            workers.reserve(numThreads);
+            
+            for (unsigned int t = 0; t < numThreads; ++t)
             {
-                const int u = tileU0 + x;  // Global U coordinate
-                const int v = y;           // Global V coordinate
+                const int yStart = static_cast<int>(t) * rowsPerThread;
+                const int yEnd = std::min(yStart + rowsPerThread, H_px);
                 
-                uint32_t rgba = generatePixelVeins(u, v, params);
+                if (yStart >= H_px) break;
                 
-                const size_t idx = (static_cast<size_t>(y) * tileWidth + x) * 4;
-                tile[idx + 0] = (rgba >> 0) & 0xFF;   // R
-                tile[idx + 1] = (rgba >> 8) & 0xFF;   // G
-                tile[idx + 2] = (rgba >> 16) & 0xFF;  // B
-                tile[idx + 3] = (rgba >> 24) & 0xFF;  // A
+                workers.emplace_back([&tile, &params, tileU0, tileW, tileWidth, yStart, yEnd]()
+                {
+                    for (int y = yStart; y < yEnd; ++y)
+                    {
+                        for (int x = 0; x < tileW; ++x)
+                        {
+                            const int u = tileU0 + x;  // Global U coordinate
+                            const int v = y;           // Global V coordinate
+                            
+                            uint32_t rgba = generatePixelVeins(u, v, params);
+                            
+                            const size_t idx = (static_cast<size_t>(y) * tileWidth + x) * 4;
+                            tile[idx + 0] = static_cast<uint8_t>((rgba >> 0) & 0xFF);   // R
+                            tile[idx + 1] = static_cast<uint8_t>((rgba >> 8) & 0xFF);   // G
+                            tile[idx + 2] = static_cast<uint8_t>((rgba >> 16) & 0xFF);  // B
+                            tile[idx + 3] = static_cast<uint8_t>((rgba >> 24) & 0xFF);  // A
+                        }
+                    }
+                });
             }
+            // jthread destructor auto-joins
         }
 
         // Write PNG with zero-padded filename
@@ -588,11 +609,10 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
 
 const WallEdge* findWallEdge(int cellX, int cellY, int side)
 {
-    for (const auto& edge : megatex.edges)
-    {
-        if (edge.cellX == cellX && edge.cellY == cellY && edge.side == side)
-            return &edge;
-    }
+    // O(1) hash map lookup instead of O(n) linear search
+    auto it = g_edgeLookup.find(edgeKey(cellX, cellY, side));
+    if (it != g_edgeLookup.end())
+        return &megatex.edges[it->second];
     return nullptr;
 }
 
@@ -976,56 +996,116 @@ bool loadMTX(const std::string& mtxPath)
         return false;
     }
 
-    std::cout << "Tiles: " << header.tileCount << "\n";
-    std::cout << "Loading into memory...\n";
     // Fill state tile dimensions
     if (header.version == 1) {
         megatex.tileWidth = 1024;
         megatex.tileHeight = 1024;
     } else {
-        megatex.tileWidth = (int)header.tileWidth;
-        megatex.tileHeight = (int)header.tileHeight;
+        megatex.tileWidth = static_cast<int>(header.tileWidth);
+        megatex.tileHeight = static_cast<int>(header.tileHeight);
     }
+    
+    megatex.tileCount = header.tileCount;
+    megatex.bytesPerTile = static_cast<size_t>(megatex.tileWidth) * megatex.tileHeight * 4;
+    
+    const unsigned int numThreads = std::thread::hardware_concurrency();
+    std::cout << "Tiles: " << header.tileCount << "\n";
+    std::cout << "Parallel decompression with " << numThreads << " threads...\n";
 
     // Read offset table
     std::vector<uint64_t> tileOffsets(header.tileCount);
     mtxFile.read(reinterpret_cast<char*>(tileOffsets.data()), sizeof(uint64_t) * header.tileCount);
 
-    // Load all tiles into cache
-    megatex.tileCache.resize(header.tileCount);
-
+    // PHASE 1: Read ALL compressed data into memory (sequential I/O is fast)
+    struct CompressedTile {
+        std::vector<uint8_t> data;
+    };
+    std::vector<CompressedTile> compressedTiles(header.tileCount);
+    
     for (uint32_t i = 0; i < header.tileCount; ++i)
     {
-        // Seek to tile
         mtxFile.seekg(tileOffsets[i]);
-
-        // Read compressed size
+        
         uint32_t compressedSize = 0;
         mtxFile.read(reinterpret_cast<char*>(&compressedSize), sizeof(uint32_t));
-
-        // Read compressed data
-        std::vector<uint8_t> compressedData(compressedSize);
-        mtxFile.read(reinterpret_cast<char*>(compressedData.data()), compressedSize);
-
-        // Decompress to RGBA
-        if (!decompressRGBA(compressedData.data(), compressedData.size(), megatex.tileCache[i], megatex.tileWidth, megatex.tileHeight))
-        {
-            std::cerr << "ERROR: Failed to decompress tile " << i << "\n";
-            return false;
-        }
-
-        if ((i + 1) % 500 == 0 || i == header.tileCount - 1)
-        {
-            std::cout << "  Loaded tile " << (i + 1) << "/" << header.tileCount << "\n";
-        }
+        
+        compressedTiles[i].data.resize(compressedSize);
+        mtxFile.read(reinterpret_cast<char*>(compressedTiles[i].data.data()), compressedSize);
     }
-
     mtxFile.close();
+    
+    std::cout << "  Read " << header.tileCount << " compressed tiles from disk\n";
+
+    // PHASE 2: Allocate contiguous memory pool for all tiles (single allocation)
+    const size_t totalBytes = megatex.bytesPerTile * header.tileCount;
+    megatex.tileData.resize(totalBytes);
+    std::cout << "  Allocated " << (totalBytes / 1024 / 1024) << " MB contiguous memory\n";
+
+    // PHASE 3: Parallel decompression with hand-written threading
+    std::atomic<uint32_t> nextTile{0};
+    std::atomic<uint32_t> completedTiles{0};
+    std::atomic<bool> hasError{false};
+    
+    auto decompressWorker = [&]()
+    {
+        while (!hasError.load(std::memory_order_relaxed))
+        {
+            // Grab next tile atomically
+            uint32_t tileIdx = nextTile.fetch_add(1, std::memory_order_relaxed);
+            if (tileIdx >= header.tileCount)
+                break;
+            
+            // Decompress directly into contiguous pool (zero intermediate allocation)
+            uint8_t* destPtr = megatex.getTileMutable(tileIdx);
+            uLongf uncompressedSize = static_cast<uLong>(megatex.bytesPerTile);
+            
+            int result = uncompress(
+                destPtr,
+                &uncompressedSize,
+                compressedTiles[tileIdx].data.data(),
+                static_cast<uLong>(compressedTiles[tileIdx].data.size())
+            );
+            
+            if (result != Z_OK || uncompressedSize != megatex.bytesPerTile)
+            {
+                hasError.store(true, std::memory_order_relaxed);
+                return;
+            }
+            
+            // Free compressed data immediately after decompression (reduce peak memory)
+            compressedTiles[tileIdx].data.clear();
+            compressedTiles[tileIdx].data.shrink_to_fit();
+            
+            uint32_t completed = completedTiles.fetch_add(1, std::memory_order_relaxed) + 1;
+            if (completed % 500 == 0 || completed == header.tileCount)
+            {
+                // Progress output (safe from any thread since it's just stdout)
+            }
+        }
+    };
+    
+    // Launch worker threads
+    std::vector<std::jthread> workers;
+    workers.reserve(numThreads);
+    for (unsigned int t = 0; t < numThreads; ++t)
+    {
+        workers.emplace_back(decompressWorker);
+    }
+    
+    // Wait for all workers (jthread destructor auto-joins)
+    workers.clear();
+    
+    if (hasError.load())
+    {
+        std::cerr << "ERROR: Failed to decompress one or more tiles\n";
+        return false;
+    }
+    
+    std::cout << "  Decompressed " << header.tileCount << " tiles in parallel\n";
 
     megatex.loaded = true;
     std::cout << "Megatexture loaded successfully!\n";
-    const size_t bytesPerTile = static_cast<size_t>(megatex.tileWidth) * megatex.tileHeight * 4;
-    std::cout << "Memory usage: ~" << (header.tileCount * bytesPerTile / 1024 / 1024) << " MB\n\n";
+    std::cout << "Memory usage: " << (totalBytes / 1024 / 1024) << " MB (contiguous)\n\n";
 
     return true;
 }
@@ -1033,10 +1113,10 @@ bool loadMTX(const std::string& mtxPath)
 uint32_t sampleMegatexture(int cellX, int cellY, int side, float u, float v)
 {
     // If not loaded, return transparent
-    if (!megatex.loaded || megatex.tileCache.empty())
+    if (!megatex.loaded || megatex.tileData.empty())
         return 0;
 
-    // Find the edge for this wall
+    // Find the edge for this wall (O(1) hash lookup)
     const WallEdge* edge = findWallEdge(cellX, cellY, side);
     if (!edge)
         return 0; // No texture for this wall
@@ -1047,31 +1127,31 @@ uint32_t sampleMegatexture(int cellX, int cellY, int side, float u, float v)
 
     // Calculate global U coordinate in the megatexture strip
     // u is [0..1] along the wall, map it to the per-edge pixel width (341/342)
-    int edgeW = std::max(1, edge->pixelWidth);
-    float globalU = static_cast<float>(edge->xOffsetPixels) + u * static_cast<float>(edgeW);
+    const int edgeW = std::max(1, edge->pixelWidth);
+    const float globalU = static_cast<float>(edge->xOffsetPixels) + u * static_cast<float>(edgeW);
     
     // Clamp v to [0..1]
-    v = std::clamp(v, 0.0f, 1.0f);
-    float globalV = v * 1024.0f; // vertical: 1024 px = 1 wall unit
+    const float clampedV = std::clamp(v, 0.0f, 1.0f);
+    const float globalV = clampedV * 1024.0f; // vertical: 1024 px = 1 wall unit
 
     // Convert to integer pixel coordinates
-    int pixelU = static_cast<int>(globalU);
-    int pixelV = static_cast<int>(globalV);
+    const int pixelU = static_cast<int>(globalU);
+    const int pixelV = static_cast<int>(globalV);
 
     // Determine which tile this falls into
-    int tileIndex = pixelU / megatex.tileWidth;
-    int localU = pixelU % megatex.tileWidth;
-    int localV = pixelV;
+    const size_t tileIndex = static_cast<size_t>(pixelU / megatex.tileWidth);
+    const int localU = pixelU % megatex.tileWidth;
+    const int localV = pixelV;
 
     // Bounds check
-    if (tileIndex < 0 || tileIndex >= static_cast<int>(megatex.tileCache.size()))
+    if (tileIndex >= megatex.tileCount)
         return 0;
     
     if (localU < 0 || localU >= megatex.tileWidth || localV < 0 || localV >= megatex.tileHeight)
         return 0;
 
-    // Sample the tile
-    const std::vector<uint8_t>& tile = megatex.tileCache[tileIndex];
+    // Sample from contiguous memory pool (zero-copy access)
+    const uint8_t* tile = megatex.getTile(tileIndex);
     const size_t idx = (static_cast<size_t>(localV) * megatex.tileWidth + localU) * 4;
 
     // Return RGBA as packed uint32 (R, G, B, A in bytes 0,1,2,3)
