@@ -5,6 +5,9 @@
 #include <filesystem>
 #include <algorithm>
 #include <cstring>
+#include <memory>
+#include <unordered_map>
+#include <stdexcept>
 
 #include "vdx.h"
 #include "rl.h"
@@ -17,9 +20,6 @@
 #include "window.h"
 
 #ifdef _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
 #include <windows.h>
 #endif
 
@@ -58,6 +58,57 @@ VDXFile parseVDXFile(std::string_view filename, std::span<const uint8_t> buffer)
 		while (off + 8 <= rawSpan.size())
 		{
 			// Read chunk header to advance
+			const uint32_t dataSize = rawSpan[off + 2] | (rawSpan[off + 3] << 8) | (rawSpan[off + 4] << 16) | (rawSpan[off + 5] << 24);
+			++preCount;
+			off += 8u + static_cast<size_t>(dataSize);
+		}
+	}
+	vdxFile.chunks.reserve(preCount);
+
+	vdxFile.identifier = rawSpan[0] | (rawSpan[1] << 8);
+	std::copy(rawSpan.begin() + 2, rawSpan.begin() + 8, vdxFile.unknown.begin());
+
+	size_t offset = 8;
+	while (offset < rawSpan.size())
+	{
+		VDXChunk chunk;
+		chunk.chunkType = rawSpan[offset];
+		chunk.unknown = rawSpan[offset + 1];
+		chunk.dataSize = rawSpan[offset + 2] | (rawSpan[offset + 3] << 8) | (rawSpan[offset + 4] << 16) | (rawSpan[offset + 5] << 24);
+		chunk.lengthMask = rawSpan[offset + 6];
+		chunk.lengthBits = rawSpan[offset + 7];
+		offset += 8;
+		chunk.data = rawSpan.subspan(offset, chunk.dataSize);
+		offset += chunk.dataSize;
+		vdxFile.chunks.push_back(std::move(chunk));
+	}
+	return vdxFile;
+}
+
+/*
+===============================================================================
+Function Name: parseVDXFile (move overload)
+
+Description:
+	- Same as parseVDXFile but takes ownership of the buffer via move,
+	  avoiding a full copy of the raw data.
+===============================================================================
+*/
+VDXFile parseVDXFile(std::string_view filename, std::vector<uint8_t> &&buffer)
+{
+	VDXFile vdxFile;
+	auto lastDot = filename.find_last_of('.');
+	vdxFile.filename = (lastDot == std::string_view::npos) ? std::string(filename) : std::string(filename.substr(0, lastDot));
+
+	vdxFile.rawData = std::move(buffer); // Zero-copy: move instead of assign
+	std::span<const uint8_t> rawSpan{vdxFile.rawData};
+
+	size_t preCount = 0;
+	if (rawSpan.size() >= 8)
+	{
+		size_t off = 8;
+		while (off + 8 <= rawSpan.size())
+		{
 			const uint32_t dataSize = rawSpan[off + 2] | (rawSpan[off + 3] << 8) | (rawSpan[off + 4] << 16) | (rawSpan[off + 5] << 24);
 			++preCount;
 			off += 8u + static_cast<size_t>(dataSize);
@@ -239,7 +290,7 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 		}
 
 		std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)), {});
-		vdx = parseVDXFile(filename, std::span(buffer));
+		vdx = parseVDXFile(filename, std::move(buffer));
 		vdxToUse = &vdx;
 	}
 
@@ -252,7 +303,6 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 
 	// Save state
 	double prevFPS = state.frameTiming.currentFPS;
-	VDXFile *prevVDX = state.currentVDX;
 	size_t prevFrame = state.currentFrameIndex;
 	AnimationState prevAnim = state.animation;
 
@@ -263,7 +313,9 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 		wavPlay(std::span{vdxToUse->audioData});
 	}
 
-	state.currentVDX = vdxToUse;
+	// Temporarily set currentVDX for rendering (non-owning during playback)
+	auto savedVDX = std::move(state.currentVDX); // save ownership
+	state.currentVDX.reset(vdxToUse); // temporarily point to playing VDX (non-owning!)
 	state.currentFrameIndex = 0;
 	state.animation.isPlaying = true;
 	state.animation.totalFrames = vdxToUse->frameData.size();
@@ -299,13 +351,16 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 		maybeRenderFrame();
 
 	// Free memory for frames already presented to keep peak usage low
-	vdxToUse->frameData[state.currentFrameIndex] = {};
+	// Only do this for non-preloaded (transient) VDX; preloaded VDX may be reused
+	if (!preloadedVdx)
+		vdxToUse->frameData[state.currentFrameIndex] = {};
 	}
 
 	// Restore
 	wavStop();
 	state.frameTiming.currentFPS = prevFPS;
-	state.currentVDX = prevVDX;
+	(void)state.currentVDX.release(); // release non-owning temporary without deleting
+	state.currentVDX = std::move(savedVDX); // restore original ownership
 	state.currentFrameIndex = prevFrame;
 	state.animation = prevAnim;
 	state.frameTiming.dirtyFrame = true;
@@ -326,9 +381,20 @@ Return:
 	- A VDXFile object containing the parsed VDX data.
 ===============================================================================
 */
-VDXFile loadSingleVDX(const std::string &room, const std::string &vdxName)
+std::expected<VDXFile, std::string> loadSingleVDX(const std::string &room, const std::string &vdxName)
 {
-	auto indices = parseRLFile(room + ".RL");
+	// Cache RL parse results — the RL file is read-only and small, avoid re-parsing every VDX load
+	static std::unordered_map<std::string, std::vector<RLEntry>> rlCache;
+	const std::string rlKey = room + ".RL";
+	auto cacheIt = rlCache.find(rlKey);
+	if (cacheIt == rlCache.end())
+	{
+		auto result = parseRLFile(rlKey);
+		if (!result)
+			return std::unexpected(result.error());
+		cacheIt = rlCache.emplace(rlKey, std::move(*result)).first;
+	}
+	const auto &indices = cacheIt->second;
 
 	auto it = std::find_if(indices.begin(), indices.end(),
 						   [&](const auto &e)
@@ -338,18 +404,18 @@ VDXFile loadSingleVDX(const std::string &room, const std::string &vdxName)
 						   });
 
 	if (it == indices.end())
-		throw std::runtime_error("VDX not found in RL: " + vdxName);
+		return std::unexpected("VDX not found in RL: " + vdxName);
 
 	std::string gjdPath = room + ".GJD";
 	std::ifstream gjdFile(gjdPath, std::ios::binary);
 	if (!gjdFile)
-		throw std::runtime_error("Failed to open GJD: " + gjdPath);
+		return std::unexpected("Failed to open GJD: " + gjdPath);
 
 	gjdFile.seekg(it->offset);
 	std::vector<uint8_t> buffer(it->length);
 	gjdFile.read(reinterpret_cast<char *>(buffer.data()), it->length);
 
-	return parseVDXFile(vdxName, std::span(buffer));
+	return parseVDXFile(vdxName, std::move(buffer));
 }
 
 /*
@@ -377,9 +443,12 @@ VDXFile &getOrLoadVDX(const std::string &name)
 	{
 		unloadVDX(state.currentVDX->filename);
 	}
-	VDXFile vdx = loadSingleVDX(state.current_room, name);
+	auto result = loadSingleVDX(state.current_room, name);
+	if (!result)
+		throw std::runtime_error(result.error());
+	VDXFile vdx = std::move(*result);
 	parseVDXChunks(vdx);
-	state.currentVDX = new VDXFile(std::move(vdx));
+	state.currentVDX = std::make_unique<VDXFile>(std::move(vdx));
 	return *state.currentVDX;
 }
 
@@ -403,7 +472,6 @@ void unloadVDX(const std::string &name)
 		state.currentVDX->audioData.clear();
 		state.currentVDX->chunks.clear();
 		state.currentVDX->rawData.clear();
-		delete state.currentVDX;
-		state.currentVDX = nullptr;
+		state.currentVDX.reset();
 	}
 }

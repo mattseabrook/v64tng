@@ -7,9 +7,6 @@
 #include <fstream>
 #include <filesystem>
 #include <iomanip>
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
 #include <windows.h>
 
 nlohmann::json config;

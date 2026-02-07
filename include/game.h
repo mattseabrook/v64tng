@@ -10,12 +10,10 @@
 #include <chrono>
 #include <vector>
 #include <thread>
+#include <atomic>
 #include <memory>
 
 #ifdef _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
 #include <windows.h>
 #include <mmeapi.h>
 #endif
@@ -161,7 +159,7 @@ struct GameState
 	//
 	// 2D & FMV Graphics
 	//
-	VDXFile *currentVDX = nullptr;		  // Pointer to current VDXFile object (owned, must be deleted)
+	std::unique_ptr<VDXFile> currentVDX;  // Owning pointer to current VDXFile object
 	size_t currentFrameIndex = 30;		  // Normally 0 - hard-coded to 30 for testing
 	AnimationState animation;			  // Animation state management
 	std::string transient_animation_name; // e.g., "dr_r"
@@ -199,7 +197,7 @@ struct GameState
 			0.2f,			// Walk speed
 			0.4f			// Run speed
 		};
-		const std::vector<std::vector<uint8_t>> *map = nullptr; // Current map data (read-only)
+		const TileMap *map = nullptr; // Current map data (read-only)
 	} raycast;
 
 	//
@@ -222,7 +220,7 @@ struct GameState
 	// PCM Audio
 	//
 	std::thread pcm_thread;	  // Thread for PCM playback
-	bool pcm_playing = false; // Flag to indicate PCM status
+	std::atomic<bool> pcm_playing{false}; // Flag to indicate PCM status (atomic: accessed from audio thread)
 #ifdef _WIN32
 	HWAVEOUT pcm_handle = NULL; // Handle to currently playing device
 #endif

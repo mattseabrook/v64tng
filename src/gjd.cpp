@@ -7,9 +7,6 @@
 #include <filesystem>
 
 #ifdef _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
 #include <windows.h>
 #else
 #include <sys/mman.h>
@@ -41,7 +38,12 @@ Notes:
 */
 std::vector<VDXFile> parseGJDFile(std::string_view rlFilename)
 {
-    std::vector<RLEntry> rlEntries = parseRLFile(rlFilename);
+    auto rlResult = parseRLFile(rlFilename);
+    if (!rlResult)
+    {
+        throw std::runtime_error(rlResult.error());
+    }
+    std::vector<RLEntry> rlEntries = std::move(*rlResult);
     if (rlEntries.empty())
     {
         return {};

@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <string>
+#include <expected>
 
 /*
 ===============================================================================
@@ -24,6 +25,6 @@ struct RLEntry {
 };
 
 // Function Prototypes
-std::vector<RLEntry> parseRLFile(std::string_view rlFilename);
+std::expected<std::vector<RLEntry>, std::string> parseRLFile(std::string_view rlFilename);
 
 #endif // RL_H

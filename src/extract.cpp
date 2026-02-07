@@ -1,12 +1,11 @@
 // extract.cpp
 
-#include <iostream>
+#include <print>
+#include <format>
 #include <string>
 #include <vector>
 #include <filesystem>
 #include <fstream>
-#include <sstream>
-#include <iomanip>
 #include <cstdlib>
 #include <stdexcept>
 #include <cstdio>
@@ -33,7 +32,13 @@ Parameters:
 */
 void GJDInfo(const std::string_view &filename)
 {
-	auto vdxFiles = parseRLFile(filename.data());
+	auto result = parseRLFile(filename.data());
+	if (!result)
+	{
+		std::println(stderr, "{}", result.error());
+		return;
+	}
+	auto vdxFiles = std::move(*result);
 	int RLOffset = 0;
 
 	// Define column widths
@@ -43,29 +48,23 @@ void GJDInfo(const std::string_view &filename)
 	const int lengthWidth = 10;		// For Length
 
 	// Output the table header
-	std::cout << std::left
-			  << std::setw(offsetWidth) << "RL Offset" << " | "
-			  << std::setw(nameWidth) << "Filename" << " | "
-			  << std::setw(fileOffsetWidth) << "Offset" << " | "
-			  << std::setw(lengthWidth) << "Length" << std::endl;
+	std::println("{:<{}} | {:<{}} | {:<{}} | {:<{}}",
+		"RL Offset", offsetWidth, "Filename", nameWidth,
+		"Offset", fileOffsetWidth, "Length", lengthWidth);
 
 	// Output a separator line
-	std::cout << std::string(offsetWidth + nameWidth + fileOffsetWidth + lengthWidth + 8, '-') << std::endl;
+	std::println("{}", std::string(offsetWidth + nameWidth + fileOffsetWidth + lengthWidth + 8, '-'));
 
 	// Output each entry
 	for (const auto &vdxFile : vdxFiles)
 	{
-		std::cout << std::right
-				  << std::setw(offsetWidth) << RLOffset << " | "
-				  << std::left
-				  << std::setw(nameWidth) << vdxFile.filename << " | "
-				  << std::right
-				  << std::setw(fileOffsetWidth) << vdxFile.offset << " | "
-				  << std::setw(lengthWidth) << vdxFile.length << std::endl;
+		std::println("{:>{}} | {:<{}} | {:>{}} | {:>{}}",
+			RLOffset, offsetWidth, vdxFile.filename, nameWidth,
+			vdxFile.offset, fileOffsetWidth, vdxFile.length, lengthWidth);
 		RLOffset += 20; // Increment RL Offset by 20 for the next entry
 	}
 
-	std::cout << "Number of VDX Files: " << vdxFiles.size() << std::endl;
+	std::println("Number of VDX Files: {}", vdxFiles.size());
 }
 
 /*
@@ -89,7 +88,7 @@ void VDXInfo(const std::string &filename)
 	std::ifstream file(filename, std::ios::binary);
 	if (!file)
 	{
-		std::cerr << "ERROR: Can't open file: " << filename << '\n';
+		std::println(stderr, "ERROR: Can't open file: {}", filename);
 		return;
 	}
 
@@ -137,18 +136,18 @@ void VDXInfo(const std::string &filename)
 	// Output header (only for VDX files)
 	if (!isGJD)
 	{
-		std::cout << "VDX Header:\n";
-		std::cout << "  Identifier: 0x" << std::hex << std::setw(4) << std::setfill('0') << vdx.identifier << std::dec << '\n';
-		std::cout << "  Unknown: ";
+		std::println("VDX Header:");
+		std::println("  Identifier: 0x{:04X}", vdx.identifier);
+		std::print("  Unknown: ");
 		for (auto byte : vdx.unknown)
 		{
-			std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte) << ' ';
+			std::print("{:02X} ", static_cast<int>(byte));
 		}
-		std::cout << std::dec << '\n';
+		std::println("");
 	}
 
 	// Output 0x20 Bitmap table
-	std::cout << "\n0x20 Bitmap\n\n";
+	std::println("\n0x20 Bitmap\n");
 	const int nameWidth = 15;  // Fits "colourDepth" and "palette"
 	const int typeWidth = 16;  // Fits "RGBColor[768]"
 	const int valueWidth = 20; // Fits values like "160 (0xa0)"
@@ -169,68 +168,44 @@ void VDXInfo(const std::string &filename)
 		}
 	}
 
-	std::cout << std::left << std::setfill(' ')
-			  << std::setw(nameWidth) << "Name" << "\t"
-			  << std::setw(typeWidth) << "Type" << "\t"
-			  << std::setw(valueWidth) << "Value" << "\t"
-			  << "Description" << '\n';
+	std::println("{:<{}}\t{:<{}}\t{:<{}}\tDescription",
+		"Name", nameWidth, "Type", typeWidth, "Value", valueWidth);
 
 	// Divider line
-	std::cout << std::string(nameWidth + typeWidth + valueWidth + descWidth + 3, '-') << '\n';
+	std::println("{}", std::string(nameWidth + typeWidth + valueWidth + descWidth + 3, '-'));
 
 	// Table rows with actual values
 	if (found0x20)
 	{
-		std::cout << std::left << std::setfill(' ')
-				  << std::setw(nameWidth) << "numXTiles" << "\t"
-				  << std::setw(typeWidth) << "uint16_t" << "\t"
-				  << std::setw(valueWidth) << (std::to_string(numXTiles) + " (0x" + (std::ostringstream{} << std::hex << numXTiles).str() + ")") << "\t"
-				  << "Number of tiles in the horizontal direction." << '\n';
+		std::println("{:<{}}\t{:<{}}\t{:<{}}\tNumber of tiles in the horizontal direction.",
+			"numXTiles", nameWidth, "uint16_t", typeWidth,
+			std::format("{} (0x{:X})", numXTiles, numXTiles), valueWidth);
 
-		std::cout << std::left << std::setfill(' ')
-				  << std::setw(nameWidth) << "numYTiles" << "\t"
-				  << std::setw(typeWidth) << "uint16_t" << "\t"
-				  << std::setw(valueWidth) << (std::to_string(numYTiles) + " (0x" + (std::ostringstream{} << std::hex << numYTiles).str() + ")") << "\t"
-				  << "Number of tiles in the vertical direction." << '\n';
+		std::println("{:<{}}\t{:<{}}\t{:<{}}\tNumber of tiles in the vertical direction.",
+			"numYTiles", nameWidth, "uint16_t", typeWidth,
+			std::format("{} (0x{:X})", numYTiles, numYTiles), valueWidth);
 
-		std::cout << std::left << std::setfill(' ')
-				  << std::setw(nameWidth) << "colourDepth" << "\t"
-				  << std::setw(typeWidth) << "uint16_t" << "\t"
-				  << std::setw(valueWidth) << (std::to_string(colourDepth) + " (0x" + (std::ostringstream{} << std::hex << colourDepth).str() + ")") << "\t"
-				  << "Colour depth in bits. (In the code, only 8 is observed)." << '\n';
+		std::println("{:<{}}\t{:<{}}\t{:<{}}\tColour depth in bits. (In the code, only 8 is observed).",
+			"colourDepth", nameWidth, "uint16_t", typeWidth,
+			std::format("{} (0x{:X})", colourDepth, colourDepth), valueWidth);
 	}
 	else
 	{
-		std::cout << std::left << std::setfill(' ')
-				  << std::setw(nameWidth) << "numXTiles" << "\t"
-				  << std::setw(typeWidth) << "uint16_t" << "\t"
-				  << std::setw(valueWidth) << "N/A" << "\t"
-				  << "Number of tiles in the horizontal direction." << '\n';
+		std::println("{:<{}}\t{:<{}}\t{:<{}}\tNumber of tiles in the horizontal direction.",
+			"numXTiles", nameWidth, "uint16_t", typeWidth, "N/A", valueWidth);
 
-		std::cout << std::left << std::setfill(' ')
-				  << std::setw(nameWidth) << "numYTiles" << "\t"
-				  << std::setw(typeWidth) << "uint16_t" << "\t"
-				  << std::setw(valueWidth) << "N/A" << "\t"
-				  << "Number of tiles in the vertical direction." << '\n';
+		std::println("{:<{}}\t{:<{}}\t{:<{}}\tNumber of tiles in the vertical direction.",
+			"numYTiles", nameWidth, "uint16_t", typeWidth, "N/A", valueWidth);
 
-		std::cout << std::left << std::setfill(' ')
-				  << std::setw(nameWidth) << "colourDepth" << "\t"
-				  << std::setw(typeWidth) << "uint16_t" << "\t"
-				  << std::setw(valueWidth) << "N/A" << "\t"
-				  << "Colour depth in bits. (In the code, only 8 is observed)." << '\n';
+		std::println("{:<{}}\t{:<{}}\t{:<{}}\tColour depth in bits. (In the code, only 8 is observed).",
+			"colourDepth", nameWidth, "uint16_t", typeWidth, "N/A", valueWidth);
 	}
 
-	std::cout << std::left << std::setfill(' ')
-			  << std::setw(nameWidth) << "palette" << "\t"
-			  << std::setw(typeWidth) << "RGBColor[768]" << "\t"
-			  << std::setw(valueWidth) << "768 bytes" << "\t"
-			  << "RGB values required for a palette implied by colourDepth." << '\n';
+	std::println("{:<{}}\t{:<{}}\t{:<{}}\tRGB values required for a palette implied by colourDepth.",
+		"palette", nameWidth, "RGBColor[768]", typeWidth, "768 bytes", valueWidth);
 
-	std::cout << std::left << std::setfill(' ')
-			  << std::setw(nameWidth) << "image" << "\t"
-			  << std::setw(typeWidth) << "uint8_t[]" << "\t"
-			  << std::setw(valueWidth) << "Variable length" << "\t"
-			  << "Sequence of structures describing the image." << '\n';
+	std::println("{:<{}}\t{:<{}}\t{:<{}}\tSequence of structures describing the image.",
+		"image", nameWidth, "uint8_t[]", typeWidth, "Variable length", valueWidth);
 
 	// Output chunk table (same for both VDX and GJD)
 	const int chunkTypeWidth = 6;	// Fits "0x20"
@@ -240,39 +215,31 @@ void VDXInfo(const std::string &filename)
 	const int lengthBitsWidth = 10; // Fits "0x07"
 
 	// Helper function for hex formatting (unchanged)
-	auto hex8 = [](uint8_t v)
-	{
-		std::ostringstream oss;
-		oss << "0x" << std::uppercase << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(v);
-		return oss.str();
+	auto hex8 = [](uint8_t v) {
+		return std::format("0x{:02X}", v);
 	};
 
-	std::cout << "\nChunk Information:\n";
+	std::println("\nChunk Information:");
 	// Column headers with space padding
-	std::cout << std::left << std::setfill(' ') // Ensure spaces, not zeros
-			  << std::setw(chunkTypeWidth) << "Type" << "| "
-			  << std::setw(unknownWidth) << "Unknown" << "| "
-			  << std::setw(dataSizeWidth) << "Data Size" << "| "
-			  << std::setw(lengthMaskWidth) << "Length Mask" << "| "
-			  << std::setw(lengthBitsWidth) << "Length Bits" << '\n';
+	std::println("{:<{}}| {:<{}}| {:<{}}| {:<{}}| {:<{}}",
+		"Type", chunkTypeWidth, "Unknown", unknownWidth,
+		"Data Size", dataSizeWidth, "Length Mask", lengthMaskWidth,
+		"Length Bits", lengthBitsWidth);
 
 	// Divider line
-	std::cout << std::string(
-					 chunkTypeWidth + unknownWidth + dataSizeWidth + lengthMaskWidth + lengthBitsWidth + 4, '-')
-			  << '\n';
+	std::println("{}", std::string(
+		chunkTypeWidth + unknownWidth + dataSizeWidth + lengthMaskWidth + lengthBitsWidth + 4, '-'));
 
 	// Chunk data
 	for (const auto &chunk : vdx.chunks)
 	{
-		std::cout << std::left << std::setfill(' ') // Spaces for padding
-				  << std::setw(chunkTypeWidth) << hex8(chunk.chunkType) << "| "
-				  << std::setw(unknownWidth) << hex8(chunk.unknown) << "| "
-				  << std::right << std::setw(dataSizeWidth) << chunk.dataSize << "| "
-				  << std::left << std::setw(lengthMaskWidth) << hex8(chunk.lengthMask) << "| "
-				  << std::setw(lengthBitsWidth) << hex8(chunk.lengthBits) << '\n';
+		std::println("{:<{}}| {:<{}}| {:>{}}| {:<{}}| {:<{}}",
+			hex8(chunk.chunkType), chunkTypeWidth, hex8(chunk.unknown), unknownWidth,
+			chunk.dataSize, dataSizeWidth, hex8(chunk.lengthMask), lengthMaskWidth,
+			hex8(chunk.lengthBits), lengthBitsWidth);
 	}
 
-	std::cout << "\nNumber of Chunks: " << vdx.chunks.size() << '\n';
+	std::println("\nNumber of Chunks: {}", vdx.chunks.size());
 }
 
 /*
@@ -311,14 +278,14 @@ void extractVDX(const std::string_view &filename)
 	dirName.erase(dirName.find_last_of('.'));
 	std::filesystem::create_directory(dirName);
 
-	std::cout << "Extracting GJD..." << std::endl;
+	std::println("Extracting GJD...");
 
 	std::vector<VDXFile> VDXFiles = parseGJDFile(filename.data());
 
 	for (const auto &vdxFile : VDXFiles)
 	{
 		std::string vdxFileName = dirName + "/" + vdxFile.filename + ".vdx";
-		std::cout << "filename: " << vdxFileName << std::endl;
+		std::println("filename: {}", vdxFileName);
 
 		std::ofstream vdxFileOut(vdxFileName, std::ios::binary);
 		vdxFileOut.write(reinterpret_cast<const char *>(&vdxFile.identifier), sizeof(vdxFile.identifier));
@@ -361,7 +328,7 @@ void extractCursors(const std::string_view &robFilename)
 	std::ifstream file{robFilename.data(), std::ios::binary | std::ios::ate};
 	if (!file)
 	{
-		std::cerr << "ERROR: Can't open " << robFilename << '\n';
+		std::println(stderr, "ERROR: Can't open {}", robFilename);
 		return;
 	}
 
@@ -372,9 +339,8 @@ void extractCursors(const std::string_view &robFilename)
 	// Verify file size for palettes
 	if (buffer.size() < ::CursorPaletteSizeBytes * ::NumCursorPalettes)
 	{
-		std::cerr << "ERROR: ROB.GJD too small (" << buffer.size()
-				  << " bytes) to contain " << static_cast<int>(::NumCursorPalettes)
-				  << " palettes of " << ::CursorPaletteSizeBytes << " bytes each\n";
+		std::println(stderr, "ERROR: ROB.GJD too small ({} bytes) to contain {} palettes of {} bytes each",
+			buffer.size(), static_cast<int>(::NumCursorPalettes), ::CursorPaletteSizeBytes);
 		return;
 	}
 
@@ -389,16 +355,11 @@ void extractCursors(const std::string_view &robFilename)
 	for (size_t i = 0; i < ::CursorBlobs.size(); ++i)
 	{
 		const auto &meta = ::CursorBlobs[i];
-		std::cout << "\n[Processing Cursor " << i
-				  << "] Offset: 0x" << std::hex << meta.offset
-				  //<< " Size: " << std::dec << meta.size
-				  //<< " Metadata Frames: " << static_cast<int>(meta.frames)
-				  << '\n';
+		std::println("\n[Processing Cursor {}] Offset: 0x{:X}", i, meta.offset);
 
 		// Create subdirectory (e.g., 0x00000/PNG)
-		std::ostringstream hexDir;
-		hexDir << "0x" << std::uppercase << std::hex << std::setw(5) << std::setfill('0') << meta.offset;
-		std::filesystem::path pngDir = rootDir / hexDir.str() / "PNG";
+		std::string hexDir = std::format("0x{:05X}", meta.offset);
+		std::filesystem::path pngDir = rootDir / hexDir / "PNG";
 		std::filesystem::create_directories(pngDir);
 
 		try
@@ -424,16 +385,15 @@ void extractCursors(const std::string_view &robFilename)
 			for (size_t f = 0; f < img.frames; ++f)
 			{
 				auto rgba = cursorFrameToRGBA(img, f, pal);
-				std::ostringstream fn;
-				fn << std::setw(digits) << std::setfill('0') << f << ".png";
-				std::filesystem::path outPath = pngDir / fn.str();
+				std::string fn = std::format("{:0>{}}.png", f, digits);
+				std::filesystem::path outPath = pngDir / fn;
 				savePNG(outPath.string(), rgba, img.width, img.height, true);
-				std::cout << "  Wrote: " << outPath.filename().string() << '\n';
+				std::println("  Wrote: {}", outPath.filename().string());
 			}
 		}
 		catch (const std::exception &e)
 		{
-			std::cerr << "FAILED: " << e.what() << "\n";
+			std::println(stderr, "FAILED: {}", e.what());
 		}
 	}
 }
@@ -455,8 +415,10 @@ Parameters:
 void extractPNG(std::string_view filename, bool raw)
 {
 	std::ifstream vdxFile{filename.data(), std::ios::binary | std::ios::ate};
-	if (!vdxFile)
-		return std::cerr << "ERROR: Can't open VDX: " << filename << '\n', void();
+	if (!vdxFile) {
+		std::println(stderr, "ERROR: Can't open VDX: {}", filename);
+		return;
+	}
 
 	std::vector<uint8_t> vdxData(static_cast<std::size_t>(vdxFile.tellg()));
 	vdxFile.seekg(0).read(reinterpret_cast<char *>(vdxData.data()), vdxData.size());
@@ -471,7 +433,7 @@ void extractPNG(std::string_view filename, bool raw)
 	if (!vdx.audioData.empty())
 	{
 		std::filesystem::path wavPath = dirPath / (std::filesystem::path{filename}.stem().string() + ".wav");
-		std::cout << "Writing: " << wavPath.string() << '\n';
+		std::println("Writing: {}", wavPath.string());
 		saveWAV(wavPath.string(), vdx.audioData);
 	}
 
@@ -479,23 +441,22 @@ void extractPNG(std::string_view filename, bool raw)
 	{
 		const auto &frameData = vdx.frameData[i];
 
-		std::ostringstream frame;
-		frame << std::setfill('0') << std::setw(4) << frameNum;
+		std::string frame = std::format("{:04}", frameNum);
 		std::string baseName = std::filesystem::path{filename}.stem().string();
-		std::filesystem::path outPath = dirPath / (baseName + "_" + frame.str());
+		std::filesystem::path outPath = dirPath / (baseName + "_" + frame);
 
 		if (raw)
 		{
 			std::ofstream outFile{outPath.replace_extension(".raw"), std::ios::binary};
 			if (outFile)
 			{
-				std::cout << "Writing: " << outPath.string() << '\n';
+				std::println("Writing: {}", outPath.string());
 				outFile.write(reinterpret_cast<const char *>(frameData.data()), frameData.size());
 			}
 		}
 		else
 		{
-			std::cout << "Writing: " << (outPath.replace_extension(".png")).string() << '\n';
+			std::println("Writing: {}", outPath.replace_extension(".png").string());
 			savePNG(outPath.replace_extension(".png").string(), frameData, vdx.width, vdx.height);
 		}
 		++frameNum;
@@ -518,7 +479,7 @@ void createVideoFromImages(const std::string &filenameParam)
 	// Check if FFmpeg is installed
 	if (std::system("ffmpeg -version") != 0)
 	{
-		std::cerr << "FFmpeg is not installed or not in the system PATH." << std::endl;
+		std::println(stderr, "FFmpeg is not installed or not in the system PATH.");
 		return;
 	}
 
@@ -537,7 +498,7 @@ void createVideoFromImages(const std::string &filenameParam)
 	// Validate PNG directory
 	if (!std::filesystem::exists(pngDirPath) || !std::filesystem::is_directory(pngDirPath))
 	{
-		std::cerr << "PNG directory does not exist: " << pngDirPath.string() << std::endl;
+		std::println(stderr, "PNG directory does not exist: {}", pngDirPath.string());
 		return;
 	}
 
@@ -553,7 +514,7 @@ void createVideoFromImages(const std::string &filenameParam)
 	}
 	if (!foundMatchingFiles)
 	{
-		std::cerr << "No PNG files found in directory: " << pngDirPath.string() << std::endl;
+		std::println(stderr, "No PNG files found in directory: {}", pngDirPath.string());
 		return;
 	}
 
@@ -569,7 +530,7 @@ void createVideoFromImages(const std::string &filenameParam)
 	int ffmpegResult = std::system(ffmpegCommand.c_str());
 	if (ffmpegResult != 0)
 	{
-		std::cerr << "FFmpeg command failed." << std::endl;
+		std::println(stderr, "FFmpeg command failed.");
 		return;
 	}
 

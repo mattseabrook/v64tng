@@ -24,6 +24,7 @@
 #include "raycast.h"
 #include "render.h"
 #include "megatexture.h"
+#include "basement.h"
 #include "../build/rgb_to_bgra_spv.h"
 #include "../build/vk_raycast_spv.h"
 
@@ -263,167 +264,136 @@ static void createComputePipeline()
 extern unsigned char build_vk_raycast_spv[];
 extern unsigned int build_vk_raycast_spv_len;
 
-static void createTileMapBuffer(const std::vector<std::vector<uint8_t>>& tileMap)
+// Staging buffer pair for deferred cleanup after GPU upload
+struct StagingBuffer { VkBuffer buffer; VkDeviceMemory memory; };
+
+// Record a copy from CPU data into a device-local buffer on an already-begun command buffer.
+// (Re)creates dstBuffer if needed.  Pushes staging resources into `stagingOut` for caller cleanup.
+static void uploadToDeviceBuffer(const void *srcData, VkDeviceSize dataSize,
+	VkBuffer &dstBuffer, VkDeviceMemory &dstMemory, VkDeviceSize &dstBufferSize,
+	VkCommandBuffer cmdBuf, std::vector<StagingBuffer> &stagingOut)
 {
-	if (tileMap.empty() || tileMap[0].empty())
-		return;
-	
-	uint32_t mapHeight = static_cast<uint32_t>(tileMap.size());
-	uint32_t mapWidth = static_cast<uint32_t>(tileMap[0].size());
-	
-	// Check if we need to recreate
-	if (vkCtx.tileMapBuffer && vkCtx.lastMapWidth == mapWidth && vkCtx.lastMapHeight == mapHeight)
-		return;  // Already created with correct size
-	
-	// Clean up old buffer
-	if (vkCtx.tileMapBuffer)
+	if ((!dstBuffer) || (dstBufferSize != dataSize))
 	{
-		vkDestroyBuffer(vkCtx.device, vkCtx.tileMapBuffer, nullptr);
-		vkFreeMemory(vkCtx.device, vkCtx.tileMapBufferMemory, nullptr);
-		vkCtx.tileMapBuffer = VK_NULL_HANDLE;
-		vkCtx.tileMapBufferMemory = VK_NULL_HANDLE;
-	}
-	
-	// Flatten tile map
-	std::vector<uint8_t> flatMap(mapWidth * mapHeight);
-	for (uint32_t y = 0; y < mapHeight; y++)
-	{
-		for (uint32_t x = 0; x < mapWidth; x++)
+		if (dstBuffer)
 		{
-			flatMap[y * mapWidth + x] = tileMap[y][x];
+			vkDestroyBuffer(vkCtx.device, dstBuffer, nullptr);
+			vkFreeMemory(vkCtx.device, dstMemory, nullptr);
+			dstBuffer = VK_NULL_HANDLE;
+			dstMemory = VK_NULL_HANDLE;
 		}
+		createBuffer(dataSize,
+			VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			dstBuffer, dstMemory);
+		dstBufferSize = dataSize;
 	}
-	
-	// Create staging buffer
-	VkDeviceSize bufferSize = flatMap.size();
-	VkBuffer stagingBuffer;
-	VkDeviceMemory stagingMemory;
-	
-	createBuffer(bufferSize,
+
+	VkBuffer staging;
+	VkDeviceMemory stagingMem;
+	createBuffer(dataSize,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		stagingBuffer, stagingMemory);
-	
-	// Copy data to staging
-	void* data;
-	vkMapMemory(vkCtx.device, stagingMemory, 0, bufferSize, 0, &data);
-	memcpy(data, flatMap.data(), bufferSize);
-	vkUnmapMemory(vkCtx.device, stagingMemory);
-	
-	// Create device-local buffer
-	createBuffer(bufferSize,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		vkCtx.tileMapBuffer, vkCtx.tileMapBufferMemory);
-	
-	// Copy staging to device-local
-	VkCommandBuffer cmdBuf = vkCtx.commandBuffers[vkCtx.currentFrame];
-	VkCommandBufferBeginInfo beginInfo{};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	
-	vkBeginCommandBuffer(cmdBuf, &beginInfo);
-	
-	VkBufferCopy copyRegion{};
-	copyRegion.size = bufferSize;
-	vkCmdCopyBuffer(cmdBuf, stagingBuffer, vkCtx.tileMapBuffer, 1, &copyRegion);
-	
-	vkEndCommandBuffer(cmdBuf);
-	
-	VkSubmitInfo submitInfo{};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &cmdBuf;
-	
-	vkQueueSubmit(vkCtx.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(vkCtx.graphicsQueue);
-	
-	// Clean up staging
-	vkDestroyBuffer(vkCtx.device, stagingBuffer, nullptr);
-	vkFreeMemory(vkCtx.device, stagingMemory, nullptr);
-	
-	vkCtx.tileMapBufferSize = bufferSize;
-	vkCtx.lastMapWidth = mapWidth;
-	vkCtx.lastMapHeight = mapHeight;
+		staging, stagingMem);
+
+	void *mapped = nullptr;
+	vkMapMemory(vkCtx.device, stagingMem, 0, dataSize, 0, &mapped);
+	std::memcpy(mapped, srcData, static_cast<size_t>(dataSize));
+	vkUnmapMemory(vkCtx.device, stagingMem);
+
+	VkBufferCopy region{};
+	region.size = dataSize;
+	vkCmdCopyBuffer(cmdBuf, staging, dstBuffer, 1, &region);
+
+	stagingOut.push_back({staging, stagingMem});
 }
 
-// Build and upload edge offset lookup buffer: ((y*mapWidth + x)*4 + side) -> offset in pixels
-static void createOrUpdateEdgeOffsetsBuffer(const std::vector<std::vector<uint8_t>>& tileMap)
+// Clean up staging buffers after a submit has completed
+static void cleanupStagingBuffers(std::vector<StagingBuffer> &staging)
 {
-	if (tileMap.empty() || tileMap[0].empty()) return;
+	for (auto &s : staging)
+	{
+		vkDestroyBuffer(vkCtx.device, s.buffer, nullptr);
+		vkFreeMemory(vkCtx.device, s.memory, nullptr);
+	}
+	staging.clear();
+}
+
+// Upload tile map and edge offsets to GPU in a single batched command buffer submission (P9)
+static void uploadRaycastBuffers(const TileMap &tileMap)
+{
 	uint32_t mapHeight = static_cast<uint32_t>(tileMap.size());
 	uint32_t mapWidth = static_cast<uint32_t>(tileMap[0].size());
 
-	// Create CPU-side table of triplets: [offset,width,dirFlag]
-	const size_t count = static_cast<size_t>(mapWidth) * mapHeight * 4ull;
-	std::vector<uint32_t> table(count * 3ull, 0u);
+	// Check if tile map needs (re)upload
+	bool tileMapCurrent = vkCtx.tileMapBuffer && vkCtx.lastMapWidth == mapWidth && vkCtx.lastMapHeight == mapHeight;
 
-	// Fill from analyzed edges (computed on CPU at init)
-	for (const auto& e : megatex.edges)
+	// Build CPU-side edge offset table
+	const size_t edgeCount = static_cast<size_t>(mapWidth) * mapHeight * 4ull;
+	std::vector<uint32_t> edgeTable(edgeCount * 3ull, 0u);
+	for (const auto &e : megatex.edges)
 	{
 		if (e.cellX < 0 || e.cellY < 0) continue;
 		if (e.cellX >= static_cast<int>(mapWidth) || e.cellY >= static_cast<int>(mapHeight)) continue;
 		size_t idx = (static_cast<size_t>(e.cellY) * mapWidth + static_cast<size_t>(e.cellX)) * 4ull + static_cast<size_t>(e.side & 3);
 		size_t idx3 = idx * 3ull;
-		if (idx3 + 2 < table.size()) {
-			table[idx3 + 0] = static_cast<uint32_t>(e.xOffsetPixels);
-			table[idx3 + 1] = static_cast<uint32_t>(std::max(1, e.pixelWidth));
-			table[idx3 + 2] = static_cast<uint32_t>(e.direction < 0 ? 1u : 0u);
-		}
-	}
-
-	// Create or resize GPU buffer
-	VkDeviceSize bufferSize = static_cast<VkDeviceSize>(table.size() * sizeof(uint32_t));
-	bool needRecreate = (!vkCtx.edgeOffsetsBuffer) || (vkCtx.edgeOffsetsBufferSize != bufferSize);
-	if (needRecreate)
-	{
-		if (vkCtx.edgeOffsetsBuffer)
+		if (idx3 + 2 < edgeTable.size())
 		{
-			vkDestroyBuffer(vkCtx.device, vkCtx.edgeOffsetsBuffer, nullptr);
-			vkFreeMemory(vkCtx.device, vkCtx.edgeOffsetsBufferMemory, nullptr);
-			vkCtx.edgeOffsetsBuffer = VK_NULL_HANDLE;
-			vkCtx.edgeOffsetsBufferMemory = VK_NULL_HANDLE;
+			edgeTable[idx3 + 0] = static_cast<uint32_t>(e.xOffsetPixels);
+			edgeTable[idx3 + 1] = static_cast<uint32_t>(std::max(1, e.pixelWidth));
+			edgeTable[idx3 + 2] = static_cast<uint32_t>(e.direction < 0 ? 1u : 0u);
 		}
-		createBuffer(bufferSize,
-					 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-					 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-					 vkCtx.edgeOffsetsBuffer, vkCtx.edgeOffsetsBufferMemory);
-		vkCtx.edgeOffsetsBufferSize = bufferSize;
+	}
+	VkDeviceSize edgeSize = static_cast<VkDeviceSize>(edgeTable.size() * sizeof(uint32_t));
+
+	if (tileMapCurrent && vkCtx.edgeOffsetsBuffer && vkCtx.edgeOffsetsBufferSize == edgeSize)
+		return;  // Nothing to upload
+
+	// Flatten tile map (only if needed)
+	std::vector<uint8_t> flatMap;
+	if (!tileMapCurrent)
+	{
+		flatMap.resize(mapWidth * mapHeight);
+		for (uint32_t y = 0; y < mapHeight; y++)
+			for (uint32_t x = 0; x < mapWidth; x++)
+				flatMap[y * mapWidth + x] = tileMap[y][x];
 	}
 
-	// Staging upload
-	VkBuffer staging;
-	VkDeviceMemory stagingMem;
-	createBuffer(bufferSize,
-				 VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-				 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-				 staging, stagingMem);
-
-	void* data = nullptr;
-	vkMapMemory(vkCtx.device, stagingMem, 0, bufferSize, 0, &data);
-	std::memcpy(data, table.data(), static_cast<size_t>(bufferSize));
-	vkUnmapMemory(vkCtx.device, stagingMem);
-
+	// Begin a single command buffer for all uploads
 	VkCommandBuffer cmdBuf = vkCtx.commandBuffers[vkCtx.currentFrame];
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	vkBeginCommandBuffer(cmdBuf, &beginInfo);
 
-	VkBufferCopy copy{ };
-	copy.size = bufferSize;
-	vkCmdCopyBuffer(cmdBuf, staging, vkCtx.edgeOffsetsBuffer, 1, &copy);
+	std::vector<StagingBuffer> staging;
+
+	// Record tile map upload
+	if (!tileMapCurrent)
+	{
+		uploadToDeviceBuffer(flatMap.data(), static_cast<VkDeviceSize>(flatMap.size()),
+			vkCtx.tileMapBuffer, vkCtx.tileMapBufferMemory, vkCtx.tileMapBufferSize,
+			cmdBuf, staging);
+		vkCtx.lastMapWidth = mapWidth;
+		vkCtx.lastMapHeight = mapHeight;
+	}
+
+	// Record edge offsets upload
+	uploadToDeviceBuffer(edgeTable.data(), edgeSize,
+		vkCtx.edgeOffsetsBuffer, vkCtx.edgeOffsetsBufferMemory, vkCtx.edgeOffsetsBufferSize,
+		cmdBuf, staging);
+
+	// Single submit for both uploads
 	vkEndCommandBuffer(cmdBuf);
 
-	VkSubmitInfo submit{};
-	submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submit.commandBufferCount = 1;
-	submit.pCommandBuffers = &cmdBuf;
-	vkQueueSubmit(vkCtx.graphicsQueue, 1, &submit, VK_NULL_HANDLE);
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &cmdBuf;
+	vkQueueSubmit(vkCtx.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 	vkQueueWaitIdle(vkCtx.graphicsQueue);
 
-	vkDestroyBuffer(vkCtx.device, staging, nullptr);
-	vkFreeMemory(vkCtx.device, stagingMem, nullptr);
+	cleanupStagingBuffers(staging);
 }
 
 static void updateRaycastDescriptors()
@@ -809,7 +779,8 @@ void recreateSwapchain(uint32_t width, uint32_t height)
 	swapInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	swapInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
 	swapInfo.clipped = VK_TRUE;
-	vkCreateSwapchainKHR(vkCtx.device, &swapInfo, nullptr, &vkCtx.swapchain);
+	if (vkCreateSwapchainKHR(vkCtx.device, &swapInfo, nullptr, &vkCtx.swapchain) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create Vulkan swapchain");
 
 	uint32_t count = 0;
 	vkGetSwapchainImagesKHR(vkCtx.device, vkCtx.swapchain, &count, nullptr);
@@ -854,10 +825,13 @@ void initializeVulkan()
 	instInfo.enabledExtensionCount = 2;
 	instInfo.ppEnabledExtensionNames = exts;
 
-	vkCreateInstance(&instInfo, nullptr, &vkCtx.instance);
+	if (vkCreateInstance(&instInfo, nullptr, &vkCtx.instance) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create Vulkan instance");
 
 	uint32_t devCount = 0;
 	vkEnumeratePhysicalDevices(vkCtx.instance, &devCount, nullptr);
+	if (devCount == 0)
+		throw std::runtime_error("No Vulkan-capable GPU found");
 	std::vector<VkPhysicalDevice> devs(devCount);
 	vkEnumeratePhysicalDevices(vkCtx.instance, &devCount, devs.data());
 	vkCtx.physicalDevice = devs[0];
@@ -890,7 +864,8 @@ void initializeVulkan()
 	devInfo.enabledExtensionCount = 1;
 	devInfo.ppEnabledExtensionNames = devExts;
 
-	vkCreateDevice(vkCtx.physicalDevice, &devInfo, nullptr, &vkCtx.device);
+	if (vkCreateDevice(vkCtx.physicalDevice, &devInfo, nullptr, &vkCtx.device) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create Vulkan logical device");
 	vkGetDeviceQueue(vkCtx.device, vkCtx.graphicsQueueFamily, 0, &vkCtx.graphicsQueue);
 
 	VkWin32SurfaceCreateInfoKHR surfInfo = {};
@@ -903,10 +878,13 @@ void initializeVulkan()
 		vkGetInstanceProcAddr(vkCtx.instance, "vkCreateWin32SurfaceKHR"));
 	if (!pfnCreateWin32SurfaceKHR)
 		throw std::runtime_error("Failed to load vkCreateWin32SurfaceKHR");
-	pfnCreateWin32SurfaceKHR(vkCtx.instance, &surfInfo, nullptr, &vkCtx.surface);
+	if (pfnCreateWin32SurfaceKHR(vkCtx.instance, &surfInfo, nullptr, &vkCtx.surface) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create Win32 Vulkan surface");
 
 	VkBool32 supported;
 	vkGetPhysicalDeviceSurfaceSupportKHR(vkCtx.physicalDevice, vkCtx.graphicsQueueFamily, vkCtx.surface, &supported);
+	if (!supported)
+		throw std::runtime_error("Graphics queue family does not support presentation");
 
 	recreateSwapchain(state.ui.width, state.ui.height);
 
@@ -915,7 +893,8 @@ void initializeVulkan()
 	poolInfo.queueFamilyIndex = vkCtx.graphicsQueueFamily;
 	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-	vkCreateCommandPool(vkCtx.device, &poolInfo, nullptr, &vkCtx.commandPool);
+	if (vkCreateCommandPool(vkCtx.device, &poolInfo, nullptr, &vkCtx.commandPool) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create Vulkan command pool");
 
 	// Allocate per-frame command buffers
 	VkCommandBufferAllocateInfo allocInfo = {};
@@ -954,7 +933,7 @@ Description:
 */
 void renderFrameVk()
 {
-	const VDXFile *vdx = state.transientVDX ? state.transientVDX : state.currentVDX;
+	const VDXFile *vdx = state.transientVDX ? state.transientVDX : state.currentVDX.get();
 	size_t frameIdx = state.transientVDX ? state.transient_frame_index : state.currentFrameIndex;
 	if (!vdx)
 		return;
@@ -1092,10 +1071,8 @@ void renderFrameRaycastVkGPU()
 	const auto& map = *state.raycast.map;
 	const RaycastPlayer& player = state.raycast.player;
 	
-	// Upload tile map to GPU if needed
-	createTileMapBuffer(map);
-	// Upload edge offsets table (built from megatex.edges)
-	createOrUpdateEdgeOffsetsBuffer(map);
+	// Upload tile map and edge offsets to GPU (batched single submit)
+	uploadRaycastBuffers(map);
 	
 	// Update descriptors if needed
 	if (vkCtx.tileMapBuffer)

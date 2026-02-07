@@ -512,6 +512,7 @@ COMMON_FLAGS=(
     "-fuse-ld=lld-link"
     "-DUNICODE"
     "-D_UNICODE"
+    "-DNOMINMAX"
     "/std:c++latest"
     "/EHsc"
     "/MT"

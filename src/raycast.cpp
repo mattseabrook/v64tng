@@ -6,6 +6,10 @@
 #include <vector>
 #include <array>
 #include <numbers>  // C++20 std::numbers::pi
+#include <functional>
+#include <mutex>
+#include <condition_variable>
+#include <barrier>
 
 #include "raycast.h"
 #include "window.h"
@@ -35,16 +39,79 @@ static RaycastConfig g_rayConfig;
 struct ThreadPool
 {
     std::vector<std::jthread> workers;
+    std::vector<std::function<void()>> tasks;
+    std::mutex mtx;
+    std::condition_variable cv_ready;   // workers wait on this for new tasks
+    std::barrier<> barrier{1};          // workers + main synchronize on completion
     unsigned int threadCount = 0;
-    
+    bool stopping = false;
+
     void ensureThreadCount(unsigned int count)
     {
-        if (threadCount != count)
+        if (threadCount == count)
+            return;
+        // Tear down old pool
+        shutdown();
+        // Build new pool
+        threadCount = count;
+        stopping = false;
+        tasks.resize(count);
+        // Reconstruct barrier for count+1 (workers + main thread)
+        barrier.~barrier();
+        new (&barrier) std::barrier<>(static_cast<std::ptrdiff_t>(count + 1));
+        workers.clear();
+        workers.reserve(count);
+        for (unsigned int i = 0; i < count; ++i)
         {
-            workers.clear();
-            threadCount = count;
+            workers.emplace_back([this, i](std::stop_token) {
+                while (true)
+                {
+                    {
+                        std::unique_lock lk(mtx);
+                        cv_ready.wait(lk, [this] { return stopping || tasks[0]; }); // any signal
+                    }
+                    if (stopping)
+                        return;
+                    if (tasks[i])
+                    {
+                        tasks[i]();
+                        tasks[i] = nullptr;
+                    }
+                    barrier.arrive_and_wait();
+                }
+            });
         }
     }
+
+    void dispatch(unsigned int count, std::function<void(int)> work)
+    {
+        ensureThreadCount(count);
+        {
+            std::lock_guard lk(mtx);
+            for (unsigned int i = 0; i < count; ++i)
+            {
+                int idx = static_cast<int>(i);
+                tasks[i] = [idx, &work] { work(idx); };
+            }
+        }
+        cv_ready.notify_all();
+        barrier.arrive_and_wait(); // wait for all workers to finish
+    }
+
+    void shutdown()
+    {
+        if (threadCount == 0)
+            return;
+        {
+            std::lock_guard lk(mtx);
+            stopping = true;
+        }
+        cv_ready.notify_all();
+        workers.clear(); // joins all jthreads
+        threadCount = 0;
+    }
+
+    ~ThreadPool() { shutdown(); }
 };
 static ThreadPool g_threadPool;
 
@@ -72,13 +139,10 @@ static inline float normalizeAngle(float angle)
 //
 // Initialize player position and orientation from the map
 //
-bool initializePlayerFromMap(const std::vector<std::vector<uint8_t>> &tileMap, RaycastPlayer &player)
+bool initializePlayerFromMap(const TileMap &tileMap, RaycastPlayer &player)
 {
-    if (tileMap.empty() || tileMap[0].empty())
-        return false;
-
-    int mapH = tileMap.size();
-    int mapW = tileMap[0].size();
+    int mapH = static_cast<int>(tileMap.size());
+    int mapW = static_cast<int>(tileMap[0].size());
 
     // Search for player start position markers (0xF0-0xF3)
     for (int y = 0; y < mapH; ++y)
@@ -118,7 +182,7 @@ bool initializePlayerFromMap(const std::vector<std::vector<uint8_t>> &tileMap, R
 }
 
 // Cast ray with DDA algorithm (branchless inner loop)
-RaycastHit castRay(const std::vector<std::vector<uint8_t>> &tileMap,
+RaycastHit castRay(const TileMap &tileMap,
                    float posX,
                    float posY,
                    float rayDirX,
@@ -385,7 +449,7 @@ void drawCrosshair(uint8_t *fb, size_t pitch, int w, int h)
 
 // Render a chunk of the screen with threading
 // Uses thread-local accumulators to avoid per-column allocations
-void renderChunk(const std::vector<std::vector<uint8_t>> &tileMap,
+void renderChunk(const TileMap &tileMap,
                  const RaycastPlayer &player,
                  uint8_t *framebuffer,
                  size_t pitch,
@@ -442,34 +506,26 @@ void renderChunk(const std::vector<std::vector<uint8_t>> &tileMap,
 }
 
 // Main raycast rendering function
-void renderRaycastView(const std::vector<std::vector<uint8_t>> &tileMap,
+void renderRaycastView(const TileMap &tileMap,
                        const RaycastPlayer &p,
                        uint8_t *fb,
                        size_t pitch,
                        int w,
                        int h)
 {
-    if (tileMap.empty() || tileMap[0].empty())
-        return;
-    
     // Cache config values once per frame (not per pixel)
     cacheConfigValues();
     
     const int ss = g_rayConfig.supersample;
     const int nThreads = static_cast<int>(std::thread::hardware_concurrency());
     const int chunk = w / nThreads;
-    std::vector<std::jthread> threads;
-    threads.reserve(nThreads);
     
-    for (int i = 0; i < nThreads; ++i)
-    {
+    g_threadPool.dispatch(static_cast<unsigned int>(nThreads), [&](int i) {
         int s = i * chunk;
         int e = (i + 1 == nThreads) ? w : s + chunk;
-        threads.emplace_back([&tileMap, &p, fb, pitch, w, h, ss, s, e]
-                             { renderChunk(tileMap, p, fb, pitch, w, h, ss, s, e); });
-    }
-    // Wait for threads to finish
-    threads.clear(); // Joins all threads
+        renderChunk(tileMap, p, fb, pitch, w, h, ss, s, e);
+    });
+    
     drawCrosshair(fb, pitch, w, h);
 
     // Lightweight overlay via window title (avoids console/files)

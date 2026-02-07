@@ -5,10 +5,9 @@
 
 #include <vector>
 #include <cstdint>
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
 #include <windows.h>
+
+#include "basement.h"
 
 //
 // Raycast hit information
@@ -45,8 +44,8 @@ constexpr float deg2rad(float deg) { return deg * 3.14159265358979323846f / 180.
 //
 // Function Prototypes
 //
-bool initializePlayerFromMap(const std::vector<std::vector<uint8_t>> &tileMap, RaycastPlayer &player);
-RaycastHit castRay(const std::vector<std::vector<uint8_t>> &tileMap,
+bool initializePlayerFromMap(const TileMap &tileMap, RaycastPlayer &player);
+RaycastHit castRay(const TileMap &tileMap,
                    float posX,
                    float posY,
                    float rayDirX,
@@ -62,7 +61,7 @@ void accumulateColumn(int x,
                       std::vector<float> &acc_g,
                       std::vector<float> &acc_b);
 void drawCrosshair(uint8_t *fb, size_t pitch, int w, int h);
-void renderChunk(const std::vector<std::vector<uint8_t>> &tileMap,
+void renderChunk(const TileMap &tileMap,
                  const RaycastPlayer &player,
                  uint8_t *framebuffer,
                  size_t pitch,
@@ -71,7 +70,7 @@ void renderChunk(const std::vector<std::vector<uint8_t>> &tileMap,
                  int supersample,
                  int startX,
                  int endX);
-void renderRaycastView(const std::vector<std::vector<uint8_t>> &tileMap,
+void renderRaycastView(const TileMap &tileMap,
                        const RaycastPlayer &p,
                        uint8_t *fb,
                        size_t pitch,

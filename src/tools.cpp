@@ -8,9 +8,6 @@
 #include <string>
 #include <algorithm>
 
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
 #include <windows.h>
 #include <commctrl.h>
 #include <commdlg.h>
@@ -1377,7 +1374,9 @@ static void PopulateArchiveList(const std::string& filename)
             SetWindowTextA(g_archiveControls[0], rlFilename.c_str());
         }
         
-        auto entries = parseRLFile(rlFilename);
+        auto rlResult = parseRLFile(rlFilename);
+        if (!rlResult) return;
+        auto entries = std::move(*rlResult);
         
         int rlOffset = 0;
         for (size_t i = 0; i < entries.size(); i++) {

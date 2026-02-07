@@ -1,9 +1,6 @@
 // d2d.cpp
 
 #include <stdexcept>
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
 #include <windows.h>
 #include <fstream>
 #include <vector>
@@ -17,6 +14,7 @@
 #include "raycast.h"
 #include "megatexture.h"
 #include "game.h"
+#include "basement.h"
 #include "../build/d3d11_rgb_to_bgra.h"
 #include "../build/d3d11_raycast.h"
 
@@ -627,7 +625,7 @@ void renderFrameD2D()
         WaitForSingleObjectEx(d2dCtx.frameLatencyWaitableObject, 100, TRUE);
     }
 
-    const VDXFile *vdx = state.transientVDX ? state.transientVDX : state.currentVDX;
+    const VDXFile *vdx = state.transientVDX ? state.transientVDX : state.currentVDX.get();
     size_t frameIdx = state.transientVDX ? state.transient_frame_index : state.currentFrameIndex;
     if (!vdx)
         return;
@@ -873,11 +871,8 @@ void renderFrameRaycast()
 //
 // Update or create tile map texture for GPU raycasting
 //
-static void updateRaycastTileMap(const std::vector<std::vector<uint8_t>>& tileMap)
+static void updateRaycastTileMap(const TileMap& tileMap)
 {
-    if (tileMap.empty() || tileMap[0].empty())
-        return;
-    
     UINT mapHeight = static_cast<UINT>(tileMap.size());
     UINT mapWidth = static_cast<UINT>(tileMap[0].size());
     
@@ -942,9 +937,8 @@ static void updateRaycastTileMap(const std::vector<std::vector<uint8_t>>& tileMa
 }
 
 // Build or update edge offsets SRV buffer: ((y*mapWidth + x)*4 + side) -> triplet [offset,width,dir]
-static void updateRaycastEdgeOffsets(const std::vector<std::vector<uint8_t>>& tileMap)
+static void updateRaycastEdgeOffsets(const TileMap& tileMap)
 {
-    if (tileMap.empty() || tileMap[0].empty()) return;
     UINT mapHeight = static_cast<UINT>(tileMap.size());
     UINT mapWidth = static_cast<UINT>(tileMap[0].size());
 

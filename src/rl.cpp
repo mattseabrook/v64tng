@@ -3,21 +3,21 @@
 #include <fstream>
 #include <vector>
 #include <string>
-#include <stdexcept>
+#include <expected>
 
 #include "rl.h"
 
 //
 // Parse RL file to get the VDX file locations
 //
-std::vector<RLEntry> parseRLFile(std::string_view rlFilename)
+std::expected<std::vector<RLEntry>, std::string> parseRLFile(std::string_view rlFilename)
 {
     std::vector<RLEntry> rlEntries;
 
     std::ifstream rlFile(rlFilename.data(), std::ios::binary);
     if (!rlFile)
     {
-        throw std::runtime_error("Failed to open RL file: " + std::string(rlFilename));
+        return std::unexpected("Failed to open RL file: " + std::string(rlFilename));
     }
 
     rlFile.seekg(0, std::ios::end);

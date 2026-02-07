@@ -1,6 +1,6 @@
 // game.cpp
 
-#include <iostream>
+#include <print>
 #include <unordered_map>
 #include <string>
 #include <string_view>
@@ -22,9 +22,6 @@
 #include "dr.h"
 
 #ifdef _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
 #endif
 
 // Global game state
@@ -118,7 +115,7 @@ static void setupView(const std::string &view_name, bool is_static, auto now)
 	if (!state.view)
 		throw std::runtime_error("View not found: " + view_name);
 
-	state.currentVDX = &getOrLoadVDX(view_name);
+	getOrLoadVDX(view_name); // Sets state.currentVDX internally
 	if (!state.currentVDX->parsed)
 	{
 		parseVDXChunks(*state.currentVDX);
@@ -424,7 +421,7 @@ void init()
 			if (file)
 			{
 				std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)), {});
-				VDXFile vdx = parseVDXFile("Vielogo.vdx", std::span(buffer));
+				VDXFile vdx = parseVDXFile("Vielogo.vdx", std::move(buffer));
 				parseVDXChunks(vdx);
 				const size_t cropSize = 640 * 80 * 3;
 				for (auto &frame : vdx.frameData)
@@ -448,7 +445,7 @@ void init()
 
 		if (!initCursors("ROB.GJD", scaleFactor))
 		{
-			std::cerr << "WARNING: Failed to initialize cursors, using system defaults\n";
+			std::println(stderr, "WARNING: Failed to initialize cursors, using system defaults");
 		}
 		else
 		{

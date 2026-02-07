@@ -8,6 +8,7 @@
 #include <array>
 #include <string>
 #include <span>
+#include <expected>
 
 #include "bitmap.h"
 
@@ -53,9 +54,10 @@ struct VDXFile
 };
 
 VDXFile parseVDXFile(std::string_view filename, std::span<const uint8_t> buffer);
+VDXFile parseVDXFile(std::string_view filename, std::vector<uint8_t> &&buffer);
 void parseVDXChunks(VDXFile &vdxFile);
 void vdxPlay(const std::string &filename, VDXFile *preloadedVdx = nullptr);
-VDXFile loadSingleVDX(const std::string &room, const std::string &vdxName);
+std::expected<VDXFile, std::string> loadSingleVDX(const std::string &room, const std::string &vdxName);
 VDXFile &getOrLoadVDX(const std::string &name);
 void unloadVDX(const std::string &name);
 

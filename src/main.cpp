@@ -33,7 +33,7 @@
  * SOFTWARE.
  */
 
-#include <iostream>
+#include <print>
 #include <vector>
 #include <string>
 #include <filesystem>
@@ -55,9 +55,6 @@
 #include "megatexture.h"
 
 #ifdef _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
 #include <windows.h>
 #endif
 
@@ -202,8 +199,7 @@ int process_args(const std::vector<std::string> &args)
 	{
 		if (args.size() < 3)
 		{
-			constexpr std::string_view errorMsg = "ERROR: a *.RL file was not specified.\n\nExample: v64tng.exe -g DR.RL\n";
-			std::cerr << errorMsg;
+			std::println(stderr, "ERROR: a *.RL file was not specified.\n\nExample: v64tng.exe -g DR.RL");
 			return 1;
 		}
 		extractVDX(args[2]);
@@ -215,8 +211,7 @@ int process_args(const std::vector<std::string> &args)
 	{
 		if (args.size() < 3)
 		{
-			constexpr std::string_view errorMsg = "ERROR: a *.VDX file was not specified.\n\nExample: v64tng.exe -p f_1bb.vdx {raw} {alpha} {video}\n";
-			std::cerr << errorMsg;
+			std::println(stderr, "ERROR: a *.VDX file was not specified.\n\nExample: v64tng.exe -p f_1bb.vdx {{raw}} {{alpha}} {{video}}");
 			return 1;
 		}
 
@@ -248,8 +243,7 @@ int process_args(const std::vector<std::string> &args)
 	{
 		if (args.size() < 3)
 		{
-			constexpr std::string_view errorMsg = "ERROR: a *.RL file was not specified.\n\nExample: v64tng.exe -r DR.RL\n";
-			std::cerr << errorMsg;
+			std::println(stderr, "ERROR: a *.RL file was not specified.\n\nExample: v64tng.exe -r DR.RL");
 			return 1;
 		}
 		GJDInfo(args[2]);
@@ -261,7 +255,7 @@ int process_args(const std::vector<std::string> &args)
 	{
 		if (args.size() < 3)
 		{
-			std::cerr << "ERROR: a file was not specified.\n\nExample: v64tng.exe -i f_1bc.vdx/*.GJD\n";
+			std::println(stderr, "ERROR: a file was not specified.\n\nExample: v64tng.exe -i f_1bc.vdx/*.GJD");
 			return 1;
 		}
 		VDXInfo(args[2]);
@@ -273,12 +267,17 @@ int process_args(const std::vector<std::string> &args)
 	{
 		if (args.size() < 3)
 		{
-			constexpr std::string_view errorMsg = "ERROR: an action was not specified.\n\nExample: v64tng.exe -x agu16 {play|extract (xmi)}\n";
-			std::cerr << errorMsg;
+			std::println(stderr, "ERROR: an action was not specified.\n\nExample: v64tng.exe -x agu16 {{play|extract (xmi)}}");
 			return 1;
 		}
 
-		auto xmiFiles = parseRLFile("XMI.RL");
+		auto xmiResult = parseRLFile("XMI.RL");
+		if (!xmiResult)
+		{
+			std::println(stderr, "{}", xmiResult.error());
+			return 1;
+		}
+		auto xmiFiles = std::move(*xmiResult);
 
 		// Find the song by comparing base names (before the period)
 		auto song = xmiFiles.end();
@@ -307,8 +306,7 @@ int process_args(const std::vector<std::string> &args)
 		}
 		else
 		{
-			constexpr std::string_view errorMsg = "ERROR: XMI file not found.\n";
-			std::cerr << errorMsg;
+			std::println(stderr, "ERROR: XMI file not found.");
 			return 1;
 		}
 	}
@@ -369,8 +367,8 @@ int process_args(const std::vector<std::string> &args)
 			
 			if (pngCount > 0)
 			{
-				std::cout << "Found existing megatexture/ folder with " << pngCount << " PNG tiles.\n";
-				std::cout << "Skipping procedural generation...\n";
+				std::println("Found existing megatexture/ folder with {} PNG tiles.", pngCount);
+				std::println("Skipping procedural generation...");
 				hasExistingTiles = true;
 			}
 		}
@@ -378,32 +376,32 @@ int process_args(const std::vector<std::string> &args)
 		// Generate tiles if needed
 		if (!hasExistingTiles)
 		{
-			std::cout << "Generating megatexture tiles from basement map...\n";
+			std::println("Generating megatexture tiles from basement map...");
 			
 			if (!analyzeMapEdges(map))
 			{
-				std::cerr << "ERROR: Failed to analyze map for megatexture generation.\n";
+				std::println(stderr, "ERROR: Failed to analyze map for megatexture generation.");
 				return -1;
 			}
 			
 			if (!generateMegatextureTilesOnly(params, "megatexture"))
 			{
-				std::cerr << "ERROR: Failed to generate megatexture tiles.\n";
+				std::println(stderr, "ERROR: Failed to generate megatexture tiles.");
 				return -1;
 			}
 		}
 		
 		// Pack into MTX archive (always in current working directory)
-		std::cout << "\nPacking tiles into MTX archive...\n";
+		std::println("\nPacking tiles into MTX archive...");
 		if (!saveMTX("megatexture.mtx", "megatexture", params))
 		{
-			std::cerr << "ERROR: Failed to create MTX archive.\n";
+			std::println(stderr, "ERROR: Failed to create MTX archive.");
 			return -1;
 		}
 		
-		std::cout << "\nMegatexture complete.\n";
-		std::cout << "Archive: megatexture.mtx\n";
-		std::cout << "Source tiles: megatexture/\n";
+		std::println("\nMegatexture complete.");
+		std::println("Archive: megatexture.mtx");
+		std::println("Source tiles: megatexture/");
 	}
 	else if (args[1] == "-decodemtx" && args.size() >= 3)
 	{
@@ -413,16 +411,16 @@ int process_args(const std::vector<std::string> &args)
 		
 		if (!decodeMTX(mtxPath, outDir))
 		{
-			std::cerr << "ERROR: Failed to decode MTX archive.\n";
+			std::println(stderr, "ERROR: Failed to decode MTX archive.");
 			return -1;
 		}
 		
-		std::cout << "\nDecode complete. Compare with original tiles to verify bit-exactness.\n";
+		std::println("\nDecode complete. Compare with original tiles to verify bit-exactness.");
 	}
 	else
 	{
-		std::cerr << "ERROR: Invalid option: " << args[1] << std::endl;
-		std::cerr << "\nUsage: " << args[0] << " [!|-g|-l|-p|-r|-v|-x|-raycast|-megatexture|-decodemtx] [options...]\n";
+		std::println(stderr, "ERROR: Invalid option: {}", args[1]);
+		std::println(stderr, "\nUsage: {} [!|-g|-l|-p|-r|-v|-x|-raycast|-megatexture|-decodemtx] [options...]", args[0]);
 		return -1;
 	}
 

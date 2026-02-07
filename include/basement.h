@@ -4,9 +4,16 @@
 #define BASEMENT_H
 
 #include <cstdint>
-#include <vector>
+#include <array>
 
-// Global basement maze map (treated as read-only at usage sites)
-extern std::vector<std::vector<uint8_t>> map;
+// Basement maze map dimensions
+inline constexpr int MAP_ROWS = 109;
+inline constexpr int MAP_COLS = 59;
+
+// Tile map type: fixed-size constexpr array (read-only map data, lives in .rodata)
+using TileMap = std::array<std::array<uint8_t, MAP_COLS>, MAP_ROWS>;
+
+// Global basement maze map (immutable)
+extern const TileMap map;
 
 #endif // BASEMENT_H

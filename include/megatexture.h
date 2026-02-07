@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <string>
 
+#include "basement.h"
+
 /*
 ===============================================================================
 
@@ -87,7 +89,7 @@ struct MegatextureState
 extern MegatextureState megatex;
 
 // Analyze the map and build the ordered edge list
-bool analyzeMapEdges(const std::vector<std::vector<uint8_t>>& map);
+bool analyzeMapEdges(const TileMap& map);
 
 // Generate megatexture tiles only (streaming, no full allocation)
 // Outputs 3072×1024 PNG tiles to the specified directory

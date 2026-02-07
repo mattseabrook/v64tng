@@ -14,9 +14,6 @@
 
 // Windows Multimedia
 #define WIN32_LEAN_AND_MEAN
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
 #include <windows.h>
 #include <audioclient.h>
 #include <mmdeviceapi.h>
@@ -1543,7 +1540,13 @@ void xmiPlay(const std::string &songName, bool isTransient)
 		// Start new music thread
 		auto play_music = [songName, isTransient]()
 		{
-			auto xmiFiles = parseRLFile("XMI.RL");
+			auto xmiResult = parseRLFile("XMI.RL");
+			if (!xmiResult)
+			{
+				std::cerr << "ERROR: " << xmiResult.error() << std::endl;
+				return;
+			}
+			auto xmiFiles = std::move(*xmiResult);
 			for (auto &entry : xmiFiles)
 			{
 				entry.filename.erase(entry.filename.find_last_of('.'));

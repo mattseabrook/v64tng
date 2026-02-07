@@ -6,11 +6,12 @@
 
 #include "map_overlay.h"
 #include "window.h"
+#include "basement.h"
 
 // Variables
 HWND g_hwndMapOverlay = nullptr;
 bool g_mapOverlayVisible = false;
-static const std::vector<std::vector<uint8_t>> *g_map = nullptr;
+static const TileMap *g_map = nullptr;
 static RaycastPlayer *g_player = nullptr;
 static bool g_classRegistered = false;
 

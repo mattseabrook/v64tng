@@ -2,7 +2,7 @@
 
 #include <cassert>
 #include <stdexcept>
-#include <iostream>
+#include <print>
 #include <filesystem>
 #include <fstream>
 #include <vector>
@@ -340,7 +340,7 @@ bool initCursors(const std::string_view &robPath, float scale)
     std::ifstream file(robPath.data(), std::ios::binary | std::ios::ate);
     if (!file)
     {
-        std::cerr << "Failed to open " << robPath << '\n';
+        std::println(stderr, "Failed to open {}", robPath);
         return false;
     }
     size_t fileSize = file.tellg();

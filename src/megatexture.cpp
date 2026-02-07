@@ -1,8 +1,11 @@
 #include "megatexture.h"
 #include "extract.h"
+#include "basement.h"
 #include <algorithm>
 #include <cmath>
-#include <iostream>
+#include <print>
+#include <format>
+#include <cstdio>
 #include <sstream>
 #include <iomanip>
 #include <fstream>
@@ -62,8 +65,8 @@ static std::unordered_map<uint64_t, size_t> g_edgeLookup;
 // Pack cell coordinates + side into 64-bit key for O(1) lookup
 static inline uint64_t edgeKey(int cellX, int cellY, int side)
 {
-    // Pack: cellX (20 bits) | cellY (20 bits) | side (4 bits)
-    return (static_cast<uint64_t>(static_cast<uint32_t>(cellX)) << 24) |
+    // Pack: cellX (32 bits) | cellY (28 bits) | side (4 bits)
+    return (static_cast<uint64_t>(static_cast<uint32_t>(cellX)) << 32) |
            (static_cast<uint64_t>(static_cast<uint32_t>(cellY)) << 4) |
            static_cast<uint64_t>(side & 0xF);
 }
@@ -352,10 +355,9 @@ static uint32_t generatePixelVeinsWithAO(int u, int v, const MegatextureParams &
 // Map analysis helpers
 //
 
-static bool isWall(const std::vector<std::vector<uint8_t>>& map, int x, int y)
+static bool isWall(const TileMap& map, int x, int y)
 {
     int mapHeight = (int)map.size();
-    if (mapHeight == 0) return true;
     int mapWidth = (int)map[0].size();
     
     // Out of bounds = wall
@@ -368,7 +370,7 @@ static bool isWall(const std::vector<std::vector<uint8_t>>& map, int x, int y)
     return (cell == 0x01);
 }
 
-static void enumerateExposedEdges(const std::vector<std::vector<uint8_t>>& map)
+static void enumerateExposedEdges(const TileMap& map)
 {
     std::vector<WallEdge> tempEdges;
     
@@ -495,7 +497,6 @@ static void enumerateExposedEdges(const std::vector<std::vector<uint8_t>>& map)
                 edge.direction = -1;
                 edge.hasCornerAtU0 = hasInsideCorner(x, y, 3, true);
                 edge.hasCornerAtU1 = hasInsideCorner(x, y, 3, false);
-                tempEdges.push_back(edge);
                 tempEdges.push_back(edge);
             }
         }
@@ -656,11 +657,8 @@ static void computeEdgeOffsets(int pixelsPerUnit)
 // Public API
 //
 
-bool analyzeMapEdges(const std::vector<std::vector<uint8_t>>& map)
+bool analyzeMapEdges(const TileMap& map)
 {
-    if (map.empty() || map[0].empty())
-        return false;
-    
     megatex.mapHeight = static_cast<int>(map.size());
     megatex.mapWidth = static_cast<int>(map[0].size());
     megatex.edges.clear();
@@ -693,7 +691,7 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
 {
     if (megatex.edges.empty() || megatex.textureWidth == 0 || megatex.textureHeight == 0)
     {
-        std::cerr << "ERROR: No edges found. Call analyzeMapEdges() first.\n";
+        std::println(stderr, "ERROR: No edges found. Call analyzeMapEdges() first.");
         return false;
     }
 
@@ -708,13 +706,13 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
     const int numTiles = (W_px + tileWidth - 1) / tileWidth;
 
     const unsigned int numThreads = std::thread::hardware_concurrency();
-    std::cout << "\n=== Megatexture Tile Generation ===\n";
-    std::cout << "Strip dimensions: " << W_px << " × " << H_px << " px\n";
-    std::cout << "Exposed edges: " << megatex.edges.size() << "\n";
-    std::cout << "Tile size: " << tileWidth << " × " << tileHeight << "\n";
-    std::cout << "Number of tiles: " << numTiles << "\n";
-    std::cout << "Output directory: " << outDir << "/\n";
-    std::cout << "Using " << numThreads << " threads per tile...\n";
+    std::println("\n=== Megatexture Tile Generation ===");
+    std::println("Strip dimensions: {} × {} px", W_px, H_px);
+    std::println("Exposed edges: {}", megatex.edges.size());
+    std::println("Tile size: {} × {}", tileWidth, tileHeight);
+    std::println("Number of tiles: {}", numTiles);
+    std::println("Output directory: {}/", outDir);
+    std::println("Using {} threads per tile...", numThreads);
     
     // Build per-column edge lookup for corner AO
     // For each global U column, store: edge index, localU, corner flags
@@ -743,14 +741,14 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
         }
     }
     
-    std::cout << "Corner AO lookup built for " << W_px << " columns.\n\n";
+    std::println("Corner AO lookup built for {} columns.\n", W_px);
 
     // Create output directory
     try {
         std::filesystem::create_directories(outDir);
     }
     catch (const std::exception& e) {
-        std::cerr << "ERROR: Failed to create directory: " << e.what() << "\n";
+        std::println(stderr, "ERROR: Failed to create directory: {}", e.what());
         return false;
     }
 
@@ -760,9 +758,8 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
     const int tileU0 = tileIdx * tileWidth;  // Global U start
     const int tileW = std::min(tileWidth, W_px - tileU0);  // Actual width of this tile
 
-        std::cout << "Tile #" << tileIdx << ": u=[" << tileU0 << ".." << (tileU0 + tileW - 1) 
-                  << "] (" << tileW << " px wide)...";
-        std::cout.flush();
+        std::print("Tile #{}: u=[{}..{}] ({} px wide)...", tileIdx, tileU0, tileU0 + tileW - 1, tileW);
+        std::fflush(stdout);
 
     // Allocate tile buffer (1024×1024 RGBA8)
     std::vector<uint8_t> tile(static_cast<size_t>(tileWidth) * tileHeight * 4, 0);
@@ -814,15 +811,15 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
         
         try {
             savePNG(filename.str(), tile, tileWidth, tileHeight, true);
-            std::cout << " Written.\n";
+            std::println(" Written.");
         }
         catch (const std::exception& e) {
-            std::cerr << "\nERROR: Failed to write " << filename.str() << ": " << e.what() << "\n";
+            std::println(stderr, "\nERROR: Failed to write {}: {}", filename.str(), e.what());
             return false;
         }
     }
 
-    std::cout << "\nDone! " << numTiles << " tiles written to " << outDir << "/\n";
+    std::println("\nDone! {} tiles written to {}/", numTiles, outDir);
     return true;
 }
 
@@ -898,7 +895,7 @@ static size_t compressRGBA(const std::vector<uint8_t>& rgba, std::vector<uint8_t
 
     if (result != Z_OK)
     {
-        std::cerr << "ERROR: zlib compression failed with code " << result << "\n";
+        std::println(stderr, "ERROR: zlib compression failed with code {}", result);
         return 0;
     }
 
@@ -923,14 +920,13 @@ static bool decompressRGBA(const uint8_t* compressedData, size_t compressedSize,
 
     if (result != Z_OK)
     {
-        std::cerr << "ERROR: zlib decompression failed with code " << result << "\n";
+        std::println(stderr, "ERROR: zlib decompression failed with code {}", result);
         return false;
     }
 
     if (uncompressedSize != expectedSize)
     {
-        std::cerr << "ERROR: Decompressed size mismatch - expected " << expectedSize
-                  << " bytes, got " << uncompressedSize << "\n";
+        std::println(stderr, "ERROR: Decompressed size mismatch - expected {} bytes, got {}", expectedSize, uncompressedSize);
         return false;
     }
 
@@ -939,8 +935,8 @@ static bool decompressRGBA(const uint8_t* compressedData, size_t compressedSize,
 
 bool saveMTX(const std::string& mtxPath, const std::string& tilesDir, const MegatextureParams& params)
 {
-    std::cout << "\n=== Packing MTX Archive ===\n";
-    std::cout << "Reading tiles from: " << tilesDir << "/\n";
+    std::println("\n=== Packing MTX Archive ===");
+    std::println("Reading tiles from: {}/", tilesDir);
 
     // Scan directory for tile PNGs
     std::vector<std::string> tilePaths;
@@ -958,20 +954,20 @@ bool saveMTX(const std::string& mtxPath, const std::string& tilesDir, const Mega
         }
     }
     catch (const std::exception& e) {
-        std::cerr << "ERROR: Failed to read tiles directory: " << e.what() << "\n";
+        std::println(stderr, "ERROR: Failed to read tiles directory: {}", e.what());
         return false;
     }
 
     if (tilePaths.empty())
     {
-        std::cerr << "ERROR: No tile PNGs found in " << tilesDir << "/\n";
+        std::println(stderr, "ERROR: No tile PNGs found in {}/", tilesDir);
         return false;
     }
 
     // Sort tiles by name to ensure correct order
     std::sort(tilePaths.begin(), tilePaths.end());
 
-    std::cout << "Found " << tilePaths.size() << " tiles.\n";
+    std::println("Found {} tiles.", tilePaths.size());
 
     // Prepare header
     // Peek first tile to determine dimensions
@@ -981,7 +977,7 @@ bool saveMTX(const std::string& mtxPath, const std::string& tilesDir, const Mega
             std::vector<uint8_t> tmp = loadPNG(tilePaths[0], firstW, firstH);
             (void)tmp;
         } catch (...) {
-            std::cerr << "ERROR: Failed to read first tile to determine dimensions.\n";
+            std::println(stderr, "ERROR: Failed to read first tile to determine dimensions.");
             return false;
         }
     }
@@ -1004,7 +1000,7 @@ bool saveMTX(const std::string& mtxPath, const std::string& tilesDir, const Mega
     std::ofstream mtxFile(mtxPath, std::ios::binary);
     if (!mtxFile)
     {
-        std::cerr << "ERROR: Failed to create MTX file: " << mtxPath << "\n";
+        std::println(stderr, "ERROR: Failed to create MTX file: {}", mtxPath);
         return false;
     }
 
@@ -1033,13 +1029,13 @@ bool saveMTX(const std::string& mtxPath, const std::string& tilesDir, const Mega
             rgba = loadPNG(tilePaths[i], width, height);
         }
         catch (const std::exception& e) {
-            std::cerr << "ERROR: Failed to load tile " << i << ": " << e.what() << "\n";
+            std::println(stderr, "ERROR: Failed to load tile {}: {}", i, e.what());
             return false;
         }
 
         if (width != (int)header.tileWidth || height != (int)header.tileHeight || rgba.size() != (size_t)header.tileWidth * header.tileHeight * 4)
         {
-            std::cerr << "ERROR: Tile " << i << " has invalid dimensions (" << width << "×" << height << ")\n";
+            std::println(stderr, "ERROR: Tile {} has invalid dimensions ({}×{})", i, width, height);
             return false;
         }
 
@@ -1049,7 +1045,7 @@ bool saveMTX(const std::string& mtxPath, const std::string& tilesDir, const Mega
         
         if (compressedSize == 0)
         {
-            std::cerr << "ERROR: Failed to compress tile " << i << "\n";
+            std::println(stderr, "ERROR: Failed to compress tile {}", i);
             return false;
         }
 
@@ -1063,8 +1059,7 @@ bool saveMTX(const std::string& mtxPath, const std::string& tilesDir, const Mega
 
         if ((i + 1) % 100 == 0 || i == header.tileCount - 1)
         {
-            std::cout << "  Compressed tile " << (i + 1) << "/" << header.tileCount 
-                      << " (" << compressedSize << " bytes)\n";
+            std::println("  Compressed tile {}/{} ({} bytes)", i + 1, header.tileCount, compressedSize);
         }
     }
 
@@ -1078,27 +1073,27 @@ bool saveMTX(const std::string& mtxPath, const std::string& tilesDir, const Mega
     const size_t finalSize = std::filesystem::file_size(mtxPath);
     const float ratio = (totalOriginalBytes > 0) ? (100.0f * finalSize / totalOriginalBytes) : 0.0f;
 
-    std::cout << "\n=== MTX Archive Complete ===\n";
-    std::cout << "Output: " << mtxPath << "\n";
-    std::cout << "Tiles: " << header.tileCount << "\n";
-    std::cout << "Original size: " << (totalOriginalBytes / 1024 / 1024) << " MB (raw RGBA)\n";
-    std::cout << "Compressed size: " << (finalSize / 1024) << " KB\n";
-    std::cout << "Compression ratio: " << std::fixed << std::setprecision(1) << ratio << "%\n";
+    std::println("\n=== MTX Archive Complete ===");
+    std::println("Output: {}", mtxPath);
+    std::println("Tiles: {}", header.tileCount);
+    std::println("Original size: {} MB (raw RGBA)", totalOriginalBytes / 1024 / 1024);
+    std::println("Compressed size: {} KB", finalSize / 1024);
+    std::println("Compression ratio: {:.1f}%", ratio);
 
     return true;
 }
 
 bool decodeMTX(const std::string& mtxPath, const std::string& outDir)
 {
-    std::cout << "\n=== Decoding MTX Archive ===\n";
-    std::cout << "Input: " << mtxPath << "\n";
-    std::cout << "Output: " << outDir << "/\n";
+    std::println("\n=== Decoding MTX Archive ===");
+    std::println("Input: {}", mtxPath);
+    std::println("Output: {}/", outDir);
 
     // Open MTX file
     std::ifstream mtxFile(mtxPath, std::ios::binary);
     if (!mtxFile)
     {
-        std::cerr << "ERROR: Failed to open MTX file: " << mtxPath << "\n";
+        std::println(stderr, "ERROR: Failed to open MTX file: {}", mtxPath);
         return false;
     }
 
@@ -1109,24 +1104,23 @@ bool decodeMTX(const std::string& mtxPath, const std::string& outDir)
     // Validate header
     if (std::strncmp(header.magic, "MTX1", 4) != 0)
     {
-        std::cerr << "ERROR: Invalid MTX file (bad magic)\n";
+        std::println(stderr, "ERROR: Invalid MTX file (bad magic)");
         return false;
     }
 
     if (header.version != 1 && header.version != 2)
     {
-        std::cerr << "ERROR: Unsupported MTX version: " << header.version << "\n";
+        std::println(stderr, "ERROR: Unsupported MTX version: {}", header.version);
         return false;
     }
 
-    std::cout << "Tiles: " << header.tileCount << "\n";
+    std::println("Tiles: {}", header.tileCount);
     if (header.version == 1)
-        std::cout << "Tile size: 1024×1024\n";
+        std::println("Tile size: 1024×1024");
     else
-        std::cout << "Tile size: " << header.tileWidth << "×" << header.tileHeight << "\n";
-    std::cout << "Mortar RGB: (" << (int)header.mortarRGB[0] << ", " 
-              << (int)header.mortarRGB[1] << ", " << (int)header.mortarRGB[2] << ")\n";
-    std::cout << "Seed: " << header.seed << "\n\n";
+        std::println("Tile size: {}×{}", header.tileWidth, header.tileHeight);
+    std::println("Mortar RGB: ({}, {}, {})", (int)header.mortarRGB[0], (int)header.mortarRGB[1], (int)header.mortarRGB[2]);
+    std::println("Seed: {}\n", header.seed);
 
     // Read offset table
     std::vector<uint64_t> tileOffsets(header.tileCount);
@@ -1137,7 +1131,7 @@ bool decodeMTX(const std::string& mtxPath, const std::string& outDir)
         std::filesystem::create_directories(outDir);
     }
     catch (const std::exception& e) {
-        std::cerr << "ERROR: Failed to create output directory: " << e.what() << "\n";
+        std::println(stderr, "ERROR: Failed to create output directory: {}", e.what());
         return false;
     }
 
@@ -1161,7 +1155,7 @@ bool decodeMTX(const std::string& mtxPath, const std::string& outDir)
         const int h = (header.version == 1) ? 1024 : (int)header.tileHeight;
         if (!decompressRGBA(compressedData.data(), compressedData.size(), rgba, w, h))
         {
-            std::cerr << "ERROR: Failed to decompress tile " << i << "\n";
+            std::println(stderr, "ERROR: Failed to decompress tile {}", i);
             return false;
         }
 
@@ -1175,32 +1169,32 @@ bool decodeMTX(const std::string& mtxPath, const std::string& outDir)
             savePNG(filename.str(), rgba, wOut, hOut, true);
         }
         catch (const std::exception& e) {
-            std::cerr << "ERROR: Failed to write tile " << i << ": " << e.what() << "\n";
+            std::println(stderr, "ERROR: Failed to write tile {}: {}", i, e.what());
             return false;
         }
 
         if ((i + 1) % 100 == 0 || i == header.tileCount - 1)
         {
-            std::cout << "  Decoded tile " << (i + 1) << "/" << header.tileCount << "\n";
+            std::println("  Decoded tile {}/{}", i + 1, header.tileCount);
         }
     }
 
     mtxFile.close();
 
-    std::cout << "\nDone! " << header.tileCount << " tiles written to " << outDir << "/\n";
+    std::println("\nDone! {} tiles written to {}/", header.tileCount, outDir);
     return true;
 }
 
 bool loadMTX(const std::string& mtxPath)
 {
-    std::cout << "\n=== Loading MTX Megatexture ===\n";
-    std::cout << "Reading: " << mtxPath << "\n";
+    std::println("\n=== Loading MTX Megatexture ===");
+    std::println("Reading: {}", mtxPath);
 
     // Open MTX file
     std::ifstream mtxFile(mtxPath, std::ios::binary);
     if (!mtxFile)
     {
-        std::cerr << "ERROR: Failed to open MTX file: " << mtxPath << "\n";
+        std::println(stderr, "ERROR: Failed to open MTX file: {}", mtxPath);
         return false;
     }
 
@@ -1211,7 +1205,7 @@ bool loadMTX(const std::string& mtxPath)
     // Validate
     if (std::strncmp(header.magic, "MTX1", 4) != 0)
     {
-        std::cerr << "ERROR: Invalid MTX file (bad magic)\n";
+        std::println(stderr, "ERROR: Invalid MTX file (bad magic)");
         return false;
     }
 
@@ -1228,8 +1222,8 @@ bool loadMTX(const std::string& mtxPath)
     megatex.bytesPerTile = static_cast<size_t>(megatex.tileWidth) * megatex.tileHeight * 4;
     
     const unsigned int numThreads = std::thread::hardware_concurrency();
-    std::cout << "Tiles: " << header.tileCount << "\n";
-    std::cout << "Parallel decompression with " << numThreads << " threads...\n";
+    std::println("Tiles: {}", header.tileCount);
+    std::println("Parallel decompression with {} threads...", numThreads);
 
     // Read offset table
     std::vector<uint64_t> tileOffsets(header.tileCount);
@@ -1253,12 +1247,12 @@ bool loadMTX(const std::string& mtxPath)
     }
     mtxFile.close();
     
-    std::cout << "  Read " << header.tileCount << " compressed tiles from disk\n";
+    std::println("  Read {} compressed tiles from disk", header.tileCount);
 
     // PHASE 2: Allocate contiguous memory pool for all tiles (single allocation)
     const size_t totalBytes = megatex.bytesPerTile * header.tileCount;
     megatex.tileData.resize(totalBytes);
-    std::cout << "  Allocated " << (totalBytes / 1024 / 1024) << " MB contiguous memory\n";
+    std::println("  Allocated {} MB contiguous memory", totalBytes / 1024 / 1024);
 
     // PHASE 3: Parallel decompression with hand-written threading
     std::atomic<uint32_t> nextTile{0};
@@ -1316,15 +1310,15 @@ bool loadMTX(const std::string& mtxPath)
     
     if (hasError.load())
     {
-        std::cerr << "ERROR: Failed to decompress one or more tiles\n";
+        std::println(stderr, "ERROR: Failed to decompress one or more tiles");
         return false;
     }
     
-    std::cout << "  Decompressed " << header.tileCount << " tiles in parallel\n";
+    std::println("  Decompressed {} tiles in parallel", header.tileCount);
 
     megatex.loaded = true;
-    std::cout << "Megatexture loaded successfully!\n";
-    std::cout << "Memory usage: " << (totalBytes / 1024 / 1024) << " MB (contiguous)\n\n";
+    std::println("Megatexture loaded successfully!");
+    std::println("Memory usage: {} MB (contiguous)\n", totalBytes / 1024 / 1024);
 
     return true;
 }
