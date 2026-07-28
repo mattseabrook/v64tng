@@ -10,6 +10,9 @@
 #include <mutex>
 #include <condition_variable>
 #include <barrier>
+#include <exception>
+#include <cstdint>
+#include <cstdio>
 
 #include "raycast.h"
 #include "window.h"
@@ -31,20 +34,64 @@ struct RaycastConfig
     float falloffMul = 0.85f;
     float fovMul = 1.0f;
     int supersample = 1;
-    float baseTorchRange = 16.0f;
+    float baseTorchRange = 20.0f;
 };
 static RaycastConfig g_rayConfig;
+
+struct RaycastVerticalGradientLut
+{
+    std::vector<std::array<uint8_t, 3>> ceiling;
+    std::vector<std::array<uint8_t, 3>> floor;
+};
+static RaycastVerticalGradientLut g_verticalGradientLut;
+
+static void updateVerticalGradientLut(int screenHeight)
+{
+    if (screenHeight <= 0)
+        return;
+
+    // Cache by screen height to avoid recomputing every frame.
+    static int cachedScreenHeight = 0;
+    if (screenHeight == cachedScreenHeight)
+        return;
+    cachedScreenHeight = screenHeight;
+
+    g_verticalGradientLut.ceiling.resize(
+        static_cast<size_t>(screenHeight));
+    g_verticalGradientLut.floor.resize(
+        static_cast<size_t>(screenHeight));
+    const float halfHeight = static_cast<float>(screenHeight) * 0.5f;
+
+    for (int y = 0; y < screenHeight; ++y)
+    {
+        const float yf = static_cast<float>(y) + 0.5f;
+        const float ceilingFactor =
+            std::clamp(1.0f - yf / halfHeight, 0.0f, 1.0f);
+        const float floorFactor =
+            std::clamp((yf - halfHeight) / halfHeight, 0.0f, 1.0f);
+        g_verticalGradientLut.ceiling[static_cast<size_t>(y)] = {
+            static_cast<uint8_t>(120.0f * ceilingFactor),
+            static_cast<uint8_t>(120.0f * ceilingFactor),
+            static_cast<uint8_t>(120.0f * ceilingFactor)};
+        g_verticalGradientLut.floor[static_cast<size_t>(y)] = {
+            static_cast<uint8_t>(90.0f * floorFactor),
+            static_cast<uint8_t>(70.0f * floorFactor),
+            static_cast<uint8_t>(50.0f * floorFactor)};
+    }
+}
 
 // Persistent thread pool to avoid thread creation overhead per frame
 struct ThreadPool
 {
     std::vector<std::jthread> workers;
     std::vector<std::function<void()>> tasks;
+    std::vector<std::exception_ptr> exceptions;
     std::mutex mtx;
     std::condition_variable cv_ready;   // workers wait on this for new tasks
     std::barrier<> barrier{1};          // workers + main synchronize on completion
     unsigned int threadCount = 0;
     bool stopping = false;
+    std::uint64_t generation = 0;
 
     void ensureThreadCount(unsigned int count)
     {
@@ -56,6 +103,7 @@ struct ThreadPool
         threadCount = count;
         stopping = false;
         tasks.resize(count);
+        generation = 0;
         // Reconstruct barrier for count+1 (workers + main thread)
         barrier.~barrier();
         new (&barrier) std::barrier<>(static_cast<std::ptrdiff_t>(count + 1));
@@ -64,18 +112,31 @@ struct ThreadPool
         for (unsigned int i = 0; i < count; ++i)
         {
             workers.emplace_back([this, i](std::stop_token) {
+                std::uint64_t seenGeneration = 0;
                 while (true)
                 {
+                    std::function<void()> localTask;
                     {
                         std::unique_lock lk(mtx);
-                        cv_ready.wait(lk, [this] { return stopping || tasks[0]; }); // any signal
-                    }
-                    if (stopping)
-                        return;
-                    if (tasks[i])
-                    {
-                        tasks[i]();
+                        cv_ready.wait(lk, [this, seenGeneration] { return stopping || generation != seenGeneration; });
+                        if (stopping)
+                            return;
+                        localTask = std::move(tasks[i]);
                         tasks[i] = nullptr;
+                        seenGeneration = generation;
+                    }
+                    if (localTask)
+                    {
+                        try
+                        {
+                            localTask();
+                        }
+                        catch (...)
+                        {
+                            std::lock_guard lk(mtx);
+                            if (i < exceptions.size())
+                                exceptions[i] = std::current_exception();
+                        }
                     }
                     barrier.arrive_and_wait();
                 }
@@ -88,14 +149,23 @@ struct ThreadPool
         ensureThreadCount(count);
         {
             std::lock_guard lk(mtx);
+            exceptions.assign(count, nullptr);
             for (unsigned int i = 0; i < count; ++i)
             {
                 int idx = static_cast<int>(i);
                 tasks[i] = [idx, &work] { work(idx); };
             }
+            ++generation;
         }
         cv_ready.notify_all();
         barrier.arrive_and_wait(); // wait for all workers to finish
+
+        // Propagate the first worker exception to the caller.
+        for (const auto &ep : exceptions)
+        {
+            if (ep)
+                std::rethrow_exception(ep);
+        }
     }
 
     void shutdown()
@@ -115,6 +185,82 @@ struct ThreadPool
 };
 static ThreadPool g_threadPool;
 
+void drawMeasuredFpsOverlay(
+    uint8_t *framebuffer, size_t pitch, int width, int height)
+{
+    if (!framebuffer || width <= 0 || height <= 0)
+        return;
+
+    static constexpr std::array<uint16_t, 13> glyphs = {
+        0x7b6f, 0x749a, 0x73e7, 0x79e7, 0x49ed,
+        0x79cf, 0x7bcf, 0x4927, 0x7bef, 0x79ef,
+        0x12cf, 0x12eb, 0x79cf
+    };
+    const int fps = std::clamp(
+        static_cast<int>(std::lround(state.frameTiming.measuredFPS)), 0, 999);
+    const std::array<int, 7> text = {
+        10, 11, 12, -1,
+        fps >= 100 ? fps / 100 : -1,
+        fps >= 10 ? (fps / 10) % 10 : -1,
+        fps % 10
+    };
+    const int scale = width >= 1200 ? 3 : 2;
+    const int advance = 4 * scale;
+    const int textWidth = static_cast<int>(text.size()) * advance - scale;
+    const int textHeight = 5 * scale;
+    const int startX = std::max(4, width - textWidth - 10);
+    const int startY = 8;
+
+    for (int y = std::max(0, startY - 3);
+         y < std::min(height, startY + textHeight + 3); ++y)
+    {
+        uint8_t *row = framebuffer + static_cast<size_t>(y) * pitch;
+        for (int x = std::max(0, startX - 4);
+             x < std::min(width, startX + textWidth + 4); ++x)
+        {
+            row[static_cast<size_t>(x) * 4u + 0u] /= 4u;
+            row[static_cast<size_t>(x) * 4u + 1u] /= 4u;
+            row[static_cast<size_t>(x) * 4u + 2u] /= 4u;
+        }
+    }
+
+    for (size_t character = 0; character < text.size(); ++character)
+    {
+        const int glyph = text[character];
+        if (glyph < 0)
+            continue;
+        const uint16_t bits = glyphs[static_cast<size_t>(glyph)];
+        for (int gy = 0; gy < 5; ++gy)
+        {
+            for (int gx = 0; gx < 3; ++gx)
+            {
+                if ((bits & (1u << (gy * 3 + gx))) == 0)
+                    continue;
+                for (int sy = 0; sy < scale; ++sy)
+                {
+                    const int y = startY + gy * scale + sy;
+                    if (y < 0 || y >= height)
+                        continue;
+                    uint8_t *row =
+                        framebuffer + static_cast<size_t>(y) * pitch;
+                    for (int sx = 0; sx < scale; ++sx)
+                    {
+                        const int x = startX +
+                            static_cast<int>(character) * advance +
+                            gx * scale + sx;
+                        if (x < 0 || x >= width)
+                            continue;
+                        row[static_cast<size_t>(x) * 4u + 0u] = 255;
+                        row[static_cast<size_t>(x) * 4u + 1u] = 255;
+                        row[static_cast<size_t>(x) * 4u + 2u] = 255;
+                        row[static_cast<size_t>(x) * 4u + 3u] = 255;
+                    }
+                }
+            }
+        }
+    }
+}
+
 // Call once per frame before rendering to cache config values
 static void cacheConfigValues()
 {
@@ -124,9 +270,9 @@ static void cacheConfigValues()
         ? static_cast<float>(config["raycastFalloffMul"]) : 0.85f;
     g_rayConfig.fovMul = config.contains("raycastFovMul") 
         ? static_cast<float>(config["raycastFovMul"]) : 1.0f;
-    g_rayConfig.supersample = config.contains("raycastSupersample")
-        ? config["raycastSupersample"].get<int>() : 1;
-    g_rayConfig.baseTorchRange = 16.0f;
+    g_rayConfig.supersample = std::clamp(config.contains("raycastSupersample")
+        ? config["raycastSupersample"].get<int>() : 1, 1, 8);
+    g_rayConfig.baseTorchRange = 20.0f;
 }
 
 // Normalize angle to [0, 2π) using std::fmod (branchless)
@@ -141,6 +287,8 @@ static inline float normalizeAngle(float angle)
 //
 bool initializePlayerFromMap(const TileMap &tileMap, RaycastPlayer &player)
 {
+	if (tileMap.empty() || tileMap.front().empty())
+		return false;
     int mapH = static_cast<int>(tileMap.size());
     int mapW = static_cast<int>(tileMap[0].size());
 
@@ -212,9 +360,10 @@ RaycastHit castRay(const TileMap &tileMap,
         : (posY - mapY) * deltaDistY;
     
     int side = 0;
+    bool hitWall = false;
     
     // DDA loop with branchless step selection
-    constexpr int MAX_STEPS = 64;
+    const int MAX_STEPS = std::clamp(mapW + mapH + 64, 64, 4096);
     for (int i = 0; i < MAX_STEPS; ++i)
     {
         // Branchless: select which axis to step based on comparison
@@ -231,13 +380,16 @@ RaycastHit castRay(const TileMap &tileMap,
         if (mapX < 0 || mapY < 0 || mapX >= mapW || mapY >= mapH)
         {
             const float dist = side ? (sideDistY - deltaDistY) : (sideDistX - deltaDistX);
-            return {dist, side, false, mapX, mapY, 0.0f};
+            return {dist, side, false, mapX, mapY, 0.0f, 1.0f};
         }
 
         // Wall check
         const uint8_t tile = tileMap[mapY][mapX];
         if (tile >= 0x01 && (tile < 0xF0 || tile > 0xF3))
+        {
+			hitWall = true;
             break;
+		}
     }
     
     const float dist = side ? (sideDistY - deltaDistY) : (sideDistX - deltaDistX);
@@ -263,7 +415,7 @@ RaycastHit castRay(const TileMap &tileMap,
         cardinalSide = (stepY > 0) ? 0 : 2; // Stepped down = hit north wall, stepped up = hit south wall
     }
     
-    return {dist, cardinalSide, true, mapX, mapY, wallX};
+    return {dist, cardinalSide, hitWall, mapX, mapY, wallX, 1.0f};
 }
 
 // Render a column with vertical smoothing
@@ -288,15 +440,22 @@ void accumulateColumn(int x,
     float drawEnd = 0.0f;
     uint8_t wallR = 0, wallG = 0, wallB = 0;
     float lightFactor = 1.0f;
+    const WallEdge* wallEdge = nullptr;
     
     if (hit.hitWall)
     {
-        perpWallDist = std::max(hit.distance / visualScale, 0.01f);
-        float lineHeight = static_cast<float>(screenH) / perpWallDist;
+        perpWallDist = std::max(
+            hit.distance * hit.cosCorr / visualScale, 0.01f);
+        const float halfFovTan = std::max(
+            std::tan(state.raycast.player.fov * 0.5f * g_rayConfig.fovMul),
+            0.001f);
+        float lineHeight =
+            static_cast<float>(screenH) / (perpWallDist * halfFovTan);
         drawStart = halfH - lineHeight / 2.0f;
         drawEnd = halfH + lineHeight / 2.0f;
 
         lightFactor = std::max(0.0f, 1.0f - hit.distance / torchRange);
+        wallEdge = findWallEdge(hit.mapX, hit.mapY, hit.side);
 
     // Initialize fallback wall color
     wallR = static_cast<uint8_t>(120.0f * lightFactor);
@@ -313,16 +472,14 @@ void accumulateColumn(int x,
         // Use cached falloff value (was previously shadowed and read from config per-pixel)
         float screenFactor = std::max(0.0f, 1.0f - (screenDist / maxRadius) * falloffMul);
 
-        // Ceiling gradient
-        float ceilingShade = 120.0f * (1.0f - yf / halfH);
-        ceilingShade = std::max(0.0f, std::min(255.0f, ceilingShade));
-
-        // Floor gradient
-        float floorRatio = (yf - halfH) / halfH;
-        floorRatio = std::min(std::max(floorRatio, 0.0f), 1.0f);
-        uint8_t floorR = static_cast<uint8_t>(90.0f * floorRatio);
-        uint8_t floorG = static_cast<uint8_t>(70.0f * floorRatio);
-        uint8_t floorB = static_cast<uint8_t>(50.0f * floorRatio);
+        const auto &ceiling =
+            g_verticalGradientLut.ceiling[static_cast<size_t>(y)];
+        const auto &floor =
+            g_verticalGradientLut.floor[static_cast<size_t>(y)];
+        const float ceilingShade = static_cast<float>(ceiling[0]);
+        const uint8_t floorR = floor[0];
+        const uint8_t floorG = floor[1];
+        const uint8_t floorB = floor[2];
 
         uint8_t rr, gg, bb;
 
@@ -372,7 +529,7 @@ void accumulateColumn(int x,
             const float baseColor = 120.0f;
             
             {
-                uint32_t texSample = sampleMegatexture(hit.mapX, hit.mapY, hit.side, hit.wallX, v);
+                uint32_t texSample = sampleMegatextureEdge(wallEdge, hit.wallX, v);
                 uint8_t texR = (texSample >> 0) & 0xFF;
                 uint8_t texG = (texSample >> 8) & 0xFF;
                 uint8_t texB = (texSample >> 16) & 0xFF;
@@ -486,10 +643,13 @@ void renderChunk(const TileMap &tileMap,
         for (int sampleIdx = 0; sampleIdx < supersample; ++sampleIdx)
         {
             float camX = 2.0f * (x + (sampleIdx + 0.5f) / supersample) / screenWidth - 1.0f;
-            float rayAngle = player.angle + camX * (fov * 0.5f * fovMul);
+            const float halfFovTan = std::tan(fov * 0.5f * fovMul);
+            const float viewX = camX * halfFovTan;
+            float rayAngle = player.angle + std::atan(viewX);
             float rayDirX = std::cos(rayAngle);
             float rayDirY = std::sin(rayAngle);
             RaycastHit hit = castRay(tileMap, player.x, player.y, rayDirX, rayDirY);
+            hit.cosCorr = 1.0f / std::sqrt(1.0f + viewX * viewX);
             accumulateColumn(x, hit, screenHeight, halfWidth, halfHeight, maxRadius, torchRange, accumR, accumG, accumB);
         }
         // No mutex needed - each thread writes to distinct columns, no overlap
@@ -515,18 +675,30 @@ void renderRaycastView(const TileMap &tileMap,
 {
     // Cache config values once per frame (not per pixel)
     cacheConfigValues();
+    updateVerticalGradientLut(h);
     
-    const int ss = g_rayConfig.supersample;
-    const int nThreads = static_cast<int>(std::thread::hardware_concurrency());
-    const int chunk = w / nThreads;
+    int ss = g_rayConfig.supersample;
+    const uint64_t pixelCount =
+        static_cast<uint64_t>(std::max(0, w)) *
+        static_cast<uint64_t>(std::max(0, h));
+    if (pixelCount >= kPixelCount1080p)
+        ss = std::min(ss, 1);
+    else if (pixelCount >= kPixelCount720p)
+        ss = std::min(ss, 2);
+    const unsigned int hwThreads = std::max(1u, std::thread::hardware_concurrency());
+    const int nThreads = std::min(static_cast<int>(hwThreads), std::max(1, w));
+    const int chunk = (w + nThreads - 1) / nThreads;
     
     g_threadPool.dispatch(static_cast<unsigned int>(nThreads), [&](int i) {
         int s = i * chunk;
-        int e = (i + 1 == nThreads) ? w : s + chunk;
+        int e = std::min(w, s + chunk);
+        if (s >= e)
+            return;
         renderChunk(tileMap, p, fb, pitch, w, h, ss, s, e);
     });
     
     drawCrosshair(fb, pitch, w, h);
+    drawMeasuredFpsOverlay(fb, pitch, w, h);
 
     // Lightweight overlay via window title (avoids console/files)
 #ifdef _WIN32
@@ -543,16 +715,39 @@ void renderRaycastView(const TileMap &tileMap,
         float widthPixels = static_cast<float>(w) * (angularWidth / std::max(fov, 0.001f));
         float recommendedUnits = (widthPixels > 0.0f) ? (lineHeight / widthPixels) : 1.0f;
 
-        std::string title = "v64tng  |  Edges: " + std::to_string(static_cast<int>(megatex.edges.size())) +
-                            "  Tiles: " + std::to_string(static_cast<int>(megatex.tileCount)) +
-                            (megatex.loaded ? " loaded" : " not loaded") +
-                            "  WH: 3.0  RecWH: " + std::to_string(recommendedUnits);
-        SetWindowTextA(g_hwnd, title.c_str());
+        std::array<char, 256> title{};
+        std::snprintf(title.data(), title.size(),
+                      "v64tng  |  Edges: %d  Tiles: %d %s  WH: 3.0  RecWH: %.2f",
+                      static_cast<int>(megatex.edges.size()),
+                      static_cast<int>(megatex.tileCount),
+                      megatex.loaded ? "loaded" : "not loaded",
+                      recommendedUnits);
+        SetWindowTextA(g_hwnd, title.data());
     }
 #endif
 }
 
 // Mouse handling for raycast mode
+void handleRaycastMouseDelta(int deltaX, int)
+{
+    if (!state.raycast.enabled || deltaX == 0)
+        return;
+
+    float sensitivitySetting = 50.0f;
+    if (config.contains("mlookSensitivity") &&
+        config["mlookSensitivity"].is_number())
+    {
+        sensitivitySetting = std::clamp(
+            config["mlookSensitivity"].get<float>(), 1.0f, 200.0f);
+    }
+    constexpr float kRadiansPerRawCountAtDefault = 0.0025f;
+    const float sensitivity =
+        (sensitivitySetting / 50.0f) * kRadiansPerRawCountAtDefault;
+    state.raycast.player.angle = normalizeAngle(
+        state.raycast.player.angle + static_cast<float>(deltaX) * sensitivity);
+    state.frameTiming.dirtyFrame = true;
+}
+
 void handleRaycastMouseMove()
 {
     if (!state.raycast.enabled)
@@ -579,16 +774,10 @@ void handleRaycastMouseMove()
 
     if (deltaX != 0 || deltaY != 0)
     {
-        float sensitivity = (config["mlookSensitivity"].get<float>() / 50.0f) * 0.005f;
-        state.raycast.player.angle += deltaX * sensitivity;
-
-        // Normalize angle to [0, 2π) using branchless std::fmod
-        state.raycast.player.angle = normalizeAngle(state.raycast.player.angle);
+        handleRaycastMouseDelta(deltaX, deltaY);
 
         // Reset cursor to center immediately
         SetCursorPos(clientCenter.x, clientCenter.y);
-
-        state.frameTiming.dirtyFrame = true;
     }
 }
 
@@ -604,6 +793,11 @@ void raycastKeyUp(WPARAM k)
         g_keys[k] = false;
 }
 
+void resetRaycastInput()
+{
+    g_keys.fill(false);
+}
+
 //
 // Update raycaster movement based on keyboard input
 //
@@ -613,113 +807,116 @@ void updateRaycasterMovement()
         return;
 
     static std::chrono::steady_clock::time_point lastRaycastUpdate = std::chrono::steady_clock::now();
-    auto currentTime = std::chrono::steady_clock::now();
-    auto elapsedTime = currentTime - lastRaycastUpdate;
-    auto frameDuration = std::chrono::microseconds(static_cast<long long>(1000000.0 / state.frameTiming.currentFPS));
+    const auto currentTime = std::chrono::steady_clock::now();
+    float deltaSeconds = std::chrono::duration<float>(currentTime - lastRaycastUpdate).count();
+    lastRaycastUpdate = currentTime;
 
-    if (elapsedTime < frameDuration)
-        return; // Not enough time has passed
+    // Keep movement stable after stalls, breakpoints, or a lost-focus pause.
+    deltaSeconds = std::clamp(deltaSeconds, 0.0f, 0.1f);
+    if (deltaSeconds <= 0.0f)
+        return;
 
     if (!state.raycast.map || state.raycast.map->empty())
         return;
 
-    int mapW = state.raycast.map->at(0).size(), mapH = state.raycast.map->size();
+    int mapW = static_cast<int>(state.raycast.map->at(0).size());
+    int mapH = static_cast<int>(state.raycast.map->size());
     float x = state.raycast.player.x, y = state.raycast.player.y, angle = state.raycast.player.angle;
     float speed = g_keys[VK_SHIFT] ? state.raycast.player.runSpeed : state.raycast.player.walkSpeed;
+    // Existing walk/run tuning was authored as a per-frame amount at 60 Hz.
+    constexpr float kLegacyMovementHz = 60.0f;
+    const float speedPerSecond = speed * kLegacyMovementHz;
     float dx = 0, dy = 0;
 
     if (g_keys['W'] || g_keys[VK_UP])
     {
-        dx += std::cos(angle) * speed;
-        dy += std::sin(angle) * speed;
+        dx += std::cos(angle) * speedPerSecond;
+        dy += std::sin(angle) * speedPerSecond;
     }
     if (g_keys['S'] || g_keys[VK_DOWN])
     {
-        dx -= std::cos(angle) * speed;
-        dy -= std::sin(angle) * speed;
+        dx -= std::cos(angle) * speedPerSecond;
+        dy -= std::sin(angle) * speedPerSecond;
     }
     if (g_keys['A'] || g_keys[VK_LEFT])
     {
-        dx += std::sin(angle) * speed;
-        dy -= std::cos(angle) * speed;
+        dx += std::sin(angle) * speedPerSecond;
+        dy -= std::cos(angle) * speedPerSecond;
     }
     if (g_keys['D'] || g_keys[VK_RIGHT])
     {
-        dx -= std::sin(angle) * speed;
-        dy += std::cos(angle) * speed;
+        dx -= std::sin(angle) * speedPerSecond;
+        dy += std::cos(angle) * speedPerSecond;
     }
 
-    if (dx || dy)
+    // Combined input must not make diagonal movement faster.
+    const float moveLenSq = dx * dx + dy * dy;
+    if (moveLenSq > speedPerSecond * speedPerSecond)
     {
-        // Player collision radius to prevent getting too close to walls
-        const float COLLISION_RADIUS = 0.3f;
+        const float invLen = 1.0f / std::sqrt(moveLenSq);
+        dx *= invLen * speedPerSecond;
+        dy *= invLen * speedPerSecond;
+    }
 
-        float newX = x + dx;
-        float newY = y + dy;
+    dx *= deltaSeconds;
+    dy *= deltaSeconds;
 
-        // Consistent wall test with raycaster: treat 0xF0-0xF3 as non-blocking
-        auto isWallAt = [&](int cx, int cy) -> bool
-        {
+    if (dx != 0.0f || dy != 0.0f)
+    {
+        constexpr float COLLISION_RADIUS = 0.3f;
+        constexpr float MAX_MOVE_STEP = 0.15f;
+
+        // Keep the native 7th Guest rule: 0xF0-0xF3 are non-blocking tiles.
+        auto isWallAt = [&](int cx, int cy) -> bool {
             if (cx < 0 || cy < 0 || cx >= mapW || cy >= mapH)
-                return true; // Out of bounds is solid
-            uint8_t t = state.raycast.map->at(cy)[cx];
+                return true;
+            const uint8_t t = (*state.raycast.map)[static_cast<size_t>(cy)][static_cast<size_t>(cx)];
             return (t >= 0x01 && (t < 0xF0 || t > 0xF3));
         };
 
-        // Check X movement with collision buffer
-        bool canMoveX = true;
-        int checkX = static_cast<int>(newX);
-        int checkY = static_cast<int>(y);
+        auto blockedAt = [&](float px, float py) -> bool {
+            const int minX = static_cast<int>(std::floor(px - COLLISION_RADIUS));
+            const int maxX = static_cast<int>(std::floor(px + COLLISION_RADIUS));
+            const int minY = static_cast<int>(std::floor(py - COLLISION_RADIUS));
+            const int maxY = static_cast<int>(std::floor(py + COLLISION_RADIUS));
+            for (int cy = minY; cy <= maxY; ++cy)
+            {
+                for (int cx = minX; cx <= maxX; ++cx)
+                {
+                    if (!isWallAt(cx, cy))
+                        continue;
+                    const float nearestX = std::clamp(px, static_cast<float>(cx), static_cast<float>(cx + 1));
+                    const float nearestY = std::clamp(py, static_cast<float>(cy), static_cast<float>(cy + 1));
+                    const float ox = px - nearestX;
+                    const float oy = py - nearestY;
+                    if (ox * ox + oy * oy < COLLISION_RADIUS * COLLISION_RADIUS)
+                        return true;
+                }
+            }
+            return false;
+        };
 
-        if (dx > 0) // Moving right
+        // Substeps prevent sprinting through a wall after a long frame. Resolving
+        // each axis independently retains the engine's wall-sliding behavior.
+        const int moveSteps = std::max(1, static_cast<int>(std::ceil(
+            std::max(std::abs(dx), std::abs(dy)) / MAX_MOVE_STEP)));
+        const float stepDx = dx / static_cast<float>(moveSteps);
+        const float stepDy = dy / static_cast<float>(moveSteps);
+        float newX = x;
+        float newY = y;
+        for (int step = 0; step < moveSteps; ++step)
         {
-            float rightEdge = newX + COLLISION_RADIUS;
-            int rightCell = static_cast<int>(rightEdge);
-            if (rightCell >= mapW || (rightCell >= 0 && checkY >= 0 && checkY < mapH &&
-                                      isWallAt(rightCell, checkY)))
-                canMoveX = false;
-        }
-        else if (dx < 0) // Moving left
-        {
-            float leftEdge = newX - COLLISION_RADIUS;
-            int leftCell = static_cast<int>(leftEdge);
-            if (leftCell < 0 || (leftCell < mapW && checkY >= 0 && checkY < mapH &&
-                                 isWallAt(leftCell, checkY)))
-                canMoveX = false;
-        }
-
-        // Check Y movement with collision buffer
-        bool canMoveY = true;
-        checkX = static_cast<int>(x);
-        checkY = static_cast<int>(newY);
-
-        if (dy > 0) // Moving down
-        {
-            float bottomEdge = newY + COLLISION_RADIUS;
-            int bottomCell = static_cast<int>(bottomEdge);
-            if (bottomCell >= mapH || (bottomCell >= 0 && checkX >= 0 && checkX < mapW &&
-                                       isWallAt(checkX, bottomCell)))
-                canMoveY = false;
-        }
-        else if (dy < 0) // Moving up
-        {
-            float topEdge = newY - COLLISION_RADIUS;
-            int topCell = static_cast<int>(topEdge);
-            if (topCell < 0 || (topCell < mapH && checkX >= 0 && checkX < mapW &&
-                                isWallAt(checkX, topCell)))
-                canMoveY = false;
+            if (!blockedAt(newX + stepDx, newY))
+                newX += stepDx;
+            if (!blockedAt(newX, newY + stepDy))
+                newY += stepDy;
         }
 
-        // Apply movement
-        if (canMoveX)
-            state.raycast.player.x = newX;
-        if (canMoveY)
-            state.raycast.player.y = newY;
+        state.raycast.player.x = newX;
+        state.raycast.player.y = newY;
 
         state.frameTiming.dirtyFrame = true;
     }
-
-    lastRaycastUpdate = currentTime;
 }
 
 /*
@@ -735,7 +932,8 @@ void initRaycaster()
 {
     state.raycast.enabled = true;
     state.raycast.map = &map;
-    state.frameTiming.currentFPS = 60.0;
+    state.frameTiming.currentFPS =
+        static_cast<double>(std::max(1, getDisplayRefreshRate()));
     float fovDeg = config.contains("raycastFov") ? static_cast<float>(config["raycastFov"]) : 90.0f;
     state.raycast.player.fov = deg2rad(fovDeg);
 

@@ -7,6 +7,7 @@
 #include <fstream>
 #include <filesystem>
 #include <iomanip>
+#include <system_error>
 #include <windows.h>
 
 nlohmann::json config;
@@ -14,29 +15,81 @@ std::string windowTitle = "v64tng";
 const int MIN_CLIENT_WIDTH = 640;
 const int MIN_CLIENT_HEIGHT = 320;
 
+namespace
+{
+std::filesystem::path getRuntimeBaseDirectory()
+{
+	char modulePath[MAX_PATH] = {};
+	const DWORD length = GetModuleFileNameA(nullptr, modulePath, MAX_PATH);
+	if (length > 0 && length < MAX_PATH)
+		return std::filesystem::path(
+			std::string(modulePath, length)).parent_path();
+
+	std::error_code error;
+	const auto cwd = std::filesystem::current_path(error);
+	return error ? std::filesystem::path(".") : cwd;
+}
+
+std::filesystem::path resolveRuntimePath(const std::string& filename)
+{
+	const std::filesystem::path requested(filename);
+	if (requested.is_absolute())
+		return requested;
+	return (getRuntimeBaseDirectory() / requested).lexically_normal();
+}
+
+void mergeMissingDefaults(
+	nlohmann::json& target, const nlohmann::json& defaults)
+{
+	if (!target.is_object() || !defaults.is_object())
+		return;
+
+	for (const auto& [key, value] : defaults.items())
+	{
+		if (!target.contains(key))
+			target[key] = value;
+		else if (target[key].is_object() && value.is_object())
+			mergeMissingDefaults(target[key], value);
+	}
+}
+}
+
 //
 // Load configuration from file
 //
 void load_config(const std::string &filename)
 {
-	if (!std::filesystem::exists(filename))
+	const auto configPath = resolveRuntimePath(filename);
+	if (!std::filesystem::exists(configPath))
 	{
-		std::ofstream config_file(filename);
+		std::ofstream config_file(configPath);
 		if (config_file.is_open())
-		{
 			config_file << default_config;
-		}
 	}
 
-	std::ifstream config_file(filename);
+	std::ifstream config_file(configPath);
 	if (config_file.is_open())
 	{
-		config_file >> config;
+		try
+		{
+			config_file >> config;
+		}
+		catch (const nlohmann::json::exception&)
+		{
+			config = nlohmann::json::parse(default_config);
+		}
 	}
 	else
 	{
-		throw std::runtime_error("Failed to open configuration file: " + filename);
+		throw std::runtime_error(
+			"Failed to open configuration file: " + configPath.string());
 	}
+
+	const nlohmann::json defaults = nlohmann::json::parse(default_config);
+	if (!config.is_object())
+		config = defaults;
+	else
+		mergeMissingDefaults(config, defaults);
 }
 
 //
@@ -44,6 +97,7 @@ void load_config(const std::string &filename)
 //
 void save_config(const std::string &filename)
 {
+	const auto configPath = resolveRuntimePath(filename);
 	if (g_hwnd)
 	{
 		RECT windowRect;
@@ -74,13 +128,38 @@ void save_config(const std::string &filename)
 		}
 	}
 
-	std::ofstream config_file(filename);
-	if (config_file.is_open())
+	std::filesystem::path temporaryPath = configPath;
+	temporaryPath += ".tmp";
 	{
+		std::ofstream config_file(temporaryPath, std::ios::trunc);
+		if (!config_file.is_open())
+			throw std::runtime_error(
+				"Failed to save temporary configuration file: " +
+				temporaryPath.string());
+
 		config_file << std::setw(4) << config << std::endl;
+		config_file.flush();
+		if (!config_file.good())
+		{
+			config_file.close();
+			std::error_code ignored;
+			std::filesystem::remove(temporaryPath, ignored);
+			throw std::runtime_error(
+				"Failed while writing configuration file: " +
+				temporaryPath.string());
+		}
 	}
-	else
+
+	if (!MoveFileExW(
+			temporaryPath.wstring().c_str(),
+			configPath.wstring().c_str(),
+			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
 	{
-		throw std::runtime_error("Failed to save configuration file: " + filename);
+		const DWORD error = GetLastError();
+		std::error_code ignored;
+		std::filesystem::remove(temporaryPath, ignored);
+		throw std::runtime_error(
+			"Failed to replace configuration file: " + configPath.string() +
+			" (error " + std::to_string(error) + ")");
 	}
 }

@@ -1,10 +1,17 @@
 // audio.h
-#ifndef AUDIO_H
-#define AUDIO_H
+#pragma once
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 #include <span>
+
+struct AudioPlaybackFormat
+{
+    uint32_t sampleRate = 22050;
+    uint16_t channels = 1;
+    uint16_t bitsPerSample = 8;
+};
 
 //
 // WAVHeader structure used when writing extracted 0x80 audio
@@ -31,8 +38,10 @@ struct WAVHeader
 // Function prototypes
 
 void wavPlay(std::span<const uint8_t> audioData);
+void wavPlay(std::shared_ptr<std::vector<uint8_t>> audioData);
+void wavPlay(std::shared_ptr<const std::vector<uint8_t>> audioData, const AudioPlaybackFormat& format);
 void wavStop();
 void wavPause();
 void wavResume();
-
-#endif // AUDIO_H
+void audioShutdown();
+void applyPcmRuntimeSettings();

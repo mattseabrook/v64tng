@@ -1,6 +1,7 @@
 #include "megatexture.h"
 #include "extract.h"
 #include "basement.h"
+#include "config.h"
 #include <algorithm>
 #include <cmath>
 #include <print>
@@ -16,6 +17,7 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <limits>
 
 // Undefine Windows min/max macros that conflict with std::min/std::max
 #ifdef _WIN32
@@ -51,6 +53,8 @@ MegatextureState megatex = {
     .textureHeight = 0,
     .tileWidth = 1024,
     .tileHeight = 1024,
+    .archiveTileWidth = 1024,
+    .archiveTileHeight = 1024,
     .mapWidth = 0,
     .mapHeight = 0,
     .tileData = {},
@@ -705,7 +709,7 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
     const int H_px = megatex.textureHeight;    // 1024
     const int numTiles = (W_px + tileWidth - 1) / tileWidth;
 
-    const unsigned int numThreads = std::thread::hardware_concurrency();
+    const unsigned int numThreads = std::max(1u, std::thread::hardware_concurrency());
     std::println("\n=== Megatexture Tile Generation ===");
     std::println("Strip dimensions: {} × {} px", W_px, H_px);
     std::println("Exposed edges: {}", megatex.edges.size());
@@ -1209,85 +1213,225 @@ bool loadMTX(const std::string& mtxPath)
         return false;
     }
 
-    // Fill state tile dimensions
-    if (header.version == 1) {
-        megatex.tileWidth = 1024;
-        megatex.tileHeight = 1024;
-    } else {
-        megatex.tileWidth = static_cast<int>(header.tileWidth);
-        megatex.tileHeight = static_cast<int>(header.tileHeight);
+    if (header.version != 1 && header.version != 2)
+    {
+        std::println(
+            stderr, "ERROR: Unsupported MTX version: {}", header.version);
+        return false;
     }
-    
-    megatex.tileCount = header.tileCount;
-    megatex.bytesPerTile = static_cast<size_t>(megatex.tileWidth) * megatex.tileHeight * 4;
-    
-    const unsigned int numThreads = std::thread::hardware_concurrency();
+
+    const int archiveTileWidth =
+        header.version == 1 ? 1024 : static_cast<int>(header.tileWidth);
+    const int archiveTileHeight =
+        header.version == 1 ? 1024 : static_cast<int>(header.tileHeight);
+    if (archiveTileWidth <= 0 || archiveTileHeight <= 0 ||
+        archiveTileWidth > 16384 || archiveTileHeight > 16384 ||
+        header.tileCount == 0)
+    {
+        std::println(stderr, "ERROR: Invalid MTX dimensions or tile count");
+        return false;
+    }
+
+    std::error_code fileSizeError;
+    const uintmax_t fileSize =
+        std::filesystem::file_size(mtxPath, fileSizeError);
+    const uintmax_t offsetTableBytes =
+        static_cast<uintmax_t>(header.tileCount) * sizeof(uint64_t);
+    if (fileSizeError || fileSize < sizeof(MTXHeader) ||
+        offsetTableBytes > fileSize - sizeof(MTXHeader))
+    {
+        std::println(stderr, "ERROR: Invalid MTX offset-table size");
+        return false;
+    }
+
+    const size_t archiveBytesPerTile =
+        static_cast<size_t>(archiveTileWidth) *
+        static_cast<size_t>(archiveTileHeight) * 4ull;
+    if (archiveBytesPerTile > std::numeric_limits<uLong>::max())
+    {
+        std::println(stderr, "ERROR: MTX tile is too large for zlib");
+        return false;
+    }
+
+    int residentHeight = 256;
+    if (config.contains("raycastMegatextureResidentHeight") &&
+        config["raycastMegatextureResidentHeight"].is_number_integer())
+    {
+        residentHeight = std::clamp(
+            config["raycastMegatextureResidentHeight"].get<int>(), 128, 1024);
+    }
+    residentHeight = std::min(residentHeight, archiveTileHeight);
+    const int residentWidth = std::max(
+        1, static_cast<int>(std::llround(
+               static_cast<double>(archiveTileWidth) * residentHeight /
+               static_cast<double>(archiveTileHeight))));
+    const size_t residentBytesPerTile =
+        static_cast<size_t>(residentWidth) *
+        static_cast<size_t>(residentHeight) * 4ull;
+    if (residentBytesPerTile >
+        std::numeric_limits<size_t>::max() / header.tileCount)
+    {
+        std::println(stderr, "ERROR: MTX resident cache size overflow");
+        return false;
+    }
+
+    constexpr size_t kScratchBudget = 512ull * 1024ull * 1024ull;
+    const unsigned int scratchLimitedThreads = static_cast<unsigned int>(
+        std::max<size_t>(
+            1, kScratchBudget / std::max<size_t>(1, archiveBytesPerTile)));
+    const unsigned int numThreads = std::max(
+        1u, std::min({
+                std::max(1u, std::thread::hardware_concurrency()),
+                scratchLimitedThreads,
+                header.tileCount}));
     std::println("Tiles: {}", header.tileCount);
     std::println("Parallel decompression with {} threads...", numThreads);
 
     // Read offset table
     std::vector<uint64_t> tileOffsets(header.tileCount);
     mtxFile.read(reinterpret_cast<char*>(tileOffsets.data()), sizeof(uint64_t) * header.tileCount);
-
-    // PHASE 1: Read ALL compressed data into memory (sequential I/O is fast)
-    struct CompressedTile {
-        std::vector<uint8_t> data;
-    };
-    std::vector<CompressedTile> compressedTiles(header.tileCount);
-    
-    for (uint32_t i = 0; i < header.tileCount; ++i)
+    if (!mtxFile)
     {
-        mtxFile.seekg(tileOffsets[i]);
-        
-        uint32_t compressedSize = 0;
-        mtxFile.read(reinterpret_cast<char*>(&compressedSize), sizeof(uint32_t));
-        
-        compressedTiles[i].data.resize(compressedSize);
-        mtxFile.read(reinterpret_cast<char*>(compressedTiles[i].data.data()), compressedSize);
+        std::println(stderr, "ERROR: Failed to read MTX offset table");
+        return false;
     }
     mtxFile.close();
-    
-    std::println("  Read {} compressed tiles from disk", header.tileCount);
 
-    // PHASE 2: Allocate contiguous memory pool for all tiles (single allocation)
-    const size_t totalBytes = megatex.bytesPerTile * header.tileCount;
-    megatex.tileData.resize(totalBytes);
+    for (uint64_t offset : tileOffsets)
+    {
+        if (offset > fileSize ||
+            fileSize - offset < sizeof(uint32_t))
+        {
+            std::println(stderr, "ERROR: Invalid MTX tile offset");
+            return false;
+        }
+    }
+
+    const size_t totalBytes =
+        residentBytesPerTile * static_cast<size_t>(header.tileCount);
+    std::vector<uint8_t> newTileData(totalBytes);
     std::println("  Allocated {} MB contiguous memory", totalBytes / 1024 / 1024);
 
-    // PHASE 3: Parallel decompression with hand-written threading
+    // Each worker owns one file handle and reusable compressed/decode buffers.
+    // This avoids keeping an archive-sized compressed collection beside the
+    // resident cache at peak memory.
     std::atomic<uint32_t> nextTile{0};
     std::atomic<uint32_t> completedTiles{0};
     std::atomic<bool> hasError{false};
     
     auto decompressWorker = [&]()
     {
+        std::ifstream workerFile(mtxPath, std::ios::binary);
+        std::vector<uint8_t> compressedData;
+        std::vector<uint8_t> decodedTile(archiveBytesPerTile);
+        if (!workerFile)
+        {
+            hasError.store(true, std::memory_order_relaxed);
+            return;
+        }
+
         while (!hasError.load(std::memory_order_relaxed))
         {
-            // Grab next tile atomically
             uint32_t tileIdx = nextTile.fetch_add(1, std::memory_order_relaxed);
             if (tileIdx >= header.tileCount)
                 break;
-            
-            // Decompress directly into contiguous pool (zero intermediate allocation)
-            uint8_t* destPtr = megatex.getTileMutable(tileIdx);
-            uLongf uncompressedSize = static_cast<uLong>(megatex.bytesPerTile);
-            
-            int result = uncompress(
-                destPtr,
-                &uncompressedSize,
-                compressedTiles[tileIdx].data.data(),
-                static_cast<uLong>(compressedTiles[tileIdx].data.size())
-            );
-            
-            if (result != Z_OK || uncompressedSize != megatex.bytesPerTile)
+
+            workerFile.clear();
+            workerFile.seekg(
+                static_cast<std::streamoff>(tileOffsets[tileIdx]));
+            uint32_t compressedSize = 0;
+            workerFile.read(
+                reinterpret_cast<char*>(&compressedSize),
+                sizeof(compressedSize));
+            if (!workerFile || compressedSize == 0 ||
+                static_cast<uint64_t>(compressedSize) >
+                    fileSize - tileOffsets[tileIdx] - sizeof(compressedSize))
             {
                 hasError.store(true, std::memory_order_relaxed);
                 return;
             }
-            
-            // Free compressed data immediately after decompression (reduce peak memory)
-            compressedTiles[tileIdx].data.clear();
-            compressedTiles[tileIdx].data.shrink_to_fit();
+
+            compressedData.resize(compressedSize);
+            workerFile.read(
+                reinterpret_cast<char*>(compressedData.data()),
+                compressedSize);
+            if (!workerFile)
+            {
+                hasError.store(true, std::memory_order_relaxed);
+                return;
+            }
+
+            uLongf uncompressedSize =
+                static_cast<uLong>(archiveBytesPerTile);
+            int result = uncompress(
+                decodedTile.data(),
+                &uncompressedSize,
+                compressedData.data(),
+                static_cast<uLong>(compressedData.size()));
+            if (result != Z_OK ||
+                uncompressedSize != archiveBytesPerTile)
+            {
+                hasError.store(true, std::memory_order_relaxed);
+                return;
+            }
+
+            uint8_t* destination =
+                newTileData.data() +
+                static_cast<size_t>(tileIdx) * residentBytesPerTile;
+            if (residentWidth == archiveTileWidth &&
+                residentHeight == archiveTileHeight)
+            {
+                std::memcpy(
+                    destination, decodedTile.data(), archiveBytesPerTile);
+            }
+            else
+            {
+                // Preserve thin mortar/crack coverage by selecting the
+                // maximum-alpha source texel for each resident texel.
+                for (int y = 0; y < residentHeight; ++y)
+                {
+                    const int sy0 =
+                        y * archiveTileHeight / residentHeight;
+                    const int sy1 = std::max(
+                        sy0 + 1,
+                        (y + 1) * archiveTileHeight / residentHeight);
+                    for (int x = 0; x < residentWidth; ++x)
+                    {
+                        const int sx0 =
+                            x * archiveTileWidth / residentWidth;
+                        const int sx1 = std::max(
+                            sx0 + 1,
+                            (x + 1) * archiveTileWidth / residentWidth);
+                        size_t best =
+                            (static_cast<size_t>(sy0) * archiveTileWidth +
+                             sx0) * 4ull;
+                        uint8_t bestAlpha = decodedTile[best + 3];
+                        for (int sy = sy0; sy < sy1; ++sy)
+                        {
+                            size_t source =
+                                (static_cast<size_t>(sy) *
+                                     archiveTileWidth +
+                                 sx0) * 4ull;
+                            for (int sx = sx0; sx < sx1;
+                                 ++sx, source += 4)
+                            {
+                                if (decodedTile[source + 3] > bestAlpha)
+                                {
+                                    bestAlpha =
+                                        decodedTile[source + 3];
+                                    best = source;
+                                }
+                            }
+                        }
+                        const size_t target =
+                            (static_cast<size_t>(y) * residentWidth +
+                             x) * 4ull;
+                        std::memcpy(
+                            destination + target,
+                            decodedTile.data() + best, 4);
+                    }
+                }
+            }
             
             uint32_t completed = completedTiles.fetch_add(1, std::memory_order_relaxed) + 1;
             if (completed % 500 == 0 || completed == header.tileCount)
@@ -1313,7 +1457,16 @@ bool loadMTX(const std::string& mtxPath)
         std::println(stderr, "ERROR: Failed to decompress one or more tiles");
         return false;
     }
-    
+
+    // Publish only after the entire load succeeds so a failed reload leaves
+    // the previously usable cache intact.
+    megatex.tileData.swap(newTileData);
+    megatex.tileWidth = residentWidth;
+    megatex.tileHeight = residentHeight;
+    megatex.archiveTileWidth = archiveTileWidth;
+    megatex.archiveTileHeight = archiveTileHeight;
+    megatex.tileCount = header.tileCount;
+    megatex.bytesPerTile = residentBytesPerTile;
     std::println("  Decompressed {} tiles in parallel", header.tileCount);
 
     megatex.loaded = true;
@@ -1331,8 +1484,14 @@ uint32_t sampleMegatexture(int cellX, int cellY, int side, float u, float v)
 
     // Find the edge for this wall (O(1) hash lookup)
     const WallEdge* edge = findWallEdge(cellX, cellY, side);
-    if (!edge)
-        return 0; // No texture for this wall
+    return sampleMegatextureEdge(edge, u, v);
+}
+
+uint32_t sampleMegatextureEdge(const WallEdge* edge, float u, float v)
+{
+    if (!megatex.loaded || megatex.tileData.empty() || !edge ||
+        megatex.tileWidth <= 0 || megatex.tileHeight <= 0)
+        return 0;
 
     // Apply edge direction so that U increases consistently along world axes
     if (edge->direction < 0)
@@ -1341,11 +1500,16 @@ uint32_t sampleMegatexture(int cellX, int cellY, int side, float u, float v)
     // Calculate global U coordinate in the megatexture strip
     // u is [0..1] along the wall, map it to the per-edge pixel width (341/342)
     const int edgeW = std::max(1, edge->pixelWidth);
-    const float globalU = static_cast<float>(edge->xOffsetPixels) + u * static_cast<float>(edgeW);
+    u = std::clamp(u, 0.0f, 1.0f);
+    const float archiveU = static_cast<float>(edge->xOffsetPixels) +
+                           u * static_cast<float>(edgeW - 1);
+    const float globalU =
+        archiveU * static_cast<float>(megatex.tileWidth) /
+        static_cast<float>(std::max(1, megatex.archiveTileWidth));
     
     // Clamp v to [0..1]
     const float clampedV = std::clamp(v, 0.0f, 1.0f);
-    const float globalV = clampedV * 1024.0f; // vertical: 1024 px = 1 wall unit
+    const float globalV = clampedV * static_cast<float>(megatex.tileHeight - 1);
 
     // Convert to integer pixel coordinates
     const int pixelU = static_cast<int>(globalU);

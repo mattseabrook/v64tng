@@ -12,6 +12,8 @@
 #include <thread>
 #include <atomic>
 #include <memory>
+#include <cmath>
+#include <mutex>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -49,7 +51,18 @@ struct AnimationState
 
 	std::chrono::microseconds getFrameDuration(double currentFPS) const
 	{
-		return std::chrono::microseconds(static_cast<long long>(1000000.0 / currentFPS));
+		if (!std::isfinite(currentFPS) || currentFPS <= 0.0)
+			currentFPS = 24.0;
+
+		const double frameMicros = 1000000.0 / currentFPS;
+		if (!std::isfinite(frameMicros) || frameMicros < 1.0)
+			return std::chrono::microseconds(1);
+
+		const auto maxMicros = std::chrono::microseconds::max().count();
+		if (frameMicros >= static_cast<double>(maxMicros))
+			return std::chrono::microseconds::max();
+
+		return std::chrono::microseconds(static_cast<std::chrono::microseconds::rep>(frameMicros));
 	}
 };
 
@@ -108,8 +121,12 @@ struct ViewGroup
 struct FrameTiming
 {
 	std::chrono::steady_clock::time_point lastRenderTime{};
+	std::chrono::steady_clock::time_point fpsWindowStart{};
 	bool dirtyFrame = true;
 	double currentFPS = 24.0;
+	double measuredFPS = 0.0;
+	double measuredRenderSeconds = 0.0;
+	uint32_t measuredFrameCount = 0;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -131,6 +148,7 @@ struct GameState
 	enum class SIMDLevel
 	{
 		Scalar = 0,
+		SSE2,
 		SSSE3,
 		AVX2
 	};
@@ -160,18 +178,27 @@ struct GameState
 	// 2D & FMV Graphics
 	//
 	std::unique_ptr<VDXFile> currentVDX;  // Owning pointer to current VDXFile object
-	size_t currentFrameIndex = 30;		  // Normally 0 - hard-coded to 30 for testing
+	size_t currentFrameIndex = 0;
 	AnimationState animation;			  // Animation state management
 	std::string transient_animation_name; // e.g., "dr_r"
 	AnimationState transient_animation;	  // Playback state for transient
 	size_t transient_frame_index = 0;	  // Current frame of transient
-	VDXFile *transientVDX = nullptr;	  // Non-owning pointer to transient VDXFile (managed by getOrLoadVDX)
+	std::unique_ptr<VDXFile> transientVDX; // Owning pointer to transient VDXFile (loaded independently of currentVDX)
 
 	std::vector<std::string> animation_sequence; // Stores the sequence of animations
 	size_t animation_queue_index = 0;			 // Current position in the animation sequence
 	std::function<void()> pending_action;		 // Optional action after the current animation
 
 	const View *view; // Current view object
+
+	//
+	// Boot main menu (sphinx.vdx from INTRO.GJD, held on its last frame)
+	//
+	struct
+	{
+		bool active = false;	  // True while the boot main menu is displayed
+		std::string cheatBuffer;  // Rolling buffer for typed cheat codes
+	} mainMenu;
 
 	//
 	// Rendering state (moved hot fields into FrameTiming)
@@ -205,15 +232,15 @@ struct GameState
 	//
 	std::string current_song;								// Name of the currently playing song (e.g., "gu39")
 	std::string transient_song;								// Transient song (if any)
-	double main_song_position = 0.0;						// Position to resume from
+	std::atomic<double> main_song_position{0.0};				// Position to resume from (cross-thread)
 	std::string music_mode;									// Playback mode: "opl2", "dual_opl2", "opl3", "general", "wavetable"
 	std::string soundfont_path;								// Path to SF2 soundfont (for wavetable mode)
 	int midi_bank = 0;										// ADLMIDI built-in bank index
 	std::thread music_thread;								// Thread for non-blocking music playback
-	bool music_playing = false;								// Flag to indicate if music is playing
-	bool hasPlayedFirstSong = false;						// Tracks if any song has played yet
+	std::atomic<bool> music_playing{false};					// Flag to indicate if music is playing (cross-thread)
+	std::atomic<bool> hasPlayedFirstSong{false};				// Tracks if any song has played yet (cross-thread)
 	bool is_transient_playing = false;						// Flag to check if transient is active
-	float music_volume = 1.0f;								// Volume (0.0 to 1.0)
+	std::atomic<float> music_volume{1.0f};					// Volume (0.0 to 1.0) (cross-thread)
 	std::vector<std::pair<std::string, double>> song_stack; // Previous songs
 
 	//
@@ -232,11 +259,48 @@ extern GameState state;
 
 //=============================================================================
 
+inline constexpr uint64_t kPixelCount1080p = 1920ull * 1080ull;
+inline constexpr uint64_t kPixelCount720p  = 1280ull * 720ull;
+
+// Thread-safe "resolve once per detected SIMD level" cache used by hot pixel
+// paths. The common cache-hit path is lock-free.
+template <typename Fn>
+class SimdDispatchCache
+{
+public:
+	template <typename Resolver>
+	Fn get(GameState::SIMDLevel level, Resolver&& resolve)
+	{
+		Fn cached = cachedFn_.load(std::memory_order_acquire);
+		if (cached && cachedLevel_.load(std::memory_order_relaxed) == level) [[likely]]
+			return cached;
+
+		std::lock_guard<std::mutex> lock(mutex_);
+		cached = cachedFn_.load(std::memory_order_relaxed);
+		if (!cached || cachedLevel_.load(std::memory_order_relaxed) != level)
+		{
+			cached = resolve(level);
+			cachedLevel_.store(level, std::memory_order_relaxed);
+			cachedFn_.store(cached, std::memory_order_release);
+		}
+		return cached;
+	}
+
+private:
+	std::mutex mutex_;
+	std::atomic<Fn> cachedFn_{nullptr};
+	std::atomic<GameState::SIMDLevel> cachedLevel_{GameState::SIMDLevel::Scalar};
+};
+
+//=============================================================================
+
 // Function prototypes
 const View *getView(std::string_view current_view);
 void buildViewMap();
 void viewHandler();
 void maybeRenderFrame(bool force = false);
+void startNewGame();
+void mainMenuKeyDown(char c);
 void init();
 
 #endif // GAME_H

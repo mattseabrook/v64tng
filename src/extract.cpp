@@ -439,7 +439,7 @@ void extractPNG(std::string_view filename, bool raw)
 
 	for (size_t i = 0, frameNum = 1; i < vdx.frameData.size(); ++i)
 	{
-		const auto &frameData = vdx.frameData[i];
+		const auto &frameData = *vdx.frameData[i];
 
 		std::string frame = std::format("{:04}", frameNum);
 		std::string baseName = std::filesystem::path{filename}.stem().string();

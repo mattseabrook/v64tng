@@ -74,6 +74,7 @@ struct VulkanContext
     VkBuffer edgeOffsetsBuffer{};
     VkDeviceMemory edgeOffsetsBufferMemory{};
     VkDeviceSize edgeOffsetsBufferSize{};
+    bool raycastDescriptorsDirty = true;
 };
 
 extern VulkanContext vkCtx;

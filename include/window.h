@@ -40,5 +40,7 @@ void toggleFullscreen();
 void cleanupWindow();
 void pauseCursorTimer();
 void resumeCursorTimer();
+void applyConfiguredRenderer();
+int getDisplayRefreshRate();
 
 #endif // WINDOW_H

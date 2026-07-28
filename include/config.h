@@ -33,6 +33,7 @@ constexpr const char *default_config = R"({
     "mlookSensitivity": 50,
     "raycastFov": 90,
     "raycastSupersample": 4,
+    "raycastMegatextureResidentHeight": 256,
     "devMode": false
 })";
 

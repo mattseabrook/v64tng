@@ -20,6 +20,7 @@ struct RaycastHit
     int mapX;       // Map cell X coordinate of hit
     int mapY;       // Map cell Y coordinate of hit
     float wallX;    // Exact hit point on wall (0..1 along wall surface)
+    float cosCorr;  // Perpendicular-distance correction for projection
 };
 
 //
@@ -61,6 +62,8 @@ void accumulateColumn(int x,
                       std::vector<float> &acc_g,
                       std::vector<float> &acc_b);
 void drawCrosshair(uint8_t *fb, size_t pitch, int w, int h);
+void drawMeasuredFpsOverlay(
+    uint8_t *framebuffer, size_t pitch, int width, int height);
 void renderChunk(const TileMap &tileMap,
                  const RaycastPlayer &player,
                  uint8_t *framebuffer,
@@ -77,8 +80,10 @@ void renderRaycastView(const TileMap &tileMap,
                        int w,
                        int h);
 void handleRaycastMouseMove();
+void handleRaycastMouseDelta(int deltaX, int deltaY);
 void raycastKeyDown(WPARAM key);
 void raycastKeyUp(WPARAM key);
+void resetRaycastInput();
 void updateRaycasterMovement();
 void initRaycaster();
 

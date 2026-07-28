@@ -9,6 +9,7 @@
 #include <string>
 #include <span>
 #include <expected>
+#include <memory>
 
 #include "bitmap.h"
 
@@ -46,15 +47,23 @@ struct VDXFile
     std::array<uint8_t, 6> unknown;
     int width = 0;
     int height = 0;
+    // Owning local storage for copied input bytes (standalone file path).
     std::vector<uint8_t> rawData;
+    // Non-owning view over source bytes (points to rawData or mapped archive memory).
+    std::span<const uint8_t> rawView;
+    // Keeps mapped archive memory alive when rawView points outside rawData.
+    std::shared_ptr<const uint8_t> externalDataOwner;
     std::vector<VDXChunk> chunks;
-    std::vector<std::vector<uint8_t>> frameData;
+    // Frames are shared_ptr so duplicate frames can share the same pixel buffer
+    // instead of copying the whole image (common VDX chunk type 0x00).
+    std::vector<std::shared_ptr<std::vector<uint8_t>>> frameData;
     std::vector<uint8_t> audioData;
     bool parsed = false;
 };
 
 VDXFile parseVDXFile(std::string_view filename, std::span<const uint8_t> buffer);
 VDXFile parseVDXFile(std::string_view filename, std::vector<uint8_t> &&buffer);
+VDXFile parseVDXFileBorrowed(std::string_view filename, std::span<const uint8_t> buffer, std::shared_ptr<const uint8_t> owner);
 void parseVDXChunks(VDXFile &vdxFile);
 void vdxPlay(const std::string &filename, VDXFile *preloadedVdx = nullptr);
 std::expected<VDXFile, std::string> loadSingleVDX(const std::string &room, const std::string &vdxName);

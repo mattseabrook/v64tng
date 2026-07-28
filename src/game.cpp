@@ -6,6 +6,7 @@
 #include <string_view>
 #include <algorithm>
 #include <chrono>
+#include <cctype>
 #include <thread>
 #include <filesystem>
 #include <fstream>
@@ -50,6 +51,14 @@ static std::unordered_map<std::string, std::function<void()>> action_map = {
 ////////////////////////////////////////////////////////////////////////
 
 //
+// Boot main menu view: sphinx.vdx (from INTRO.GJD) plays once and holds its
+// last frame as the menu backdrop. Deliberately no hotspots/navigations yet —
+// the menu click areas are not wired up.
+//
+static const std::vector<ViewGroup> mainMenuViews = {
+	{{"sphinx"}, {}}};
+
+//
 // Builds the view map from predefined view groups
 //
 void buildViewMap()
@@ -57,6 +66,7 @@ void buildViewMap()
 	const std::vector<const std::vector<ViewGroup> *> room_data = {
 		&foyer,
 		&diningRoom,
+		&mainMenuViews,
 		// Add other rooms here...
 	};
 	for (const auto *entries : room_data)
@@ -107,6 +117,23 @@ static std::tuple<std::string, std::string, bool, std::string> parseToken(std::s
 }
 
 //
+// Load a transient VDX independently of the current view's VDX.
+// This is critical: using getOrLoadVDX for transients would evict the
+// current VDX and leave the main view without assets after the transient ends.
+//
+static std::unique_ptr<VDXFile> loadTransientVDX(const std::string &name)
+{
+	auto result = loadSingleVDX(state.current_room, name);
+	if (!result)
+		throw std::runtime_error(result.error());
+
+	auto vdx = std::make_unique<VDXFile>(std::move(*result));
+	parseVDXChunks(*vdx);
+	vdx->parsed = true;
+	return vdx;
+}
+
+//
 // Setup VDX and view
 //
 static void setupView(const std::string &view_name, bool is_static, auto now)
@@ -152,12 +179,7 @@ void viewHandler()
 	// Transient animation  // COMPLETED: Full transients handling (load/unload symmetric to main)
 	if (!state.transient_animation_name.empty() && state.transient_animation.isPlaying)
 	{
-		state.transientVDX = &getOrLoadVDX(state.transient_animation_name); // FIXED: Load for transients (replaces broken find)
-		if (!state.transientVDX->parsed)
-		{
-			parseVDXChunks(*state.transientVDX);
-			state.transientVDX->parsed = true;
-		}
+		state.transientVDX = loadTransientVDX(state.transient_animation_name);
 		if (!state.transient_animation.totalFrames)
 			state.transient_animation.totalFrames = state.transientVDX->frameData.size();
 
@@ -170,9 +192,8 @@ void viewHandler()
 				if (!state.current_song.empty())
 					xmiPlay(state.current_song, false);
 
-				unloadVDX(state.transient_animation_name);
+				state.transientVDX.reset();
 				state.transient_animation_name.clear();
-				state.transientVDX = nullptr;
 				state.frameTiming.dirtyFrame = true; // Ensure re-render after transient
 
 				// FIXED: Refresh view to restore hotspots without restarting animation
@@ -197,7 +218,7 @@ void viewHandler()
 	}
 
 	// Load new view/sequence
-	if (state.current_view != state.previous_view || state.animation_sequence.empty())
+	if (state.current_view != state.previous_view)
 	{
 		// Clear and parse sequence
 		state.animation_sequence.clear();
@@ -222,8 +243,7 @@ void viewHandler()
 			{
 				if (state.currentVDX)
 					unloadVDX(state.currentVDX->filename);
-				if (state.transientVDX) // NEW: Unload transient on room change
-					unloadVDX(state.transientVDX->filename);
+			state.transientVDX.reset(); // Unload transient on room change
 				state.current_room = room;
 				state.previous_room = room;
 				state.animation.reset();
@@ -277,8 +297,7 @@ void viewHandler()
 				{
 					if (state.currentVDX)
 						unloadVDX(state.currentVDX->filename);
-					if (state.transientVDX)
-						unloadVDX(state.transientVDX->filename);
+				state.transientVDX.reset();
 					state.current_room = room;
 					state.previous_room = room;
 					state.animation.reset();
@@ -343,50 +362,185 @@ void maybeRenderFrame(bool force)
 {
 	using namespace std::chrono;
 
-	auto frameDuration = microseconds(
-		static_cast<long long>(1000000.0 / state.frameTiming.currentFPS));
-	auto now = steady_clock::now();
-	auto timeSinceLast = now - state.frameTiming.lastRenderTime;
-
-	if (!force && timeSinceLast < frameDuration && !state.frameTiming.dirtyFrame)
+	// Never render once shutdown has begun — the window (and its Vulkan
+	// surface) may already be destroyed.
+	if (g_quitRequested)
 		return;
 
-	if (timeSinceLast < frameDuration)
+	const auto frameDuration = state.animation.getFrameDuration(state.frameTiming.currentFPS);
+	const auto minDuration = microseconds(
+		static_cast<long long>(1000000.0 / (std::max)(1, getDisplayRefreshRate())));
+	const auto now = steady_clock::now();
+	const auto elapsed = now - state.frameTiming.lastRenderTime;
+
+	auto waitUntil = [&](auto duration) {
+#ifdef _WIN32
+		const auto remaining = duration_cast<milliseconds>(duration - elapsed);
+		MsgWaitForMultipleObjects(
+			0, nullptr, FALSE,
+			static_cast<DWORD>((std::max)(
+				static_cast<long long>(remaining.count()), 0LL)),
+			QS_ALLINPUT);
+#else
+		std::this_thread::sleep_for(duration - elapsed);
+#endif
+	};
+	if (!force && state.raycast.enabled && !state.frameTiming.dirtyFrame)
 	{
 #ifdef _WIN32
-		// Use a high-resolution waitable timer to reduce jitter compared to sleep_for
-		static HANDLE s_timer = nullptr;
-		if (!s_timer)
-		{
-			s_timer = CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
-			if (!s_timer)
-			{
-				// Fallback to normal timer if high-res not supported
-				s_timer = CreateWaitableTimerW(nullptr, FALSE, nullptr);
-			}
-		}
-		auto remaining = duration_cast<microseconds>(frameDuration - timeSinceLast);
-		// SetWaitableTimer expects relative time in 100-ns units (negative for relative)
-		LARGE_INTEGER dueTime;
-		long long hundredNs = -static_cast<long long>(remaining.count()) * 10; // microseconds to 100ns
-		dueTime.QuadPart = hundredNs;
-		// Use a small period of 0; do not resume; no completion routine
-		if (s_timer && SetWaitableTimer(s_timer, &dueTime, 0, nullptr, nullptr, FALSE))
-		{
-			WaitForSingleObject(s_timer, INFINITE);
-		}
-		else
-		{
-			std::this_thread::sleep_for(remaining);
-		}
-#else
-		std::this_thread::sleep_for(frameDuration - timeSinceLast);
+		const auto idleWait = duration_cast<milliseconds>(minDuration);
+		MsgWaitForMultipleObjects(0, nullptr, FALSE,
+			static_cast<DWORD>(std::max<long long>(1, idleWait.count())), QS_ALLINPUT);
 #endif
+		return;
+	}
+	if (!force && elapsed < minDuration)
+	{
+		waitUntil(minDuration);
+		return;
+	}
+	// Outside of video playback, cap idle wait to the display refresh interval
+	// so interactive input (cursor/click feedback) isn't tied to a slow video FPS.
+	const auto idleDuration = (state.animation.isPlaying || state.transient_animation.isPlaying)
+		? frameDuration
+		: minDuration;
+	if (!force && elapsed < idleDuration && !state.frameTiming.dirtyFrame)
+	{
+		waitUntil(idleDuration);
+		return;
 	}
 
+	const auto renderStart = steady_clock::now();
 	renderFrame();
-	state.frameTiming.lastRenderTime = steady_clock::now();
+	const auto renderEnd = steady_clock::now();
+	if (state.frameTiming.fpsWindowStart.time_since_epoch().count() == 0)
+		state.frameTiming.fpsWindowStart = renderStart;
+	++state.frameTiming.measuredFrameCount;
+	state.frameTiming.measuredRenderSeconds += duration<double>(renderEnd - renderStart).count();
+	const double fpsWindowSeconds = duration<double>(renderEnd - state.frameTiming.fpsWindowStart).count();
+	if (fpsWindowSeconds >= 0.5)
+	{
+		if (state.frameTiming.measuredRenderSeconds > 0.0)
+			state.frameTiming.measuredFPS =
+				state.frameTiming.measuredFrameCount / state.frameTiming.measuredRenderSeconds;
+		state.frameTiming.measuredFrameCount = 0;
+		state.frameTiming.measuredRenderSeconds = 0.0;
+		state.frameTiming.fpsWindowStart = renderEnd;
+	}
+	state.frameTiming.lastRenderTime = renderStart;
 	state.frameTiming.dirtyFrame = false;
+}
+
+/*
+===============================================================================
+Function Name: playIntroVideos
+
+Description:
+		- Plays the two logo cutscenes (Virgin / Trilobyte).
+		- These only run when starting a new game; they are no longer
+		  part of the boot sequence.
+===============================================================================
+*/
+static void playIntroVideos()
+{
+	std::ifstream file("Vielogo.vdx", std::ios::binary);
+	if (file)
+	{
+		try
+		{
+			std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)), {});
+			VDXFile vdx = parseVDXFile("Vielogo.vdx", std::move(buffer));
+			parseVDXChunks(vdx);
+			const size_t cropSize = 640 * 80 * 3;
+			for (auto &frame : vdx.frameData)
+			{
+				if (frame->size() > cropSize)
+					frame->erase(frame->begin(), frame->begin() + cropSize);
+			}
+
+			vdxPlay("Vielogo.vdx", &vdx);
+		}
+		catch (const std::exception &e)
+		{
+			std::println(stderr, "WARNING: Failed to play Vielogo.vdx: {}", e.what());
+		}
+	}
+	if (!g_quitRequested)
+	{
+		try
+		{
+			vdxPlay("TRILOGO.VDX");
+		}
+		catch (const std::exception &e)
+		{
+			std::println(stderr, "WARNING: Failed to play TRILOGO.VDX: {}", e.what());
+		}
+	}
+}
+
+/*
+===============================================================================
+Function Name: enterFoyer
+
+Description:
+		- Leaves the boot main menu and enters the main foyer
+		  (FH:f_1bc, held on its last frame).
+===============================================================================
+*/
+static void enterFoyer()
+{
+	state.mainMenu.active = false;
+	state.current_view = "FH:f_1bc;static";
+	state.animation_sequence.clear();
+	viewHandler();
+	maybeRenderFrame(true);
+	forceUpdateCursor();
+}
+
+/*
+===============================================================================
+Function Name: startNewGame
+
+Description:
+		- Starts a new game: logo cutscenes, then the main foyer.
+		- Not wired to any menu hotspot yet; will be hooked to the
+		  main menu's "New Game" option later.
+===============================================================================
+*/
+void startNewGame()
+{
+	state.mainMenu.active = false;
+	playIntroVideos();
+	if (g_quitRequested)
+		return;
+	enterFoyer();
+}
+
+/*
+===============================================================================
+Function Name: mainMenuKeyDown
+
+Description:
+		- Handles cheat code entry on the boot main menu.
+		- Typing "zaphodbeeblebrox" (the original game's god-mode cheat)
+		  jumps straight to the main foyer, skipping the intro cutscenes.
+===============================================================================
+*/
+void mainMenuKeyDown(char c)
+{
+	if (!state.mainMenu.active)
+		return;
+
+	static constexpr std::string_view cheat = "zaphodbeeblebrox";
+	auto &buf = state.mainMenu.cheatBuffer;
+	buf.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+	if (buf.size() > cheat.size())
+		buf.erase(0, buf.size() - cheat.size());
+	if (buf == cheat)
+	{
+		buf.clear();
+		enterFoyer();
+	}
 }
 
 /*
@@ -412,30 +566,15 @@ void init()
 
 	buildViewMap();
 
-	// Intro Videos and initial music: skip entirely in raycast mode
+	// Boot into the main menu: gu61 starts immediately, then sphinx.vdx from
+	// INTRO.GJD plays once (synchronized with the music) and holds its last
+	// frame as the menu backdrop. The two logo cutscenes only play on
+	// "New Game" (see startNewGame). Skip the menu entirely in raycast mode.
 	if (!state.raycast.enabled && !g_quitRequested)
 	{
-		// Intro Videos
-		{
-			std::ifstream file("Vielogo.vdx", std::ios::binary);
-			if (file)
-			{
-				std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)), {});
-				VDXFile vdx = parseVDXFile("Vielogo.vdx", std::move(buffer));
-				parseVDXChunks(vdx);
-				const size_t cropSize = 640 * 80 * 3;
-				for (auto &frame : vdx.frameData)
-					if (frame.size() > cropSize)
-						frame.erase(frame.begin(), frame.begin() + cropSize);
-
-				vdxPlay("Vielogo.vdx", &vdx);
-			}
-			if (!g_quitRequested)
-				vdxPlay("TRILOGO.VDX");
-		}
-
-		if (!g_quitRequested)
-			xmiPlay("gu61");
+		xmiPlay("gu61");
+		state.mainMenu.active = true;
+		state.current_view = "INTRO:sphinx";
 	}
 
 	if (!g_quitRequested)
@@ -460,6 +599,8 @@ void init()
 		while (running)
 		{
 			running = processEvents();
+			if (!running)
+				break; // Window is gone — do not render after WM_QUIT
 			viewHandler();
 			maybeRenderFrame();
 		}
@@ -480,17 +621,14 @@ void init()
 	musicShutdown();
 
 	// PCM
-	wavStop();
+	audioShutdown();
 
 	// Resources
 	if (state.currentVDX)
 	{
 		unloadVDX(state.currentVDX->filename);
 	}
-	if (state.transientVDX)
-	{
-		unloadVDX(state.transientVDX->filename);
-	}
+	state.transientVDX.reset();
 	cleanupCursors();
 	cleanupWindow();
 #ifdef _WIN32

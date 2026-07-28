@@ -3,9 +3,6 @@
 #ifndef MENU_H
 #define MENU_H
 
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
 #include <windows.h>
 
 enum class MenuCommands
@@ -14,6 +11,7 @@ enum class MenuCommands
     MC_FILE_SAVE,
     MC_FILE_EXIT,
     MC_TOOLS_WINDOW,
+    MC_EDIT_SETTINGS,
     MC_HELP_ABOUT
 };
 

@@ -2,6 +2,9 @@
 
 #include <Windows.h>
 #include <windowsx.h>
+#include <algorithm>
+#include <cctype>
+#include <string>
 
 #include "../resource.h"
 
@@ -24,6 +27,22 @@ bool g_menuActive = false;
 HHOOK g_mouseHook = NULL;
 HCURSOR currentCursor = nullptr;
 bool g_userIsResizing = false;
+static bool g_rawMouseInput = false;
+static bool g_rendererInitialized = false;
+
+static RendererType configuredRenderer()
+{
+	std::string configured =
+		config.value("renderer", std::string("DirectX"));
+	std::transform(
+		configured.begin(), configured.end(), configured.begin(),
+		[](unsigned char ch) {
+			return static_cast<char>(std::toupper(ch));
+		});
+	return configured == "VULKAN"
+		? RendererType::VULKAN
+		: RendererType::DIRECTX;
+}
 RendererType renderer;
 float scaleFactor = 1.0f;
 DWORD g_windowedStyle = WS_OVERLAPPEDWINDOW;
@@ -186,8 +205,14 @@ LRESULT HandleNCHitTest(HWND hwnd, LPARAM lParam)
 
 LRESULT HandleMouseMove(LPARAM lParam)
 {
+	if (state.raycast.enabled)
+	{
+		if (!g_rawMouseInput)
+			handleRaycastMouseMove();
+		return 0;
+	}
 	POINT pt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
-	state.raycast.enabled ? handleRaycastMouseMove() : updateCursorBasedOnPosition(pt);
+	updateCursorBasedOnPosition(pt);
 	return 0;
 }
 
@@ -306,6 +331,24 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return HandleNCHitTest(hwnd, lParam);
 	case WM_MOUSEMOVE:
 		return HandleMouseMove(lParam);
+	case WM_INPUT:
+		if (state.raycast.enabled && g_rawMouseInput)
+		{
+			RAWINPUT raw{};
+			UINT rawSize = sizeof(raw);
+			if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT,
+				&raw, &rawSize, sizeof(RAWINPUTHEADER)) != static_cast<UINT>(-1) &&
+				raw.header.dwType == RIM_TYPEMOUSE)
+			{
+				handleRaycastMouseDelta(
+					raw.data.mouse.lLastX, raw.data.mouse.lLastY);
+			}
+			return 0;
+		}
+		break;
+	case WM_KILLFOCUS:
+		resetRaycastInput();
+		return 0;
 	case WM_LBUTTONDOWN:
 		return HandleLButtonDown(lParam);
 	case WM_KEYDOWN:
@@ -315,6 +358,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				g_mapOverlayVisible ? CloseMapOverlay() : OpenMapOverlay(hwnd);
 			else
 				raycastKeyDown(wParam);
+		}
+		else if (state.mainMenu.active && wParam >= 'A' && wParam <= 'Z')
+		{
+			mainMenuKeyDown(static_cast<char>(wParam));
 		}
 		return 0;
 	case WM_KEYUP:
@@ -491,15 +538,17 @@ void initWindow()
 	}
 	if (!config["fullscreen"])
 		initMenu(g_hwnd);
-	renderer = (config["renderer"] == "VULKAN") ? RendererType::VULKAN : RendererType::DIRECTX;
+	renderer = configuredRenderer();
 	initializeRendererFuncs[static_cast<int>(renderer)]();
+	g_rendererInitialized = true;
 	ShowWindow(g_hwnd, SW_SHOW);
 	g_mouseHook = SetWindowsHookEx(WH_MOUSE, MouseHookProc, NULL, GetCurrentThreadId());
 	SetTimer(g_hwnd, CURSOR_TIMER_ID, CURSOR_TIMER_INTERVAL, NULL);
+	RAWINPUTDEVICE rid = {0x01, 0x02, 0, g_hwnd};
+	g_rawMouseInput =
+		RegisterRawInputDevices(&rid, 1, sizeof(rid)) == TRUE;
 	if (state.raycast.enabled)
-	{ // Raw input for low latency mouse
-		RAWINPUTDEVICE rid = {0x01, 0x02, 0, g_hwnd};
-		RegisterRawInputDevices(&rid, 1, sizeof(rid));
+	{
 		// Hide the OS cursor for raycast mode (single call)
 		ShowCursor(FALSE);
 	}
@@ -536,6 +585,11 @@ void updateCursorBasedOnPosition(POINT clientPos)
 	if (g_menuActive)
 	{
 		g_activeCursorType = CURSOR_DEFAULT; // Will use system arrow
+		return;
+	}
+	if (state.mainMenu.active)
+	{
+		g_activeCursorType = CURSOR_PYRAMID; // Boot main menu cursor
 		return;
 	}
 	if (state.raycast.enabled || state.animation.isPlaying || state.transient_animation.isPlaying || !state.view)
@@ -575,10 +629,68 @@ void renderFrame()
 	state.raycast.enabled ? renderRaycastFuncsArr[idx]() : renderFrameFuncsArr[idx]();
 }
 
+void applyConfiguredRenderer()
+{
+	const RendererType requested = configuredRenderer();
+	if (!g_rendererInitialized || requested == renderer)
+		return;
+
+	cleanupFuncsArr[static_cast<int>(renderer)]();
+	g_rendererInitialized = false;
+	renderer = requested;
+	initializeRendererFuncs[static_cast<int>(renderer)]();
+	g_rendererInitialized = true;
+	state.frameTiming.dirtyFrame = true;
+}
+
 void cleanupWindow()
 {
 	// Restore the OS cursor visibility
 	if (state.raycast.enabled)
 		ShowCursor(TRUE);
-	cleanupFuncsArr[static_cast<int>(renderer)]();
+	if (g_rendererInitialized)
+	{
+		cleanupFuncsArr[static_cast<int>(renderer)]();
+		g_rendererInitialized = false;
+	}
+	if (g_hwnd)
+	{
+		DestroyWindow(g_hwnd);
+		g_hwnd = nullptr;
+	}
+}
+
+int getDisplayRefreshRate()
+{
+	if (!g_hwnd)
+		return 60;
+	const HMONITOR monitor =
+		MonitorFromWindow(g_hwnd, MONITOR_DEFAULTTONEAREST);
+	if (!monitor)
+		return 60;
+
+	static HMONITOR cachedMonitor = nullptr;
+	static int cachedRefreshRate = 60;
+	if (monitor == cachedMonitor)
+		return cachedRefreshRate;
+
+	MONITORINFOEXA monitorInfo{};
+	monitorInfo.cbSize = sizeof(monitorInfo);
+	if (GetMonitorInfoA(monitor, &monitorInfo))
+	{
+		DEVMODEA mode{};
+		mode.dmSize = sizeof(mode);
+		if (EnumDisplaySettingsA(
+				monitorInfo.szDevice, ENUM_CURRENT_SETTINGS, &mode) &&
+			mode.dmDisplayFrequency > 1)
+		{
+			cachedMonitor = monitor;
+			cachedRefreshRate =
+				static_cast<int>(mode.dmDisplayFrequency);
+			return cachedRefreshRate;
+		}
+	}
+	cachedMonitor = monitor;
+	cachedRefreshRate = 60;
+	return cachedRefreshRate;
 }

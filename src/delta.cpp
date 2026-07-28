@@ -28,12 +28,15 @@ Return:
 ===============================================================================
 */
 
-void getDeltaBitmapData(
+bool getDeltaBitmapDataChecked(
 	std::span<const uint8_t> buffer,
 	std::span<RGBColor> palette,
 	std::span<uint8_t> frameBuffer,
 	int width)
 {
+	if (buffer.size() < 2 || palette.size() < 256 || width <= 0 ||
+		frameBuffer.size() % (static_cast<size_t>(width) * 3) != 0)
+		return false;
 	std::span<uint8_t> deltaFrame = frameBuffer;
 
 	const uint16_t localPaletteSize = readLittleEndian16(buffer);
@@ -61,6 +64,8 @@ void getDeltaBitmapData(
 	int xPos = 0, yPos = 0;
 	auto updatePixel = [&](int x, int y, const RGBColor &color)
 	{
+		if (x < 0 || y < 0)
+			return;
 		const size_t pixelIndex = (y * width + x) * 3;
 		if (pixelIndex + 2 < deltaFrame.size())
 		{
@@ -78,6 +83,8 @@ void getDeltaBitmapData(
 		{
 		case 0x00 ... 0x5F:
 		{
+			if (buffer.size() - bufferIndex < 2)
+				return false;
 			const uint16_t mapValue = readLittleEndian16({MapField.data() + (opcode * 2), 2});
 			const uint8_t color1 = buffer[bufferIndex++], color0 = buffer[bufferIndex++];
 			for (int i = 0; i < 16; ++i)
@@ -89,6 +96,8 @@ void getDeltaBitmapData(
 		}
 		case 0x60:
 		{
+			if (buffer.size() - bufferIndex < 16)
+				return false;
 			for (int i = 0; i < 16; ++i)
 			{
 				updatePixel(xPos + (i % 4), yPos + (i / 4), palette[buffer[bufferIndex++]]);
@@ -109,6 +118,8 @@ void getDeltaBitmapData(
 		}
 		case 0x6C ... 0x75:
 		{
+			if (bufferIndex >= buffer.size())
+				return false;
 			const int repeatCount = opcode - 0x6B;
 			const auto &color = palette[buffer[bufferIndex++]];
 			for (int r = 0; r < repeatCount; ++r)
@@ -124,6 +135,8 @@ void getDeltaBitmapData(
 		case 0x76 ... 0x7F:
 		{
 			const int colorCount = opcode - 0x75;
+			if (buffer.size() - bufferIndex < static_cast<size_t>(colorCount))
+				return false;
 			for (int i = 0; i < colorCount; ++i)
 			{
 				const auto &color = palette[buffer[bufferIndex++]];
@@ -137,6 +150,8 @@ void getDeltaBitmapData(
 		}
 		default:
 		{
+			if (buffer.size() - (bufferIndex - 1) < 4)
+				return false;
 			const uint16_t mapValue = readLittleEndian16(buffer.subspan(bufferIndex - 1));
 			const auto &color1 = palette[buffer[bufferIndex + 1]];
 			const auto &color0 = palette[buffer[bufferIndex + 2]];
@@ -150,4 +165,14 @@ void getDeltaBitmapData(
 		}
 		}
 	}
+	return true;
+}
+
+void getDeltaBitmapData(
+	std::span<const uint8_t> buffer,
+	std::span<RGBColor> palette,
+	std::span<uint8_t> frameBuffer,
+	int width)
+{
+	(void)getDeltaBitmapDataChecked(buffer, palette, frameBuffer, width);
 }

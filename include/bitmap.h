@@ -46,6 +46,7 @@ constexpr uint16_t readLittleEndian16(std::span<const uint8_t> data)
 //=============================================================================
 
 // Function prototypes
+bool getBitmapDataChecked(std::span<const uint8_t> chunkData, std::span<RGBColor> palette, std::span<uint8_t> outputFrame);
 void getBitmapData(std::span<const uint8_t> chunkData, std::span<RGBColor> palette, std::span<uint8_t> outputFrame);
 std::vector<uint8_t> packBitmapData(std::span<const uint8_t> rawImageData, std::span<const RGBColor> palette, int width, int height);
 

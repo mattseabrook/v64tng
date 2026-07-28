@@ -6,7 +6,7 @@
 #include <vector>
 #include <algorithm>
 #include <d3dcompiler.h>
-#include <dxgi1_4.h>
+#include <dxgi1_6.h>
 
 #include "d2d.h"
 #include "config.h"
@@ -424,6 +424,63 @@ static void resizeGPUBuffers(UINT width, UINT height)
     }
 }
 
+static Microsoft::WRL::ComPtr<IDXGIAdapter1> selectHighPerformanceAdapter()
+{
+    Microsoft::WRL::ComPtr<IDXGIFactory1> factory;
+    if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(factory.GetAddressOf()))))
+        return nullptr;
+
+    Microsoft::WRL::ComPtr<IDXGIFactory6> factory6;
+    factory.As(&factory6);
+    Microsoft::WRL::ComPtr<IDXGIAdapter1> best;
+    uint64_t bestScore = 0;
+
+    for (UINT index = 0;; ++index)
+    {
+        Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
+        const HRESULT hr = factory6
+            ? factory6->EnumAdapterByGpuPreference(
+                  index,
+                  DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
+                  IID_PPV_ARGS(adapter.GetAddressOf()))
+            : factory->EnumAdapters1(index, adapter.GetAddressOf());
+        if (hr == DXGI_ERROR_NOT_FOUND)
+            break;
+        if (FAILED(hr) || !adapter)
+            continue;
+
+        DXGI_ADAPTER_DESC1 desc{};
+        if (FAILED(adapter->GetDesc1(&desc)) ||
+            (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE))
+        {
+            continue;
+        }
+
+        uint64_t score = static_cast<uint64_t>(desc.DedicatedVideoMemory);
+        if (desc.DedicatedVideoMemory > 0)
+            score += (uint64_t{1} << 61);
+        if (desc.VendorId == 0x10DE)
+            score += (uint64_t{1} << 62);
+        if (!best || score > bestScore)
+        {
+            best = adapter;
+            bestScore = score;
+        }
+    }
+
+    if (best)
+    {
+        DXGI_ADAPTER_DESC1 desc{};
+        if (SUCCEEDED(best->GetDesc1(&desc)))
+        {
+            OutputDebugStringW(L"Selected high-performance D3D11 adapter: ");
+            OutputDebugStringW(desc.Description);
+            OutputDebugStringW(L"\n");
+        }
+    }
+    return best;
+}
+
 void initializeD2D()
 {
     HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, __uuidof(ID2D1Factory1), reinterpret_cast<void **>(d2dCtx.factory1.GetAddressOf()));
@@ -431,7 +488,34 @@ void initializeD2D()
         throw std::runtime_error("Failed D2D factory");
 
     D3D_FEATURE_LEVEL level;
-    hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, D3D11_CREATE_DEVICE_BGRA_SUPPORT, nullptr, 0, D3D11_SDK_VERSION, d2dCtx.d3dDevice.GetAddressOf(), &level, d2dCtx.d3dContext.GetAddressOf());
+    auto selectedAdapter = selectHighPerformanceAdapter();
+    hr = D3D11CreateDevice(
+        selectedAdapter.Get(),
+        selectedAdapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE,
+        nullptr,
+        D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+        nullptr,
+        0,
+        D3D11_SDK_VERSION,
+        d2dCtx.d3dDevice.GetAddressOf(),
+        &level,
+        d2dCtx.d3dContext.GetAddressOf());
+    if (FAILED(hr) && selectedAdapter)
+    {
+        d2dCtx.d3dDevice.Reset();
+        d2dCtx.d3dContext.Reset();
+        hr = D3D11CreateDevice(
+            nullptr,
+            D3D_DRIVER_TYPE_HARDWARE,
+            nullptr,
+            D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+            nullptr,
+            0,
+            D3D11_SDK_VERSION,
+            d2dCtx.d3dDevice.GetAddressOf(),
+            &level,
+            d2dCtx.d3dContext.GetAddressOf());
+    }
     if (FAILED(hr))
         throw std::runtime_error("Failed D3D11 device");
 
@@ -448,9 +532,12 @@ void initializeD2D()
     // Ensure all coordinates are interpreted as physical pixels to match Vulkan behavior
     d2dCtx.dc->SetUnitMode(D2D1_UNIT_MODE_PIXELS);
 
-    // Get DXGI Factory3 for waitable swap chain support
+    // Use the selected device's own factory for the swap chain.
+    Microsoft::WRL::ComPtr<IDXGIAdapter> deviceAdapter;
     Microsoft::WRL::ComPtr<IDXGIFactory3> dxgiFactory;
-    hr = CreateDXGIFactory2(0, IID_PPV_ARGS(dxgiFactory.GetAddressOf()));
+    hr = dxgiDevice->GetAdapter(deviceAdapter.GetAddressOf());
+    if (SUCCEEDED(hr))
+        hr = deviceAdapter->GetParent(IID_PPV_ARGS(dxgiFactory.GetAddressOf()));
     if (FAILED(hr))
         throw std::runtime_error("Failed DXGI factory");
 
@@ -619,22 +706,26 @@ void resizeTexture(UINT width, UINT height)
 
 void renderFrameD2D()
 {
-    // Wait on waitable swap chain for proper frame pacing (reduces input latency)
+    const VDXFile *vdx = state.transientVDX ? state.transientVDX.get() : state.currentVDX.get();
+    size_t frameIdx = state.transientVDX ? state.transient_frame_index : state.currentFrameIndex;
+    if (!vdx)
+        return;
+    if (vdx->frameData.empty())
+        return;
+    if (frameIdx >= vdx->frameData.size())
+        frameIdx = vdx->frameData.size() - 1;
+
+    // Wait on waitable swap chain only when a frame is actually available to present.
     if (d2dCtx.frameLatencyWaitableObject)
     {
         WaitForSingleObjectEx(d2dCtx.frameLatencyWaitableObject, 100, TRUE);
     }
 
-    const VDXFile *vdx = state.transientVDX ? state.transientVDX : state.currentVDX.get();
-    size_t frameIdx = state.transientVDX ? state.transient_frame_index : state.currentFrameIndex;
-    if (!vdx)
-        return;
-
-    std::span<const uint8_t> pixels = vdx->frameData[frameIdx];
+    std::span<const uint8_t> pixels = *vdx->frameData[frameIdx];
 
     // If the content source changed (e.g., intro -> foyer, or transient start/stop),
     // force a full refresh to avoid mixing rows from the previous clip.
-    bool isTransient = (state.transientVDX != nullptr);
+    bool isTransient = (state.transientVDX.get() != nullptr);
     if (d2dCtx.lastVDX != vdx || d2dCtx.lastWasTransient != isTransient)
     {
         d2dCtx.forceFullUpdate = true;
@@ -658,66 +749,96 @@ void renderFrameD2D()
     {
         if (preferGPU && d2dCtx.computeShader)
         {
-            // GPU compute path: Upload RGB data and dispatch compute shader
-            
-            // Upload RGB data to GPU buffer using WRITE_DISCARD (most efficient)
-            D3D11_MAPPED_SUBRESOURCE mappedResource;
-            HRESULT hr = d2dCtx.d3dContext->Map(
-                d2dCtx.inputRGBBuffer.Get(),
-                0,
-                D3D11_MAP_WRITE_DISCARD,
-                0,
-                &mappedResource
-            );
-            
-            if (SUCCEEDED(hr))
+            // GPU compute path: upload changed RGB row ranges into a WRITE_DISCARD-mapped buffer.
+            const UINT rowBytes = d2dCtx.textureWidth * 3;
+            const size_t totalBytes = static_cast<size_t>(rowBytes) * d2dCtx.textureHeight;
+            if (!changed.empty() && rowBytes > 0 && d2dCtx.previousFrameData.size() >= totalBytes)
             {
-                // Copy RGB data to GPU buffer
-                size_t copySize = std::min(pixels.size(), static_cast<size_t>(d2dCtx.textureWidth * d2dCtx.textureHeight * 3));
-                memcpy(mappedResource.pData, pixels.data(), copySize);
-                d2dCtx.d3dContext->Unmap(d2dCtx.inputRGBBuffer.Get(), 0);
-                
-                // Only update constant buffer when dimensions change (avoids redundant Map/Unmap)
-                if (d2dCtx.lastConstantWidth != d2dCtx.textureWidth || 
-                    d2dCtx.lastConstantHeight != d2dCtx.textureHeight)
+                D3D11_MAPPED_SUBRESOURCE mappedResource{};
+                HRESULT mapHr = d2dCtx.d3dContext->Map(
+                    d2dCtx.inputRGBBuffer.Get(),
+                    0,
+                    D3D11_MAP_WRITE_DISCARD,
+                    0,
+                    &mappedResource);
+
+                if (SUCCEEDED(mapHr))
                 {
-                    D3D11_MAPPED_SUBRESOURCE cbMapped;
-                    hr = d2dCtx.d3dContext->Map(
-                        d2dCtx.constantBuffer.Get(),
-                        0,
-                        D3D11_MAP_WRITE_DISCARD,
-                        0,
-                        &cbMapped
-                    );
-                    
-                    if (SUCCEEDED(hr))
+                    uint8_t *dst = static_cast<uint8_t *>(mappedResource.pData);
+                    // WRITE_DISCARD invalidates every byte in the resource.  Upload only
+                    // changed row runs; unchanged rows remain valid from the prior frame.
+                    size_t runStart = changed[0];
+                    size_t runEnd = changed[0];
+                    auto copyRun = [&](size_t start, size_t end)
                     {
-                        UINT* constants = static_cast<UINT*>(cbMapped.pData);
-                        constants[0] = d2dCtx.textureWidth;
-                        constants[1] = d2dCtx.textureHeight;
-                        constants[2] = 0; // padding
-                        constants[3] = 0; // padding
-                        d2dCtx.d3dContext->Unmap(d2dCtx.constantBuffer.Get(), 0);
-                        d2dCtx.lastConstantWidth = d2dCtx.textureWidth;
-                        d2dCtx.lastConstantHeight = d2dCtx.textureHeight;
+                        const size_t offset = static_cast<size_t>(start) * rowBytes;
+                        const size_t bytes = (end - start + 1) * rowBytes;
+                        std::memcpy(dst + offset, d2dCtx.previousFrameData.data() + offset, bytes);
+                    };
+                    for (size_t i = 1; i < changed.size(); ++i)
+                    {
+                        if (changed[i] == runEnd + 1)
+                        {
+                            runEnd = changed[i];
+                        }
+                        else
+                        {
+                            copyRun(runStart, runEnd);
+                            runStart = changed[i];
+                            runEnd = changed[i];
+                        }
                     }
+                    copyRun(runStart, runEnd);
+
+                    d2dCtx.d3dContext->Unmap(d2dCtx.inputRGBBuffer.Get(), 0);
                 }
-                
-                // Bind resources and dispatch compute shader
-                d2dCtx.d3dContext->CSSetShader(d2dCtx.computeShader.Get(), nullptr, 0);
-                d2dCtx.d3dContext->CSSetConstantBuffers(0, 1, d2dCtx.constantBuffer.GetAddressOf());
-                d2dCtx.d3dContext->CSSetShaderResources(0, 1, d2dCtx.inputRGBSRV.GetAddressOf());
-                d2dCtx.d3dContext->CSSetUnorderedAccessViews(0, 1, d2dCtx.frameTextureUAV.GetAddressOf(), nullptr);
-                
-                // Dispatch compute shader (8x8 thread groups)
-                UINT dispatchX = (d2dCtx.textureWidth + 7) / 8;
-                UINT dispatchY = (d2dCtx.textureHeight + 7) / 8;
-                d2dCtx.d3dContext->Dispatch(dispatchX, dispatchY, 1);
-                
-                // Unbind UAV only (keep shader bound for potential next dispatch)
-                ID3D11UnorderedAccessView* nullUAV[] = { nullptr };
-                d2dCtx.d3dContext->CSSetUnorderedAccessViews(0, 1, nullUAV, nullptr);
+                else
+                {
+                    // Do not dispatch using undefined/stale input after an upload failure.
+                    return;
+                }
             }
+
+            // Only update constant buffer when dimensions change (avoids redundant Map/Unmap)
+            if (d2dCtx.lastConstantWidth != d2dCtx.textureWidth ||
+                d2dCtx.lastConstantHeight != d2dCtx.textureHeight)
+            {
+                D3D11_MAPPED_SUBRESOURCE cbMapped;
+                HRESULT hr = d2dCtx.d3dContext->Map(
+                    d2dCtx.constantBuffer.Get(),
+                    0,
+                    D3D11_MAP_WRITE_DISCARD,
+                    0,
+                    &cbMapped
+                );
+                
+                if (SUCCEEDED(hr))
+                {
+                    UINT* constants = static_cast<UINT*>(cbMapped.pData);
+                    constants[0] = d2dCtx.textureWidth;
+                    constants[1] = d2dCtx.textureHeight;
+                    constants[2] = 0; // padding
+                    constants[3] = 0; // padding
+                    d2dCtx.d3dContext->Unmap(d2dCtx.constantBuffer.Get(), 0);
+                    d2dCtx.lastConstantWidth = d2dCtx.textureWidth;
+                    d2dCtx.lastConstantHeight = d2dCtx.textureHeight;
+                }
+            }
+
+            // Bind resources and dispatch compute shader
+            d2dCtx.d3dContext->CSSetShader(d2dCtx.computeShader.Get(), nullptr, 0);
+            d2dCtx.d3dContext->CSSetConstantBuffers(0, 1, d2dCtx.constantBuffer.GetAddressOf());
+            d2dCtx.d3dContext->CSSetShaderResources(0, 1, d2dCtx.inputRGBSRV.GetAddressOf());
+            d2dCtx.d3dContext->CSSetUnorderedAccessViews(0, 1, d2dCtx.frameTextureUAV.GetAddressOf(), nullptr);
+
+            // Dispatch compute shader (8x8 thread groups)
+            UINT dispatchX = (d2dCtx.textureWidth + 7) / 8;
+            UINT dispatchY = (d2dCtx.textureHeight + 7) / 8;
+            d2dCtx.d3dContext->Dispatch(dispatchX, dispatchY, 1);
+
+            // Unbind UAV only (keep shader bound for potential next dispatch)
+            ID3D11UnorderedAccessView* nullUAV[] = { nullptr };
+            d2dCtx.d3dContext->CSSetUnorderedAccessViews(0, 1, nullUAV, nullptr);
         }
         else
         {
@@ -747,9 +868,8 @@ void renderFrameD2D()
                 // Find contiguous regions and batch copy
                 if (!changed.empty())
                 {
-                    // Sort and merge into contiguous regions
+                    // changed is already returned in ascending order; merge into contiguous regions
                     std::vector<size_t> sorted(changed.begin(), changed.end());
-                    std::sort(sorted.begin(), sorted.end());
                     
                     size_t regionStart = sorted[0];
                     size_t regionEnd = sorted[0];
@@ -876,6 +996,11 @@ static void updateRaycastTileMap(const TileMap& tileMap)
     UINT mapHeight = static_cast<UINT>(tileMap.size());
     UINT mapWidth = static_cast<UINT>(tileMap[0].size());
     
+    const bool mapCurrent = d2dCtx.tileMapTexture && d2dCtx.tileMapSRV &&
+                            d2dCtx.lastMapWidth == mapWidth && d2dCtx.lastMapHeight == mapHeight;
+    if (mapCurrent)
+        return;
+
     // Check if we need to recreate the texture
     if (!d2dCtx.tileMapTexture || d2dCtx.lastMapWidth != mapWidth || d2dCtx.lastMapHeight != mapHeight)
     {
@@ -941,6 +1066,9 @@ static void updateRaycastEdgeOffsets(const TileMap& tileMap)
 {
     UINT mapHeight = static_cast<UINT>(tileMap.size());
     UINT mapWidth = static_cast<UINT>(tileMap[0].size());
+	if (d2dCtx.edgeOffsetsBuffer && d2dCtx.edgeOffsetsSRV &&
+		d2dCtx.lastEdgeMapWidth == mapWidth && d2dCtx.lastEdgeMapHeight == mapHeight)
+		return;
 
     const size_t count = static_cast<size_t>(mapWidth) * mapHeight * 4ull;
     // Store triplets: [offset,width,dirFlag] for each edge entry
@@ -961,7 +1089,9 @@ static void updateRaycastEdgeOffsets(const TileMap& tileMap)
 
     // Recreate buffer if size changed or not created
     size_t byteSize = table.size() * sizeof(uint32_t);
-    bool needRecreate = !d2dCtx.edgeOffsetsBuffer || !d2dCtx.edgeOffsetsSRV;
+    const UINT elementCount = static_cast<UINT>(count * 3ull);
+    bool needRecreate = !d2dCtx.edgeOffsetsBuffer || !d2dCtx.edgeOffsetsSRV ||
+                        d2dCtx.edgeOffsetsElementCount != elementCount;
     if (needRecreate)
     {
         d2dCtx.edgeOffsetsBuffer.Reset();
@@ -983,7 +1113,7 @@ static void updateRaycastEdgeOffsets(const TileMap& tileMap)
         srv.Format = DXGI_FORMAT_R32_UINT;
         srv.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
         srv.Buffer.FirstElement = 0;
-        srv.Buffer.NumElements = static_cast<UINT>(count * 3ull);
+        srv.Buffer.NumElements = elementCount;
         hr = d2dCtx.d3dDevice->CreateShaderResourceView(d2dCtx.edgeOffsetsBuffer.Get(), &srv, d2dCtx.edgeOffsetsSRV.GetAddressOf());
         if (FAILED(hr)) throw std::runtime_error("Failed to create edgeOffsets SRV");
     }
@@ -992,6 +1122,9 @@ static void updateRaycastEdgeOffsets(const TileMap& tileMap)
         // Update contents
         d2dCtx.d3dContext->UpdateSubresource(d2dCtx.edgeOffsetsBuffer.Get(), 0, nullptr, table.data(), 0, 0);
     }
+    d2dCtx.lastEdgeMapWidth = mapWidth;
+    d2dCtx.lastEdgeMapHeight = mapHeight;
+    d2dCtx.edgeOffsetsElementCount = elementCount;
 }
 
 //
@@ -1054,13 +1187,22 @@ void renderFrameRaycastGPU()
     constants.mapWidth = static_cast<uint32_t>(map[0].size());
     constants.mapHeight = static_cast<uint32_t>(map.size());
     constants.visualScale = config.contains("raycastScale") ? config["raycastScale"].get<float>() : 3.0f;
-    float baseTorchRange = 16.0f;
+    float baseTorchRange = 20.0f;
     constants.torchRange = baseTorchRange * constants.visualScale;
     constants.falloffMul = config.contains("raycastFalloffMul") ? config["raycastFalloffMul"].get<float>() : 0.85f;
     constants.fovMul = config.contains("raycastFovMul") ? config["raycastFovMul"].get<float>() : 1.0f;
-    constants.supersample = config.contains("raycastSupersample") ? config["raycastSupersample"].get<uint32_t>() : 1;
+    constants.supersample = std::clamp(config.contains("raycastSupersample") ? config["raycastSupersample"].get<uint32_t>() : 1u, 1u, 8u);
+    const uint64_t pixelCount =
+        static_cast<uint64_t>(std::max(0, state.ui.width)) *
+        static_cast<uint64_t>(std::max(0, state.ui.height));
+    if (pixelCount >= kPixelCount1080p)
+        constants.supersample = std::min(constants.supersample, 1u);
+    else if (pixelCount >= kPixelCount720p)
+        constants.supersample = std::min(constants.supersample, 2u);
     // Vertical scale: 1 wall unit per 1024px (horizontal anisotropy handled in content/shader)
     constants.wallHeightUnits = 1.0f;
+    constants.padding[0] = static_cast<uint32_t>(std::clamp(
+        static_cast<int>(std::lround(state.frameTiming.measuredFPS)), 0, 999));
     
     // Update constant buffer
     D3D11_MAPPED_SUBRESOURCE mapped;
@@ -1069,6 +1211,11 @@ void renderFrameRaycastGPU()
     {
         memcpy(mapped.pData, &constants, sizeof(constants));
         d2dCtx.d3dContext->Unmap(d2dCtx.raycastConstantBuffer.Get(), 0);
+    }
+    else
+    {
+        renderFrameRaycast();
+        return;
     }
     
     // Bind resources
@@ -1107,9 +1254,6 @@ void cleanupD2D()
         d2dCtx.frameLatencyWaitableObject = nullptr;
     }
     d2dCtx = {};
-    if (g_hwnd)
-        DestroyWindow(g_hwnd);
-    g_hwnd = nullptr;
 }
 
 void handleResizeD2D(int newW, int newH)

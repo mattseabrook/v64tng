@@ -433,71 +433,97 @@ int process_args(const std::vector<std::string> &args)
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
 {
-	load_config("config.json");
+	try
+	{
+		load_config("config.json");
 
-	DetectCPUFeatures();
-	SetBestSIMDLevel();
+		DetectCPUFeatures();
+		SetBestSIMDLevel();
 
-	// Configure render mode from config.json (auto|cpu|gpu). Default remains 'gpu' in default_config.
-	if (config.contains("renderMode") && config["renderMode"].is_string())
-	{
-		std::string mode = config["renderMode"];
-		for (auto &c : mode) c = static_cast<char>(::toupper(static_cast<unsigned char>(c)));
-		if (mode == "CPU")
-			state.renderMode = GameState::RenderMode::CPU;
-		else if (mode == "GPU")
-			state.renderMode = GameState::RenderMode::GPU;
-		else
-			state.renderMode = GameState::RenderMode::Auto;
-	}
-	else
-	{
-		state.renderMode = GameState::RenderMode::Auto;
-	}
-
-	std::vector<std::string> args = get_args_windows();
-
-	if (args.size() == 1)
-	{
-		ShowSystemInfoWindow();
-		return 0;
-	}
-	else if (args.size() > 1 && args[1] == "!")
-	{
-		init(); // Start game engine
-		return 0;
-	}
-	else
-	{
-		// For all other cases, set up console and process arguments
-		ConsoleGuard guard;
-		if (!guard.setup())
+		// Configure render mode from config.json (auto|cpu|gpu). Default remains 'gpu' in default_config.
+		if (config.contains("renderMode") && config["renderMode"].is_string())
 		{
-			MessageBoxW(NULL, L"Failed to initialize console.", L"Error", MB_OK | MB_ICONERROR);
-			return 1;
+			std::string mode = config["renderMode"];
+			for (auto &c : mode) c = static_cast<char>(::toupper(static_cast<unsigned char>(c)));
+			if (mode == "CPU")
+				state.renderMode = GameState::RenderMode::CPU;
+			else if (mode == "GPU")
+				state.renderMode = GameState::RenderMode::GPU;
+			else
+				state.renderMode = GameState::RenderMode::Auto;
+		}
+		else
+		{
+			state.renderMode = GameState::RenderMode::Auto;
 		}
 
-		int ret = process_args(args);
-		FreeConsole();	  // Close the console
-		ExitProcess(ret); // Exit with the return code from process_args
+		std::vector<std::string> args = get_args_windows();
+
+		if (args.size() == 1)
+		{
+			ShowSystemInfoWindow();
+			return 0;
+		}
+		else if (args.size() > 1 && args[1] == "!")
+		{
+			init(); // Start game engine
+			return 0;
+		}
+		else
+		{
+			// For all other cases, set up console and process arguments
+			ConsoleGuard guard;
+			if (!guard.setup())
+			{
+				MessageBoxW(NULL, L"Failed to initialize console.", L"Error", MB_OK | MB_ICONERROR);
+				return 1;
+			}
+
+			int ret = process_args(args);
+			FreeConsole();	  // Close the console
+			ExitProcess(ret); // Exit with the return code from process_args
+		}
+	}
+	catch (const std::exception &e)
+	{
+		MessageBoxA(nullptr, e.what(), "Fatal Error", MB_OK | MB_ICONERROR);
+		return 1;
+	}
+	catch (...)
+	{
+		MessageBoxA(nullptr, "Unknown fatal error", "Fatal Error", MB_OK | MB_ICONERROR);
+		return 1;
 	}
 }
 #else
 // Standard entry point for non-Windows platforms
 int main(int argc, char *argv[])
 {
-	load_config("config.json");
-
-	DetectCPUFeatures();
-
-	std::vector<std::string> args = get_args(argc, argv);
-
-	if (args.size() > 1 && args[1] == "!")
+	try
 	{
-		init(); // Start game engine
-		return 0;
-	}
+		load_config("config.json");
 
-	return process_args(args);
+		DetectCPUFeatures();
+
+		std::vector<std::string> args = get_args(argc, argv);
+
+		if (args.size() > 1 && args[1] == "!")
+		{
+			init(); // Start game engine
+			return 0;
+		}
+
+		return process_args(args);
+	}
+	catch (const std::exception &e)
+	{
+		std::println(stderr, "Fatal Error: {}", e.what());
+		return 1;
+	}
+	catch (...)
+	{
+		std::println(stderr, "Fatal Error: Unknown exception");
+		return 1;
+	}
 }
 #endif

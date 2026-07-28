@@ -12,6 +12,10 @@
 #include <optional>
 #include <thread>
 #include <chrono>
+#include <iterator>
+#include <limits>
+#include <stdexcept>
+#include <cmath>
 
 // Windows Multimedia
 #define WIN32_LEAN_AND_MEAN
@@ -74,6 +78,28 @@ HMIDISTRM g_midiStream = nullptr;
 bool g_midiStreamReady = false;
 tsf* g_soundfont = nullptr;
 bool g_soundfontReady = false;
+HANDLE g_midiDoneEvent = nullptr;
+HANDLE g_musicStopEvent = nullptr;
+
+void ensureMusicStopEvent()
+{
+	if (!g_musicStopEvent)
+		g_musicStopEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+}
+
+void signalMusicStop()
+{
+	ensureMusicStopEvent();
+	if (g_musicStopEvent)
+		SetEvent(g_musicStopEvent);
+}
+
+void resetMusicStop()
+{
+	ensureMusicStopEvent();
+	if (g_musicStopEvent)
+		ResetEvent(g_musicStopEvent);
+}
 
 //----------------------------------------------------------------------
 // MIDI Track Parser — shared by GeneralMIDI and Wavetable backends
@@ -143,6 +169,7 @@ struct WasapiSession {
 	IMMDevice* device = nullptr;
 	IAudioClient* audioClient = nullptr;
 	IAudioRenderClient* renderClient = nullptr;
+	HANDLE bufferEvent = nullptr;
 	UINT32 bufferFrameCount = 0;
 	int sampleRate = 0;
 	bool comInit = false;
@@ -156,6 +183,7 @@ struct WasapiSession {
 		if (audioClient) audioClient->Stop();
 		if (renderClient) renderClient->Release();
 		if (audioClient) audioClient->Release();
+		if (bufferEvent) CloseHandle(bufferEvent);
 		if (device) device->Release();
 		if (enumerator) enumerator->Release();
 		if (comInit) CoUninitialize();
@@ -203,8 +231,15 @@ struct WasapiSession {
 		wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
 		wfx.cbSize = 0;
 
+		bufferEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+		if (!bufferEvent)
+		{
+			std::println(stderr, "ERROR: Failed to create WASAPI buffer event");
+			return false;
+		}
+
 		sampleRate = preferredRate;
-		hr = audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, 500000, 0, &wfx, nullptr);
+		hr = audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_EVENTCALLBACK, 500000, 0, &wfx, nullptr);
 		if (FAILED(hr))
 		{
 			// Fallback to 48 kHz
@@ -212,7 +247,7 @@ struct WasapiSession {
 			wfx.nSamplesPerSec = 48000;
 			wfx.nBlockAlign = wfx.nChannels * wfx.wBitsPerSample / 8;
 			wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
-			hr = audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, 500000, 0, &wfx, nullptr);
+			hr = audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_EVENTCALLBACK, 500000, 0, &wfx, nullptr);
 			if (FAILED(hr))
 			{
 				std::println(stderr, "ERROR: Audio client Initialize failed, hr={:#x}", static_cast<unsigned>(hr));
@@ -232,6 +267,13 @@ struct WasapiSession {
 		if (FAILED(hr))
 		{
 			std::println(stderr, "ERROR: GetBufferSize failed, hr={:#x}", static_cast<unsigned>(hr));
+			return false;
+		}
+
+		hr = audioClient->SetEventHandle(bufferEvent);
+		if (FAILED(hr))
+		{
+			std::println(stderr, "ERROR: SetEventHandle failed, hr={:#x}", static_cast<unsigned>(hr));
 			return false;
 		}
 
@@ -255,13 +297,16 @@ void musicInit()
 {
 #ifdef _WIN32
 	// Read config to determine which systems to pre-initialize
-	std::string mode = config.value("midiMode", "opl3");
+	const std::string_view mode = config.value("midiMode", std::string{"opl3"});
 	
 	// Pre-initialize General MIDI stream for instant playback
 	if (mode == "general")
 	{
 		UINT deviceId = static_cast<UINT>(MIDI_MAPPER);
-		MMRESULT r = midiStreamOpen(&g_midiStream, &deviceId, 1, 0, 0, CALLBACK_NULL);
+		if (!g_midiDoneEvent)
+			g_midiDoneEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+		MMRESULT r = midiStreamOpen(&g_midiStream, &deviceId, 1,
+			reinterpret_cast<DWORD_PTR>(g_midiDoneEvent), 0, CALLBACK_EVENT);
 		if (r == MMSYSERR_NOERROR && g_midiStream)
 		{
 			g_midiStreamReady = true;
@@ -271,7 +316,7 @@ void musicInit()
 	// Pre-load soundfont for wavetable mode
 	if (mode == "wavetable")
 	{
-		std::string sfPath = config.value("soundFont", "default.sf2");
+		std::string sfPath = config.value("soundFont", std::string{"default.sf2"});
 		g_soundfont = tsf_load_filename(sfPath.c_str());
 		if (g_soundfont)
 		{
@@ -287,6 +332,8 @@ void musicInit()
 void musicShutdown()
 {
 #ifdef _WIN32
+	signalMusicStop();
+
 	// Close General MIDI stream
 	if (g_midiStream)
 	{
@@ -296,7 +343,17 @@ void musicShutdown()
 		g_midiStream = nullptr;
 		g_midiStreamReady = false;
 	}
-	
+	if (g_midiDoneEvent)
+	{
+		CloseHandle(g_midiDoneEvent);
+		g_midiDoneEvent = nullptr;
+	}
+	if (g_musicStopEvent)
+	{
+		CloseHandle(g_musicStopEvent);
+		g_musicStopEvent = nullptr;
+	}
+
 	// Close soundfont
 	if (g_soundfont)
 	{
@@ -333,8 +390,6 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 		uint32_t delta = 0xFFFFFFFF;
 		std::array<uint8_t, 3> data{};
 	};
-	constexpr size_t MaxNoteOffs = 1000;
-
 	constexpr std::array<uint8_t, 18> midiHeader = {
 		'M', 'T', 'h', 'd', 0, 0, 0, 6, 0, 0, 0, 1, 0, 60, 'M', 'T', 'r', 'k'};
 	constexpr uint32_t DefaultTempo = 120;
@@ -349,115 +404,129 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 	auto eventSort = [](const NoteOffEvent &a, const NoteOffEvent &b)
 	{ return a.delta < b.delta; };
 
-	// Parse note-off delta time
-	auto parse_noteoff_delta = [](auto &it) -> uint32_t
+	// Read XMI data before constructing checked iterator helpers.
+	std::ifstream file("XMI.GJD", std::ios::binary);
+	if (!file)
+		throw std::runtime_error("Failed to open XMI.GJD");
+	std::vector<uint8_t> xmi(song.length);
+	file.seekg(song.offset);
+	if (!file.read(reinterpret_cast<char *>(xmi.data()), song.length))
+		throw std::runtime_error("Failed to read complete XMI entry: " + song.filename);
+
+	auto require = [](bool condition, std::string_view message)
 	{
-		uint32_t delta = *it & 0x7F;
-		while (*it++ > 0x80)
+		if (!condition)
+			throw std::runtime_error(std::string(message));
+	};
+	auto end = xmi.end();
+
+	// Parse note-off delta time.
+	auto parse_noteoff_delta = [&](auto &it) -> uint32_t
+	{
+		uint32_t delta = 0;
+		for (int count = 0; count < 4; ++count)
 		{
-			delta <<= 7;
-			delta += *it;
+			require(it != end, "Truncated XMI note duration");
+			const uint8_t byte = *it++;
+			delta = (delta << 7) | (byte & 0x7F);
+			if ((byte & 0x80) == 0)
+				return delta;
 		}
-		return delta;
+		throw std::runtime_error("XMI note duration is too long");
 	};
 
 	// Read SysEx length
-	auto read_sysex_length = [](auto &it) -> uint32_t
-	{
-		uint32_t len = 0;
-		while (*it < 0)
-		{
-			len = (len << 7) + (*it & 0x7F);
-			++it;
-		}
-		len = (len << 7) + (*it & 0x7F);
-		++it;
-		return len;
-	};
-
-	// Read variable-length values
-	auto read_varlen = [](auto &inIt) -> uint32_t
+	auto read_varlen = [&](auto &it, auto limit) -> uint32_t
 	{
 		uint32_t value = 0;
-		while (*inIt & 0x80)
+		for (int count = 0; count < 4; ++count)
 		{
-			value = (value << 7) | (*inIt++ & 0x7F);
+			require(it != limit, "Truncated MIDI variable-length value");
+			const uint8_t byte = *it++;
+			value = (value << 7) | (byte & 0x7F);
+			if ((byte & 0x80) == 0)
+				return value;
 		}
-		value = (value << 7) | (*inIt++ & 0x7F);
-		return value;
+		throw std::runtime_error("MIDI variable-length value is too long");
 	};
 
 	// Write variable-length values
-	auto write_varlen = [](auto &outIt, uint32_t value)
+	auto write_varlen = [](auto out, uint32_t value)
 	{
 		uint32_t buffer = value & 0x7F;
 		while (value >>= 7)
 		{
-			buffer <<= 8;
-			buffer |= ((value & 0x7F) | 0x80);
+			buffer = (buffer << 8) | ((value & 0x7F) | 0x80);
 		}
-		while (true)
+		for (;;)
 		{
-			*outIt++ = buffer & 0xFF;
-			if (buffer & 0x80)
-				buffer >>= 8;
-			else
+			*out++ = static_cast<uint8_t>(buffer & 0xFF);
+			if ((buffer & 0x80) == 0)
 				break;
+			buffer >>= 8;
 		}
+		return out;
 	};
-
-	//
-	// Read XMI data
-	//
-	std::ifstream file("XMI.GJD", std::ios::binary);
-	std::vector<uint8_t> xmi(song.length);
-	file.seekg(song.offset);
-	file.read(reinterpret_cast<char *>(xmi.data()), song.length);
 
 	auto it = xmi.begin();
 
 	//
 	// XMI Header, Branch skip
 	//
+	require(xmi.size() >= 58, "Truncated XMI header");
 	it += 4 * 12 + 2;
-	uint32_t lTIMB = _byteswap_ulong(*reinterpret_cast<const uint32_t *>(&*it));
-	it += 4 + lTIMB;
+	auto readBE32 = [&](auto &cursor) {
+		require(static_cast<size_t>(end - cursor) >= 4, "Truncated XMI 32-bit field");
+		const uint32_t value = (uint32_t(cursor[0]) << 24) | (uint32_t(cursor[1]) << 16) |
+		                       (uint32_t(cursor[2]) << 8) | uint32_t(cursor[3]);
+		cursor += 4;
+		return value;
+	};
+	uint32_t lTIMB = readBE32(it);
+	require(static_cast<size_t>(end - it) >= lTIMB, "XMI TIMB chunk exceeds entry");
+	it += lTIMB;
 
-	if (std::equal(it, it + 4, "RBRN"))
+	if (static_cast<size_t>(end - it) >= 4 && std::equal(it, it + 4, "RBRN"))
 	{
+		require(static_cast<size_t>(end - it) >= 10, "Truncated XMI RBRN chunk");
 		it += 8;
-		uint16_t nBranch = *reinterpret_cast<const uint16_t *>(&*it);
-		it += 2 + nBranch * 6;
+		uint16_t nBranch = uint16_t(it[0]) | (uint16_t(it[1]) << 8);
+		it += 2;
+		require(static_cast<size_t>(end - it) >= size_t{nBranch} * 6, "XMI branch table exceeds entry");
+		it += size_t{nBranch} * 6;
 	}
 
+	require(static_cast<size_t>(end - it) >= 8, "Missing XMI EVNT chunk");
 	it += 4;
-	uint32_t lEVNT = _byteswap_ulong(*reinterpret_cast<const uint32_t *>(&*it));
-	it += 4;
+	uint32_t lEVNT = readBE32(it);
+	require(static_cast<size_t>(end - it) >= lEVNT, "XMI EVNT chunk exceeds entry");
+	auto eventEnd = it + lEVNT;
 
 	//
 	// Decode Events
 	//
-	std::vector<uint8_t> midiDecode(xmi.size() * 2);
-	auto decodeIt = midiDecode.begin();
+	std::vector<uint8_t> midiDecode;
+	midiDecode.reserve(xmi.size());
+	auto decodeIt = std::back_inserter(midiDecode);
 
-	std::array<NoteOffEvent, MaxNoteOffs> noteOffs;
+	std::vector<NoteOffEvent> noteOffs;
+	noteOffs.reserve(64);
 	size_t noteOffCount = 0;
 
 	bool expectDelta = true;
-	auto eventStart = it;
-
-	while (std::distance(eventStart, it) < static_cast<ptrdiff_t>(lEVNT))
+	while (it < eventEnd)
 	{
 		if (*it < 0x80)
 		{
 			// Delta time
 			uint32_t delay = 0;
-			while (*it == 0x7F)
+			while (it != eventEnd && *it == 0x7F)
 				delay += *it++;
+			require(it != eventEnd, "Truncated XMI delay");
 			delay += *it++;
 
 			// Handle pending note-offs
-			while (delay > noteOffs[0].delta)
+			while (!noteOffs.empty() && delay > noteOffs.front().delta)
 			{
 				write_varlen(decodeIt, noteOffs[0].delta);
 				*decodeIt++ = noteOffs[0].data[0] & 0x8F;
@@ -468,8 +537,8 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 				for (size_t i = 1; i < noteOffCount; ++i)
 					noteOffs[i].delta -= noteOffs[0].delta;
 				noteOffs[0].delta = 0xFFFFFFFF;
-				std::sort(noteOffs.begin(), noteOffs.begin() + noteOffCount, eventSort);
-				--noteOffCount;
+				noteOffs.erase(noteOffs.begin());
+				noteOffCount = noteOffs.size();
 			}
 			for (size_t i = 0; i < noteOffCount; ++i)
 				noteOffs[i].delta -= delay;
@@ -486,6 +555,7 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 
 			if (*it == 0xFF)
 			{
+				require(static_cast<size_t>(eventEnd - it) >= 2, "Truncated XMI meta event");
 				if (*(it + 1) == 0x2F)
 				{
 					for (size_t i = 0; i < noteOffCount; ++i)
@@ -502,48 +572,57 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 				}
 				*decodeIt++ = *it++;
 				*decodeIt++ = *it++;
+				require(it != eventEnd, "Truncated XMI meta length");
 				uint32_t textlen = *it + 1;
+				require(static_cast<size_t>(eventEnd - it) >= textlen, "XMI meta event exceeds EVNT chunk");
 				decodeIt = std::copy_n(it, textlen, decodeIt);
 				it += textlen;
 			}
 			else if ((*it & 0xF0) == 0x80)
 			{ // Note Off
+				require(static_cast<size_t>(eventEnd - it) >= 3, "Truncated XMI note-off event");
 				decodeIt = std::copy_n(it, 3, decodeIt);
 				it += 3;
 			}
 			else if ((*it & 0xF0) == 0x90)
 			{ // Note On
+				require(static_cast<size_t>(eventEnd - it) >= 3, "Truncated XMI note-on event");
+				const uint8_t status = it[0];
+				const uint8_t note = it[1];
 				decodeIt = std::copy_n(it, 3, decodeIt);
 				it += 3;
 				uint32_t delta = parse_noteoff_delta(it);
-				noteOffs[noteOffCount].delta = delta;
-				noteOffs[noteOffCount].data[0] = *(decodeIt - 3);
-				noteOffs[noteOffCount].data[1] = *(decodeIt - 2);
-				++noteOffCount;
-				std::sort(noteOffs.begin(), noteOffs.begin() + noteOffCount, eventSort);
+				noteOffs.push_back({delta, {status, note, 0}});
+				noteOffCount = noteOffs.size();
+				std::sort(noteOffs.begin(), noteOffs.end(), eventSort);
 			}
 			else if ((*it & 0xF0) == 0xA0)
 			{ // Key Pressure
+				require(static_cast<size_t>(eventEnd - it) >= 3, "Truncated XMI key-pressure event");
 				decodeIt = std::copy_n(it, 3, decodeIt);
 				it += 3;
 			}
 			else if ((*it & 0xF0) == 0xB0)
 			{ // Control Change
+				require(static_cast<size_t>(eventEnd - it) >= 3, "Truncated XMI control-change event");
 				decodeIt = std::copy_n(it, 3, decodeIt);
 				it += 3;
 			}
 			else if ((*it & 0xF0) == 0xC0)
 			{ // Program Change
+				require(static_cast<size_t>(eventEnd - it) >= 2, "Truncated XMI program-change event");
 				decodeIt = std::copy_n(it, 2, decodeIt);
 				it += 2;
 			}
 			else if ((*it & 0xF0) == 0xD0)
 			{ // Channel Pressure
+				require(static_cast<size_t>(eventEnd - it) >= 2, "Truncated XMI channel-pressure event");
 				decodeIt = std::copy_n(it, 2, decodeIt);
 				it += 2;
 			}
 			else if ((*it & 0xF0) == 0xE0)
 			{ // Pitch Bend
+				require(static_cast<size_t>(eventEnd - it) >= 3, "Truncated XMI pitch-bend event");
 				decodeIt = std::copy_n(it, 3, decodeIt);
 				it += 3;
 			}
@@ -557,14 +636,15 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 	//
 	// Write final MIDI data
 	//
-	std::vector<uint8_t> midiWrite(xmi.size() * 2);
-	auto writeIt = midiWrite.begin();
+	std::vector<uint8_t> midiWrite;
+	midiWrite.reserve(midiDecode.size());
+	auto writeIt = std::back_inserter(midiWrite);
 	auto readIt = midiDecode.begin();
 
-	while (readIt < decodeIt)
+	while (readIt < midiDecode.end())
 	{
 		// Delta-time
-		uint32_t delta = read_varlen(readIt);
+		uint32_t delta = read_varlen(readIt, midiDecode.end());
 
 		// Adjust delta based on tempo
 		double factor = static_cast<double>(timebase) * DefaultQN / (static_cast<double>(qnlen) * DefaultTimebase);
@@ -610,16 +690,20 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 		else if (*readIt == 0xF0 || *readIt == 0xF7) // Sysex
 		{
 			*writeIt++ = *readIt++;
-			uint32_t exlen = read_sysex_length(readIt);
+			uint32_t exlen = read_varlen(readIt, midiDecode.end());
+			write_varlen(writeIt, exlen);
+			require(static_cast<size_t>(midiDecode.end() - readIt) >= exlen, "SysEx payload exceeds decoded MIDI data");
 			writeIt = std::copy_n(readIt, exlen, writeIt);
 			readIt += exlen;
 		}
 		else if (*readIt == 0xFF) // Meta Event
 		{
+			require(static_cast<size_t>(midiDecode.end() - readIt) >= 2, "Truncated decoded MIDI meta event");
 			*writeIt++ = *readIt++;
 			if (*readIt == 0x51) // Tempo
 			{
 				*writeIt++ = *readIt++;
+				require(static_cast<size_t>(midiDecode.end() - readIt) >= 4, "Truncated MIDI tempo event");
 				*writeIt++ = *readIt++;
 				qnlen = (static_cast<uint32_t>(readIt[0]) << 16) | (static_cast<uint32_t>(readIt[1]) << 8) | static_cast<uint32_t>(readIt[2]);
 				writeIt = std::copy_n(readIt, 3, writeIt);
@@ -628,8 +712,10 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 			else
 			{
 				*writeIt++ = *readIt++; // Meta type
+				require(readIt != midiDecode.end(), "Missing MIDI meta-event length");
 				uint32_t textlen = *readIt;
 				*writeIt++ = *readIt++; // Length
+				require(static_cast<size_t>(midiDecode.end() - readIt) >= textlen, "MIDI meta event exceeds decoded data");
 				writeIt = std::copy_n(readIt, textlen, writeIt);
 				readIt += textlen;
 			}
@@ -646,10 +732,11 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 	header[13] = static_cast<uint8_t>(swappedTimebase >> 8);
 
 	midiData.insert(midiData.end(), header.begin(), header.end());
-	uint32_t trackLen = static_cast<uint32_t>(std::distance(midiWrite.begin(), writeIt));
+	require(midiWrite.size() <= std::numeric_limits<uint32_t>::max(), "Converted MIDI track is too large");
+	uint32_t trackLen = static_cast<uint32_t>(midiWrite.size());
 	uint32_t swappedTrackLen = _byteswap_ulong(trackLen);
 	midiData.insert(midiData.end(), reinterpret_cast<uint8_t *>(&swappedTrackLen), reinterpret_cast<uint8_t *>(&swappedTrackLen) + 4);
-	midiData.insert(midiData.end(), midiWrite.begin(), writeIt);
+	midiData.insert(midiData.end(), midiWrite.begin(), midiWrite.end());
 
 	return midiData;
 }
@@ -741,8 +828,12 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 	
 	if (!hStream || !g_midiStreamReady)
 	{
+		ensureMusicStopEvent();
+		if (!g_midiDoneEvent)
+			g_midiDoneEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 		UINT deviceId = static_cast<UINT>(MIDI_MAPPER);
-		MMRESULT r = midiStreamOpen(&hStream, &deviceId, 1, 0, 0, CALLBACK_NULL);
+		MMRESULT r = midiStreamOpen(&hStream, &deviceId, 1,
+			reinterpret_cast<DWORD_PTR>(g_midiDoneEvent), 0, CALLBACK_EVENT);
 		if (r != MMSYSERR_NOERROR || !hStream)
 		{
 			std::println(stderr, "ERROR: midiStreamOpen failed.");
@@ -755,6 +846,8 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 		// Reset persistent stream for new song
 		midiStreamStop(hStream);
 		midiOutReset(reinterpret_cast<HMIDIOUT>(hStream));
+		if (g_midiDoneEvent)
+			ResetEvent(g_midiDoneEvent);
 	}
 
 	// Set time division and initial tempo
@@ -769,7 +862,7 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 	midiStreamProperty(hStream, reinterpret_cast<LPBYTE>(&tempoProp), MIDIPROP_SET | MIDIPROP_TEMPO);
 
 	// Volume
-	uint16_t vol = static_cast<uint16_t>(state.music_volume * 0xFFFF);
+	uint16_t vol = static_cast<uint16_t>(state.music_volume.load() * 0xFFFF);
 	DWORD volume = (static_cast<DWORD>(vol) << 16) | vol;
 	midiOutSetVolume(reinterpret_cast<HMIDIOUT>(hStream), volume);
 
@@ -889,7 +982,11 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 
 	while ((hdr.dwFlags & MHDR_DONE) == 0 && state.music_playing)
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		ensureMusicStopEvent();
+		HANDLE handles[] = { g_musicStopEvent, g_midiDoneEvent };
+		DWORD wait = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
+		if (wait == WAIT_OBJECT_0)
+			break; // Stop requested
 	}
 
 	if ((hdr.dwFlags & MHDR_DONE) == 0)
@@ -992,7 +1089,7 @@ void PlayMIDI_OPL(const std::vector<uint8_t> &midiData, bool isTransient)
 	}
 	else
 	{
-		adl_positionSeek(player, state.main_song_position); // Resume main song
+		adl_positionSeek(player, state.main_song_position.load()); // Resume main song
 	}
 
 	//
@@ -1002,7 +1099,7 @@ void PlayMIDI_OPL(const std::vector<uint8_t> &midiData, bool isTransient)
 	const float gain = 6.0f;
 	const int fadeSamples = static_cast<int>(0.5 * session.sampleRate); // 500ms fade-in
 	int fadeCounter = 0;
-	bool fadingIn = !isTransient && state.hasPlayedFirstSong; // Fade-in only for main songs after first play
+	bool fadingIn = !isTransient && state.hasPlayedFirstSong.load(); // Fade-in only for main songs after first play
 
 	while (state.music_playing)
 	{
@@ -1014,7 +1111,10 @@ void PlayMIDI_OPL(const std::vector<uint8_t> &midiData, bool isTransient)
 		UINT32 framesAvailable = session.bufferFrameCount - padding;
 		if (framesAvailable == 0)
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			ensureMusicStopEvent();
+			HANDLE handles[] = { g_musicStopEvent, session.bufferEvent };
+			if (WaitForMultipleObjects(2, handles, FALSE, INFINITE) == WAIT_OBJECT_0)
+				break; // Stop requested
 			continue;
 		}
 
@@ -1031,7 +1131,7 @@ void PlayMIDI_OPL(const std::vector<uint8_t> &midiData, bool isTransient)
 		short *samplesPtr = reinterpret_cast<short *>(static_cast<void *>(pData));
 		for (int i = 0; i < samples; i++)
 		{
-			float sample = static_cast<float>(samplesPtr[i]) * gain * state.music_volume;
+			float sample = static_cast<float>(samplesPtr[i]) * gain * state.music_volume.load();
 			if (fadingIn && fadeCounter < fadeSamples)
 			{
 				float fadeFactor = static_cast<float>(fadeCounter) / fadeSamples;
@@ -1049,8 +1149,8 @@ void PlayMIDI_OPL(const std::vector<uint8_t> &midiData, bool isTransient)
 	// Save position if main song is paused
 	if (!isTransient)
 	{
-		state.main_song_position = adl_positionTell(player);
-		state.hasPlayedFirstSong = true; // Mark that a main song has played
+		state.main_song_position.store(adl_positionTell(player));
+		state.hasPlayedFirstSong.store(true); // Mark that a main song has played
 	}
 
 	//
@@ -1113,7 +1213,7 @@ void PlayMIDI_Wavetable(const std::vector<uint8_t> &midiData, bool isTransient)
 	tsf_set_output(synth, TSF_STEREO_INTERLEAVED, sampleRate, 0.0f);
 	
 	// Set global volume (attenuate to prevent clipping - SF2 samples can be hot)
-	tsf_set_volume(synth, state.music_volume * 0.5f);
+	tsf_set_volume(synth, state.music_volume.load() * 0.5f);
 	
 	// Initialize all 16 MIDI channels for General MIDI bank mode
 	// This ensures program changes work correctly and prevents crazy volume
@@ -1156,7 +1256,10 @@ void PlayMIDI_Wavetable(const std::vector<uint8_t> &midiData, bool isTransient)
 			UINT32 framesAvailable = session.bufferFrameCount - padding;
 			if (framesAvailable == 0)
 			{
-				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				ensureMusicStopEvent();
+				HANDLE handles[] = { g_musicStopEvent, session.bufferEvent };
+				if (WaitForMultipleObjects(2, handles, FALSE, INFINITE) == WAIT_OBJECT_0)
+					break; // Stop requested
 				continue;
 			}
 
@@ -1356,19 +1459,21 @@ void xmiPlay(const std::string &songName, bool isTransient)
 {
 	bool midi_enabled = config.value("midiEnabled", true);
 	int midi_volume = config.value("midiVolume", 100);
-	state.music_volume = std::clamp(midi_volume / 100.0f, 0.0f, 1.0f);
-	state.music_mode = config.value("midiMode", "opl3");
+	state.music_volume.store(std::clamp(midi_volume / 100.0f, 0.0f, 1.0f));
+	state.music_mode = config.value("midiMode", std::string{"opl3"});
 	state.midi_bank = config.value("midiBank", 0);
-	state.soundfont_path = config.value("soundFont", "default.sf2");
+	state.soundfont_path = config.value("soundFont", std::string{"default.sf2"});
 
 	if (midi_enabled)
 	{
 		// Stop any currently playing music
+		signalMusicStop();
 		state.music_playing = false;
 		if (state.music_thread.joinable())
 		{
 			state.music_thread.join();
 		}
+		resetMusicStop();
 
 		// Set song names and position
 		if (isTransient)
@@ -1380,7 +1485,7 @@ void xmiPlay(const std::string &songName, bool isTransient)
 			if (songName != state.current_song)
 			{
 				state.current_song = songName;
-				state.main_song_position = 0.0; // Reset position only for new main songs
+				state.main_song_position.store(0.0); // Reset position only for new main songs
 			}
 			// Else, resuming the same song, so keep state.main_song_position as is
 		}
@@ -1434,10 +1539,10 @@ void pushMainSong(const std::string &songName)
 {
 	if (!state.current_song.empty())
 	{
-		state.song_stack.emplace_back(state.current_song, state.main_song_position);
+		state.song_stack.emplace_back(state.current_song, state.main_song_position.load());
 	}
 	state.current_song = songName;
-	state.main_song_position = 0.0;
+	state.main_song_position.store(0.0);
 	xmiPlay(songName, false);
 }
 
@@ -1456,7 +1561,34 @@ void popMainSong()
 		auto entry = state.song_stack.back();
 		state.song_stack.pop_back();
 		state.current_song = entry.first;
-		state.main_song_position = entry.second;
+		state.main_song_position.store(entry.second);
+		xmiPlay(state.current_song, false);
+	}
+}
+
+void applyMusicRuntimeSettings()
+{
+	const std::string previousMode = state.music_mode;
+	state.music_mode = config.value("midiMode", std::string{"opl3"});
+	state.music_volume.store(std::clamp(
+		config.value("midiVolume", 100) / 100.0f, 0.0f, 1.0f));
+
+#ifdef _WIN32
+	if (g_midiStream)
+	{
+		const auto channelVolume = static_cast<uint16_t>(
+			std::lround(state.music_volume.load() * 65535.0f));
+		const DWORD packedVolume =
+			(static_cast<DWORD>(channelVolume) << 16u) | channelVolume;
+		midiOutSetVolume(reinterpret_cast<HMIDIOUT>(g_midiStream), packedVolume);
+	}
+#endif
+	if (g_soundfont)
+		tsf_set_volume(g_soundfont, state.music_volume.load() * 0.5f);
+
+	if (previousMode != state.music_mode &&
+		state.music_playing && !state.current_song.empty())
+	{
 		xmiPlay(state.current_song, false);
 	}
 }

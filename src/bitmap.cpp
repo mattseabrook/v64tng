@@ -24,8 +24,10 @@ Return:
 	- void (fills palette and outputFrame in place)
 ===============================================================================
 */
-void getBitmapData(std::span<const uint8_t> chunkData, std::span<RGBColor> palette, std::span<uint8_t> outputFrame)
+bool getBitmapDataChecked(std::span<const uint8_t> chunkData, std::span<RGBColor> palette, std::span<uint8_t> outputFrame)
 {
+	if (chunkData.size() < 6 || palette.size() < 256)
+		return false;
 	const uint16_t numXTiles = readLittleEndian16(chunkData.subspan(0, 2));
 	const uint16_t numYTiles = readLittleEndian16(chunkData.subspan(2, 2));
 	const uint16_t colourDepth = readLittleEndian16(chunkData.subspan(4, 2));
@@ -33,13 +35,20 @@ void getBitmapData(std::span<const uint8_t> chunkData, std::span<RGBColor> palet
 	const int width = numXTiles * 4;
 	const int height = numYTiles * 4;
 
+	if (colourDepth > 8)
+		return false;
+	const size_t paletteBytes = (size_t{1} << colourDepth) * 3;
+	const size_t frameBytes = static_cast<size_t>(width) * static_cast<size_t>(height) * 3;
+	if (frameBytes != outputFrame.size() || chunkData.size() < 6 + paletteBytes)
+		return false;
+
 	auto paletteData = chunkData.subspan(6);
 	for (size_t i = 0; i < 256 && i * 3 + 2 < paletteData.size(); ++i)
 	{
 		palette[i] = {paletteData[i * 3], paletteData[i * 3 + 1], paletteData[i * 3 + 2]};
 	}
 
-	auto imageData = paletteData.subspan((1 << colourDepth) * 3);
+	auto imageData = paletteData.subspan(paletteBytes);
 	size_t imgOffset = 0;
 
 	for (int tileY = 0; tileY < numYTiles; ++tileY)
@@ -47,7 +56,7 @@ void getBitmapData(std::span<const uint8_t> chunkData, std::span<RGBColor> palet
 		for (int tileX = 0; tileX < numXTiles; ++tileX)
 		{
 			if (imgOffset + 4 > imageData.size())
-				return;
+					return false;
 			const uint8_t colour1 = imageData[imgOffset++];
 			const uint8_t colour0 = imageData[imgOffset++];
 			const uint16_t colourMap = readLittleEndian16(imageData.subspan(imgOffset, 2));
@@ -65,6 +74,12 @@ void getBitmapData(std::span<const uint8_t> chunkData, std::span<RGBColor> palet
 			}
 		}
 	}
+	return true;
+}
+
+void getBitmapData(std::span<const uint8_t> chunkData, std::span<RGBColor> palette, std::span<uint8_t> outputFrame)
+{
+	(void)getBitmapDataChecked(chunkData, palette, outputFrame);
 }
 
 /*

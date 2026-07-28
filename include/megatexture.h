@@ -63,6 +63,8 @@ struct MegatextureState
     int textureHeight;          // Strip height (always 1024)
     int tileWidth;              // Tile width in pixels (1024)
     int tileHeight;             // Tile height in pixels (1024)
+    int archiveTileWidth;       // Source width retained for coordinate mapping
+    int archiveTileHeight;      // Source height retained for coordinate mapping
     int mapWidth;
     int mapHeight;
     
@@ -114,6 +116,7 @@ bool loadMTX(const std::string& mtxPath);
 // v: Vertical texture coordinate [0..1] along wall height
 // Returns RGBA pixel value, or transparent if not found
 uint32_t sampleMegatexture(int cellX, int cellY, int side, float u, float v);
+uint32_t sampleMegatextureEdge(const WallEdge* edge, float u, float v);
 
 // Lookup edge data by map coordinates (returns nullptr if not found)
 const WallEdge* findWallEdge(int cellX, int cellY, int side);

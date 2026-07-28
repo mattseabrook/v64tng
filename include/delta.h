@@ -38,6 +38,11 @@ inline constexpr std::array<uint8_t, 192> MapField = {
 //=============================================================================
 
 // Function prototypes
+bool getDeltaBitmapDataChecked(
+    std::span<const uint8_t> buffer,
+    std::span<RGBColor> palette,
+    std::span<uint8_t> frameBuffer,
+    int width);
 void getDeltaBitmapData(
     std::span<const uint8_t> buffer,
     std::span<RGBColor> palette,

@@ -1269,7 +1269,14 @@ sudo cp v64tng.exe /mnt/T7G/
 
 # Clean all build artifacts
 ./build.sh clean
+
+# Build without deploying to /mnt/T7G
+V64TNG_NO_DEPLOY=1 ./build.sh
 ```
+
+By default, successful builds deploy to `/mnt/T7G`. Set
+`V64TNG_NO_DEPLOY=1` for local validation or when you want to copy the
+executable manually.
 
 **Typical Build Times** (on AMD Ryzen 9 5950X, 16 cores):
 - **Full build**: ~3-5 seconds
@@ -1561,6 +1568,9 @@ sudo mv /opt/1.4.313.2 /opt/VulkanSDK/1.4.313.2
 
 # Or build debug version with symbols
 ./build.sh debug
+
+# Validate locally without changing the game directory
+V64TNG_NO_DEPLOY=1 ./build.sh
 ```
 
 **What this does**: Compiles all source files, links libraries, embeds shaders, and produces `v64tng.exe`.  

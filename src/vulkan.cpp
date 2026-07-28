@@ -1,6 +1,7 @@
 // vulkan.cpp
 
 #include <stdexcept>
+#include <algorithm>
 #include <cstring>
 #include <string>
 
@@ -27,6 +28,31 @@
 #include "basement.h"
 #include "../build/rgb_to_bgra_spv.h"
 #include "../build/vk_raycast_spv.h"
+
+#define VK_CHECK(expr)                                              \
+    do                                                              \
+    {                                                               \
+        VkResult _vkResult = (expr);                                \
+        if (_vkResult != VK_SUCCESS)                                \
+        {                                                           \
+            throw std::runtime_error("Vulkan call failed: " #expr); \
+        }                                                           \
+    } while (0)
+
+void recreateSwapchain(uint32_t width, uint32_t height);
+
+// Present/acquire may report OUT_OF_DATE on resize; handle instead of aborting.
+static void vkCheckPresent(VkResult result)
+{
+	if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR)
+		return;
+	if (result == VK_ERROR_OUT_OF_DATE_KHR)
+	{
+		recreateSwapchain(state.ui.width, state.ui.height);
+		return;
+	}
+	throw std::runtime_error("Vulkan present or acquire failed");
+}
 
 //
 // Vulkan context
@@ -133,7 +159,7 @@ static void createOrResizeRGBInputBuffer(uint32_t width, uint32_t height)
 	info.size = vkCtx.rgbInputBufferSize;
 	info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	vkCreateBuffer(vkCtx.device, &info, nullptr, &vkCtx.rgbInputBuffer);
+	VK_CHECK(vkCreateBuffer(vkCtx.device, &info, nullptr, &vkCtx.rgbInputBuffer));
 
 	VkMemoryRequirements req{ };
 	vkGetBufferMemoryRequirements(vkCtx.device, vkCtx.rgbInputBuffer, &req);
@@ -142,9 +168,9 @@ static void createOrResizeRGBInputBuffer(uint32_t width, uint32_t height)
 	alloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	alloc.allocationSize = req.size;
 	alloc.memoryTypeIndex = findMemoryType(req.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	vkAllocateMemory(vkCtx.device, &alloc, nullptr, &vkCtx.rgbInputBufferMemory);
-	vkBindBufferMemory(vkCtx.device, vkCtx.rgbInputBuffer, vkCtx.rgbInputBufferMemory, 0);
-	vkMapMemory(vkCtx.device, vkCtx.rgbInputBufferMemory, 0, VK_WHOLE_SIZE, 0, &vkCtx.mappedRGBInput);
+	VK_CHECK(vkAllocateMemory(vkCtx.device, &alloc, nullptr, &vkCtx.rgbInputBufferMemory));
+	VK_CHECK(vkBindBufferMemory(vkCtx.device, vkCtx.rgbInputBuffer, vkCtx.rgbInputBufferMemory, 0));
+	VK_CHECK(vkMapMemory(vkCtx.device, vkCtx.rgbInputBufferMemory, 0, VK_WHOLE_SIZE, 0, &vkCtx.mappedRGBInput));
 }
 
 static void updateComputeDescriptors()
@@ -195,7 +221,7 @@ static void createComputePipeline()
 	dsl.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	dsl.bindingCount = 2;
 	dsl.pBindings = bindings;
-	vkCreateDescriptorSetLayout(vkCtx.device, &dsl, nullptr, &vkCtx.computeDescSetLayout);
+	VK_CHECK(vkCreateDescriptorSetLayout(vkCtx.device, &dsl, nullptr, &vkCtx.computeDescSetLayout));
 
 	VkPushConstantRange pc{};
 	pc.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
@@ -208,7 +234,7 @@ static void createComputePipeline()
 	pl.pSetLayouts = &vkCtx.computeDescSetLayout;
 	pl.pushConstantRangeCount = 1;
 	pl.pPushConstantRanges = &pc;
-	vkCreatePipelineLayout(vkCtx.device, &pl, nullptr, &vkCtx.computePipelineLayout);
+	VK_CHECK(vkCreatePipelineLayout(vkCtx.device, &pl, nullptr, &vkCtx.computePipelineLayout));
 
 	// Create shader module from embedded SPIR-V
 	VkShaderModuleCreateInfo sm{};
@@ -216,7 +242,7 @@ static void createComputePipeline()
 	sm.codeSize = build_rgb_to_bgra_spv_len;
 	sm.pCode = reinterpret_cast<const uint32_t*>(build_rgb_to_bgra_spv);
 	VkShaderModule module;
-	vkCreateShaderModule(vkCtx.device, &sm, nullptr, &module);
+	VK_CHECK(vkCreateShaderModule(vkCtx.device, &sm, nullptr, &module));
 
 	VkPipelineShaderStageCreateInfo stage{};
 	stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -228,7 +254,7 @@ static void createComputePipeline()
 	cp.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
 	cp.stage = stage;
 	cp.layout = vkCtx.computePipelineLayout;
-	vkCreateComputePipelines(vkCtx.device, VK_NULL_HANDLE, 1, &cp, nullptr, &vkCtx.computePipeline);
+	VK_CHECK(vkCreateComputePipelines(vkCtx.device, VK_NULL_HANDLE, 1, &cp, nullptr, &vkCtx.computePipeline));
 
 	vkDestroyShaderModule(vkCtx.device, module, nullptr);
 
@@ -244,14 +270,14 @@ static void createComputePipeline()
 	dp.maxSets = 1;
 	dp.poolSizeCount = 2;
 	dp.pPoolSizes = poolSizes;
-	vkCreateDescriptorPool(vkCtx.device, &dp, nullptr, &vkCtx.computeDescPool);
+	VK_CHECK(vkCreateDescriptorPool(vkCtx.device, &dp, nullptr, &vkCtx.computeDescPool));
 
 	VkDescriptorSetAllocateInfo ai{};
 	ai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	ai.descriptorPool = vkCtx.computeDescPool;
 	ai.descriptorSetCount = 1;
 	ai.pSetLayouts = &vkCtx.computeDescSetLayout;
-	vkAllocateDescriptorSets(vkCtx.device, &ai, &vkCtx.computeDescSet);
+	VK_CHECK(vkAllocateDescriptorSets(vkCtx.device, &ai, &vkCtx.computeDescSet));
 
 	updateComputeDescriptors();
 }
@@ -297,7 +323,7 @@ static void uploadToDeviceBuffer(const void *srcData, VkDeviceSize dataSize,
 		staging, stagingMem);
 
 	void *mapped = nullptr;
-	vkMapMemory(vkCtx.device, stagingMem, 0, dataSize, 0, &mapped);
+	VK_CHECK(vkMapMemory(vkCtx.device, stagingMem, 0, dataSize, 0, &mapped));
 	std::memcpy(mapped, srcData, static_cast<size_t>(dataSize));
 	vkUnmapMemory(vkCtx.device, stagingMem);
 
@@ -327,9 +353,12 @@ static void uploadRaycastBuffers(const TileMap &tileMap)
 
 	// Check if tile map needs (re)upload
 	bool tileMapCurrent = vkCtx.tileMapBuffer && vkCtx.lastMapWidth == mapWidth && vkCtx.lastMapHeight == mapHeight;
+	const size_t edgeCount = static_cast<size_t>(mapWidth) * mapHeight * 4ull;
+	const VkDeviceSize edgeSize = static_cast<VkDeviceSize>(edgeCount * 3ull * sizeof(uint32_t));
+	if (tileMapCurrent && vkCtx.edgeOffsetsBuffer && vkCtx.edgeOffsetsBufferSize == edgeSize)
+		return;
 
 	// Build CPU-side edge offset table
-	const size_t edgeCount = static_cast<size_t>(mapWidth) * mapHeight * 4ull;
 	std::vector<uint32_t> edgeTable(edgeCount * 3ull, 0u);
 	for (const auto &e : megatex.edges)
 	{
@@ -344,11 +373,6 @@ static void uploadRaycastBuffers(const TileMap &tileMap)
 			edgeTable[idx3 + 2] = static_cast<uint32_t>(e.direction < 0 ? 1u : 0u);
 		}
 	}
-	VkDeviceSize edgeSize = static_cast<VkDeviceSize>(edgeTable.size() * sizeof(uint32_t));
-
-	if (tileMapCurrent && vkCtx.edgeOffsetsBuffer && vkCtx.edgeOffsetsBufferSize == edgeSize)
-		return;  // Nothing to upload
-
 	// Flatten tile map (only if needed)
 	std::vector<uint8_t> flatMap;
 	if (!tileMapCurrent)
@@ -361,10 +385,14 @@ static void uploadRaycastBuffers(const TileMap &tileMap)
 
 	// Begin a single command buffer for all uploads
 	VkCommandBuffer cmdBuf = vkCtx.commandBuffers[vkCtx.currentFrame];
+	VK_CHECK(vkWaitForFences(
+		vkCtx.device, 1, &vkCtx.inFlightFences[vkCtx.currentFrame],
+		VK_TRUE, UINT64_MAX));
+	VK_CHECK(vkResetCommandBuffer(cmdBuf, 0));
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	vkBeginCommandBuffer(cmdBuf, &beginInfo);
+	VK_CHECK(vkBeginCommandBuffer(cmdBuf, &beginInfo));
 
 	std::vector<StagingBuffer> staging;
 
@@ -384,16 +412,17 @@ static void uploadRaycastBuffers(const TileMap &tileMap)
 		cmdBuf, staging);
 
 	// Single submit for both uploads
-	vkEndCommandBuffer(cmdBuf);
+	VK_CHECK(vkEndCommandBuffer(cmdBuf));
 
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &cmdBuf;
-	vkQueueSubmit(vkCtx.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(vkCtx.graphicsQueue);
+	VK_CHECK(vkQueueSubmit(vkCtx.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE));
+	VK_CHECK(vkQueueWaitIdle(vkCtx.graphicsQueue));
 
 	cleanupStagingBuffers(staging);
+	vkCtx.raycastDescriptorsDirty = true;
 }
 
 static void updateRaycastDescriptors()
@@ -470,7 +499,7 @@ static void createRaycastPipeline()
 		dslInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		dslInfo.bindingCount = 3;
 		dslInfo.pBindings = bindings;
-		vkCreateDescriptorSetLayout(vkCtx.device, &dslInfo, nullptr, &vkCtx.raycastDescSetLayout);
+		VK_CHECK(vkCreateDescriptorSetLayout(vkCtx.device, &dslInfo, nullptr, &vkCtx.raycastDescSetLayout));
 		
 		// Push constants for raycast parameters
 		VkPushConstantRange pcRange{};
@@ -484,7 +513,7 @@ static void createRaycastPipeline()
 		plInfo.pSetLayouts = &vkCtx.raycastDescSetLayout;
 		plInfo.pushConstantRangeCount = 1;
 		plInfo.pPushConstantRanges = &pcRange;
-		vkCreatePipelineLayout(vkCtx.device, &plInfo, nullptr, &vkCtx.raycastPipelineLayout);
+		VK_CHECK(vkCreatePipelineLayout(vkCtx.device, &plInfo, nullptr, &vkCtx.raycastPipelineLayout));
 		
 		// Load shader module from embedded SPIR-V
 		VkShaderModuleCreateInfo smInfo{};
@@ -492,9 +521,7 @@ static void createRaycastPipeline()
 		smInfo.codeSize = build_vk_raycast_spv_len;
 		smInfo.pCode = reinterpret_cast<const uint32_t*>(build_vk_raycast_spv);
 		VkShaderModule module;
-		VkResult result = vkCreateShaderModule(vkCtx.device, &smInfo, nullptr, &module);
-		if (result != VK_SUCCESS)
-			throw std::runtime_error("Failed to create raycast shader module");
+		VK_CHECK(vkCreateShaderModule(vkCtx.device, &smInfo, nullptr, &module));
 		
 		VkPipelineShaderStageCreateInfo stageInfo{};
 		stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -506,7 +533,7 @@ static void createRaycastPipeline()
 		cpInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
 		cpInfo.stage = stageInfo;
 		cpInfo.layout = vkCtx.raycastPipelineLayout;
-		vkCreateComputePipelines(vkCtx.device, VK_NULL_HANDLE, 1, &cpInfo, nullptr, &vkCtx.raycastPipeline);
+		VK_CHECK(vkCreateComputePipelines(vkCtx.device, VK_NULL_HANDLE, 1, &cpInfo, nullptr, &vkCtx.raycastPipeline));
 		
 		vkDestroyShaderModule(vkCtx.device, module, nullptr);
 		
@@ -524,14 +551,14 @@ static void createRaycastPipeline()
 		dpInfo.maxSets = 1;
 	dpInfo.poolSizeCount = 3;
 		dpInfo.pPoolSizes = poolSizes;
-		vkCreateDescriptorPool(vkCtx.device, &dpInfo, nullptr, &vkCtx.raycastDescPool);
+		VK_CHECK(vkCreateDescriptorPool(vkCtx.device, &dpInfo, nullptr, &vkCtx.raycastDescPool));
 		
 		VkDescriptorSetAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		allocInfo.descriptorPool = vkCtx.raycastDescPool;
 		allocInfo.descriptorSetCount = 1;
 		allocInfo.pSetLayouts = &vkCtx.raycastDescSetLayout;
-		vkAllocateDescriptorSets(vkCtx.device, &allocInfo, &vkCtx.raycastDescSet);
+		VK_CHECK(vkAllocateDescriptorSets(vkCtx.device, &allocInfo, &vkCtx.raycastDescSet));
 		
 		OutputDebugStringA("Vulkan raycast GPU pipeline created successfully\n");
 	}
@@ -594,7 +621,7 @@ static void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPr
 	info.size = size;
 	info.usage = usage;
 	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	vkCreateBuffer(vkCtx.device, &info, nullptr, &buffer);
+	VK_CHECK(vkCreateBuffer(vkCtx.device, &info, nullptr, &buffer));
 
 	VkMemoryRequirements req{};
 	vkGetBufferMemoryRequirements(vkCtx.device, buffer, &req);
@@ -603,8 +630,8 @@ static void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPr
 	alloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	alloc.allocationSize = req.size;
 	alloc.memoryTypeIndex = findMemoryType(req.memoryTypeBits, props);
-	vkAllocateMemory(vkCtx.device, &alloc, nullptr, &memory);
-	vkBindBufferMemory(vkCtx.device, buffer, memory, 0);
+	VK_CHECK(vkAllocateMemory(vkCtx.device, &alloc, nullptr, &memory));
+	VK_CHECK(vkBindBufferMemory(vkCtx.device, buffer, memory, 0));
 }
 
 static void destroyStaging()
@@ -654,7 +681,7 @@ static void createVulkanTexture(uint32_t width, uint32_t height)
 	imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
 	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-	vkCreateImage(vkCtx.device, &imageInfo, nullptr, &vkCtx.textureImage);
+	VK_CHECK(vkCreateImage(vkCtx.device, &imageInfo, nullptr, &vkCtx.textureImage));
 
 	VkMemoryRequirements memReq;
 	vkGetImageMemoryRequirements(vkCtx.device, vkCtx.textureImage, &memReq);
@@ -663,8 +690,8 @@ static void createVulkanTexture(uint32_t width, uint32_t height)
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = memReq.size;
 	allocInfo.memoryTypeIndex = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	vkAllocateMemory(vkCtx.device, &allocInfo, nullptr, &vkCtx.textureImageMemory);
-	vkBindImageMemory(vkCtx.device, vkCtx.textureImage, vkCtx.textureImageMemory, 0);
+	VK_CHECK(vkAllocateMemory(vkCtx.device, &allocInfo, nullptr, &vkCtx.textureImageMemory));
+	VK_CHECK(vkBindImageMemory(vkCtx.device, vkCtx.textureImage, vkCtx.textureImageMemory, 0));
 
 	VkImageViewCreateInfo viewInfo = {};
 	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -675,7 +702,7 @@ static void createVulkanTexture(uint32_t width, uint32_t height)
 	viewInfo.subresourceRange.levelCount = 1;
 	viewInfo.subresourceRange.layerCount = 1;
 
-	vkCreateImageView(vkCtx.device, &viewInfo, nullptr, &vkCtx.textureImageView);
+	VK_CHECK(vkCreateImageView(vkCtx.device, &viewInfo, nullptr, &vkCtx.textureImageView));
 
 	VkSamplerCreateInfo samplerInfo = {};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -684,13 +711,13 @@ static void createVulkanTexture(uint32_t width, uint32_t height)
 	samplerInfo.maxAnisotropy = 1.0f;
 	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 
-	vkCreateSampler(vkCtx.device, &samplerInfo, nullptr, &vkCtx.textureSampler);
+	VK_CHECK(vkCreateSampler(vkCtx.device, &samplerInfo, nullptr, &vkCtx.textureSampler));
 
 	// Create staging buffer (host visible, persistent map)
 	destroyStaging();
 	VkDeviceSize size = static_cast<VkDeviceSize>(width) * height * 4;
 	createBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vkCtx.stagingBuffer, vkCtx.stagingBufferMemory);
-	vkMapMemory(vkCtx.device, vkCtx.stagingBufferMemory, 0, VK_WHOLE_SIZE, 0, &vkCtx.mappedStagingData);
+	VK_CHECK(vkMapMemory(vkCtx.device, vkCtx.stagingBufferMemory, 0, VK_WHOLE_SIZE, 0, &vkCtx.mappedStagingData));
 	vkCtx.stagingRowPitch = static_cast<VkDeviceSize>(width) * 4;
 
     // Create or resize RGB input storage buffer for compute path
@@ -708,6 +735,7 @@ static void createVulkanTexture(uint32_t width, uint32_t height)
 	vkCtx.rowBuffer.resize(width * 4);
 	vkCtx.previousFrameData.resize(width * height * 3);
 	vkCtx.forceFullUpdate = true;
+	vkCtx.raycastDescriptorsDirty = true;
 	vkCtx.textureWidth = width;
 	vkCtx.textureHeight = height;
 	vkCtx.textureImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -762,7 +790,7 @@ void recreateSwapchain(uint32_t width, uint32_t height)
 		vkDestroySwapchainKHR(vkCtx.device, vkCtx.swapchain, nullptr);
 
 	VkSurfaceCapabilitiesKHR caps;
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkCtx.physicalDevice, vkCtx.surface, &caps);
+	VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkCtx.physicalDevice, vkCtx.surface, &caps));
 
 	vkCtx.swapchainExtent = {width, height};
 
@@ -779,13 +807,12 @@ void recreateSwapchain(uint32_t width, uint32_t height)
 	swapInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	swapInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
 	swapInfo.clipped = VK_TRUE;
-	if (vkCreateSwapchainKHR(vkCtx.device, &swapInfo, nullptr, &vkCtx.swapchain) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create Vulkan swapchain");
+	VK_CHECK(vkCreateSwapchainKHR(vkCtx.device, &swapInfo, nullptr, &vkCtx.swapchain));
 
 	uint32_t count = 0;
-	vkGetSwapchainImagesKHR(vkCtx.device, vkCtx.swapchain, &count, nullptr);
+	VK_CHECK(vkGetSwapchainImagesKHR(vkCtx.device, vkCtx.swapchain, &count, nullptr));
 	vkCtx.swapchainImages.resize(count);
-	vkGetSwapchainImagesKHR(vkCtx.device, vkCtx.swapchain, &count, vkCtx.swapchainImages.data());
+	VK_CHECK(vkGetSwapchainImagesKHR(vkCtx.device, vkCtx.swapchain, &count, vkCtx.swapchainImages.data()));
 	vkCtx.swapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
 }
 
@@ -825,16 +852,101 @@ void initializeVulkan()
 	instInfo.enabledExtensionCount = 2;
 	instInfo.ppEnabledExtensionNames = exts;
 
-	if (vkCreateInstance(&instInfo, nullptr, &vkCtx.instance) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create Vulkan instance");
+	VK_CHECK(vkCreateInstance(&instInfo, nullptr, &vkCtx.instance));
+
+	VkWin32SurfaceCreateInfoKHR surfInfo = {};
+	surfInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+	surfInfo.hwnd = g_hwnd;
+	surfInfo.hinstance = GetModuleHandle(nullptr);
+	auto pfnCreateWin32SurfaceKHR =
+		reinterpret_cast<PFN_vkCreateWin32SurfaceKHR>(
+			vkGetInstanceProcAddr(vkCtx.instance, "vkCreateWin32SurfaceKHR"));
+	if (!pfnCreateWin32SurfaceKHR)
+		throw std::runtime_error("Failed to get vkCreateWin32SurfaceKHR");
+	VK_CHECK(pfnCreateWin32SurfaceKHR(vkCtx.instance, &surfInfo, nullptr, &vkCtx.surface));
 
 	uint32_t devCount = 0;
-	vkEnumeratePhysicalDevices(vkCtx.instance, &devCount, nullptr);
+	VK_CHECK(vkEnumeratePhysicalDevices(vkCtx.instance, &devCount, nullptr));
 	if (devCount == 0)
 		throw std::runtime_error("No Vulkan-capable GPU found");
 	std::vector<VkPhysicalDevice> devs(devCount);
-	vkEnumeratePhysicalDevices(vkCtx.instance, &devCount, devs.data());
-	vkCtx.physicalDevice = devs[0];
+	VK_CHECK(vkEnumeratePhysicalDevices(vkCtx.instance, &devCount, devs.data()));
+
+	const auto scoreDevice = [&](VkPhysicalDevice device) {
+		uint32_t queueCount = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueCount, nullptr);
+		std::vector<VkQueueFamilyProperties> queues(queueCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(
+			device, &queueCount, queues.data());
+
+		bool hasGraphicsPresentQueue = false;
+		for (uint32_t i = 0; i < queueCount; ++i)
+		{
+			VkBool32 presentSupported = VK_FALSE;
+			vkGetPhysicalDeviceSurfaceSupportKHR(
+				device, i, vkCtx.surface, &presentSupported);
+			hasGraphicsPresentQueue |=
+				(queues[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
+				presentSupported == VK_TRUE;
+		}
+
+		uint32_t extensionCount = 0;
+		vkEnumerateDeviceExtensionProperties(
+			device, nullptr, &extensionCount, nullptr);
+		std::vector<VkExtensionProperties> extensions(extensionCount);
+		vkEnumerateDeviceExtensionProperties(
+			device, nullptr, &extensionCount, extensions.data());
+		const bool hasSwapchain = std::any_of(
+			extensions.begin(), extensions.end(),
+			[](const VkExtensionProperties &extension) {
+				return std::strcmp(
+					extension.extensionName,
+					VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0;
+			});
+		if (!hasGraphicsPresentQueue || !hasSwapchain)
+			return uint64_t{0};
+
+		VkPhysicalDeviceProperties properties{};
+		vkGetPhysicalDeviceProperties(device, &properties);
+		VkPhysicalDeviceMemoryProperties memory{};
+		vkGetPhysicalDeviceMemoryProperties(device, &memory);
+		uint64_t localBytes = 0;
+		for (uint32_t i = 0; i < memory.memoryHeapCount; ++i)
+		{
+			if (memory.memoryHeaps[i].flags &
+				VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+			{
+				localBytes += memory.memoryHeaps[i].size;
+			}
+		}
+
+		uint64_t value = properties.limits.maxImageDimension2D;
+		value += (localBytes / (1024ull * 1024ull)) * 1'000'000ull;
+		if (properties.vendorID == 0x10DE)
+			value += 4'000'000'000'000ull;
+		if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+			value += 2'000'000'000'000ull;
+		else if (properties.deviceType ==
+				 VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+			value += 100'000'000'000ull;
+		return value;
+	};
+
+	vkCtx.physicalDevice = *std::max_element(
+		devs.begin(), devs.end(),
+		[&](VkPhysicalDevice lhs, VkPhysicalDevice rhs) {
+			return scoreDevice(lhs) < scoreDevice(rhs);
+		});
+	if (scoreDevice(vkCtx.physicalDevice) == 0)
+		throw std::runtime_error(
+			"No Vulkan GPU supports graphics and presentation");
+
+	VkPhysicalDeviceProperties selectedProperties{};
+	vkGetPhysicalDeviceProperties(
+		vkCtx.physicalDevice, &selectedProperties);
+	OutputDebugStringA("Selected high-performance Vulkan adapter: ");
+	OutputDebugStringA(selectedProperties.deviceName);
+	OutputDebugStringA("\n");
 
 	uint32_t qFamilyCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(vkCtx.physicalDevice, &qFamilyCount, nullptr);
@@ -842,7 +954,11 @@ void initializeVulkan()
 	vkGetPhysicalDeviceQueueFamilyProperties(vkCtx.physicalDevice, &qFamilyCount, qFamilies.data());
 	for (uint32_t i = 0; i < qFamilyCount; ++i)
 	{
-		if (qFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+		VkBool32 presentSupported = VK_FALSE;
+		vkGetPhysicalDeviceSurfaceSupportKHR(
+			vkCtx.physicalDevice, i, vkCtx.surface, &presentSupported);
+		if ((qFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
+			presentSupported == VK_TRUE)
 		{
 			vkCtx.graphicsQueueFamily = i;
 			break;
@@ -864,27 +980,8 @@ void initializeVulkan()
 	devInfo.enabledExtensionCount = 1;
 	devInfo.ppEnabledExtensionNames = devExts;
 
-	if (vkCreateDevice(vkCtx.physicalDevice, &devInfo, nullptr, &vkCtx.device) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create Vulkan logical device");
+	VK_CHECK(vkCreateDevice(vkCtx.physicalDevice, &devInfo, nullptr, &vkCtx.device));
 	vkGetDeviceQueue(vkCtx.device, vkCtx.graphicsQueueFamily, 0, &vkCtx.graphicsQueue);
-
-	VkWin32SurfaceCreateInfoKHR surfInfo = {};
-	surfInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-	surfInfo.hwnd = g_hwnd;
-	surfInfo.hinstance = GetModuleHandle(nullptr);
-
-	// Load vkCreateWin32SurfaceKHR function pointer
-	auto pfnCreateWin32SurfaceKHR = reinterpret_cast<PFN_vkCreateWin32SurfaceKHR>(
-		vkGetInstanceProcAddr(vkCtx.instance, "vkCreateWin32SurfaceKHR"));
-	if (!pfnCreateWin32SurfaceKHR)
-		throw std::runtime_error("Failed to load vkCreateWin32SurfaceKHR");
-	if (pfnCreateWin32SurfaceKHR(vkCtx.instance, &surfInfo, nullptr, &vkCtx.surface) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create Win32 Vulkan surface");
-
-	VkBool32 supported;
-	vkGetPhysicalDeviceSurfaceSupportKHR(vkCtx.physicalDevice, vkCtx.graphicsQueueFamily, vkCtx.surface, &supported);
-	if (!supported)
-		throw std::runtime_error("Graphics queue family does not support presentation");
 
 	recreateSwapchain(state.ui.width, state.ui.height);
 
@@ -893,8 +990,7 @@ void initializeVulkan()
 	poolInfo.queueFamilyIndex = vkCtx.graphicsQueueFamily;
 	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-	if (vkCreateCommandPool(vkCtx.device, &poolInfo, nullptr, &vkCtx.commandPool) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create Vulkan command pool");
+	VK_CHECK(vkCreateCommandPool(vkCtx.device, &poolInfo, nullptr, &vkCtx.commandPool));
 
 	// Allocate per-frame command buffers
 	VkCommandBufferAllocateInfo allocInfo = {};
@@ -902,7 +998,7 @@ void initializeVulkan()
 	allocInfo.commandPool = vkCtx.commandPool;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	allocInfo.commandBufferCount = VulkanContext::MAX_FRAMES_IN_FLIGHT;
-	vkAllocateCommandBuffers(vkCtx.device, &allocInfo, vkCtx.commandBuffers);
+	VK_CHECK(vkAllocateCommandBuffers(vkCtx.device, &allocInfo, vkCtx.commandBuffers));
 
 	// Create per-frame semaphores and fences
 	VkSemaphoreCreateInfo semInfo = {};
@@ -912,9 +1008,9 @@ void initializeVulkan()
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 	for (uint32_t i = 0; i < VulkanContext::MAX_FRAMES_IN_FLIGHT; ++i)
 	{
-		vkCreateSemaphore(vkCtx.device, &semInfo, nullptr, &vkCtx.imageAvailableSemaphores[i]);
-		vkCreateSemaphore(vkCtx.device, &semInfo, nullptr, &vkCtx.renderFinishedSemaphores[i]);
-		vkCreateFence(vkCtx.device, &fenceInfo, nullptr, &vkCtx.inFlightFences[i]);
+		VK_CHECK(vkCreateSemaphore(vkCtx.device, &semInfo, nullptr, &vkCtx.imageAvailableSemaphores[i]));
+		VK_CHECK(vkCreateSemaphore(vkCtx.device, &semInfo, nullptr, &vkCtx.renderFinishedSemaphores[i]));
+		VK_CHECK(vkCreateFence(vkCtx.device, &fenceInfo, nullptr, &vkCtx.inFlightFences[i]));
 	}
 
 	uint32_t texW = state.raycast.enabled ? state.ui.width : MIN_CLIENT_WIDTH;
@@ -933,12 +1029,16 @@ Description:
 */
 void renderFrameVk()
 {
-	const VDXFile *vdx = state.transientVDX ? state.transientVDX : state.currentVDX.get();
+	const VDXFile *vdx = state.transientVDX ? state.transientVDX.get() : state.currentVDX.get();
 	size_t frameIdx = state.transientVDX ? state.transient_frame_index : state.currentFrameIndex;
 	if (!vdx)
 		return;
+	if (vdx->frameData.empty())
+		return;
+	if (frameIdx >= vdx->frameData.size())
+		frameIdx = vdx->frameData.size() - 1;
 
-	std::span<const uint8_t> pixels = vdx->frameData[frameIdx];
+	std::span<const uint8_t> pixels = *vdx->frameData[frameIdx];
 
 	uint8_t *dst = static_cast<uint8_t *>(vkCtx.mappedStagingData);
 	size_t pitch = static_cast<size_t>(vkCtx.stagingRowPitch);
@@ -958,8 +1058,36 @@ void renderFrameVk()
 	vkCtx.pendingCopyRegions.clear();
 	if (vkCtx.doCompute)
 	{
-		// Upload entire RGB frame into storage buffer for compute
-		std::memcpy(vkCtx.mappedRGBInput, pixels.data(), static_cast<size_t>(vkCtx.rgbInputBufferSize));
+		// Upload only changed RGB row ranges; unchanged rows remain valid from prior frame.
+		const size_t rowBytes = static_cast<size_t>(vkCtx.textureWidth) * 3;
+		const size_t expectedSize = rowBytes * vkCtx.textureHeight;
+		if (!changed.empty() && rowBytes > 0 && vkCtx.previousFrameData.size() >= expectedSize)
+		{
+			uint8_t *rgbDst = static_cast<uint8_t *>(vkCtx.mappedRGBInput);
+			size_t runStart = changed[0];
+			size_t runEnd = changed[0];
+			auto copyRun = [&](size_t start, size_t end)
+			{
+				const size_t offset = start * rowBytes;
+				const size_t bytes = (end - start + 1) * rowBytes;
+				std::memcpy(rgbDst + offset, vkCtx.previousFrameData.data() + offset, bytes);
+			};
+
+			for (size_t i = 1; i < changed.size(); ++i)
+			{
+				if (changed[i] == runEnd + 1)
+				{
+					runEnd = changed[i];
+				}
+				else
+				{
+					copyRun(runStart, runEnd);
+					runStart = changed[i];
+					runEnd = changed[i];
+				}
+			}
+			copyRun(runStart, runEnd);
+		}
 	}
 	else
 	{
@@ -1075,8 +1203,11 @@ void renderFrameRaycastVkGPU()
 	uploadRaycastBuffers(map);
 	
 	// Update descriptors if needed
-	if (vkCtx.tileMapBuffer)
+	if (vkCtx.tileMapBuffer && vkCtx.raycastDescriptorsDirty)
+	{
 		updateRaycastDescriptors();
+		vkCtx.raycastDescriptorsDirty = false;
+	}
 	
 	// Prepare push constants
 	struct RaycastConstants
@@ -1108,29 +1239,38 @@ void renderFrameRaycastVkGPU()
 	constants.mapWidth = static_cast<uint32_t>(map[0].size());
 	constants.mapHeight = static_cast<uint32_t>(map.size());
 	constants.visualScale = config.contains("raycastScale") ? config["raycastScale"].get<float>() : 3.0f;
-	float baseTorchRange = 16.0f;
+	float baseTorchRange = 20.0f;
 	constants.torchRange = baseTorchRange * constants.visualScale;
 	constants.falloffMul = config.contains("raycastFalloffMul") ? config["raycastFalloffMul"].get<float>() : 0.85f;
 	constants.fovMul = config.contains("raycastFovMul") ? config["raycastFovMul"].get<float>() : 1.0f;
-	constants.supersample = config.contains("raycastSupersample") ? config["raycastSupersample"].get<uint32_t>() : 1;
+	constants.supersample = std::clamp(config.contains("raycastSupersample") ? config["raycastSupersample"].get<uint32_t>() : 1u, 1u, 8u);
+	const uint64_t pixelCount =
+		static_cast<uint64_t>(std::max(0, state.ui.width)) *
+		static_cast<uint64_t>(std::max(0, state.ui.height));
+	if (pixelCount >= kPixelCount1080p)
+		constants.supersample = std::min(constants.supersample, 1u);
+	else if (pixelCount >= kPixelCount720p)
+		constants.supersample = std::min(constants.supersample, 2u);
 	// Vertical scale: 1 wall unit per 1024px (horizontal anisotropy handled in content/shader)
 	constants.wallHeightUnits = 1.0f;
+	constants.padding[0] = static_cast<float>(std::clamp(
+		static_cast<int>(std::lround(state.frameTiming.measuredFPS)), 0, 999));
 	
 	// Present frame with compute shader execution
 	uint32_t frame = vkCtx.currentFrame;
-	vkWaitForFences(vkCtx.device, 1, &vkCtx.inFlightFences[frame], VK_TRUE, UINT64_MAX);
-	vkResetFences(vkCtx.device, 1, &vkCtx.inFlightFences[frame]);
+	VK_CHECK(vkWaitForFences(vkCtx.device, 1, &vkCtx.inFlightFences[frame], VK_TRUE, UINT64_MAX));
+	VK_CHECK(vkResetFences(vkCtx.device, 1, &vkCtx.inFlightFences[frame]));
 	
 	uint32_t imgIdx;
-	vkAcquireNextImageKHR(vkCtx.device, vkCtx.swapchain, UINT64_MAX, vkCtx.imageAvailableSemaphores[frame], VK_NULL_HANDLE, &imgIdx);
+	vkCheckPresent(vkAcquireNextImageKHR(vkCtx.device, vkCtx.swapchain, UINT64_MAX, vkCtx.imageAvailableSemaphores[frame], VK_NULL_HANDLE, &imgIdx));
 	
 	VkCommandBuffer cmdBuf = vkCtx.commandBuffers[frame];
-	vkResetCommandBuffer(cmdBuf, 0);
+	VK_CHECK(vkResetCommandBuffer(cmdBuf, 0));
 	
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	vkBeginCommandBuffer(cmdBuf, &beginInfo);
+	VK_CHECK(vkBeginCommandBuffer(cmdBuf, &beginInfo));
 	
 	// Transition texture to GENERAL layout for compute shader write
 	if (vkCtx.textureImageLayout != VK_IMAGE_LAYOUT_GENERAL)
@@ -1232,7 +1372,7 @@ void renderFrameRaycastVkGPU()
 		VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
 		0, 0, nullptr, 0, nullptr, 1, &swapBarrier);
 	
-	vkEndCommandBuffer(cmdBuf);
+	VK_CHECK(vkEndCommandBuffer(cmdBuf));
 	
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1245,7 +1385,7 @@ void renderFrameRaycastVkGPU()
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &vkCtx.renderFinishedSemaphores[frame];
 	
-	vkQueueSubmit(vkCtx.graphicsQueue, 1, &submitInfo, vkCtx.inFlightFences[frame]);
+	VK_CHECK(vkQueueSubmit(vkCtx.graphicsQueue, 1, &submitInfo, vkCtx.inFlightFences[frame]));
 	
 	VkPresentInfoKHR presentInfo{};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -1255,7 +1395,7 @@ void renderFrameRaycastVkGPU()
 	presentInfo.pSwapchains = &vkCtx.swapchain;
 	presentInfo.pImageIndices = &imgIdx;
 	
-	vkQueuePresentKHR(vkCtx.graphicsQueue, &presentInfo);
+	vkCheckPresent(vkQueuePresentKHR(vkCtx.graphicsQueue, &presentInfo));
 	
 	vkCtx.currentFrame = (vkCtx.currentFrame + 1) % VulkanContext::MAX_FRAMES_IN_FLIGHT;
 }
@@ -1272,19 +1412,19 @@ Description:
 void presentFrame()
 {
 	uint32_t frame = vkCtx.currentFrame;
-	vkWaitForFences(vkCtx.device, 1, &vkCtx.inFlightFences[frame], VK_TRUE, UINT64_MAX);
-	vkResetFences(vkCtx.device, 1, &vkCtx.inFlightFences[frame]);
+	VK_CHECK(vkWaitForFences(vkCtx.device, 1, &vkCtx.inFlightFences[frame], VK_TRUE, UINT64_MAX));
+	VK_CHECK(vkResetFences(vkCtx.device, 1, &vkCtx.inFlightFences[frame]));
 
 	uint32_t imgIdx;
-	vkAcquireNextImageKHR(vkCtx.device, vkCtx.swapchain, UINT64_MAX, vkCtx.imageAvailableSemaphores[frame], VK_NULL_HANDLE, &imgIdx);
+	vkCheckPresent(vkAcquireNextImageKHR(vkCtx.device, vkCtx.swapchain, UINT64_MAX, vkCtx.imageAvailableSemaphores[frame], VK_NULL_HANDLE, &imgIdx));
 
 	VkCommandBuffer cmdBuf = vkCtx.commandBuffers[frame];
-	vkResetCommandBuffer(cmdBuf, 0);
+	VK_CHECK(vkResetCommandBuffer(cmdBuf, 0));
 
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	vkBeginCommandBuffer(cmdBuf, &beginInfo);
+	VK_CHECK(vkBeginCommandBuffer(cmdBuf, &beginInfo));
 
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1401,7 +1541,7 @@ void presentFrame()
 	barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
-	vkEndCommandBuffer(cmdBuf);
+	VK_CHECK(vkEndCommandBuffer(cmdBuf));
 
 	VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 	VkSubmitInfo submit = {};
@@ -1414,7 +1554,7 @@ void presentFrame()
 	submit.signalSemaphoreCount = 1;
 	submit.pSignalSemaphores = &vkCtx.renderFinishedSemaphores[frame];
 
-	vkQueueSubmit(vkCtx.graphicsQueue, 1, &submit, vkCtx.inFlightFences[frame]);
+	VK_CHECK(vkQueueSubmit(vkCtx.graphicsQueue, 1, &submit, vkCtx.inFlightFences[frame]));
 
 	VkPresentInfoKHR present = {};
 	present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -1423,7 +1563,7 @@ void presentFrame()
 	present.swapchainCount = 1;
 	present.pSwapchains = &vkCtx.swapchain;
 	present.pImageIndices = &imgIdx;
-	vkQueuePresentKHR(vkCtx.graphicsQueue, &present);
+	vkCheckPresent(vkQueuePresentKHR(vkCtx.graphicsQueue, &present));
 
 	vkCtx.currentFrame = (vkCtx.currentFrame + 1) % VulkanContext::MAX_FRAMES_IN_FLIGHT;
 }
@@ -1439,6 +1579,9 @@ Description:
 */
 void cleanupVulkan()
 {
+	if (vkCtx.device)
+		vkDeviceWaitIdle(vkCtx.device);
+
 	destroyCompute();
 	destroyTexture();
 	destroyStaging();

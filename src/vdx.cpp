@@ -21,7 +21,262 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#else
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 #endif
+
+namespace
+{
+constexpr uint32_t readLE32(const uint8_t *p)
+{
+	return static_cast<uint32_t>(p[0]) |
+		   (static_cast<uint32_t>(p[1]) << 8) |
+		   (static_cast<uint32_t>(p[2]) << 16) |
+		   (static_cast<uint32_t>(p[3]) << 24);
+}
+
+void parseVDXChunksFromSpan(VDXFile &vdxFile, std::span<const uint8_t> rawSpan)
+{
+	if (rawSpan.size() < 8)
+	{
+		// Graceful failure for malformed/truncated files.
+		vdxFile.identifier = 0;
+		vdxFile.unknown.fill(0);
+		return;
+	}
+
+	// Pre-reserve an accurate chunk count to avoid vector growth
+	size_t preCount = 0;
+	size_t off = 8;
+	while (off + 8 <= rawSpan.size())
+	{
+		const uint32_t dataSize = readLE32(rawSpan.data() + off + 2);
+		const size_t next = off + 8u + static_cast<size_t>(dataSize);
+		if (next > rawSpan.size())
+		{
+			// Trailing/partial chunk; stop parsing rather than aborting startup.
+			break;
+		}
+		++preCount;
+		off = next;
+	}
+	vdxFile.chunks.reserve(preCount);
+
+	vdxFile.identifier = static_cast<uint16_t>(rawSpan[0] | (rawSpan[1] << 8));
+	std::copy(rawSpan.begin() + 2, rawSpan.begin() + 8, vdxFile.unknown.begin());
+
+	size_t offset = 8;
+	while (offset + 8 <= rawSpan.size())
+	{
+		VDXChunk chunk;
+		chunk.chunkType = rawSpan[offset];
+		chunk.unknown = rawSpan[offset + 1];
+		chunk.dataSize = readLE32(rawSpan.data() + offset + 2);
+		chunk.lengthMask = rawSpan[offset + 6];
+		chunk.lengthBits = rawSpan[offset + 7];
+		offset += 8;
+
+		if (offset + static_cast<size_t>(chunk.dataSize) > rawSpan.size())
+		{
+			// Truncated tail; keep already parsed chunks.
+			break;
+		}
+		chunk.data = rawSpan.subspan(offset, chunk.dataSize);
+		offset += chunk.dataSize;
+		vdxFile.chunks.push_back(std::move(chunk));
+	}
+}
+
+void initializeVDXFilename(VDXFile &vdxFile, std::string_view filename)
+{
+	const auto lastDot = filename.find_last_of('.');
+	vdxFile.filename = (lastDot == std::string_view::npos) ? std::string(filename) : std::string(filename.substr(0, lastDot));
+}
+
+// RAII guard that restores the owning currentVDX after transient/non-owning playback.
+struct VDXPlayOwnerGuard
+{
+	std::unique_ptr<VDXFile> saved;
+	explicit VDXPlayOwnerGuard(std::unique_ptr<VDXFile> s) : saved(std::move(s)) {}
+	~VDXPlayOwnerGuard()
+	{
+		(void)state.currentVDX.release(); // release the non-owning temporary
+		state.currentVDX = std::move(saved);
+	}
+	VDXPlayOwnerGuard(const VDXPlayOwnerGuard &) = delete;
+	VDXPlayOwnerGuard &operator=(const VDXPlayOwnerGuard &) = delete;
+};
+
+std::expected<std::pair<std::shared_ptr<const uint8_t>, size_t>, std::string> mapFileReadOnly(const std::string &path)
+{
+#ifdef _WIN32
+	HANDLE hFile = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+							   OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+	if (hFile == INVALID_HANDLE_VALUE)
+	{
+		return std::unexpected("Failed to open GJD: " + path);
+	}
+
+	LARGE_INTEGER sizeLi{};
+	if (!GetFileSizeEx(hFile, &sizeLi) || sizeLi.QuadPart <= 0)
+	{
+		CloseHandle(hFile);
+		return std::unexpected("Failed to get GJD file size: " + path);
+	}
+	const size_t fileSize = static_cast<size_t>(sizeLi.QuadPart);
+
+	HANDLE hMapFile = CreateFileMapping(hFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
+	if (hMapFile == nullptr)
+	{
+		CloseHandle(hFile);
+		return std::unexpected("Failed to map GJD file: " + path);
+	}
+
+	const uint8_t *fileData = static_cast<const uint8_t *>(MapViewOfFile(hMapFile, FILE_MAP_READ, 0, 0, 0));
+	if (fileData == nullptr)
+	{
+		CloseHandle(hMapFile);
+		CloseHandle(hFile);
+		return std::unexpected("Failed to map GJD view: " + path);
+	}
+
+	std::shared_ptr<const uint8_t> owner(fileData, [hMapFile, hFile](const uint8_t *p)
+										 {
+											 if (p)
+											 {
+												 UnmapViewOfFile(p);
+											 }
+											 if (hMapFile)
+											 {
+												 CloseHandle(hMapFile);
+											 }
+											 if (hFile != INVALID_HANDLE_VALUE)
+											 {
+												 CloseHandle(hFile);
+											 } });
+	return std::pair{std::move(owner), fileSize};
+#else
+	const int fd = open(path.c_str(), O_RDONLY);
+	if (fd == -1)
+	{
+		return std::unexpected("Failed to open GJD: " + path);
+	}
+
+	struct stat st {};
+	if (fstat(fd, &st) != 0 || st.st_size <= 0)
+	{
+		close(fd);
+		return std::unexpected("Failed to get GJD file size: " + path);
+	}
+	const size_t fileSize = static_cast<size_t>(st.st_size);
+
+	const uint8_t *fileData = static_cast<const uint8_t *>(mmap(nullptr, fileSize, PROT_READ, MAP_PRIVATE, fd, 0));
+	if (fileData == MAP_FAILED)
+	{
+		close(fd);
+		return std::unexpected("Failed to map GJD file: " + path);
+	}
+
+	std::shared_ptr<const uint8_t> owner(fileData, [fileSize, fd](const uint8_t *p)
+										 {
+											 if (p && p != MAP_FAILED)
+											 {
+												 munmap(const_cast<uint8_t *>(p), fileSize);
+											 }
+											 if (fd != -1)
+											 {
+												 close(fd);
+											 } });
+	return std::pair{std::move(owner), fileSize};
+#endif
+}
+
+struct StreamingVDXDecoder
+{
+	VDXFile &vdx;
+	size_t chunkIndex = 0;
+	size_t totalFrames = 0;
+	std::array<RGBColor, 256> palette{};
+	std::vector<uint8_t> decompressed;
+
+	explicit StreamingVDXDecoder(VDXFile &file) : vdx(file)
+	{
+		for (const auto &chunk : vdx.chunks)
+			if (chunk.chunkType == 0x20 || chunk.chunkType == 0x25 || chunk.chunkType == 0x00)
+				++totalFrames;
+	}
+
+	std::span<const uint8_t> decodeChunk(const VDXChunk &chunk)
+	{
+		if (chunk.lengthBits == 0)
+			return chunk.data;
+		auto result = lzssDecompressChecked(chunk.data, chunk.lengthMask, chunk.lengthBits);
+		if (!result)
+			throw std::runtime_error("Invalid compressed VDX chunk in " + vdx.filename + ": " + result.error());
+		decompressed = std::move(*result);
+		return decompressed;
+	}
+
+	void prepareAudio()
+	{
+		vdx.audioData.clear();
+		for (const auto &chunk : vdx.chunks)
+		{
+			if (chunk.chunkType != 0x80)
+				continue;
+			auto bytes = decodeChunk(chunk);
+			vdx.audioData.insert(vdx.audioData.end(), bytes.begin(), bytes.end());
+		}
+	}
+
+	bool decodeNextFrame()
+	{
+		if (vdx.frameData.empty())
+			vdx.frameData.emplace_back(std::make_shared<std::vector<uint8_t>>());
+		auto &frame = vdx.frameData.front();
+		while (chunkIndex < vdx.chunks.size())
+		{
+			const VDXChunk &chunk = vdx.chunks[chunkIndex++];
+			if (chunk.chunkType == 0x00)
+				return !frame->empty();
+			if (chunk.chunkType != 0x20 && chunk.chunkType != 0x25)
+				continue;
+
+			auto bytes = decodeChunk(chunk);
+			if (chunk.chunkType == 0x20)
+			{
+				if (bytes.size() < 6)
+					throw std::runtime_error("Truncated VDX bitmap header in " + vdx.filename);
+				const uint16_t tilesX = readLittleEndian16(bytes.subspan(0, 2));
+				const uint16_t tilesY = readLittleEndian16(bytes.subspan(2, 2));
+				if (tilesX == 0 || tilesY == 0 || tilesX > 4096 || tilesY > 4096)
+					throw std::runtime_error("Invalid VDX bitmap dimensions in " + vdx.filename);
+				const int width = static_cast<int>(tilesX) * 4;
+				const int height = static_cast<int>(tilesY) * 4;
+				if ((vdx.width != 0 && vdx.width != width) || (vdx.height != 0 && vdx.height != height))
+					throw std::runtime_error("VDX frame dimensions changed in " + vdx.filename);
+				vdx.width = width;
+				vdx.height = height;
+				frame->assign(static_cast<size_t>(width) * static_cast<size_t>(height) * 3, 0);
+				if (!getBitmapDataChecked(bytes, palette, *frame))
+					throw std::runtime_error("Invalid VDX bitmap payload in " + vdx.filename);
+			}
+			else
+			{
+				if (frame->empty() || vdx.width <= 0)
+					throw std::runtime_error("VDX delta frame has no reference frame in " + vdx.filename);
+				if (!getDeltaBitmapDataChecked(bytes, palette, *frame, vdx.width))
+					throw std::runtime_error("Invalid VDX delta payload in " + vdx.filename);
+			}
+			return true;
+		}
+		return false;
+	}
+};
+} // namespace
 
 /*
 ===============================================================================
@@ -44,44 +299,10 @@ Notes:
 VDXFile parseVDXFile(std::string_view filename, std::span<const uint8_t> buffer)
 {
 	VDXFile vdxFile;
-	auto lastDot = filename.find_last_of('.');
-	vdxFile.filename = (lastDot == std::string_view::npos) ? std::string(filename) : std::string(filename.substr(0, lastDot));
-
+	initializeVDXFilename(vdxFile, filename);
 	vdxFile.rawData.assign(buffer.begin(), buffer.end());
-	std::span<const uint8_t> rawSpan{vdxFile.rawData};
-
-	// Pre-reserve an accurate chunk count to avoid vector growth
-	size_t preCount = 0;
-	if (rawSpan.size() >= 8)
-	{
-		size_t off = 8;
-		while (off + 8 <= rawSpan.size())
-		{
-			// Read chunk header to advance
-			const uint32_t dataSize = rawSpan[off + 2] | (rawSpan[off + 3] << 8) | (rawSpan[off + 4] << 16) | (rawSpan[off + 5] << 24);
-			++preCount;
-			off += 8u + static_cast<size_t>(dataSize);
-		}
-	}
-	vdxFile.chunks.reserve(preCount);
-
-	vdxFile.identifier = rawSpan[0] | (rawSpan[1] << 8);
-	std::copy(rawSpan.begin() + 2, rawSpan.begin() + 8, vdxFile.unknown.begin());
-
-	size_t offset = 8;
-	while (offset < rawSpan.size())
-	{
-		VDXChunk chunk;
-		chunk.chunkType = rawSpan[offset];
-		chunk.unknown = rawSpan[offset + 1];
-		chunk.dataSize = rawSpan[offset + 2] | (rawSpan[offset + 3] << 8) | (rawSpan[offset + 4] << 16) | (rawSpan[offset + 5] << 24);
-		chunk.lengthMask = rawSpan[offset + 6];
-		chunk.lengthBits = rawSpan[offset + 7];
-		offset += 8;
-		chunk.data = rawSpan.subspan(offset, chunk.dataSize);
-		offset += chunk.dataSize;
-		vdxFile.chunks.push_back(std::move(chunk));
-	}
+	vdxFile.rawView = std::span<const uint8_t>{vdxFile.rawData};
+	parseVDXChunksFromSpan(vdxFile, vdxFile.rawView);
 	return vdxFile;
 }
 
@@ -97,42 +318,20 @@ Description:
 VDXFile parseVDXFile(std::string_view filename, std::vector<uint8_t> &&buffer)
 {
 	VDXFile vdxFile;
-	auto lastDot = filename.find_last_of('.');
-	vdxFile.filename = (lastDot == std::string_view::npos) ? std::string(filename) : std::string(filename.substr(0, lastDot));
+	initializeVDXFilename(vdxFile, filename);
+	vdxFile.rawData = std::move(buffer); // Zero-copy move from owned caller buffer
+	vdxFile.rawView = std::span<const uint8_t>{vdxFile.rawData};
+	parseVDXChunksFromSpan(vdxFile, vdxFile.rawView);
+	return vdxFile;
+}
 
-	vdxFile.rawData = std::move(buffer); // Zero-copy: move instead of assign
-	std::span<const uint8_t> rawSpan{vdxFile.rawData};
-
-	size_t preCount = 0;
-	if (rawSpan.size() >= 8)
-	{
-		size_t off = 8;
-		while (off + 8 <= rawSpan.size())
-		{
-			const uint32_t dataSize = rawSpan[off + 2] | (rawSpan[off + 3] << 8) | (rawSpan[off + 4] << 16) | (rawSpan[off + 5] << 24);
-			++preCount;
-			off += 8u + static_cast<size_t>(dataSize);
-		}
-	}
-	vdxFile.chunks.reserve(preCount);
-
-	vdxFile.identifier = rawSpan[0] | (rawSpan[1] << 8);
-	std::copy(rawSpan.begin() + 2, rawSpan.begin() + 8, vdxFile.unknown.begin());
-
-	size_t offset = 8;
-	while (offset < rawSpan.size())
-	{
-		VDXChunk chunk;
-		chunk.chunkType = rawSpan[offset];
-		chunk.unknown = rawSpan[offset + 1];
-		chunk.dataSize = rawSpan[offset + 2] | (rawSpan[offset + 3] << 8) | (rawSpan[offset + 4] << 16) | (rawSpan[offset + 5] << 24);
-		chunk.lengthMask = rawSpan[offset + 6];
-		chunk.lengthBits = rawSpan[offset + 7];
-		offset += 8;
-		chunk.data = rawSpan.subspan(offset, chunk.dataSize);
-		offset += chunk.dataSize;
-		vdxFile.chunks.push_back(std::move(chunk));
-	}
+VDXFile parseVDXFileBorrowed(std::string_view filename, std::span<const uint8_t> buffer, std::shared_ptr<const uint8_t> owner)
+{
+	VDXFile vdxFile;
+	initializeVDXFilename(vdxFile, filename);
+	vdxFile.externalDataOwner = std::move(owner);
+	vdxFile.rawView = buffer;
+	parseVDXChunksFromSpan(vdxFile, vdxFile.rawView);
 	return vdxFile;
 }
 
@@ -149,8 +348,7 @@ Parameters:
 */
 void parseVDXChunks(VDXFile &vdxFile)
 {
-	// Thread-local reuse buffers for decompression and palette (zero-allocation across calls)
-	static thread_local std::vector<uint8_t> decompBuffer;
+	// Palette state is shared by consecutive chunks in a VDX stream.
 	static thread_local std::vector<RGBColor> palette(256);
 
 	// Pre-count frame-producing chunks to reserve frameData (less reallocs)
@@ -175,10 +373,13 @@ void parseVDXChunks(VDXFile &vdxFile)
 
 		if (chunk.lengthBits != 0)
 		{
-			const size_t maxDecompSize = chunk.dataSize * 20;
-			decompBuffer.resize(maxDecompSize);
-			const size_t decompSize = lzssDecompress(chunk.data, decompBuffer, chunk.lengthMask, chunk.lengthBits);
-			dataToProcess = std::span{decompBuffer.data(), decompSize};
+			auto decompressed = lzssDecompressChecked(chunk.data, chunk.lengthMask, chunk.lengthBits);
+			if (!decompressed)
+				throw std::runtime_error("Invalid compressed VDX chunk in " + vdxFile.filename + ": " + decompressed.error());
+			// Keep the decoded bytes alive for this switch iteration.
+			static thread_local std::vector<uint8_t> decompBuffer;
+			decompBuffer = std::move(*decompressed);
+			dataToProcess = decompBuffer;
 		}
 		else
 		{
@@ -192,29 +393,34 @@ void parseVDXChunks(VDXFile &vdxFile)
 		case 0x25:
 		{
 			// Get prev frame span (empty for first)
-			std::span<uint8_t> prevFrame;
+			std::span<const uint8_t> prevFrame;
 			if (!vdxFile.frameData.empty())
 			{
-				prevFrame = std::span<uint8_t>(vdxFile.frameData.back());
+				prevFrame = std::span<const uint8_t>(*vdxFile.frameData.back());
 			}
 
 			// Set dimensions from first static frame
-			if (chunk.chunkType == 0x20 && vdxFile.width == 0 && dataToProcess.size() >= 4)
+			if (chunk.chunkType == 0x20 && vdxFile.width == 0)
 			{
+				if (dataToProcess.size() < 6)
+					throw std::runtime_error("Truncated VDX bitmap header in " + vdxFile.filename);
 				const uint16_t numXTiles = readLittleEndian16(dataToProcess.subspan(0, 2));
 				const uint16_t numYTiles = readLittleEndian16(dataToProcess.subspan(2, 2));
+				if (numXTiles == 0 || numYTiles == 0 || numXTiles > 4096 || numYTiles > 4096)
+					throw std::runtime_error("Invalid VDX bitmap dimensions in " + vdxFile.filename);
 				vdxFile.width = numXTiles * 4;
 				vdxFile.height = numYTiles * 4;
 			}
 
 			// Preallocate new frame buffer with exact size
 			const size_t frameSize = static_cast<size_t>(vdxFile.width) * vdxFile.height * 3;
-			std::vector<uint8_t> newFrame(frameSize);
+			auto newFrame = std::make_shared<std::vector<uint8_t>>(frameSize);
 
 			if (chunk.chunkType == 0x20)
 			{
 				// Static: Process in place
-				getBitmapData(dataToProcess, palette, std::span{newFrame});
+				if (!getBitmapDataChecked(dataToProcess, palette, std::span{*newFrame}))
+					throw std::runtime_error("Invalid VDX bitmap payload in " + vdxFile.filename);
 				// No need to update palette - it's already modified in place
 			}
 			else
@@ -222,11 +428,14 @@ void parseVDXChunks(VDXFile &vdxFile)
 				// Delta: Copy prev if exists using memcpy for 2-3x faster copy
 				if (!prevFrame.empty())
 				{
-					std::memcpy(newFrame.data(), prevFrame.data(), prevFrame.size());
+					if (prevFrame.size() != newFrame->size())
+						throw std::runtime_error("VDX delta frame dimensions changed in " + vdxFile.filename);
+					std::memcpy(newFrame->data(), prevFrame.data(), newFrame->size());
 				}
 				// else already zero from resize
-				std::span<uint8_t> mutableFrame{newFrame};
-				getDeltaBitmapData(dataToProcess, palette, mutableFrame, vdxFile.width);
+				std::span<uint8_t> mutableFrame{*newFrame};
+				if (!getDeltaBitmapDataChecked(dataToProcess, palette, mutableFrame, vdxFile.width))
+					throw std::runtime_error("Invalid VDX delta payload in " + vdxFile.filename);
 			}
 
 			// Add frame: Move the new frame
@@ -238,7 +447,7 @@ void parseVDXChunks(VDXFile &vdxFile)
 			vdxFile.audioData.insert(vdxFile.audioData.end(), dataToProcess.begin(), dataToProcess.end());
 			break;
 		case 0x00:
-			// Duplicate last frame (copy necessary)
+			// Duplicate last frame: share the existing buffer via shared_ptr.
 			if (!vdxFile.frameData.empty())
 			{
 				vdxFile.frameData.push_back(vdxFile.frameData.back());
@@ -249,6 +458,10 @@ void parseVDXChunks(VDXFile &vdxFile)
 
 	// Clear chunks after processing (free memory)
 	vdxFile.chunks.clear();
+	// Source bytes are no longer needed after decode; release as early as possible.
+	vdxFile.rawData.clear();
+	vdxFile.rawView = {};
+	vdxFile.externalDataOwner.reset();
 }
 
 /*
@@ -268,6 +481,7 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 {
 	VDXFile vdx;
 	VDXFile *vdxToUse = preloadedVdx;
+	std::unique_ptr<StreamingVDXDecoder> streamDecoder;
 
 	if (!vdxToUse)
 	{
@@ -294,11 +508,25 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 		vdxToUse = &vdx;
 	}
 
-	// Ensure parsed
-	if (!vdxToUse->parsed)
+	// Standalone cutscenes are consumed sequentially.  Decode only the current
+	// frame; reusable/preloaded room animations retain indexed frame storage.
+	if (!preloadedVdx)
+	{
+		streamDecoder = std::make_unique<StreamingVDXDecoder>(*vdxToUse);
+		if (streamDecoder->totalFrames == 0)
+			return;
+		streamDecoder->prepareAudio();
+		if (!streamDecoder->decodeNextFrame())
+			return;
+	}
+	else if (!vdxToUse->parsed)
 	{
 		parseVDXChunks(*vdxToUse);
 		vdxToUse->parsed = true;
+	}
+	if (vdxToUse->frameData.empty())
+	{
+		return;
 	}
 
 	// Save state
@@ -310,19 +538,25 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 	if (!vdxToUse->audioData.empty())
 	{
 				state.frameTiming.currentFPS = 15.0;
-		wavPlay(std::span{vdxToUse->audioData});
+		auto audioOwner = std::make_shared<std::vector<uint8_t>>(std::move(vdxToUse->audioData));
+		wavPlay(audioOwner);
 	}
 
 	// Temporarily set currentVDX for rendering (non-owning during playback)
 	auto savedVDX = std::move(state.currentVDX); // save ownership
+	VDXPlayOwnerGuard ownerGuard{std::move(savedVDX)};
 	state.currentVDX.reset(vdxToUse); // temporarily point to playing VDX (non-owning!)
 	state.currentFrameIndex = 0;
 	state.animation.isPlaying = true;
-	state.animation.totalFrames = vdxToUse->frameData.size();
+	state.animation.totalFrames = streamDecoder ? streamDecoder->totalFrames : vdxToUse->frameData.size();
 	state.animation.lastFrameTime = std::chrono::steady_clock::now();
+	state.frameTiming.dirtyFrame = true;
+	// Present the first frame immediately before processing queued window messages.
+	maybeRenderFrame(true);
 
 	// Playback loop
 	bool playing = true;
+	size_t displayedFrames = 1;
 	while (playing)
 	{
 		if (!processEvents())
@@ -338,11 +572,26 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 				auto frameDuration = state.animation.getFrameDuration(state.frameTiming.currentFPS);
 		if (elapsed >= frameDuration)
 		{
-			state.currentFrameIndex++;
-			if (state.currentFrameIndex >= state.animation.totalFrames)
+			if (streamDecoder)
 			{
-				playing = false;
-				state.currentFrameIndex = state.animation.totalFrames - 1;
+				if (displayedFrames >= state.animation.totalFrames || !streamDecoder->decodeNextFrame())
+				{
+					playing = false;
+				}
+				else
+				{
+					++displayedFrames;
+					state.currentFrameIndex = 0;
+				}
+			}
+			else
+			{
+				state.currentFrameIndex++;
+				if (state.currentFrameIndex >= state.animation.totalFrames)
+				{
+					playing = false;
+					state.currentFrameIndex = state.animation.totalFrames - 1;
+				}
 			}
 			state.animation.lastFrameTime += frameDuration;
 						state.frameTiming.dirtyFrame = true;
@@ -350,20 +599,25 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 
 		maybeRenderFrame();
 
-	// Free memory for frames already presented to keep peak usage low
-	// Only do this for non-preloaded (transient) VDX; preloaded VDX may be reused
-	if (!preloadedVdx)
-		vdxToUse->frameData[state.currentFrameIndex] = {};
 	}
 
 	// Restore
 	wavStop();
 	state.frameTiming.currentFPS = prevFPS;
-	(void)state.currentVDX.release(); // release non-owning temporary without deleting
-	state.currentVDX = std::move(savedVDX); // restore original ownership
+	// currentVDX ownership is restored by VDXPlayOwnerGuard on scope exit
 	state.currentFrameIndex = prevFrame;
 	state.animation = prevAnim;
 	state.frameTiming.dirtyFrame = true;
+
+	if (streamDecoder)
+	{
+		vdxToUse->frameData.clear();
+		vdxToUse->audioData.clear();
+		vdxToUse->chunks.clear();
+		vdxToUse->rawData.clear();
+		vdxToUse->rawView = {};
+		vdxToUse->externalDataOwner.reset();
+	}
 }
 
 /*
@@ -399,7 +653,10 @@ std::expected<VDXFile, std::string> loadSingleVDX(const std::string &room, const
 	auto it = std::find_if(indices.begin(), indices.end(),
 						   [&](const auto &e)
 						   {
-							   std::string rlClean = e.filename.substr(0, e.filename.find_first_of('.'));
+							   std::string_view rlClean{e.filename};
+							   const auto dotPos = rlClean.find_first_of('.');
+							   if (dotPos != std::string_view::npos)
+								   rlClean.remove_suffix(rlClean.size() - dotPos);
 							   return rlClean == vdxName;
 						   });
 
@@ -407,15 +664,36 @@ std::expected<VDXFile, std::string> loadSingleVDX(const std::string &room, const
 		return std::unexpected("VDX not found in RL: " + vdxName);
 
 	std::string gjdPath = room + ".GJD";
-	std::ifstream gjdFile(gjdPath, std::ios::binary);
-	if (!gjdFile)
-		return std::unexpected("Failed to open GJD: " + gjdPath);
 
-	gjdFile.seekg(it->offset);
-	std::vector<uint8_t> buffer(it->length);
-	gjdFile.read(reinterpret_cast<char *>(buffer.data()), it->length);
+	// Cache per-room GJD mappings weakly so multiple VDX loads from the same room
+	// reuse the memory map instead of repeatedly opening/mapping the file.
+	static std::unordered_map<std::string, std::pair<std::weak_ptr<const uint8_t>, size_t>> gjdCache;
+	std::shared_ptr<const uint8_t> owner;
+	size_t fileSize = 0;
+	auto gjdCacheIt = gjdCache.find(gjdPath);
+	if (gjdCacheIt != gjdCache.end() && (owner = gjdCacheIt->second.first.lock()))
+	{
+		fileSize = gjdCacheIt->second.second;
+	}
+	else
+	{
+		auto mapped = mapFileReadOnly(gjdPath);
+		if (!mapped)
+		{
+			return std::unexpected(mapped.error());
+		}
+		auto [mappedOwner, mappedSize] = std::move(*mapped);
+		owner = std::move(mappedOwner);
+		fileSize = mappedSize;
+		gjdCache[gjdPath] = {owner, fileSize};
+	}
 
-	return parseVDXFile(vdxName, std::move(buffer));
+	if (it->offset > fileSize || it->length > fileSize - it->offset)
+	{
+		return std::unexpected("VDX entry exceeds GJD bounds: " + vdxName);
+	}
+	std::span<const uint8_t> vdxSpan{owner.get() + it->offset, it->length};
+	return parseVDXFileBorrowed(vdxName, vdxSpan, owner);
 }
 
 /*
@@ -472,6 +750,8 @@ void unloadVDX(const std::string &name)
 		state.currentVDX->audioData.clear();
 		state.currentVDX->chunks.clear();
 		state.currentVDX->rawData.clear();
+		state.currentVDX->rawView = {};
+		state.currentVDX->externalDataOwner.reset();
 		state.currentVDX.reset();
 	}
 }

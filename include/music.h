@@ -27,5 +27,6 @@ void PlayMIDI(const std::vector<uint8_t> &midiData, bool isTransient = false);
 void xmiPlay(const std::string &songName, bool isTransient = false);
 void pushMainSong(const std::string &songName);
 void popMainSong();
+void applyMusicRuntimeSettings();
 
 #endif // MUSIC_H

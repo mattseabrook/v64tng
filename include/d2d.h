@@ -9,6 +9,7 @@
 #include <dxgi1_2.h>
 #include <dxgi1_3.h>
 #include <dxgi1_4.h>
+#include <dxgi1_6.h>
 #include <wrl/client.h>
 
 #include "render.h"
@@ -85,6 +86,9 @@ struct D2DContext
     Microsoft::WRL::ComPtr<ID3D11Buffer> raycastConstantBuffer;
     UINT lastMapWidth = 0;
     UINT lastMapHeight = 0;
+    UINT lastEdgeMapWidth = 0;
+    UINT lastEdgeMapHeight = 0;
+    UINT edgeOffsetsElementCount = 0;
 
     // Megatexture edge-offset lookup buffer (SRV as R32_UINT array)
     Microsoft::WRL::ComPtr<ID3D11Buffer> edgeOffsetsBuffer;

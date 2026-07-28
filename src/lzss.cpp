@@ -140,6 +140,58 @@ size_t lzssDecompress(std::span<const uint8_t> compressedData, std::span<uint8_t
     return out_pos; // Return decompressed size.
 }
 
+std::expected<std::vector<uint8_t>, std::string> lzssDecompressChecked(
+    std::span<const uint8_t> compressedData, uint8_t lengthMask, uint8_t lengthBits,
+    size_t maximumOutput)
+{
+    if (lengthBits == 0 || lengthBits > 8)
+        return std::unexpected("Invalid LZSS length bit count");
+
+    const size_t historySize = size_t{1} << (16 - lengthBits);
+    const size_t lookaheadSize = size_t{1} << lengthBits;
+    std::vector<uint8_t> history(historySize, 0);
+    std::vector<uint8_t> output;
+    output.reserve(std::min(maximumOutput, compressedData.size() * size_t{4}));
+    size_t historyPos = historySize - lookaheadSize;
+    size_t inputPos = 0;
+
+    auto emit = [&](uint8_t value) -> bool {
+        if (output.size() == maximumOutput)
+            return false;
+        output.push_back(value);
+        history[historyPos] = value;
+        historyPos = (historyPos + 1) & (historySize - 1);
+        return true;
+    };
+
+    while (inputPos < compressedData.size())
+    {
+        uint8_t flags = compressedData[inputPos++];
+        for (int bit = 0; bit < 8 && inputPos < compressedData.size(); ++bit, flags >>= 1)
+        {
+            if (flags & 1)
+            {
+                if (!emit(compressedData[inputPos++]))
+                    return std::unexpected("LZSS output exceeds safety limit");
+                continue;
+            }
+            if (compressedData.size() - inputPos < 2)
+                return std::unexpected("Truncated LZSS back-reference");
+            const uint16_t encoded = static_cast<uint16_t>(compressedData[inputPos]) |
+                                     (static_cast<uint16_t>(compressedData[inputPos + 1]) << 8);
+            inputPos += 2;
+            if (encoded == 0)
+                return output;
+            const size_t offset = (historyPos - (encoded >> lengthBits)) & (historySize - 1);
+            const size_t length = (encoded & lengthMask) + 3u;
+            for (size_t i = 0; i < length; ++i)
+                if (!emit(history[(offset + i) & (historySize - 1)]))
+                    return std::unexpected("LZSS output exceeds safety limit");
+        }
+    }
+    return std::unexpected("LZSS stream has no end marker");
+}
+
 /*
 std::vector<uint8_t> lzssDecompress(std::span<const uint8_t> compressedData, uint8_t lengthMask, uint8_t lengthBits)
 {

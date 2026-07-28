@@ -784,6 +784,7 @@ LINKER_ARGS=(
     "ole32.lib"
     "uuid.lib"
     "winmm.lib"
+    "avrt.lib"
     "comdlg32.lib"
     "comctl32.lib"
 )
@@ -843,13 +844,17 @@ fi
 # Deployment
 #===============================================================================
 
-banner "${EMOJI_ROCKET} Deployment"
+if [[ "${V64TNG_NO_DEPLOY:-0}" != "1" ]]; then
+    banner "${EMOJI_ROCKET} Deployment"
 
-mkdir -p "$TARGET_DIR"
-sudo rm -f "$TARGET_DIR"/v64tng*.exe "$TARGET_DIR"/v64tng*.pdb
-sudo cp "$OUTPUT_EXE" "$TARGET_DIR/"
+    mkdir -p "$TARGET_DIR"
+    sudo rm -f "$TARGET_DIR"/v64tng*.exe "$TARGET_DIR"/v64tng*.pdb
+    sudo cp "$OUTPUT_EXE" "$TARGET_DIR/"
 
-echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Deployed to $TARGET_DIR${COLOR_RESET}"
+    echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Deployed to $TARGET_DIR${COLOR_RESET}"
+else
+    echo -e "${COLOR_DIM}Deployment skipped (V64TNG_NO_DEPLOY=1)${COLOR_RESET}"
+fi
 
 #===============================================================================
 # Build Complete

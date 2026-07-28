@@ -23,16 +23,30 @@ Parameters:
 */
 void convertRGBtoBGRA_SSE(const uint8_t *rgbData, uint8_t *bgraData, size_t pixelCount)
 {
-    static const __m128i shuffleMask = _mm_set_epi8(0x80, 9, 10, 11, 0x80, 6, 7, 8, 0x80, 3, 4, 5, 0x80, 0, 1, 2);
-    static const __m128i alphaMask = _mm_set_epi8(255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0);
+    static const __m128i shuffleMask = _mm_set_epi8((char)0x80, 9, 10, 11, (char)0x80, 6, 7, 8, (char)0x80, 3, 4, 5, (char)0x80, 0, 1, 2);
+    static const __m128i alphaMask = _mm_set_epi8((char)0xFF, 0, 0, 0, (char)0xFF, 0, 0, 0, (char)0xFF, 0, 0, 0, (char)0xFF, 0, 0, 0);
 
     size_t i = 0;
-    for (; i + 4 <= pixelCount; i += 4)
+    // A 16-byte SIMD load over 4 RGB pixels (12 bytes) requires 4 bytes of lookahead.
+    // Keep direct loads only when at least 6 pixels remain to avoid overread.
+    for (; i + 6 <= pixelCount; i += 4)
     {
         __m128i rgb = _mm_loadu_si128(reinterpret_cast<const __m128i *>(rgbData + i * 3));
         __m128i shuffled = _mm_shuffle_epi8(rgb, shuffleMask);
         __m128i bgra = _mm_or_si128(shuffled, alphaMask);
         _mm_storeu_si128(reinterpret_cast<__m128i *>(bgraData + i * 4), bgra);
+    }
+
+    // Handle one 4-pixel block safely without reading past the RGB row.
+    if (i + 4 <= pixelCount)
+    {
+        alignas(16) uint8_t rgbTail[16] = {};
+        std::memcpy(rgbTail, rgbData + i * 3, 12);
+        __m128i rgb = _mm_load_si128(reinterpret_cast<const __m128i *>(rgbTail));
+        __m128i shuffled = _mm_shuffle_epi8(rgb, shuffleMask);
+        __m128i bgra = _mm_or_si128(shuffled, alphaMask);
+        _mm_storeu_si128(reinterpret_cast<__m128i *>(bgraData + i * 4), bgra);
+        i += 4;
     }
 
     for (; i < pixelCount; ++i)
@@ -71,12 +85,13 @@ static inline void convertRGBtoBGRA_Scalar(const uint8_t *rgbData, uint8_t *bgra
 // Process 8 pixels per iteration by doing two SSSE3 shuffles and combining into one AVX2 store
 static TARGET_AVX2 void convertRGBtoBGRA_AVX2(const uint8_t *rgbData, uint8_t *bgraData, size_t pixelCount)
 {
-#if defined(__AVX2__)
-    const __m128i shuffleMask = _mm_set_epi8(0x80, 9, 10, 11, 0x80, 6, 7, 8, 0x80, 3, 4, 5, 0x80, 0, 1, 2);
-    const __m128i alphaMask = _mm_set_epi8(255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0);
+#if defined(__clang__) || defined(__GNUC__)
+    const __m128i shuffleMask = _mm_set_epi8((char)0x80, 9, 10, 11, (char)0x80, 6, 7, 8, (char)0x80, 3, 4, 5, (char)0x80, 0, 1, 2);
+    const __m128i alphaMask = _mm_set_epi8((char)0xFF, 0, 0, 0, (char)0xFF, 0, 0, 0, (char)0xFF, 0, 0, 0, (char)0xFF, 0, 0, 0);
 
     size_t i = 0;
-    for (; i + 8 <= pixelCount; i += 8)
+    // Two 16-byte loads are used per 8-pixel chunk; require enough lookahead for both.
+    for (; i + 10 <= pixelCount; i += 8)
     {
         // First 4 pixels
         __m128i rgb0 = _mm_loadu_si128(reinterpret_cast<const __m128i *>(rgbData + i * 3));
@@ -93,10 +108,21 @@ static TARGET_AVX2 void convertRGBtoBGRA_AVX2(const uint8_t *rgbData, uint8_t *b
         _mm256_storeu_si256(reinterpret_cast<__m256i *>(bgraData + i * 4), out);
     }
 
-    // Tail: handle remaining 4-pixel block with SSSE3 and any leftover scalars
-    if (i + 4 <= pixelCount)
+    if (i + 6 <= pixelCount)
     {
         __m128i rgb = _mm_loadu_si128(reinterpret_cast<const __m128i *>(rgbData + i * 3));
+        __m128i shuf = _mm_shuffle_epi8(rgb, shuffleMask);
+        __m128i bgra = _mm_or_si128(shuf, alphaMask);
+        _mm_storeu_si128(reinterpret_cast<__m128i *>(bgraData + i * 4), bgra);
+        i += 4;
+    }
+
+    // Final 4-pixel tail block without overread.
+    if (i + 4 <= pixelCount)
+    {
+        alignas(16) uint8_t rgbTail[16] = {};
+        std::memcpy(rgbTail, rgbData + i * 3, 12);
+        __m128i rgb = _mm_load_si128(reinterpret_cast<const __m128i *>(rgbTail));
         __m128i shuf = _mm_shuffle_epi8(rgb, shuffleMask);
         __m128i bgra = _mm_or_si128(shuf, alphaMask);
         _mm_storeu_si128(reinterpret_cast<__m128i *>(bgraData + i * 4), bgra);
@@ -107,7 +133,7 @@ static TARGET_AVX2 void convertRGBtoBGRA_AVX2(const uint8_t *rgbData, uint8_t *b
         convertRGBtoBGRA_Scalar(rgbData + i * 3, bgraData + i * 4, pixelCount - i);
     }
 #else
-    // If compiled without AVX2, fall back to SSSE3/scalar
+    // Non-clang/gcc toolchains: use SSSE3/scalar fallback.
     convertRGBtoBGRA_SSE(rgbData, bgraData, pixelCount);
 #endif
 }
@@ -131,28 +157,21 @@ Parameters:
 // Function pointer type for SIMD converters
 using ConvertFunc = void(*)(const uint8_t*, uint8_t*, size_t);
 
-// Cached function pointer - set once based on SIMD level
-static ConvertFunc s_convertFunc = nullptr;
-
 void convertRGBRowToBGRA(const uint8_t *rgbRow, uint8_t *bgraRow, size_t width)
 {
-    // Initialize function pointer on first call (branch predictor friendly)
-    if (!s_convertFunc) [[unlikely]]
-    {
-        switch (state.simd)
+    static SimdDispatchCache<ConvertFunc> dispatch;
+    ConvertFunc fn = dispatch.get(state.simd, [](GameState::SIMDLevel level) -> ConvertFunc {
+        switch (level)
         {
         case GameState::SIMDLevel::AVX2:
-            s_convertFunc = convertRGBtoBGRA_AVX2;
-            break;
+            return convertRGBtoBGRA_AVX2;
         case GameState::SIMDLevel::SSSE3:
-            s_convertFunc = convertRGBtoBGRA_SSE;
-            break;
+            return convertRGBtoBGRA_SSE;
         default:
-            s_convertFunc = convertRGBtoBGRA_Scalar;
-            break;
+            return convertRGBtoBGRA_Scalar;
         }
-    }
-    s_convertFunc(rgbRow, bgraRow, width);
+    });
+    fn(rgbRow, bgraRow, width);
 }
 
 /*
@@ -192,10 +211,13 @@ Parameters:
     - forceFull: Boolean indicating if a full update is required.
 ===============================================================================
 */
-std::vector<size_t> getChangedRowsAndUpdatePrevious(std::span<const uint8_t> rgbData, std::vector<uint8_t> &previousFrameData, int width, int height, bool forceFull)
+std::span<const size_t> getChangedRowsAndUpdatePrevious(std::span<const uint8_t> rgbData, std::vector<uint8_t> &previousFrameData, int width, int height, bool forceFull)
 {
-    std::vector<size_t> changed;
-    changed.reserve(static_cast<size_t>(height));
+    // Persistent across calls (cleared, not reallocated) so the steady-state
+    // frame loop does zero heap allocations here after warm-up. Caller must
+    // consume the returned span before the next call on this thread.
+    static thread_local std::vector<size_t> changed;
+    changed.clear();
     const size_t rowSize = static_cast<size_t>(width) * 3;
     const size_t expectedSize = static_cast<size_t>(width) * height * 3;
 
@@ -207,20 +229,12 @@ std::vector<size_t> getChangedRowsAndUpdatePrevious(std::span<const uint8_t> rgb
     {
         changed.resize(height);
         std::iota(changed.begin(), changed.end(), 0);
-        // Copy row-by-row; if rgbData is smaller (e.g., cropped intros), pad missing rows with zeros
-        for (int y = 0; y < height; ++y)
-        {
-            const size_t srcOffset = static_cast<size_t>(y) * rowSize;
-            uint8_t *dstRow = previousFrameData.data() + static_cast<size_t>(y) * rowSize;
-            if (srcOffset + rowSize <= rgbData.size())
-            {
-                std::memcpy(dstRow, rgbData.data() + srcOffset, rowSize);
-            }
-            else
-            {
-                std::memset(dstRow, 0, rowSize);
-            }
-        }
+        // Full-frame fast path: copy all available data in one shot, then pad if needed
+        const size_t copyBytes = std::min(expectedSize, rgbData.size());
+        if (copyBytes > 0)
+            std::memcpy(previousFrameData.data(), rgbData.data(), copyBytes);
+        if (copyBytes < expectedSize)
+            std::memset(previousFrameData.data() + copyBytes, 0, expectedSize - copyBytes);
         return changed;
     }
 

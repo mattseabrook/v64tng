@@ -26,7 +26,7 @@ cbuffer RaycastConstants : register(b0)
     float fovMul;            // FOV adjustment multiplier
     uint supersample;        // Supersampling count (1, 2, 4, etc.)
     float wallHeightUnits;   // Wall height in world units relative to width
-    uint padding2;
+    uint measuredFPS;
     uint padding3;
 };
 
@@ -42,6 +42,7 @@ struct RayHit
     int2 cell;         // map cell at hit
     int cardinalSide;  // 0=N,1=E,2=S,3=W
     float wallX;       // [0..1] along wall
+    float cosCorr;     // perpendicular-distance correction
 };
 
 RayHit castRay(float2 pos, float2 rayDir)
@@ -77,7 +78,7 @@ RayHit castRay(float2 pos, float2 rayDir)
     
     // DDA loop - bounded to prevent infinite loops
     int side = 0;
-    const int MAX_STEPS = 64;
+    const int MAX_STEPS = clamp(int(mapWidth + mapHeight) + 64, 64, 4096);
     
     [loop]
     for (int i = 0; i < MAX_STEPS; i++)
@@ -208,8 +209,10 @@ float3 shadePixel(uint2 pixel, RayHit hit, float halfW, float halfH, float maxRa
     else
     {
         // Hit a wall - calculate wall rendering
-        float perpWallDist = max(hit.distance / visualScale, 0.01);
-        float lineHeight = screenHeight / perpWallDist;
+        float perpWallDist =
+            max(hit.distance * hit.cosCorr / visualScale, 0.01);
+        float halfFovTan = max(tan(playerFOV * 0.5 * fovMul), 0.001);
+        float lineHeight = screenHeight / (perpWallDist * halfFovTan);
         float drawStart = halfH - lineHeight / 2.0;
         float drawEnd = halfH + lineHeight / 2.0;
         
@@ -278,6 +281,54 @@ float3 shadePixel(uint2 pixel, RayHit hit, float halfW, float halfH, float maxRa
     return color;
 }
 
+uint fpsGlyphPattern(uint glyph)
+{
+    if (glyph == 0) return 0x7b6f; if (glyph == 1) return 0x749a;
+    if (glyph == 2) return 0x73e7; if (glyph == 3) return 0x79e7;
+    if (glyph == 4) return 0x49ed; if (glyph == 5) return 0x79cf;
+    if (glyph == 6) return 0x7bcf; if (glyph == 7) return 0x4927;
+    if (glyph == 8) return 0x7bef; if (glyph == 9) return 0x79ef;
+    if (glyph == 10) return 0x12cf; if (glyph == 11) return 0x12eb;
+    if (glyph == 12) return 0x79cf;
+    return 0;
+}
+
+float3 applyFpsOverlay(float3 sceneColor, uint2 pixel)
+{
+    uint fps = min(measuredFPS, 999u);
+    uint scale = screenWidth >= 1200u ? 3u : 2u;
+    uint advance = 4u * scale;
+    uint textWidth = 7u * advance - scale;
+    uint startX = screenWidth > textWidth + 10u
+        ? screenWidth - textWidth - 10u : 4u;
+    uint startY = 8u;
+    if (pixel.x + 4u >= startX && pixel.x < startX + textWidth + 4u &&
+        pixel.y + 3u >= startY && pixel.y < startY + 5u * scale + 3u)
+        sceneColor *= 0.25;
+    if (pixel.x < startX || pixel.y < startY ||
+        pixel.y >= startY + 5u * scale)
+        return sceneColor;
+
+    uint localX = pixel.x - startX;
+    uint character = localX / advance;
+    if (character >= 7u || (localX % advance) >= 3u * scale)
+        return sceneColor;
+    int glyph = -1;
+    if (character == 0u) glyph = 10;
+    else if (character == 1u) glyph = 11;
+    else if (character == 2u) glyph = 12;
+    else if (character == 4u && fps >= 100u) glyph = fps / 100u;
+    else if (character == 5u && fps >= 10u) glyph = (fps / 10u) % 10u;
+    else if (character == 6u) glyph = fps % 10u;
+    if (glyph < 0)
+        return sceneColor;
+    uint gx = (localX % advance) / scale;
+    uint gy = (pixel.y - startY) / scale;
+    uint bit = gy * 3u + gx;
+    return (fpsGlyphPattern(glyph) & (1u << bit)) != 0u
+        ? float3(1.0, 1.0, 1.0) : sceneColor;
+}
+
 //==============================================================================
 // Main Compute Shader
 //==============================================================================
@@ -305,11 +356,14 @@ void main(uint3 DTid : SV_DispatchThreadID)
         float camX = 2.0 * (pixel.x + (sample + 0.5) / supersample) / screenWidth - 1.0;
         
         // Calculate ray angle and direction
-        float rayAngle = playerAngle + camX * (playerFOV * 0.5 * fovMul);
+        float halfFovTan = tan(playerFOV * 0.5 * fovMul);
+        float viewX = camX * halfFovTan;
+        float rayAngle = playerAngle + atan(viewX);
         float2 rayDir = float2(cos(rayAngle), sin(rayAngle));
         
         // Cast ray
         RayHit hit = castRay(float2(playerX, playerY), rayDir);
+        hit.cosCorr = 1.0 / sqrt(1.0 + viewX * viewX);
         
         // Shade pixel
         float3 color = shadePixel(pixel, hit, halfW, halfH, maxRadius);
@@ -321,9 +375,11 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
     // Add a touch of dithering to reduce visible banding on smooth gradients
     // Cheap hash from pixel coords -> [0,1)
-    float h = frac(sin(dot(float2(pixel), float2(12.9898, 78.233))) * 43758.5453);
-    float d = (h - 0.5) * (1.5 / 255.0); // +/- ~1.5 LSBs
+    uint hash = pixel.x * 1664525u + pixel.y * 1013904223u;
+    hash ^= hash >> 16;
+    float d = ((hash & 1023u) / 1023.0 - 0.5) * (1.5 / 255.0);
     accumColor = saturate(accumColor + d);
+    accumColor = applyFpsOverlay(accumColor, pixel);
     
     // Write output as BGRA (DirectX convention)
     // Note: We specify RGB in shader but output texture is BGRA,
