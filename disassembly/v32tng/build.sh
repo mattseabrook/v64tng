@@ -23,12 +23,15 @@ verify_hash() {
 mkdir -p "$build_dir"
 verify_hash "$reference"
 
+if rg --line-number '^[[:space:]]*incbin([[:space:]]|$)' \
+    "$project_dir/main.asm" "$project_dir/src"; then
+    echo "error: lossless source tree contains an incbin directive" >&2
+    exit 1
+fi
+
 (
     cd "$project_dir"
-    nasm -f bin \
-        -DREFERENCE_FILE="\"$reference\"" \
-        -o "$rebuilt" \
-        main.asm
+    nasm -f bin -o "$rebuilt" main.asm
 )
 
 verify_hash "$rebuilt"

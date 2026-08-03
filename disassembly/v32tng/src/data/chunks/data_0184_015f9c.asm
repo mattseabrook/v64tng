@@ -1,0 +1,9 @@
+; Explicit file bytes raw 015F9C..015FB0.
+%macro emit_file_data_0184_015f9c 0
+    %%chunk_start:
+    db 0x90, 0x90, 0x90, 0x90, 0xA1, 0x40, 0xF1, 0x41, 0x00, 0xC3, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 ; raw 015F9C |.....@.A........|
+    db 0x90, 0x90, 0x90, 0x90 ; raw 015FAC |....|
+    %if ($ - %%chunk_start) != 20
+        %error "data chunk size drift: 015F9C"
+    %endif
+%endmacro

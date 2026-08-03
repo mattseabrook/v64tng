@@ -98,10 +98,10 @@ linear_entry	working_name	status	ghidra_entry	ghidra_name	source
 0444A	func_0444a	unidentified	1000:444a	FUN_1000_444a	src/functions/44/0444a_func_0444a.asm
 04451	func_04451	unidentified	1000:4451	FUN_1000_4451	src/functions/44/04451_func_04451.asm
 04461	func_04461	unidentified	1000:4461	FUN_1000_4461	src/functions/44/04461_func_04461.asm
-0447B	func_0447b	unidentified	1000:447b	FUN_1000_447b	src/functions/44/0447b_func_0447b.asm
+0447B	run_grv_input_loop	verified-role	1000:447b	FUN_1000_447b	src/functions/44/0447b_run_grv_input_loop.asm
 046F5	func_046f5	unidentified	1000:46f5	FUN_1000_46f5	src/functions/46/046f5_func_046f5.asm
 04710	func_04710	unidentified	1000:4710	FUN_1000_4710	src/functions/47/04710_func_04710.asm
-04729	func_04729	unidentified	1000:4729	FUN_1000_4729	src/functions/47/04729_func_04729.asm
+04729	match_grv_key_action	verified-role	1000:4729	FUN_1000_4729	src/functions/47/04729_match_grv_key_action.asm
 04754	func_04754	unidentified	1000:4754	FUN_1000_4754	src/functions/47/04754_func_04754.asm
 0475E	func_0475e	unidentified	1000:475e	FUN_1000_475e	src/functions/47/0475e_func_0475e.asm
 04768	func_04768	unidentified	1000:4768	FUN_1000_4768	src/functions/47/04768_func_04768.asm
@@ -112,7 +112,7 @@ linear_entry	working_name	status	ghidra_entry	ghidra_name	source
 047AC	func_047ac	unidentified	1000:47ac	FUN_1000_47ac	src/functions/47/047ac_func_047ac.asm
 047BC	func_047bc	unidentified	1000:47bc	FUN_1000_47bc	src/functions/47/047bc_func_047bc.asm
 047CC	func_047cc	unidentified	1000:47cc	FUN_1000_47cc	src/functions/47/047cc_func_047cc.asm
-047DC	func_047dc	unidentified	1000:47dc	FUN_1000_47dc	src/functions/47/047dc_func_047dc.asm
+047DC	test_grv_hotspot_rect	verified-role	1000:47dc	FUN_1000_47dc	src/functions/47/047dc_test_grv_hotspot_rect.asm
 04849	func_04849	unidentified	1000:4849	FUN_1000_4849	src/functions/48/04849_func_04849.asm
 048C9	func_048c9	unidentified	1000:48c9	FUN_1000_48c9	src/functions/48/048c9_func_048c9.asm
 04957	func_04957	unidentified	1000:4957	FUN_1000_4957	src/functions/49/04957_func_04957.asm

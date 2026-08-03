@@ -924,10 +924,28 @@ large ranges. These locations have stable engine-level roles:
 | `0x103` | Engine timer byte, incremented periodically |
 | `0x104` | Number of valid saves found by opcode `0x3C` |
 | `0x106` | CD/data availability result written by opcode `0x4C` |
+| `0x107` | Main-script `Zaphod Beeblebrox` input state; value `240` exposes the hidden whole-house teleport map |
 | `0x107`–`0x286` | Subscript-local region saved on `LOADSCRIPT` and restored on `RETURNSCRIPT` |
 
 The save-game payload is the raw 0x400-byte variable bank. It is therefore
 both VM memory and the original persistent game-state format.
+
+#### `Zaphod Beeblebrox` hidden house map
+
+The main-menu cheat is implemented in `SCRIPT.GRV`, not as an executable
+string comparison. It is case-sensitive and requires the exact sequence
+`Zaphod Beeblebrox`, including the space and capital `Z` and `B`.
+`variables[0x107]` begins at state 49 and advances once for each matching key.
+The final `x` sets the variable to 240 and plays `INTRO[49]`, `groovie.vdx`,
+whose payload is the spoken word “groovie.”
+
+When the main-menu input loop sees value 240, it installs four otherwise
+hidden hotspots that all branch to the `house.vdx` screen. That screen is a
+whole-house teleport map: its hotspot grid jumps directly to room routines.
+The cheat therefore exposes the map rather than blindly marking every puzzle
+complete. The normal endgame separately writes the progression variables,
+creates the encoded `OPEN HOUSE` save description, and also sets `0x107` to
+240 so the same map remains available.
 
 ### GRV C++23 Reference Structures
 
@@ -1854,12 +1872,13 @@ The permanent NASM projects now begin at:
   roles are verified and the remaining names stay address-based.
 - [`disassembly/v32tng`](disassembly/v32tng): Windows player 1.02b1. Its loose
   VDX open/magic path, game/VDX command dispatch, `SETUPEXEC` handling, and
-  `WinMain` message loop are real source and rebuild into a byte-identical PE.
+  `WinMain` message loop retain verified names inside a complete lossless NASM
+  tree. All 144,896 PE bytes and 336 provisional function entries are explicit
+  source with no `incbin`, rebuilding into a byte-identical PE.
 
-The Windows tree still has ownership-oriented binary frontiers. The DOS tree
-has complete byte coverage, but byte coverage and semantic understanding are
-tracked separately: runtime traces will refine boundaries and names while the
-canonical `main.asm` byte comparison remains intact.
+Both trees now have complete byte coverage, but byte coverage and semantic
+understanding are tracked separately: runtime traces will refine boundaries
+and names while each canonical `main.asm` byte comparison remains intact.
 
 Sources beyond the supplied guide corroborate the account:
 

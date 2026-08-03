@@ -347,13 +347,13 @@ load_image_start:
     ; 04461..0447A function
     emit_func_04461_part_00
     ; 0447B..046F4 function
-    emit_func_0447b_part_00
+    emit_run_grv_input_loop_part_00
     ; 046F5..0470F function
     emit_func_046f5_part_00
     ; 04710..04728 function
     emit_func_04710_part_00
     ; 04729..04753 function
-    emit_func_04729_part_00
+    emit_match_grv_key_action_part_00
     ; 04754..0475D function
     emit_func_04754_part_00
     ; 0475E..04767 function
@@ -375,11 +375,11 @@ load_image_start:
     ; 047CC..047DB function
     emit_func_047cc_part_00
     ; 047DC..0483D function
-    emit_func_047dc_part_00
+    emit_test_grv_hotspot_rect_part_00
     ; 0483E..0483F gap
     emit_gap_042_0483e
     ; 04840..04848 function
-    emit_func_047dc_part_01
+    emit_test_grv_hotspot_rect_part_01
     ; 04849..048C8 function
     emit_func_04849_part_00
     ; 048C9..04956 function

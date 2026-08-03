@@ -1,0 +1,9 @@
+; Explicit file bytes raw 011AFD..011B10.
+%macro emit_file_data_0140_011afd 0
+    %%chunk_start:
+    db 0x90, 0x90, 0x90, 0xA1, 0x54, 0x11, 0x42, 0x00, 0xC3, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 ; raw 011AFD |....T.B.........|
+    db 0x90, 0x90, 0x90 ; raw 011B0D |...|
+    %if ($ - %%chunk_start) != 19
+        %error "data chunk size drift: 011AFD"
+    %endif
+%endmacro

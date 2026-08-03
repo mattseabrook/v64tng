@@ -17,8 +17,13 @@ Run:
 
 The build verifies the packed original, deterministically decompresses LZEXE,
 assembles [`main.asm`](main.asm), verifies the rebuilt hash, and finally uses
-`cmp` to prove exact file identity. It rejects any executable-byte `incbin`
+`cmp` to prove exact file identity. Only after those checks pass, it deploys
+the rebuilt executable as `/mnt/T7G/T7G.EXE`. The original `/mnt/T7G/V.EXE`
+is never removed or overwritten. It rejects any executable-byte `incbin`
 directive in the source tree.
+
+Set `V_DISASSEMBLY_NO_DEPLOY=1` to perform the complete build and verification
+without deploying.
 
 The first run may fetch and compile the pinned, MIT-licensed `lzexe` 0.1.1
 crate into the ignored `build/toolchain` directory. NASM and Python 3 are the
@@ -40,8 +45,8 @@ The project has **complete mechanical source coverage**:
 This is not yet complete semantic recovery. Ghidra's 261 function boundaries
 are analyzer findings, not original object-module boundaries. Some bytes now
 classified as data may prove to be code, and some functions may later be
-split, joined, or grouped. Of the 261 entries, 13 currently have verified
-semantic roles and 248 retain neutral `func_XXXXX` names.
+split, joined, or grouped. Of the 261 entries, 16 currently have verified
+semantic roles and 245 retain neutral `func_XXXXX` names.
 
 See [`analysis/SOURCE_COVERAGE.md`](analysis/SOURCE_COVERAGE.md) for exact
 counts, [`analysis/function-inventory.tsv`](analysis/function-inventory.tsv)

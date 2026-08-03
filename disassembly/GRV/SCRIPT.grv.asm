@@ -7,6 +7,9 @@
 0002  18 F1 02                               CALL                          target=0x02F1
 0005  31 63 00 00 00                         MIDI_CONTROL                  value=0x0063, time=0x0000
 000A  4A 50 00                               MIDI_DRIVER_PARAM             value=0x0050
+; Case-sensitive main-menu cheat state machine:
+; "Zaphod Beeblebrox" (including the space and capital Z/B).
+; Successful keys advance v[0x107] from 49; the final x sets it to 240.
 000D  16 07 01 E1                            LOADSTRING                    dst=v[0x107], values=[49]
 0011  16 08 01 B0                            LOADSTRING                    dst=v[0x108], values=[0]
 0015  3D                                     RESETVARS
@@ -80,11 +83,12 @@
 0164  13                                     INPUTLOOPEND
 0165  1F 07 01                               INC                           var=v[0x107]
 0168  15 59 00                               JMP                           target=0x0059
+; Cheat accepted: expose the hidden whole-house teleport map.
 016B  16 07 01 A0                            LOADSTRING                    dst=v[0x107], values=[240]
 016F  0A                                     VIDEOFLAG5_ON
 0170  07                                     VIDEOFLAG7_ON
 0171  48 0F                                  SET_VDX_RATE_OVERRIDE         value=0x0F
-0173  09 31 24                               VIDEOREF                      ref=0x2431 (INTRO[49]=groovie.vdx)
+0173  09 31 24                               VIDEOREF                      ref=0x2431 (INTRO[49]=groovie.vdx; voice says "groovie")
 0176  15 59 00                               JMP                           target=0x0059
 0179  0A                                     VIDEOFLAG5_ON
 017A  09 20 24                               VIDEOREF                      ref=0x2420 (INTRO[32]=sphmen1o.vdx)
@@ -1761,6 +1765,7 @@
 17ED  0D FB 00 24 01 8E 01 3D 01 55 1C 08    HOTSPOT_RECT                  left=0x00FB, top=0x0124, right=0x018E, bottom=0x013D, target=0x1C55, cursor=0x08
 17F9  0D F4 00 40 01 95 01 5D 01 15 00 08    HOTSPOT_RECT                  left=0x00F4, top=0x0140, right=0x0195, bottom=0x015D, target=0x0015, cursor=0x08
 1805  0D D5 00 61 01 AA 01 76 01 7B 1D 08    HOTSPOT_RECT                  left=0x00D5, top=0x0161, right=0x01AA, bottom=0x0176, target=0x1D7B, cursor=0x08
+; v[0x107] == 240 enables four hidden menu hotspots for the house teleport map.
 1811  1A 07 01 A0 47 18                      STRCMP_NE_JMP                 start=v[0x107], values=[240], target=0x1847
 1817  0D 64 00 9B 00 B8 00 CC 00 A0 1A 07    HOTSPOT_RECT                  left=0x0064, top=0x009B, right=0x00B8, bottom=0x00CC, target=0x1AA0, cursor=0x07
 1823  0D C2 01 9D 00 1E 02 C9 00 A0 1A 07    HOTSPOT_RECT                  left=0x01C2, top=0x009D, right=0x021E, bottom=0x00C9, target=0x1AA0, cursor=0x07

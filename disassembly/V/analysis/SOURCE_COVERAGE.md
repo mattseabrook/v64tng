@@ -12,8 +12,8 @@ understanding.
 | Function-body instructions decoded | 12,484 |
 | Instructions requiring exact `db` encoding fallback | 1,620 |
 | Bytes in encoding fallbacks | 3,477 |
-| Verified semantic function roles | 13 |
-| Unidentified/provisionally bounded functions | 248 |
+| Verified semantic function roles | 16 |
+| Unidentified/provisionally bounded functions | 245 |
 | Analyzed function/gap span end | `0892Ch` |
 | Non-function bytes in the load image | 69,332 |
 

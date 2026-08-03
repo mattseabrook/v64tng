@@ -40,6 +40,18 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
     0x368C: ("query_xms", "Verified XMS manager/version/free-memory query."),
     0x36D2: ("format_memory_diagnostic", "Verified diagnostic memory-number formatter."),
     0x3AC4: ("run_grv_vm", "Verified GRV bytecode interpreter entry."),
+    0x447B: (
+        "run_grv_input_loop",
+        "Verified GRV INPUTLOOPSTART (0x0B) setup and input-action interpreter.",
+    ),
+    0x4729: (
+        "match_grv_key_action",
+        "Verified GRV KEYACTION (0x0C) pending-key comparison and branch handler.",
+    ),
+    0x47DC: (
+        "test_grv_hotspot_rect",
+        "Verified GRV HOTSPOT_RECT (0x0D) coordinate hit-test and action handler.",
+    ),
     0x576E: ("initialize_subsystems_xms", "Cross-version mapped main subsystem/XMS initialization."),
     0x5CED: ("shutdown_player", "Cross-version mapped global shutdown and cleanup path."),
 }

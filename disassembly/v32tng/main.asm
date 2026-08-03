@@ -1,24 +1,16 @@
-; v32tng.exe 1.02b1 -- canonical reconstruction root.
+; v32tng.exe 1.02b1 -- complete lossless PE source root.
 ;
-; Verified functions are ordinary NASM source. Unknown material remains an
-; explicit incbin frontier copied from the immutable, hash-checked reference.
+; Functions use NASM instructions where NASM reproduces the original encoding.
+; Noncanonical encodings and non-code bytes use explicit db. No executable byte
+; range is imported and there are no incbin directives.
 
 bits 32
 
-%ifndef REFERENCE_FILE
-    %error "REFERENCE_FILE must name the original v32tng.exe"
-%endif
+%include "src/functions/all.asm"
+%include "src/data/chunks/all.asm"
 
-; For .text, virtual_address = raw_file_offset + 00400C00h.
-; This lets ordinary absolute labels and relative CALL/JMP instructions in the
-; recovered code assemble at their original Win32 virtual addresses.
+; File offset 0400h is .text VA 00401000h. This flat-file origin therefore
+; gives analyzer-owned .text labels their original PE virtual addresses.
 org 0x00400C00
 
-%include "src/layout/headers.asm"
-%include "src/layout/text.asm"
-%include "src/layout/rdata.asm"
-%include "src/layout/data.asm"
-%include "src/layout/imports.asm"
-%include "src/layout/resources.asm"
-%include "src/layout/relocations.asm"
-%include "src/layout/debug_tail.asm"
+%include "src/layout.asm"
