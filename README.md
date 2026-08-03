@@ -93,6 +93,12 @@
     - [Integration with Game Engine](#integration-with-game-engine)
     - [Technical Notes](#technical-notes)
   - [LZSS](#lzss)
+- [Historical Development / Technoloy](#historical-development--technoloy)
+  - [`Play`, `PLAYTLC`, and the promotional demo](#play-playtlc-and-the-promotional-demo)
+    - [Recovered TLC/FLIC bridge](#recovered-tlcflic-bridge)
+  - [What “PIX” format can actually be specified](#what-pix-format-can-actually-be-specified)
+  - [PIX-to-VDX production path: confirmed endpoints](#pix-to-vdx-production-path-confirmed-endpoints)
+  - [Permanent original-player disassemblies](#permanent-original-player-disassemblies)
 - [Developers](#developers)
   - [Build System Overview](#build-system-overview)
     - [Key Features](#key-features)
@@ -158,6 +164,9 @@ them into one sortable and filterable catalog, and displays the archive,
 resource type, offset, and size. Double-click a `.VDX` entry to open it in the
 existing **VDX Info** tab, where its bitmap, palette, delta frames, and audio
 chunks can be inspected and played with Previous, Play/Pause, Stop, and Next.
+Right-click any catalog row and choose **Save VDX As...** (or **Save Resource
+As...**) to copy exactly that RL-indexed byte range from its GJD archive to a
+chosen file. Export does not decode, normalize, or re-encode the resource.
 
 **Tools -> GRV Editor** scans the same asset root for `.GRV` files, sorts them
 alphabetically, selects `SCRIPT.GRV` by default, and decompiles the selected
@@ -1709,8 +1718,8 @@ retrospectives:
 | **Autodesk 3D Studio** | Modeling, texture mapping, lighting, camera animation, room rendering, and even final animated cursor art. Robert Stein introduced the workflow; Stein, Landeros, and contractors built the mansion with it. This was the original DOS-era **3D Studio**, not the later 1996 product named **3D Studio Max**. |
 | **Autodesk Animator Pro** | Supplied after Animator author Jim Kent sent Devine a handwritten response to his shareware player. The interview says this began a close technical relationship with Autodesk. |
 | **Deluxe Paint (“D-Paint”) / Autodesk Animator** | Discussed as the conventional cell-animation route for interface icons. John Gaffey drew an early throbbing-brain animation in roughly eight cells before Landeros demonstrated how quickly it could instead be built and rendered in 3D Studio. |
-| **A hex editor** | Devine used one to reverse engineer Autodesk 3D Studio's undocumented high-resolution `.PIX` output. The exact editor is not named. |
-| **`Play` (custom Trilobyte shareware)** | Devine's roughly 20 KB Super VGA `.PIX` player. It doubled as public hardware testing: users exercised it with many Super VGA boards and frame grabbers. Autodesk adopted it internally because its own player was roughly a megabyte. This is an especially direct ancestor of the standalone media-player paths recovered in this repository. |
+| **A hex editor** | Devine used one to reverse engineer Autodesk 3D Studio's undocumented high-resolution `PIX` output. The exact editor is not named, and the guide writes “PIX files” without proving an on-disk `.PIX` extension. |
+| **`Play` (custom Trilobyte shareware)** | Devine's roughly 20 KB Super VGA `PIX` player. It doubled as public hardware testing: users exercised it with many Super VGA boards and frame grabbers. Autodesk adopted it internally because its own player was roughly a megabyte. |
 | **Custom GROOVIE video player/codec** | Devine's compressed, double-resolution CD-streaming player became the engine's technical foundation. CD-ROM delivered only about 150 KB/s, so the team had to build the playback technology themselves. |
 | **Super VGA / 640x320 letterbox in a 640x480 screen** | Chosen to resemble television and laserdisc letterboxing. The strategy guide's design document specifies 640x480x256; the finished media occupies the familiar 640x320 cinematic band. |
 | **Blue-screen video and matte compositing** | Actors were filmed against blue paper rather than a proper green screen and matted over rendered rooms. The difficult blue removal produced the ghosts' characteristic fuzzy aura. A later Landeros interview identifies the recording medium as Betamax. |
@@ -1722,6 +1731,135 @@ documents custom production work that sounds strikingly familiar today:
 Devine first reverse engineered an external format, built a standalone player,
 distributed it for broad compatibility testing, and then folded that playback
 knowledge into the game.
+
+## `Play`, `PLAYTLC`, and the promotional demo
+
+The supplied 1991 promotional demo makes the historical relationship much less
+abstract, but it does **not** yet prove that its `PLAYTLC.EXE` is the original
+20 KB `Play` executable described in the guide.
+
+Verified facts:
+
+- `PLAYTLC.EXE` is a 254,768-byte, uncompressed DOS MZ program. It identifies
+  itself as `Trilobyte 640x480x256 FLICK & Groovie Player. Version 0.6`,
+  copyright 1991.
+- Its internal command syntax still calls the program `PLAY`, not `PLAYTLC`:
+  `PLAY filename [-sn] [-ln] [-g]`.
+- It contains the development wildcard `c:\work\punk\*.fl?`, reports unknown
+  `.FLI` types, and combines FLICK and Groovie playback in one program.
+- The demo batch file invokes it four times for `.TLC` animations, then invokes
+  the separate 4,690-byte `VDX.EXE` for `FACE.VDX`.
+- Exact comparison found an 80-byte low-level video-detection run shared by
+  `PLAYTLC.EXE`, the demo `VDX.EXE`, and the retail DOS `V.EXE`. This is binary
+  evidence of a common player lineage, not merely a similar product name.
+
+The strongest defensible conclusion is therefore: **`PLAYTLC` is a direct,
+expanded descendant or integration point of the `Play` work.** Calling it the
+same released binary would overstate the evidence. It is more than twelve times
+the reported size, advertises a combined FLICK/Groovie role, and no original
+roughly-20-KB `Play` artifact has yet been recovered for a binary comparison.
+
+### Recovered TLC/FLIC bridge
+
+The four demo `.TLC` files are not arbitrary opaque movies. Their first 128
+bytes follow Autodesk's FLIC-family header layout, but replace the normal
+`AF11h`/`AF12h` file magic with bytes `43 54` (`5443h` when read as a
+little-endian word). At offset `0080h`, every supplied TLC begins a standard
+FLIC-shaped frame whose magic is `F1FAh`.
+
+| TLC offset | Type | Recovered field |
+|---:|---|---|
+| `00h` | `uint32le` | total file size |
+| `04h` | `uint16le` | custom TLC magic `5443h` (file bytes `43 54`) |
+| `06h` | `uint16le` | frame count |
+| `08h` | `uint16le` | width (`640` or `320` in the supplied demo) |
+| `0Ah` | `uint16le` | height (`320`) |
+| `0Ch` | `uint16le` | colour depth (`8`) |
+| `0Eh` | `uint16le` | flags (`3`) |
+| `10h` | `uint32le` | frame-delay/timing value (`71` or `100` observed) |
+| `80h` | frame | first frame: size, `F1FAh` magic, chunk count, payload |
+
+Animator author Jim Kent's own contemporary description explains the FLI/FLC
+design as 256-colour animation built from a first image and subsequent
+differences. That model is plainly present in TLC. What remains unproven is
+whether Trilobyte's production converter ever used TLC as an intermediate for
+retail VDX, or whether TLC and VDX were sibling outputs from shared tools.
+[Kent's first-person FLIC description](https://jacobfilipp.com/DrDobbs/articles/DDJ/1993/9303/9303a/9303a.htm)
+
+## What “PIX” format can actually be specified
+
+There is a naming trap here. Autodesk currently publishes a precise **Alias
+PIX** specification, inherited from Alias/Wavefront. It does not establish
+that DOS 3D Studio's 1991 `PIX` output was the same format. The official guide
+provides no header bytes, no endianness, and not even an unambiguous extension.
+Until a period 3D Studio PIX sample, manual, or the original `Play` is found,
+the two formats must not be silently conflated.
+
+For reference, the documented Alias PIX layout is:
+
+| Offset | Type | Field | Meaning |
+|---:|---|---|---|
+| `00h` | `uint16be` | width | horizontal pixels |
+| `02h` | `uint16be` | height | vertical pixels |
+| `04h` | `uint16be` | x offset | documented as unused |
+| `06h` | `uint16be` | y offset | documented as unused |
+| `08h` | `uint16be` | bits/pixel | `24` |
+| `0Ah` | repeated 4-byte packets | pixels | `run_length, blue, green, red` |
+
+It has no magic number. Runs are 1–255 pixels, do not cross scanline
+boundaries, and scanlines are stored top-to-bottom. The byte order and BGR run
+reader are also visible in ImageMagick's independent implementation.
+[Official Autodesk Alias PIX specification](https://help.autodesk.com/cloudhelp/2015/ENU/Alias-Reference/files/GUID-FD35BBF5-820E-43C8-81DC-4BA6E1F9D867.htm),
+[ImageMagick `PIX` decoder source](https://github.com/ImageMagick/ImageMagick/blob/main/coders/pix.c)
+
+This is a proper specification for **Alias PIX**, and a concrete hypothesis to
+test when a Trilobyte-era sample appears. It is not being presented as a solved
+3D Studio DOS format.
+
+## PIX-to-VDX production path: confirmed endpoints
+
+No supplied runtime player contains a `.PIX` string or a PIX importer. The
+retail DOS and Win32 programs consume already-authored VDX; `PLAYTLC` searches
+for `.FL?` and consumes FLIC-shaped TLC. Therefore the render-to-VDX conversion
+happened in an offline production tool which is not in the supplied binary
+set.
+
+The data transformations required by the recovered formats are nevertheless
+clear:
+
+| Stage | What is known |
+|---|---|
+| 3D Studio high-resolution `PIX` render | Confirmed by Devine's first-person account in the official guide; exact 3D Studio PIX encoding remains open. |
+| Display/compatibility validation | `Play` displayed the renders on many Super VGA devices; `PLAYTLC` preserves the same 640×480×256 hardware lineage. |
+| Colour reduction | Required for VDX: a full VDX `20h` frame declares 8-bit colour and carries 256 RGB palette entries. A 24-bit source cannot enter that representation without palette selection/quantization. |
+| Spatial encoding | Required for VDX: the image is divided into 4×4 tiles; each base-frame tile stores two palette indices plus a 16-bit selector map. |
+| Temporal encoding | VDX `25h` frames update selected palette entries and emit tile skip/fill/map operations relative to the previous frame. TLC/FLIC also uses frame differences, but no converter-level equivalence is yet claimed. |
+| Outer compression/container | VDX image/delta payloads may then receive the recovered parameterized LZSS encoding and are wrapped in typed VDX chunks; audio uses separate `80h` chunks. |
+
+This establishes the necessary route—true-colour/render pixels to a
+palette-indexed, tile-selected base frame and then palette/tile deltas—but not
+the original encoder's quantizer, error metric, palette policy, or choice of
+delta opcodes. Those are the exact missing pieces required for a historically
+faithful VDX encoder.
+
+## Permanent original-player disassemblies
+
+The permanent NASM projects now begin at:
+
+- [`disassembly/V`](disassembly/V): DOS version 1.30. It unpacks
+  deterministically from the hashed LZEXE original. Its complete lossless NASM
+  tree represents the MZ header, relocations, all analyzer-owned instructions,
+  and every remaining data byte without `incbin`, then verifies byte-identical
+  unpacked MZ output. The current 261 function boundaries are provisional; 13
+  roles are verified and the remaining names stay address-based.
+- [`disassembly/v32tng`](disassembly/v32tng): Windows player 1.02b1. Its loose
+  VDX open/magic path, game/VDX command dispatch, `SETUPEXEC` handling, and
+  `WinMain` message loop are real source and rebuild into a byte-identical PE.
+
+The Windows tree still has ownership-oriented binary frontiers. The DOS tree
+has complete byte coverage, but byte coverage and semantic understanding are
+tracked separately: runtime traces will refine boundaries and names while the
+canonical `main.asm` byte comparison remains intact.
 
 Sources beyond the supplied guide corroborate the account:
 

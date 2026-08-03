@@ -2,6 +2,7 @@
 
 #include <sstream>
 #include <iomanip>
+#include <array>
 #include <filesystem>
 #include <fstream>
 #include <vector>
@@ -192,6 +193,7 @@ static std::filesystem::path OpenFolderDialog(HWND hwnd);
 static void LoadAssetCatalog(const std::filesystem::path& folder);
 static void PopulateAssetList();
 static void OpenCatalogAsset(size_t index);
+static void SaveCatalogAsset(HWND owner, size_t index);
 static void PopulateArchiveList(const std::string& filename);
 static void PopulateVDXInfoList(const std::string& filename);
 static void PopulateVDXFromArchive(const RLEntry& entry);
@@ -596,6 +598,71 @@ static void OpenCatalogAsset(size_t index)
 
 /*
 ===============================================================================
+Function: SaveCatalogAsset
+
+Copies one RL-indexed resource out of its GJD without decoding or rewriting it.
+For VDX files this preserves the original archive bytes exactly.
+===============================================================================
+*/
+static void SaveCatalogAsset(HWND owner, size_t index)
+{
+    if (index >= g_assetCatalog.size())
+        return;
+
+    const AssetCatalogEntry& asset = g_assetCatalog[index];
+    std::array<wchar_t, MAX_PATH> destination{};
+    const std::wstring suggested(asset.name.begin(), asset.name.end());
+    std::copy_n(suggested.c_str(),
+        std::min(suggested.size(), destination.size() - 1), destination.begin());
+
+    const bool isVDX =
+        LowerAscii(std::filesystem::path(asset.name).extension().string()) == ".vdx";
+    OPENFILENAMEW dialog = {};
+    dialog.lStructSize = sizeof(dialog);
+    dialog.hwndOwner = owner;
+    dialog.lpstrFilter = isVDX
+        ? L"VDX files (*.vdx)\0*.vdx\0All files (*.*)\0*.*\0\0"
+        : L"All files (*.*)\0*.*\0\0";
+    dialog.lpstrFile = destination.data();
+    dialog.nMaxFile = static_cast<DWORD>(destination.size());
+    dialog.lpstrTitle = isVDX ? L"Save VDX As" : L"Save Resource As";
+    dialog.lpstrDefExt = isVDX ? L"vdx" : nullptr;
+    dialog.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
+    if (!GetSaveFileNameW(&dialog))
+        return;
+
+    try {
+        std::ifstream source(asset.gjdPath, std::ios::binary);
+        if (!source)
+            throw std::runtime_error("Cannot open " + asset.gjdPath.string());
+        source.seekg(static_cast<std::streamoff>(asset.entry.offset));
+
+        std::ofstream output(destination.data(), std::ios::binary);
+        if (!output)
+            throw std::runtime_error("Cannot create the selected output file.");
+
+        std::array<char, 64 * 1024> buffer{};
+        size_t remaining = asset.entry.length;
+        while (remaining != 0) {
+            const size_t count = std::min(remaining, buffer.size());
+            source.read(buffer.data(), static_cast<std::streamsize>(count));
+            if (source.gcount() != static_cast<std::streamsize>(count))
+                throw std::runtime_error("The GJD resource ended unexpectedly.");
+            output.write(buffer.data(), static_cast<std::streamsize>(count));
+            if (!output)
+                throw std::runtime_error("Writing the selected output file failed.");
+            remaining -= count;
+        }
+        SetWindowTextA(g_assetControls[5],
+            ("Saved original " + asset.name + " bytes.").c_str());
+    }
+    catch (const std::exception& error) {
+        MessageBoxA(owner, error.what(), "Save resource failed", MB_ICONERROR);
+    }
+}
+
+/*
+===============================================================================
 Function: CheckROBFile - Check if ROB.GJD exists in current directory
 ===============================================================================
 */
@@ -791,6 +858,39 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                 item.iItem = selected;
                 if (ListView_GetItem(g_assetControls[4], &item))
                     OpenCatalogAsset(static_cast<size_t>(item.lParam));
+            }
+            return 0;
+        }
+
+        if (nmhdr->code == NM_RCLICK && nmhdr->idFrom == IDC_ASSET_LIST) {
+            const int selected =
+                ListView_GetNextItem(g_assetControls[4], -1, LVNI_SELECTED);
+            if (selected >= 0) {
+                LVITEMW item = {};
+                item.mask = LVIF_PARAM;
+                item.iItem = selected;
+                if (ListView_GetItem(g_assetControls[4], &item)) {
+                    const size_t catalogIndex = static_cast<size_t>(item.lParam);
+                    if (catalogIndex < g_assetCatalog.size()) {
+                        const bool isVDX = LowerAscii(std::filesystem::path(
+                            g_assetCatalog[catalogIndex].name).extension().string()) == ".vdx";
+                        POINT point{};
+                        GetCursorPos(&point);
+                        HMENU menu = CreatePopupMenu();
+                        AppendMenuW(menu, MF_STRING, 1,
+                            isVDX ? L"Open in VDX Info..." : L"Inspect (VDX only)...");
+                        AppendMenuW(menu, MF_STRING, 2,
+                            isVDX ? L"Save VDX As..." : L"Save Resource As...");
+                        const int command = TrackPopupMenu(menu,
+                            TPM_RETURNCMD | TPM_RIGHTBUTTON, point.x, point.y,
+                            0, hwnd, nullptr);
+                        DestroyMenu(menu);
+                        if (command == 1)
+                            OpenCatalogAsset(catalogIndex);
+                        else if (command == 2)
+                            SaveCatalogAsset(hwnd, catalogIndex);
+                    }
+                }
             }
             return 0;
         }
