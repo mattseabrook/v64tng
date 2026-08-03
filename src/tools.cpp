@@ -7,12 +7,18 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <cwctype>
+#include <set>
+#include <stdexcept>
 
 #include <windows.h>
 #include <commctrl.h>
 #include <commdlg.h>
+#include <shlobj.h>
 
 #include "tools.h"
+#include "assets.h"
+#include "audio.h"
 #include "window.h"
 #include "rl.h"
 #include "gjd.h"
@@ -36,6 +42,20 @@ static int g_currentTab = 0;
 static std::vector<RLEntry> g_currentRLEntries;
 static std::string g_currentRLFile;
 static std::string g_currentGJDFile;  // Track current GJD for VDX loading
+
+// Whole-install asset browser state. This is deliberately T7G-only: it
+// catalogs ordinary RL/GJD pairs and hands VDX entries to the existing T7G
+// decoder. No Groovie 2 resource or video behavior is used here.
+struct AssetCatalogEntry {
+    std::string name;
+    std::string archive;
+    std::filesystem::path gjdPath;
+    RLEntry entry;
+};
+static std::vector<AssetCatalogEntry> g_assetCatalog;
+static std::filesystem::path g_assetFolder;
+static int g_assetSortColumn = 0;
+static bool g_assetSortAscending = true;
 
 // Sorting state for Archive Info
 static int g_archiveSortColumn = -1;
@@ -71,17 +91,30 @@ static std::vector<DecompressedChunk> g_decompressedChunks;
 
 // Current VDX for delta processing
 static VDXFile g_currentVDX;
+static VDXFile g_playbackVDX;
+static size_t g_playbackFrame = 0;
+static bool g_vdxPlaying = false;
+static constexpr UINT_PTR VDX_PLAYBACK_TIMER = 0x564458;
+static constexpr UINT VDX_PLAYBACK_INTERVAL_MS = 67;
 
-// Tab indices (only 3 tabs now - removed Extract VDX)
+// Tab indices
 enum TabIndex {
-    TAB_ARCHIVE_INFO = 0,
-    TAB_VDX_INFO = 1,
-    TAB_CURSORS = 2
+    TAB_ASSET_BROWSER = 0,
+    TAB_ARCHIVE_INFO = 1,
+    TAB_VDX_INFO = 2,
+    TAB_CURSORS = 3
 };
 
 // Control IDs
 enum ControlID {
     IDC_TAB = 1001,
+
+    // Asset Browser tab
+    IDC_ASSET_FOLDER_EDIT = 1002,
+    IDC_ASSET_BROWSE_BTN = 1003,
+    IDC_ASSET_FILTER_EDIT = 1004,
+    IDC_ASSET_LIST = 1005,
+    IDC_ASSET_STATUS = 1006,
     
     // Archive Info tab
     IDC_ARCHIVE_FILE_EDIT = 1010,
@@ -107,6 +140,11 @@ enum ControlID {
     IDC_VDX_0x80_INFO = 1030,
     IDC_VDX_0x80_LIST = 1031,
     IDC_VDX_STATUS = 1032,
+    IDC_VDX_PREVIOUS = 1038,
+    IDC_VDX_PLAY_PAUSE = 1039,
+    IDC_VDX_STOP = 1042,
+    IDC_VDX_NEXT = 1043,
+    IDC_VDX_FRAME_STATUS = 1044,
     
     // Cursors tab
     IDC_CURSOR_STATUS = 1040,
@@ -115,12 +153,14 @@ enum ControlID {
 
 // Tab controls
 static HWND g_hTab = nullptr;
+static HWND g_assetControls[6] = {0};  // folder edit, browse, filter label/edit, list, status
 static HWND g_archiveControls[4] = {0};  // edit, browse btn, listview, status
 // VDX controls: [0]=edit, [1]=browse, [2]=header info, [3]=0x20 label, [4]=0x20 info,
 //               [5]=0x20 list, [6]=palette label, [7]=palette, [8]=0x25 label, [9]=0x25 list, 
 //               [10]=0x80 label, [11]=0x80 info, [12]=0x80 list, [13]=status,
 //               [14]=bitmap label, [15]=bitmap display, [16]=delta vis checkbox
 static HWND g_vdxControls[17] = {0};
+static HWND g_vdxPlaybackControls[5] = {nullptr};
 static HWND g_cursorControls[2] = {0};    // status, extract btn
 static HWND g_currentVDXSortList = nullptr;  // Track which VDX list is being sorted
 
@@ -141,12 +181,17 @@ static LRESULT CALLBACK PaletteWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
 static LRESULT CALLBACK BitmapWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 static void CreateTabs(HWND hwnd);
 static void SwitchTab(int tabIndex);
+static void CreateAssetBrowserTab(HWND hwnd);
 static void CreateArchiveInfoTab(HWND hwnd);
 static void CreateVDXInfoTab(HWND hwnd);
 static void CreateCursorsTab(HWND hwnd);
 static void HideAllTabs();
 static void ShowTab(int tabIndex);
 static std::string OpenFileDialog(HWND hwnd, const wchar_t* filter, const wchar_t* title);
+static std::filesystem::path OpenFolderDialog(HWND hwnd);
+static void LoadAssetCatalog(const std::filesystem::path& folder);
+static void PopulateAssetList();
+static void OpenCatalogAsset(size_t index);
 static void PopulateArchiveList(const std::string& filename);
 static void PopulateVDXInfoList(const std::string& filename);
 static void PopulateVDXFromArchive(const RLEntry& entry);
@@ -155,6 +200,48 @@ static std::wstring FormatSize(size_t size);
 static int CALLBACK ArchiveListCompare(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort);
 static int CALLBACK VDXListCompare(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort);
 static void CheckROBFile();
+static void PrepareVDXPlayback(std::string_view filename, std::span<const uint8_t> bytes);
+static void ShowVDXPlaybackFrame();
+static void StopVDXPlayback(bool resetFrame);
+
+static void ShowVDXPlaybackFrame()
+{
+    if (g_playbackFrame >= g_playbackVDX.frameData.size())
+        return;
+    const auto& frame = g_playbackVDX.frameData[g_playbackFrame];
+    if (!frame || frame->empty())
+        return;
+    g_bitmapData = *frame;
+    g_bitmapWidth = g_playbackVDX.width;
+    g_bitmapHeight = g_playbackVDX.height;
+    if (g_vdxControls[15])
+        InvalidateRect(g_vdxControls[15], nullptr, FALSE);
+    const std::wstring label = std::format(L"Frame {} / {}",
+        g_playbackFrame + 1, g_playbackVDX.frameData.size());
+    SetWindowTextW(g_vdxPlaybackControls[4], label.c_str());
+}
+
+static void StopVDXPlayback(bool resetFrame)
+{
+    g_vdxPlaying = false;
+    if (g_toolsWindow)
+        KillTimer(g_toolsWindow, VDX_PLAYBACK_TIMER);
+    wavStop();
+    SetWindowTextW(g_vdxPlaybackControls[1], L"Play");
+    if (resetFrame && !g_playbackVDX.frameData.empty()) {
+        g_playbackFrame = 0;
+        ShowVDXPlaybackFrame();
+    }
+}
+
+static void PrepareVDXPlayback(std::string_view filename, std::span<const uint8_t> bytes)
+{
+    StopVDXPlayback(false);
+    g_playbackVDX = parseVDXFile(filename, bytes);
+    parseVDXChunks(g_playbackVDX);
+    g_playbackFrame = 0;
+    ShowVDXPlaybackFrame();
+}
 
 /*
 ===============================================================================
@@ -305,12 +392,216 @@ static std::string OpenFileDialog(HWND hwnd, const wchar_t* filter, const wchar_
 
 /*
 ===============================================================================
+Function: OpenFolderDialog
+===============================================================================
+*/
+static std::filesystem::path OpenFolderDialog(HWND hwnd)
+{
+    BROWSEINFOW browse = {};
+    browse.hwndOwner = hwnd;
+    browse.lpszTitle = L"Select a The 7th Guest data folder";
+    browse.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+
+    PIDLIST_ABSOLUTE item = SHBrowseForFolderW(&browse);
+    if (!item)
+        return {};
+
+    wchar_t folder[MAX_PATH] = {};
+    const bool resolved = SHGetPathFromIDListW(item, folder) != FALSE;
+    CoTaskMemFree(item);
+    return resolved ? std::filesystem::path(folder) : std::filesystem::path{};
+}
+
+static std::string TrimResourceName(const std::string& name)
+{
+    const size_t end = name.find('\0');
+    return name.substr(0, end);
+}
+
+static std::string LowerAscii(std::string value)
+{
+    std::transform(value.begin(), value.end(), value.begin(),
+        [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    return value;
+}
+
+static std::filesystem::path FindSiblingWithExtension(
+    const std::filesystem::path& source, std::string_view extension)
+{
+    const std::string wantedStem = LowerAscii(source.stem().string());
+    const std::string wantedExtension = LowerAscii(std::string(extension));
+    for (const auto& item : std::filesystem::directory_iterator(source.parent_path())) {
+        if (!item.is_regular_file())
+            continue;
+        const std::filesystem::path candidate = item.path();
+        if (LowerAscii(candidate.stem().string()) == wantedStem &&
+            LowerAscii(candidate.extension().string()) == wantedExtension)
+            return candidate;
+    }
+    return {};
+}
+
+/*
+===============================================================================
+Function: PopulateAssetList
+===============================================================================
+*/
+static void PopulateAssetList()
+{
+    HWND list = g_assetControls[4];
+    if (!list)
+        return;
+
+    wchar_t rawFilter[256] = {};
+    GetWindowTextW(g_assetControls[3], rawFilter, static_cast<int>(std::size(rawFilter)));
+    std::wstring filter(rawFilter);
+    std::transform(filter.begin(), filter.end(), filter.begin(),
+        [](wchar_t ch) { return static_cast<wchar_t>(std::towlower(ch)); });
+
+    ListView_DeleteAllItems(list);
+    int visibleCount = 0;
+    for (size_t catalogIndex = 0; catalogIndex < g_assetCatalog.size(); ++catalogIndex) {
+        const AssetCatalogEntry& asset = g_assetCatalog[catalogIndex];
+        std::wstring name(asset.name.begin(), asset.name.end());
+        std::wstring archive(asset.archive.begin(), asset.archive.end());
+        std::wstring haystack = name + L" " + archive;
+        std::transform(haystack.begin(), haystack.end(), haystack.begin(),
+            [](wchar_t ch) { return static_cast<wchar_t>(std::towlower(ch)); });
+        if (!filter.empty() && haystack.find(filter) == std::wstring::npos)
+            continue;
+
+        LVITEMW item = {};
+        item.mask = LVIF_TEXT | LVIF_PARAM;
+        item.iItem = visibleCount;
+        item.lParam = static_cast<LPARAM>(catalogIndex);
+        item.pszText = name.data();
+        ListView_InsertItem(list, &item);
+
+        ListView_SetItemText(list, visibleCount, 1, archive.data());
+        std::filesystem::path resourcePath(asset.name);
+        std::wstring type = resourcePath.extension().wstring();
+        if (type.empty())
+            type = L"(none)";
+        ListView_SetItemText(list, visibleCount, 2, type.data());
+        std::wstring offset = FormatOffset(asset.entry.offset);
+        std::wstring size = FormatSize(asset.entry.length);
+        ListView_SetItemText(list, visibleCount, 3, offset.data());
+        ListView_SetItemText(list, visibleCount, 4, size.data());
+        ++visibleCount;
+    }
+
+    std::set<std::string> archives;
+    for (const AssetCatalogEntry& asset : g_assetCatalog)
+        archives.insert(LowerAscii(asset.archive));
+    wchar_t status[256];
+    swprintf(status, std::size(status), L"%d of %zu assets shown from %zu RL/GJD archives.",
+        visibleCount, g_assetCatalog.size(), archives.size());
+    SetWindowTextW(g_assetControls[5], status);
+}
+
+/*
+===============================================================================
+Function: LoadAssetCatalog
+===============================================================================
+*/
+static void LoadAssetCatalog(const std::filesystem::path& folder)
+{
+    g_assetCatalog.clear();
+    g_assetFolder.clear();
+    ListView_DeleteAllItems(g_assetControls[4]);
+
+    try {
+        if (folder.empty() || !std::filesystem::is_directory(folder))
+            throw std::runtime_error("The selected asset folder does not exist.");
+
+        std::vector<std::filesystem::path> rlFiles;
+        for (const auto& item : std::filesystem::directory_iterator(folder)) {
+            if (item.is_regular_file() &&
+                LowerAscii(item.path().extension().string()) == ".rl")
+                rlFiles.push_back(item.path());
+        }
+        std::sort(rlFiles.begin(), rlFiles.end(),
+            [](const auto& a, const auto& b) {
+                return LowerAscii(a.filename().string()) < LowerAscii(b.filename().string());
+            });
+
+        for (const std::filesystem::path& rlPath : rlFiles) {
+            const std::filesystem::path gjdPath = FindSiblingWithExtension(rlPath, ".gjd");
+            if (gjdPath.empty())
+                continue;
+
+            auto parsed = parseRLFile(rlPath.string());
+            if (!parsed)
+                continue;
+
+            const size_t gjdSize = std::filesystem::file_size(gjdPath);
+            const std::string archive = rlPath.stem().string();
+            for (const RLEntry& entry : *parsed) {
+                if (entry.offset > gjdSize || entry.length > gjdSize - entry.offset)
+                    continue;
+                g_assetCatalog.push_back({
+                    TrimResourceName(entry.filename), archive, gjdPath, entry
+                });
+            }
+        }
+
+        if (g_assetCatalog.empty())
+            throw std::runtime_error("No matching RL/GJD archive pairs were found.");
+
+        setAssetRoot(folder);
+        g_assetFolder = assetRoot();
+        SetWindowTextW(g_assetControls[0], g_assetFolder.wstring().c_str());
+        g_assetSortColumn = 0;
+        g_assetSortAscending = true;
+        std::stable_sort(g_assetCatalog.begin(), g_assetCatalog.end(),
+            [](const AssetCatalogEntry& a, const AssetCatalogEntry& b) {
+                const std::string aName = LowerAscii(a.name);
+                const std::string bName = LowerAscii(b.name);
+                if (aName != bName)
+                    return aName < bName;
+                return LowerAscii(a.archive) < LowerAscii(b.archive);
+            });
+        PopulateAssetList();
+    }
+    catch (const std::exception& e) {
+        g_assetCatalog.clear();
+        const std::string message = std::string("Error: ") + e.what();
+        SetWindowTextA(g_assetControls[5], message.c_str());
+    }
+}
+
+/*
+===============================================================================
+Function: OpenCatalogAsset
+===============================================================================
+*/
+static void OpenCatalogAsset(size_t index)
+{
+    if (index >= g_assetCatalog.size())
+        return;
+
+    const AssetCatalogEntry& asset = g_assetCatalog[index];
+    if (LowerAscii(std::filesystem::path(asset.name).extension().string()) != ".vdx") {
+        const std::string message = asset.name + " is not a VDX resource. "
+            "The browser lists every T7G asset; bitmap preview uses the existing VDX decoder.";
+        SetWindowTextA(g_assetControls[5], message.c_str());
+        return;
+    }
+
+    g_currentGJDFile = asset.gjdPath.string();
+    PopulateVDXFromArchive(asset.entry);
+    TabCtrl_SetCurSel(g_hTab, TAB_VDX_INFO);
+    SwitchTab(TAB_VDX_INFO);
+}
+
+/*
+===============================================================================
 Function: CheckROBFile - Check if ROB.GJD exists in current directory
 ===============================================================================
 */
 static void CheckROBFile()
 {
-    if (std::filesystem::exists("ROB.GJD")) {
+    if (std::filesystem::exists(assetPath("ROB.GJD"))) {
         SetWindowTextA(g_cursorControls[0], "ROB.GJD found. Click Extract to export cursor images.");
         EnableWindow(g_cursorControls[1], TRUE);
     } else {
@@ -433,10 +724,12 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         g_menuActive = true;
         pauseCursorTimer();
         CreateTabs(hwnd);
+        CreateAssetBrowserTab(hwnd);
         CreateArchiveInfoTab(hwnd);
         CreateVDXInfoTab(hwnd);
         CreateCursorsTab(hwnd);
-        SwitchTab(TAB_ARCHIVE_INFO);
+        SwitchTab(TAB_ASSET_BROWSER);
+        LoadAssetCatalog(assetRoot());
         return 0;
     
     case WM_CTLCOLORSTATIC: {
@@ -465,6 +758,12 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         if (g_archiveControls[2]) {
             SetWindowPos(g_archiveControls[2], nullptr, 20, 90, listWidth, listHeight, SWP_NOZORDER);
         }
+        if (g_assetControls[4]) {
+            SetWindowPos(g_assetControls[4], nullptr, 20, 120, listWidth, rc.bottom - 175, SWP_NOZORDER);
+        }
+        if (g_assetControls[5]) {
+            SetWindowPos(g_assetControls[5], nullptr, 20, rc.bottom - 42, listWidth, 22, SWP_NOZORDER);
+        }
         // VDX tab uses fixed layout with multiple sections - no resize needed
         return 0;
     }
@@ -480,6 +779,57 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             if (sel == TAB_CURSORS) {
                 CheckROBFile();
             }
+            return 0;
+        }
+
+        // Double-click a cataloged T7G VDX to inspect its decoded frames.
+        if (nmhdr->code == NM_DBLCLK && nmhdr->idFrom == IDC_ASSET_LIST) {
+            const int selected = ListView_GetNextItem(g_assetControls[4], -1, LVNI_SELECTED);
+            if (selected >= 0) {
+                LVITEMW item = {};
+                item.mask = LVIF_PARAM;
+                item.iItem = selected;
+                if (ListView_GetItem(g_assetControls[4], &item))
+                    OpenCatalogAsset(static_cast<size_t>(item.lParam));
+            }
+            return 0;
+        }
+
+        if (nmhdr->code == LVN_COLUMNCLICK && nmhdr->idFrom == IDC_ASSET_LIST) {
+            const int column = reinterpret_cast<NMLISTVIEW*>(lParam)->iSubItem;
+            if (g_assetSortColumn == column)
+                g_assetSortAscending = !g_assetSortAscending;
+            else {
+                g_assetSortColumn = column;
+                g_assetSortAscending = true;
+            }
+            const bool ascending = g_assetSortAscending;
+            std::stable_sort(g_assetCatalog.begin(), g_assetCatalog.end(),
+                [column, ascending](const AssetCatalogEntry& a, const AssetCatalogEntry& b) {
+                    int result = 0;
+                    switch (column) {
+                    case 0:
+                        result = LowerAscii(a.name).compare(LowerAscii(b.name));
+                        break;
+                    case 1:
+                        result = LowerAscii(a.archive).compare(LowerAscii(b.archive));
+                        break;
+                    case 2:
+                        result = LowerAscii(std::filesystem::path(a.name).extension().string())
+                                     .compare(LowerAscii(std::filesystem::path(b.name).extension().string()));
+                        break;
+                    case 3:
+                        result = a.entry.offset < b.entry.offset ? -1 : a.entry.offset > b.entry.offset ? 1 : 0;
+                        break;
+                    case 4:
+                        result = a.entry.length < b.entry.length ? -1 : a.entry.length > b.entry.length ? 1 : 0;
+                        break;
+                    default:
+                        break;
+                    }
+                    return ascending ? result < 0 : result > 0;
+                });
+            PopulateAssetList();
             return 0;
         }
         
@@ -788,6 +1138,18 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         int id = LOWORD(wParam);
         
         switch (id) {
+        case IDC_ASSET_BROWSE_BTN: {
+            const std::filesystem::path folder = OpenFolderDialog(hwnd);
+            if (!folder.empty())
+                LoadAssetCatalog(folder);
+            break;
+        }
+
+        case IDC_ASSET_FILTER_EDIT:
+            if (HIWORD(wParam) == EN_CHANGE)
+                PopulateAssetList();
+            break;
+
         case IDC_ARCHIVE_BROWSE_BTN: {
             std::string file = OpenFileDialog(hwnd, 
                 L"Archive Files (*.RL;*.GJD)\0*.RL;*.GJD\0All Files (*.*)\0*.*\0",
@@ -809,11 +1171,51 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             }
             break;
         }
+
+        case IDC_VDX_PREVIOUS:
+            if (!g_playbackVDX.frameData.empty()) {
+                g_playbackFrame = g_playbackFrame == 0
+                    ? g_playbackVDX.frameData.size() - 1 : g_playbackFrame - 1;
+                ShowVDXPlaybackFrame();
+            }
+            break;
+
+        case IDC_VDX_NEXT:
+            if (!g_playbackVDX.frameData.empty()) {
+                g_playbackFrame = (g_playbackFrame + 1) % g_playbackVDX.frameData.size();
+                ShowVDXPlaybackFrame();
+            }
+            break;
+
+        case IDC_VDX_PLAY_PAUSE:
+            if (g_playbackVDX.frameData.empty())
+                break;
+            if (g_vdxPlaying) {
+                g_vdxPlaying = false;
+                KillTimer(hwnd, VDX_PLAYBACK_TIMER);
+                wavPause();
+                SetWindowTextW(g_vdxPlaybackControls[1], L"Play");
+            } else {
+                if (g_playbackFrame + 1 >= g_playbackVDX.frameData.size())
+                    g_playbackFrame = 0;
+                g_vdxPlaying = true;
+                if (g_playbackFrame == 0 && !g_playbackVDX.audioData.empty())
+                    wavPlay(std::span<const uint8_t>(g_playbackVDX.audioData));
+                else
+                    wavResume();
+                SetTimer(hwnd, VDX_PLAYBACK_TIMER, VDX_PLAYBACK_INTERVAL_MS, nullptr);
+                SetWindowTextW(g_vdxPlaybackControls[1], L"Pause");
+            }
+            break;
+
+        case IDC_VDX_STOP:
+            StopVDXPlayback(true);
+            break;
         
         case IDC_CURSOR_EXTRACT_BTN: {
             SetWindowTextA(g_cursorControls[0], "Extracting cursors...");
             UpdateWindow(g_cursorControls[0]);
-            extractCursors("ROB.GJD");
+            extractCursors(assetPath("ROB.GJD").string());
             SetWindowTextA(g_cursorControls[0], "Extraction complete!");
             break;
         }
@@ -955,24 +1357,42 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         }
         return 0;
     }
+
+    case WM_TIMER:
+        if (wParam == VDX_PLAYBACK_TIMER && g_vdxPlaying
+            && !g_playbackVDX.frameData.empty()) {
+            ++g_playbackFrame;
+            if (g_playbackFrame >= g_playbackVDX.frameData.size())
+                StopVDXPlayback(true);
+            else
+                ShowVDXPlaybackFrame();
+            return 0;
+        }
+        break;
     
     case WM_CLOSE:
         DestroyWindow(hwnd);
         return 0;
         
     case WM_DESTROY:
+        StopVDXPlayback(false);
         g_menuActive = false;
         resumeCursorTimer();
         g_toolsWindow = nullptr;
         g_hTab = nullptr;
+        memset(g_assetControls, 0, sizeof(g_assetControls));
         memset(g_archiveControls, 0, sizeof(g_archiveControls));
         memset(g_vdxControls, 0, sizeof(g_vdxControls));
+        memset(g_vdxPlaybackControls, 0, sizeof(g_vdxPlaybackControls));
         memset(g_cursorControls, 0, sizeof(g_cursorControls));
+        g_assetCatalog.clear();
+        g_assetFolder.clear();
         g_currentRLEntries.clear();
         g_currentRLFile.clear();
         g_currentGJDFile.clear();
         g_vdxChunks.clear();
         g_currentVDXFile.clear();
+        g_playbackVDX = {};
         g_hasPalette = false;
         return 0;
     }
@@ -1003,6 +1423,9 @@ static void CreateTabs(HWND hwnd)
     TCITEMW tie = {};
     tie.mask = TCIF_TEXT;
     
+    tie.pszText = (LPWSTR)L"Asset Browser";
+    TabCtrl_InsertItem(g_hTab, TAB_ASSET_BROWSER, &tie);
+
     tie.pszText = (LPWSTR)L"Archive Info";
     TabCtrl_InsertItem(g_hTab, TAB_ARCHIVE_INFO, &tie);
     
@@ -1011,6 +1434,55 @@ static void CreateTabs(HWND hwnd)
     
     tie.pszText = (LPWSTR)L"Cursors";
     TabCtrl_InsertItem(g_hTab, TAB_CURSORS, &tie);
+}
+
+/*
+===============================================================================
+Function: CreateAssetBrowserTab - Catalog every T7G RL/GJD pair in a folder
+===============================================================================
+*/
+static void CreateAssetBrowserTab(HWND hwnd)
+{
+    HINSTANCE hInst = GetModuleHandle(nullptr);
+    HFONT hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+
+    g_assetControls[0] = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
+        WS_CHILD | ES_AUTOHSCROLL | ES_READONLY,
+        20, 50, 780, 24, hwnd, (HMENU)IDC_ASSET_FOLDER_EDIT, hInst, nullptr);
+    g_assetControls[1] = CreateWindowExW(0, L"BUTTON", L"Browse folder...",
+        WS_CHILD | BS_PUSHBUTTON,
+        810, 50, 120, 24, hwnd, (HMENU)IDC_ASSET_BROWSE_BTN, hInst, nullptr);
+    g_assetControls[2] = CreateWindowExW(0, L"STATIC", L"Filter:",
+        WS_CHILD | SS_LEFT,
+        20, 88, 42, 20, hwnd, nullptr, hInst, nullptr);
+    g_assetControls[3] = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
+        WS_CHILD | ES_AUTOHSCROLL,
+        68, 84, 300, 24, hwnd, (HMENU)IDC_ASSET_FILTER_EDIT, hInst, nullptr);
+    g_assetControls[4] = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
+        WS_CHILD | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL | WS_CLIPSIBLINGS,
+        20, 120, 980, 400, hwnd, (HMENU)IDC_ASSET_LIST, hInst, nullptr);
+    g_assetControls[5] = CreateWindowExW(0, L"STATIC",
+        L"Select a T7G data folder. Double-click a VDX asset to inspect its frames.",
+        WS_CHILD | SS_LEFT,
+        20, 530, 980, 22, hwnd, (HMENU)IDC_ASSET_STATUS, hInst, nullptr);
+
+    for (HWND control : g_assetControls)
+        SendMessage(control, WM_SETFONT, (WPARAM)hFont, TRUE);
+    ListView_SetExtendedListViewStyle(g_assetControls[4],
+        LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_HEADERDRAGDROP | LVS_EX_DOUBLEBUFFER);
+
+    LVCOLUMNW column = {};
+    column.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+    column.iSubItem = 0; column.pszText = (LPWSTR)L"Asset"; column.cx = 260;
+    ListView_InsertColumn(g_assetControls[4], 0, &column);
+    column.iSubItem = 1; column.pszText = (LPWSTR)L"Archive"; column.cx = 100;
+    ListView_InsertColumn(g_assetControls[4], 1, &column);
+    column.iSubItem = 2; column.pszText = (LPWSTR)L"Type"; column.cx = 90;
+    ListView_InsertColumn(g_assetControls[4], 2, &column);
+    column.iSubItem = 3; column.pszText = (LPWSTR)L"Offset"; column.cx = 140;
+    ListView_InsertColumn(g_assetControls[4], 3, &column);
+    column.iSubItem = 4; column.pszText = (LPWSTR)L"Size"; column.cx = 120;
+    ListView_InsertColumn(g_assetControls[4], 4, &column);
 }
 
 /*
@@ -1211,6 +1683,26 @@ static void CreateVDXInfoTab(HWND hwnd)
     g_vdxControls[15] = CreateWindowExW(WS_EX_CLIENTEDGE, L"VDXBitmapClass", L"",
         WS_CHILD,
         360, 110, 644, 324, hwnd, (HMENU)IDC_VDX_BITMAP, hInst, nullptr);
+
+    // Native T7G VDX playback controls. These operate on the same decoded
+    // frame/audio stream shown above; no Groovie 2 player is involved.
+    g_vdxPlaybackControls[0] = CreateWindowExW(0, L"BUTTON", L"Previous",
+        WS_CHILD | BS_PUSHBUTTON, 360, 440, 78, 25, hwnd,
+        (HMENU)IDC_VDX_PREVIOUS, hInst, nullptr);
+    g_vdxPlaybackControls[1] = CreateWindowExW(0, L"BUTTON", L"Play",
+        WS_CHILD | BS_PUSHBUTTON, 444, 440, 78, 25, hwnd,
+        (HMENU)IDC_VDX_PLAY_PAUSE, hInst, nullptr);
+    g_vdxPlaybackControls[2] = CreateWindowExW(0, L"BUTTON", L"Stop",
+        WS_CHILD | BS_PUSHBUTTON, 528, 440, 78, 25, hwnd,
+        (HMENU)IDC_VDX_STOP, hInst, nullptr);
+    g_vdxPlaybackControls[3] = CreateWindowExW(0, L"BUTTON", L"Next",
+        WS_CHILD | BS_PUSHBUTTON, 612, 440, 78, 25, hwnd,
+        (HMENU)IDC_VDX_NEXT, hInst, nullptr);
+    g_vdxPlaybackControls[4] = CreateWindowExW(0, L"STATIC", L"No decoded frames",
+        WS_CHILD | SS_LEFT, 704, 445, 290, 18, hwnd,
+        (HMENU)IDC_VDX_FRAME_STATUS, hInst, nullptr);
+    for (HWND control : g_vdxPlaybackControls)
+        SendMessage(control, WM_SETFONT, (WPARAM)hFont, TRUE);
     
     // Setup columns for all ListViews
     LVCOLUMNW lvc = {};
@@ -1277,11 +1769,17 @@ Function: HideAllTabs
 */
 static void HideAllTabs()
 {
+    for (int i = 0; i < 6; i++) {
+        if (g_assetControls[i]) ShowWindow(g_assetControls[i], SW_HIDE);
+    }
     for (int i = 0; i < 4; i++) {
         if (g_archiveControls[i]) ShowWindow(g_archiveControls[i], SW_HIDE);
     }
     for (int i = 0; i < 17; i++) {
         if (g_vdxControls[i]) ShowWindow(g_vdxControls[i], SW_HIDE);
+    }
+    for (HWND control : g_vdxPlaybackControls) {
+        if (control) ShowWindow(control, SW_HIDE);
     }
     for (int i = 0; i < 2; i++) {
         if (g_cursorControls[i]) ShowWindow(g_cursorControls[i], SW_HIDE);
@@ -1296,6 +1794,14 @@ Function: ShowTab
 static void ShowTab(int tabIndex)
 {
     switch (tabIndex) {
+    case TAB_ASSET_BROWSER:
+        for (int i = 0; i < 6; i++) {
+            if (g_assetControls[i]) {
+                ShowWindow(g_assetControls[i], SW_SHOW);
+                BringWindowToTop(g_assetControls[i]);
+            }
+        }
+        break;
     case TAB_ARCHIVE_INFO:
         for (int i = 0; i < 4; i++) {
             if (g_archiveControls[i]) {
@@ -1309,6 +1815,12 @@ static void ShowTab(int tabIndex)
             if (g_vdxControls[i]) {
                 ShowWindow(g_vdxControls[i], SW_SHOW);
                 BringWindowToTop(g_vdxControls[i]);
+            }
+        }
+        for (HWND control : g_vdxPlaybackControls) {
+            if (control) {
+                ShowWindow(control, SW_SHOW);
+                BringWindowToTop(control);
             }
         }
         // Refresh palette and bitmap
@@ -1478,6 +1990,7 @@ static void PopulateVDXInfoList(const std::string& filename)
         
         // Parse VDX and store for delta processing
         g_currentVDX = parseVDXFile(filename, buffer);
+        PrepareVDXPlayback(filename, buffer);
         VDXFile& vdx = g_currentVDX;
         
         // Display VDX Header information (only identifier + unknown bytes)
@@ -1729,6 +2242,7 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
         
         // Parse VDX and store for delta processing
         g_currentVDX = parseVDXFile(entry.filename, buffer);
+        PrepareVDXPlayback(entry.filename, buffer);
         VDXFile& vdx = g_currentVDX;
         
         // Display VDX Header

@@ -9,6 +9,7 @@
 #include "music.h"
 #include "audio.h"
 #include "tools.h"
+#include "grv_editor.h"
 
 #include <commctrl.h>
 #include <algorithm>
@@ -44,22 +45,24 @@ void initMenu(HWND hwnd)
     DBG_LOGF("CreatePopupMenu() for File returned %p", (void*)hFileMenu);
     HMENU hHelpMenu = CreatePopupMenu();
     HMENU hEditMenu = CreatePopupMenu();
+    HMENU hToolsMenu = CreatePopupMenu();
     DBG_LOGF("CreatePopupMenu() for Help returned %p", (void*)hHelpMenu);
 
     DBG_LOG("Adding File menu items...");
     AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_FILE_LOAD), L"Load");
     AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_FILE_SAVE), L"Save");
     AppendMenu(hFileMenu, MF_SEPARATOR, 0, nullptr);
-    AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_TOOLS_WINDOW), L"Tools...");
-    AppendMenu(hFileMenu, MF_SEPARATOR, 0, nullptr);
     AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_FILE_EXIT), L"Exit");
     AppendMenu(hEditMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_EDIT_SETTINGS), L"Settings...");
+    AppendMenu(hToolsMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_TOOLS_WINDOW), L"Asset Browser...");
+    AppendMenu(hToolsMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_GRV_EDITOR), L"GRV Editor...");
     DBG_LOG("Adding Help menu items...");
     AppendMenu(hHelpMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_HELP_ABOUT), L"About");
 
     DBG_LOG("Appending menus to menu bar...");
     AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hFileMenu), L"File");
     AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hEditMenu), L"Edit");
+    AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hToolsMenu), L"Tools");
     AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hHelpMenu), L"Help");
 
     DBG_LOG("Calling SetMenu()...");
@@ -310,6 +313,9 @@ LRESULT HandleMenuCommand(HWND hwnd, WPARAM wParam)
         break;
     case static_cast<int>(MenuCommands::MC_TOOLS_WINDOW):
         ShowToolsWindow(hwnd);
+        break;
+    case static_cast<int>(MenuCommands::MC_GRV_EDITOR):
+        ShowGrvEditor(hwnd);
         break;
     case static_cast<int>(MenuCommands::MC_EDIT_SETTINGS):
         if (DialogBoxW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDD_SETTINGS_DIALOG), hwnd, SettingsDialogProc) == IDOK)

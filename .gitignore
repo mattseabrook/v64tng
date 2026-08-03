@@ -12,6 +12,7 @@ v64tng.exe
 config.json
 
 # Ignore 7th Guest commercial assets
+/T7G/
 *.RL
 *.GJD
 *.vdx

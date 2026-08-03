@@ -11,6 +11,7 @@ enum class MenuCommands
     MC_FILE_SAVE,
     MC_FILE_EXIT,
     MC_TOOLS_WINDOW,
+    MC_GRV_EDITOR,
     MC_EDIT_SETTINGS,
     MC_HELP_ABOUT
 };

@@ -26,6 +26,29 @@
 - [Game Engine Architecture](#game-engine-architecture)
   - [RL](#rl)
   - [GJD](#gjd)
+  - [GRV](#grv)
+    - [GRV Scope and Evidence](#grv-scope-and-evidence)
+    - [GRV Retail Corpus Validation](#grv-retail-corpus-validation)
+    - [GRV File Layout](#grv-file-layout)
+    - [GRV Interpreter State](#grv-interpreter-state)
+    - [GRV Bytecode Encoding](#grv-bytecode-encoding)
+      - [Instruction Byte and Short Form](#instruction-byte-and-short-form)
+      - [Encoded Values and Variable Indirection](#encoded-values-and-variable-indirection)
+      - [Interpolated Resource Strings](#interpolated-resource-strings)
+      - [Resource References](#resource-references)
+    - [GRV Execution Model](#grv-execution-model)
+      - [Calls and Subscripts](#calls-and-subscripts)
+      - [Input Loops and Hotspots](#input-loops-and-hotspots)
+      - [Hotspot Storage and Scene Association](#hotspot-storage-and-scene-association)
+      - [Video Staging Flags](#video-staging-flags)
+    - [GRV Opcode Reference](#grv-opcode-reference)
+      - [Opcodes 0x00-0x1F](#opcodes-0x00-0x1f)
+      - [Opcodes 0x20-0x3F](#opcodes-0x20-0x3f)
+      - [Opcodes 0x40-0x5A](#opcodes-0x40-0x5a)
+    - [Known GRV Variables](#known-grv-variables)
+    - [GRV C++23 Reference Structures](#grv-c23-reference-structures)
+    - [GRV Worked Bytecode Example](#grv-worked-bytecode-example)
+    - [GRV Platform Differences and Open Questions](#grv-platform-differences-and-open-questions)
   - [VDX](#vdx)
     - [Header](#header)
     - [Chunk Header](#chunk-header)
@@ -126,6 +149,38 @@ v64tng.exe !
 ```
 
 The engine must be placed in the original 7th Guest game directory alongside the game's data files (`.GJD`, `.RL`, etc.). It is compatible with all known releases of The 7th Guest, regardless of where purchased (Steam, GOG, original CD-ROM).
+
+### Win32 Asset Browser and GRV Editor
+
+The native Win32 application exposes a top-level **Tools** menu. **Asset Browser**
+tab scans every matching T7G `.RL`/`.GJD` pair in a selected folder, combines
+them into one sortable and filterable catalog, and displays the archive,
+resource type, offset, and size. Double-click a `.VDX` entry to open it in the
+existing **VDX Info** tab, where its bitmap, palette, delta frames, and audio
+chunks can be inspected and played with Previous, Play/Pause, Stop, and Next.
+
+**Tools -> GRV Editor** scans the same asset root for `.GRV` files, sorts them
+alphabetically, selects `SCRIPT.GRV` by default, and decompiles the selected
+file directly from its real bytes into an editable in-memory assembly listing.
+Its scene pane resolves the input loop's packed RL/GJD VDX reference, decodes
+the animation, and draws the real GRV hotspot rectangles over the original
+640x320 frame on a 640x480 coordinate canvas. Because one loop can serve
+several views, a separate scene selector exposes the statically reachable VDX
+candidates rather than asserting a false one-loop/one-scene mapping. Input
+loops, scene candidates, and frames can be selected or played without
+launching the game.
+
+Right-click a script and choose **Decompile...** to save a `.grv.asm` listing,
+or use **Assemble As...** to reconstruct a `.GRV` from the listing's raw-byte
+column. The current assembler is deliberately lossless rather than symbolic:
+editing raw instruction bytes is authoritative; changing only mnemonic text
+does not yet relocate branches or rewrite operands.
+
+When `SCRIPT.GRV` exists beside the executable, that directory is cataloged
+automatically. A development checkout also recognizes a local `T7G`
+subdirectory. The browser uses only the T7G RL/GJD and VDX decoders; the
+Clandestiny code supplied for UI study did not introduce Groovie 2 resource or
+playback behavior.
 
 ## Command Line Utilities
 
@@ -233,6 +288,760 @@ It doesn't have a fixed header structure, footer, or internal metadata—it is s
 | ...       | ...             | Additional VDX data blobs, concatenated without delimiters or padding           |
 
 The engine uses memory-mapped I/O (on both Windows and Unix systems) for zero-copy access to GJD files, as they can be quite large. Each VDX blob within a GJD file begins with the standard VDX header (identifier `0x6792`) followed by chunk data.
+
+## GRV
+
+GRV is Trilobyte's bytecode format for the GROOVIE virtual machine. A `.GRV`
+file is the executable game logic: it selects media resources, controls video
+composition and music, maintains game variables, defines mouse hotspots,
+implements branches and subroutines, invokes hard-coded puzzle logic, and
+loads other GRV scripts.
+
+Unlike RL, VDX, and XMI, GRV is not a container format. It has no magic number,
+header, version field, section table, string table, or relocation records. The
+first byte of the file is the first instruction and all branch targets are
+absolute byte offsets from the start of the current file.
+
+This section documents **Groovie v1 as used by The 7th Guest**. Later games use
+a related Groovie v2 instruction set with important differences; v2 behavior
+is mentioned only where it explains a reserved or extended T7G opcode.
+
+### GRV Scope and Evidence
+
+The specification below was reconstructed by comparing three independent
+implementations:
+
+1. The unpacked original DOS `V.EXE`, GROOVIE Player v1.26
+   (`05/20/93 15:54:08`). Its interpreter begins at `1000:35B2`.
+2. Trilobyte's Windows player `v32tng.exe` v1.02b1. Its interpreter is the
+   switch in the function at PE address `0x004021D1`.
+3. The bundled ScummVM Groovie implementation in
+   [`docs/scummvm-groovie/script.cpp`](docs/scummvm-groovie/script.cpp) and
+   [`script.h`](docs/scummvm-groovie/script.h), checked against the
+   [current upstream implementation](https://github.com/scummvm/scummvm/blob/master/engines/groovie/script.cpp).
+
+Evidence labels used in the opcode tables are:
+
+| Label | Meaning |
+| ----- | ------- |
+| DOS | Directly present in the original DOS v1.26 interpreter |
+| Win | Directly present in the original Windows `v32tng` interpreter |
+| ScummVM | Implemented or structurally described by ScummVM |
+| Reserved | Consumed but has no externally visible T7G effect |
+| V2 | Meaning is known only from a later Groovie v2 interpreter |
+
+Where the implementations disagree, the table describes each behavior rather
+than silently choosing one. The reverse-engineering details and binary hashes
+are recorded in
+[`research/FIRST_PASS_REPORT.md`](research/FIRST_PASS_REPORT.md).
+
+Known canonical PC `script.grv` releases are 16,659 bytes. ScummVM identifies
+the common version using MD5 `d1b8033b40aa67c076039881eccce90d` over its first
+5,000 bytes; the full-file MD5 of the supplied retail script is
+`846878336210a9d3b11995ea9cef35ca`.
+
+### GRV Retail Corpus Validation
+
+The supplied commercial [`T7G`](T7G) directory contains 23 GRV files totaling
+83,400 bytes. The research disassembler decodes them to 20,592 instructions,
+376 input loops, 3,273 video operations, and 1,933 hotspot/action declarations.
+Every branch and action target lands on an instruction boundary or the
+intentional `SCRIPT.GRV` end-of-file sentinel.
+
+| Script | Bytes | Instructions | Video operations | Input loops | Hotspot/actions |
+| ------ | ----: | -----------: | ---------------: | ----------: | --------------: |
+| `AT.GRV` | 6,725 | 1,387 | 17 | 6 | 98 |
+| `B.GRV` | 2,388 | 551 | 86 | 1 | 29 |
+| `CH.GRV` | 7,365 | 1,778 | 205 | 29 | 104 |
+| `CR.GRV` | 1,654 | 475 | 151 | 1 | 13 |
+| `D.GRV` | 2,100 | 482 | 178 | 1 | 16 |
+| `DEMO.GRV` | 466 | 169 | 69 | 0 | 0 |
+| `DR.GRV` | 5,546 | 1,515 | 293 | 1 | 34 |
+| `EK.GRV` | 3,169 | 661 | 56 | 2 | 44 |
+| `F.GRV` | 1,349 | 354 | 44 | 9 | 36 |
+| `GA.GRV` | 2,442 | 477 | 36 | 1 | 68 |
+| `GRATE.GRV` | 1,086 | 277 | 55 | 1 | 10 |
+| `H.GRV` | 3,140 | 711 | 48 | 3 | 54 |
+| `HM.GRV` | 5,153 | 1,205 | 188 | 4 | 68 |
+| `JH.GRV` | 3,224 | 793 | 76 | 1 | 35 |
+| `K.GRV` | 1,873 | 318 | 20 | 2 | 70 |
+| `LA.GRV` | 5,939 | 1,217 | 29 | 2 | 102 |
+| `LI.GRV` | 2,168 | 451 | 73 | 20 | 74 |
+| `MAZE.GRV` | 3,652 | 1,432 | 609 | 128 | 256 |
+| `MB.GRV` | 3,981 | 833 | 122 | 37 | 124 |
+| `MU.GRV` | 1,354 | 370 | 54 | 1 | 29 |
+| `N.GRV` | 842 | 210 | 50 | 1 | 16 |
+| `P.GRV` | 1,125 | 327 | 42 | 1 | 13 |
+| `SCRIPT.GRV` | 16,659 | 4,599 | 772 | 124 | 640 |
+
+Generated research artifacts are:
+
+- [`include/grv.h`](include/grv.h) and [`src/grv.cpp`](src/grv.cpp): native
+  C++23 bounded decoder, RL reference resolver, input-loop/hotspot model,
+  lossless assembly listing writer, and raw-column rebuilder;
+- [`src/grv_editor.cpp`](src/grv_editor.cpp): live Win32 GRV editor, VDX scene
+  resolver, hotspot overlay, playback controls, and decompile/assemble dialogs;
+- [`research/tools/grv_roundtrip.cpp`](research/tools/grv_roundtrip.cpp):
+  standalone native regression test for the entire retail corpus;
+- [`research/grv-corpus/OPCODE_CENSUS.md`](research/grv-corpus/OPCODE_CENSUS.md):
+  every opcode count and every script which uses it;
+- [`research/grv-corpus/HOTSPOTS.md`](research/grv-corpus/HOTSPOTS.md): all 376
+  input loops, scene candidates, coordinates, cursors, and action targets;
+- [`research/grv-corpus/corpus.json`](research/grv-corpus/corpus.json):
+  machine-readable file metadata, opcode counts, and input-loop records;
+- [`research/GRV_ROOM_CROSSCHECK.md`](research/GRV_ROOM_CROSSCHECK.md):
+  `F.GRV`/`DR.GRV` puzzle analysis and the exact comparison with the
+  hand-authored `fh.h`/`dr.h` navigation data;
+- `research/grv-corpus/*.grv.asm`: complete offset-preserving assembly listings.
+
+The raw-byte column in every listing is lossless. The native C++23 toolchain
+rebuilds all 23 listings byte-identically to the supplied originals, including
+`D.GRV`. This is already a proven disassembly/reassembly round trip;
+a future symbolic assembler still needs mnemonic editing, labels, resource
+symbols, and branch relocation for comfortable new-script authoring.
+
+The retail corpus uses no opcode above `0x4E`. In particular, none of the
+Windows-only candidates `0x4F`–`0x59`, including mask-video opcodes `0x57` and
+`0x58`, occurs in these scripts.
+
+`DEMO.GRV` resolves the earlier `V @` mystery. It is a 466-byte, non-interactive
+attract/demo reel containing 69 video operations and no input loop. It selects
+music according to variable `0x100`, plays logos and a long tour of game
+scenes, then jumps back to offset zero. It is unrelated to the earlier
+promotional TLC archive except that both are linear presentations.
+
+One dialect conflict remains. The corpus produces coherent `MAZE.GRV` control
+flow when opcode `0x1E` consumes one byte, as in Windows and ScummVM. Both DOS
+1.26 and 1.30 demonstrably consume a word. The research tool defaults to the
+corpus/Windows interpretation but supports `--reserved-1e-width 2` for exact
+DOS decoding. See
+[`research/DOS/V126_V130_COMPARISON.md`](research/DOS/V126_V130_COMPARISON.md)
+for the byte-level evidence.
+
+### GRV File Layout
+
+The entire file is one bytecode stream:
+
+| Offset | Type | Field | Description |
+| ------ | ---- | ----- | ----------- |
+| `0x0000` | `uint8_t[]` | Code | First instruction begins immediately at byte zero |
+| varies | inline data | Operands | Integers, encoded lists, and strings follow their opcodes |
+| EOF | — | End of file | No footer or explicit file-size field |
+
+There is no valid packed C/C++ disk-header structure because no header exists.
+A loader needs only a bounded byte view:
+
+```cpp
+struct GrvFileView
+{
+    std::span<const std::uint8_t> code;
+};
+```
+
+The original DOS and Windows players allocate a 64 KiB script buffer. Control
+flow operands and the program counter are 16-bit, so a v1 script is inherently
+limited to a single 65,536-byte address space.
+
+### GRV Interpreter State
+
+The reconstructed T7G virtual machine contains the following state:
+
+| State | Recovered shape | Purpose |
+| ----- | --------------- | ------- |
+| Code | Up to 64 KiB | Current raw GRV file |
+| Program counter | `uint16_t` | Byte offset of the next instruction |
+| Variables | `uint8_t variables[0x400]` | Persistent game and puzzle state |
+| Call stack | 32 × `uint16_t` | Return offsets for opcode `0x18`/`0x17` |
+| Stack depth | `uint8_t`/word | Current call-stack entry count |
+| Video flags | At least 16 bits | Staged behavior for the next VDX operation |
+| Current resource archive | GJD index | Starting context for name-based resource lookup |
+| Input-loop address | `uint16_t` | Start of the active hotspot/input block |
+| Subscript backup | One code pointer and PC | Allows one active child GRV |
+| Saved subscript variables | `0x180` bytes | Restores variables `0x107`–`0x286` on return |
+
+Variables are bytes. Arithmetic therefore wraps modulo 256:
+
+```text
+0xFF + 1 = 0x00
+0x00 - 1 = 0xFF
+```
+
+The original interpreters do not provide type information or bounds checking
+for variable accesses, stack overflow, branch targets, malformed strings, or
+division by zero. A modern implementation should validate all of these while
+preserving valid-script behavior.
+
+### GRV Bytecode Encoding
+
+All multi-byte integers are little-endian:
+
+| Notation | Encoding |
+| -------- | -------- |
+| `U8` | One unsigned byte |
+| `U16` | Two-byte little-endian unsigned value |
+| `S16` | Two-byte little-endian signed value |
+| `U32` | Four-byte little-endian unsigned value |
+| `A16` | Absolute `U16` byte offset in the current GRV |
+| `V` | Variable index; `U8` or `U16` selected by opcode bit 7 |
+| `C` | One encoded immediate/indirect value |
+| `C...END` | Encoded values ending when the final source byte has bit 7 set |
+| `ZSTR` | NUL-terminated interpolated string |
+
+#### Instruction Byte and Short Form
+
+The high bit of every instruction byte is metadata. Dispatch always uses only
+the low seven bits:
+
+```cpp
+const std::uint8_t raw = readU8();
+const std::uint8_t opcode = raw & 0x7F;
+const bool shortForm = (raw & 0x80) != 0;
+```
+
+For instructions whose first operand is `V`, the high bit selects its width:
+
+```text
+raw opcode bit 7 = 0  -> V is a little-endian U16
+raw opcode bit 7 = 1  -> V is a U8
+```
+
+For example, raw byte `0x14` is long-form `RANDOM` and raw byte `0x94` is the
+same opcode with an 8-bit destination-variable index.
+
+Only the first `V` uses this width flag. Any later variable index explicitly
+listed as `U16` remains 16-bit. Opcodes `0x1C` and `0x27` reuse the same high
+bit as a video-compositing flag instead of a variable-width selector. Most
+other instructions ignore it.
+
+#### Encoded Values and Variable Indirection
+
+GRV uses a compact textual-looking encoding for values and sequences.
+
+**Immediate value**
+
+An immediate byte value `n` is stored as `0x30 + n`. Thus ASCII `'0'` encodes
+zero, `'1'` encodes one, and `'A'` encodes `0x11`.
+
+```text
+encoded = 0x30 + value
+value   = (encoded & 0x7F) - 0x30
+```
+
+**One-dimensional variable lookup (`#`)**
+
+`#` followed by a selector accesses a low variable:
+
+```text
+23 61       -> variables[0x00]
+23 62       -> variables[0x01]
+23 7A       -> variables[0x19]
+
+index = (selector & 0x7F) - 0x61
+```
+
+**Two-dimensional puzzle-grid lookup (`|`)**
+
+`|` followed by encoded row and column values accesses the common 10-column
+puzzle workspace:
+
+```text
+index = 0x19 + (10 * row) + column
+value = variables[index]
+```
+
+The row and column may themselves be immediate values or `#` indirections.
+
+**Sequence termination**
+
+Instructions which consume `C...END` do not store a count. Bit 7 is set on the
+last physical byte belonging to the final encoded value. For an immediate
+value, that is the immediate byte. For `#`, it is normally the selector byte;
+for a `|` expression, it is the final column byte.
+
+Example:
+
+```text
+31 B2
+```
+
+decodes as values `1, 2`; `0xB2` is `0x32` with its end marker set.
+
+This sequence terminator is independent of the opcode's own bit-7 short-form
+flag.
+
+#### Interpolated Resource Strings
+
+`ZSTR` operands are NUL-terminated byte strings embedded directly in the code.
+They use two substitutions:
+
+| Token | Expansion |
+| ----- | --------- |
+| `#x` | `variables[x - 0x61] + 0x30` |
+| `|rc` | `variables[0x19 + 10 × row + column] + 0x30` |
+
+Literal uppercase ASCII letters are converted to lowercase by the T7G
+interpreter. For video-by-name instructions, the engine appends a period and
+performs a prefix lookup against RL filenames. A script string such as `door`
+therefore searches for `door.` and may match `door.vdx`.
+
+`LOADSCRIPT` (`0x3F`) is different: its operand is a plain NUL-terminated
+filename and is not passed through resource-string interpolation.
+
+#### Resource References
+
+T7G's 16-bit media reference packs a GJD archive index and an RL entry index:
+
+```cpp
+constexpr std::uint16_t makeT7gRef(
+    std::uint16_t gjdIndex,
+    std::uint16_t resourceIndex)
+{
+    return static_cast<std::uint16_t>(
+        (gjdIndex << 10) | (resourceIndex & 0x03FF));
+}
+```
+
+```text
+bits 15..10 = GJD index
+bits  9..0  = entry number in that archive's RL file
+```
+
+The archive mapping is:
+
+| Index | Archive | Index | Archive | Index | Archive |
+| ----: | ------- | ----: | ------- | ----: | ------- |
+| 0 | `AT.GJD` | 7 | `HDISK.GJD` | 14 | `MB.GJD` |
+| 1 | `B.GJD` | 8 | `HTBD.GJD` | 15 | `MC.GJD` |
+| 2 | `CH.GJD` | 9 | `INTRO.GJD` | 16 | `MU.GJD` |
+| 3 | `D.GJD` | 10 | `JHEK.GJD` | 17 | `N.GJD` |
+| 4 | `DR.GJD` | 11 | `K.GJD` | 18 | `P.GJD` |
+| 5 | `FH.GJD` | 12 | `LA.GJD` | 19 | `XMI.GJD` |
+| 6 | `GA.GJD` | 13 | `LI.GJD` | 20 | `GAMWAV.GJD` |
+
+Examples:
+
+```text
+0x2460 -> GJD 9 (INTRO.GJD), RL entry 0x060
+0x4C46 -> GJD 19 (XMI.GJD), RL entry 0x046
+```
+
+Name-based lookup remembers the most recently used room GJD and searches RL
+names using the interpolated prefix. The Windows player searches outward
+through all 21 archives if the resource is not in the current archive.
+
+### GRV Execution Model
+
+Execution begins at byte offset `0x0000`. The engine fetches an opcode,
+advances the program counter over its operands, performs the operation, and
+continues until a branch changes the PC, an input loop yields, a video remains
+in progress, a subscript replaces the code buffer, or `ENDSCRIPT` terminates
+the engine.
+
+The bytecode is cooperative rather than a self-contained CPU. Media and input
+instructions communicate with subsystems maintained by the host executable.
+The DOS player may repeat a video instruction at the same PC until playback is
+complete; modern implementations can model this as an asynchronous/yielding
+instruction.
+
+#### Calls and Subscripts
+
+GRV has two independent call mechanisms.
+
+**Intra-script subroutines**
+
+- `CALL` (`0x18`) pushes the address immediately after its operand and jumps to
+  an absolute offset in the same file.
+- `RET` (`0x17`) writes its result byte to `variables[0x102]`, pops the call
+  stack, and resumes there.
+- The recovered stack has 32 entries.
+- `RESTORESTACK` (`0x38`) restores the call-stack depth saved at entry to the
+  current script. In the main DOS script this checkpoint is zero, so it clears
+  the stack.
+
+**External GRV subscripts**
+
+- `LOADSCRIPT` (`0x3F`) saves the current code buffer, return PC, stack depth,
+  filename, and variables `0x107`–`0x286`, then loads the named GRV at PC zero.
+- Only one subscript level is supported; a child cannot load a grandchild
+  without overwriting the single saved context.
+- `RETURNSCRIPT` (`0x43`) stores its result in `variables[0x102]`, restores the
+  parent script and stack depth, and restores variables `0x107`–`0x286`.
+- Changes made by a subscript to variables outside that restored range remain
+  visible to the parent.
+
+#### Input Loops and Hotspots
+
+Interactive regions are declarations evaluated inside an input loop:
+
+```text
+INPUTLOOPSTART (0x0B)
+    KEYBOARDACTION / HOTSPOT_* / HOTSPOT_RECT ...
+INPUTLOOPEND   (0x13)
+```
+
+`INPUTLOOPSTART` captures the current key/click state, resets the candidate
+cursor to style 5, and records the loop address. Each hotspot may update the
+cursor and, on a click, branch to its action address. If no action fires,
+`INPUTLOOPEND` applies the persistent edge hotspots, returns to `0x0B`, shows
+the selected cursor, and yields until new input arrives.
+
+The built-in T7G screen regions are:
+
+| Opcode | Nominal region | Cursor |
+| ------ | -------------- | ------ |
+| `0x0E` | Left side of game area | 1 |
+| `0x0F` | Right side of game area | 2 |
+| `0x10`, `0x11` | Center, approximately x=200..439 | 0 |
+| `0x12` | Current position / whole screen | 0 |
+| `0x2C` | Persistent top bar, y=0..79 | Operand |
+| `0x2D` | Persistent bottom bar, y=400..479 | Operand |
+| `0x30` | Immediate bottom bar | 4 |
+| `0x44` | Persistent full-height right edge | 2 |
+| `0x45` | Persistent full-height left edge | 1 |
+
+Coordinates in explicit rectangle instructions are 16-bit pixel values in the
+640×480 logical screen. The normal VDX game image occupies y=80..399.
+
+#### Hotspot Storage and Scene Association
+
+The click-region geometry is in GRV, not VDX, RL, or GJD.
+
+- VDX contains visual/audio chunks and has no scene-hotspot table.
+- RL contains only a resource name, GJD offset, and length.
+- GJD is only the indexed resource byte store.
+- Cursor resources contain the cursor image's own drawing origin/hot point;
+  that is unrelated to the size of a clickable scene region.
+- GRV contains the screen rectangles, cursor styles, and action addresses.
+
+The retail opcode counts are direct evidence:
+
+| Opcode | Region form | Retail uses |
+| ------ | ----------- | ----------: |
+| `0x0D` | Explicit `(left, top, right, bottom)` rectangle | 1,150 |
+| `0x0E` | Built-in left region | 184 |
+| `0x0F` | Built-in right region | 183 |
+| `0x10`, `0x11` | Built-in center region | 136 |
+| `0x12` | Whole-screen/current action | 2 |
+| `0x2C`, `0x2D` | Persistent top/bottom regions | 88 |
+| `0x30` | Bottom region with cursor 4 | 43 |
+| `0x3B` | Explicit save-slot rectangle | 20 |
+| `0x44`, `0x45` | Persistent right/left edges | 81 |
+
+There is deliberately no fixed one-to-one `VDX -> hotspot list` record. A GRV
+path plays one or more VDX resources, changes variables, and then executes an
+`INPUTLOOPSTART`/`INPUTLOOPEND` block whose declarations become the active
+regions. Edge hotspots may persist from earlier setter instructions, and
+different variable/branch states can reach the same input loop after different
+videos.
+
+For a modern engine, the authoritative model is therefore:
+
+```cpp
+struct GrvHotspot
+{
+    std::uint16_t left;
+    std::uint16_t top;
+    std::uint16_t right;
+    std::uint16_t bottom;
+    std::uint16_t actionAddress;
+    std::uint8_t cursor;
+};
+
+struct GrvInputFrame
+{
+    std::uint16_t loopAddress;
+    std::vector<GrvHotspot> activeHotspots;
+    std::optional<std::uint16_t> currentVideoRef;
+};
+```
+
+`currentVideoRef` is useful runtime context, not a field read from the VDX. A
+static modding tool can derive likely scene associations with control-flow
+analysis; an engine gets the exact association naturally by recording the
+active video and hotspot state while executing GRV.
+
+#### Video Staging Flags
+
+Several no-operand opcodes configure the next VDX operation. The state is
+normally cleared after the video completes.
+
+| Bit | Set/cleared by | Recovered effect |
+| ---: | -------------- | ---------------- |
+| 1 | `0x1C`, `0x27` | Transition/overlay video path |
+| 2 | High bit of `0x1C` or `0x27` | Use palette index `0xFF` as the transparent/mask value |
+| 4 | Win `0x57`, `0x58` | Mask/wipe video path |
+| 5 | `0x0A` | Skip/special handling for still chunks |
+| 6 | `0x06` | Special still/update behavior; exact visual effect remains uncertain |
+| 7 | `0x07`, `0x35`, `0x40` | Origin/mask compositing state |
+| 8 | `0x05` | Show only the first video frame |
+| 9 | `0x03` | Start video with a palette fade-in |
+
+The names above describe observed decoder behavior, not original Trilobyte
+symbol names.
+
+### GRV Opcode Reference
+
+The T7G opcode namespace is the low seven bits of the instruction byte.
+`V` operands use the opcode high bit to choose 8- or 16-bit width. Table sizes
+include the opcode byte; `V` sizes are shown as short/long where useful.
+
+#### Opcodes 0x00-0x1F
+
+| Op | Working mnemonic | Operands | Size | Semantics and evidence |
+| -- | ---------------- | -------- | ---: | ---------------------- |
+| `00` | `NOP` | — | 1 | No operation. DOS/Win/ScummVM. |
+| `01` | `RESERVED_01` | — | 1 | Win and ScummVM treat it as NOP. DOS writes `1` to an internal word with no reader found, making it externally inert in v1.26. |
+| `02` | `PLAYSONG` | `U16 ref` | 3 | Plays the XMI resource reference. `0x4C17` receives special bookkeeping in the original players. DOS/Win/ScummVM. |
+| `03` | `FADEIN_NEXT_VIDEO` | — | 1 | Sets video flag 9. DOS/Win/ScummVM. |
+| `04` | `PALFADEOUT` | — | 1 | Fades the current palette to black. DOS/Win/ScummVM. |
+| `05` | `FIRSTFRAME_NEXT_VIDEO` | — | 1 | Sets video flag 8; next VDX stops after its first visual frame. DOS/Win/ScummVM. |
+| `06` | `VIDEOFLAG6_ON` | — | 1 | Sets video flag 6. Original code confirms the flag; its complete visual meaning is unresolved. |
+| `07` | `VIDEOFLAG7_ON` | — | 1 | Sets video/compositing flag 7. DOS/Win/ScummVM. |
+| `08` | `SETBACKGROUNDSONG` | `U16 ref` | 3 | Selects the background XMI resource. DOS/Win/ScummVM. |
+| `09` | `VIDEOREF` | `U16 ref` | 3 | Plays a VDX by packed resource reference using the currently staged video flags. DOS/Win/ScummVM. |
+| `0A` | `VIDEOFLAG5_ON` | — | 1 | Selects special/skip-still handling for the next VDX. DOS/Win/ScummVM. |
+| `0B` | `INPUTLOOPSTART` | — | 1 | Begins an input/hotspot declaration loop and captures current input. DOS/Win/ScummVM. |
+| `0C` | `KEYACTION` | `U8 key, A16 target` | 4 | Branches to `target` when the captured keyboard byte equals `key`. DOS/Win/ScummVM. |
+| `0D` | `HOTSPOT_RECT` | `U16 left, top, right, bottom, A16 target, U8 cursor` | 12 | Declares an explicit clickable rectangle. DOS/Win/ScummVM. |
+| `0E` | `HOTSPOT_LEFT` | `A16 target` | 3 | Declares the built-in left navigation region with cursor 1. DOS/Win/ScummVM. |
+| `0F` | `HOTSPOT_RIGHT` | `A16 target` | 3 | Declares the built-in right navigation region with cursor 2. DOS/Win/ScummVM. |
+| `10` | `HOTSPOT_CENTER` | `A16 target` | 3 | Declares the center navigation region with cursor 0. DOS/Win/ScummVM. |
+| `11` | `HOTSPOT_CENTER_2` | `A16 target` | 3 | Exact alias of `0x10` in all recovered T7G interpreters. |
+| `12` | `HOTSPOT_CURRENT` | `A16 target` | 3 | Action for the current/whole-screen region; the original does not perform a position test. |
+| `13` | `INPUTLOOPEND` | — | 1 | Resolves persistent hotspots, loops to `0x0B`, updates the cursor, and waits when no action fired. |
+| `14` | `RANDOM` | `V dst, U8 max` | 3/4 | Stores a bounded pseudo-random byte in `variables[dst]`. ScummVM models DOS T7G as inclusive `0..max`; Windows appears to use modulo `max`, producing `0..max-1`. |
+| `15` | `JMP` | `A16 target` | 3 | Unconditional absolute jump in the current file. |
+| `16` | `LOADSTRING` | `V dst, C...END` | variable | Decodes values into consecutive variables beginning at `dst`. |
+| `17` | `RET` | `U8 result` | 2 | Stores `result` in variable `0x102`, pops the intra-script call stack, and returns. |
+| `18` | `CALL` | `A16 target` | 3 | Pushes the following PC and jumps to `target`. |
+| `19` | `SLEEP` | `U16 ticks` | 3 | Delays for approximately `ticks × 3 ms`. |
+| `1A` | `STRCMP_NE_JMP` | `V start, C...END, A16 target` | variable | Compares consecutive variables with the encoded sequence; jumps if any byte differs. |
+| `1B` | `XOR_OBFUSCATE` | `V start, bytes...END` | variable | XORs consecutive variables with raw list bytes masked by `0x4F`; list bit 7 terminates. |
+| `1C` | `VIDEO_TRANSITION_REF` | `U16 ref` | 3 | Sets video flag 1, clears flag 7, optionally sets flag 2 from opcode bit 7, then plays the VDX reference. |
+| `1D` | `SWAP` | `V a, U16 b` | 4/5 | Swaps byte variables `a` and `b`. Only the first index has a short form. |
+| `1E` | `RESERVED_1E` | DOS: `U16`; Win/ScummVM: `U8` | 2 or 3 | Consumes and stores/ignores an otherwise unused value. Both DOS 1.26 and 1.30 use a word; all 106 retail occurrences are in `MAZE.GRV`, whose coherent media flow strongly favors the one-byte Windows form. |
+| `1F` | `INC` | `V dst` | 2/3 | Increments a byte variable with wraparound. |
+
+#### Opcodes 0x20-0x3F
+
+| Op | Working mnemonic | Operands | Size | Semantics and evidence |
+| -- | ---------------- | -------- | ---: | ---------------------- |
+| `20` | `DEC` | `V dst` | 2/3 | Decrements a byte variable with wraparound. |
+| `21` | `STRCMP_NE_JMP_INDIRECT` | `V selector, C...END, A16 target` | variable | Reads `n=variables[selector]`; if `n>9`, subtracts 7; reads a start index from `variables[0x19+n]`; compares there and jumps on mismatch. |
+| `22` | `COPY_BG_TO_FG` | — | 1 | Copies the complete background buffer to the foreground buffer. |
+| `23` | `STRCMP_EQ_JMP` | `V start, C...END, A16 target` | variable | Compares consecutive variables and jumps only when every byte matches. |
+| `24` | `MOV` | `V dst, U16 src` | 4/5 | `variables[dst] = variables[src]`. |
+| `25` | `ADD` | `V dst, U16 src` | 4/5 | Adds `variables[src]` to `variables[dst]` modulo 256. |
+| `26` | `VIDEO_NAME` | `ZSTR name` | variable | Interpolates a resource basename, appends `.`, resolves it through the RL context, and plays it without transition flag 1. |
+| `27` | `VIDEO_TRANSITION_NAME` | `ZSTR name` | variable | Name-based video play with flag 1; opcode bit 7 additionally sets transparency flag 2. |
+| `28` | `RESERVED_28` | `U16 value` | 3 | DOS stores the word in an internal location with no reader found; Win and ScummVM consume it as NOP. |
+| `29` | `STOP_OR_WAIT_MIDI` | — | 1 | Windows ends the active Miles sequence. DOS polls a Miles state until it changes. ScummVM names it `STOPMIDI` but currently performs no action. |
+| `2A` | `ENDSCRIPT` | — | 1 | Terminates the complete player/game, not merely the current subroutine. |
+| `2B` | `NOP_2B` | — | 1 | No operation/default dispatch. |
+| `2C` | `SET_HOTSPOT_TOP` | `A16 target, U8 cursor` | 4 | Installs a persistent top-bar action and cursor used by `INPUTLOOPEND`. |
+| `2D` | `SET_HOTSPOT_BOTTOM` | `A16 target, U8 cursor` | 4 | Installs a persistent bottom-bar action and cursor. |
+| `2E` | `LOADGAME` | `V slotVar` | 2/3 | Loads the 0x400-byte game state from the slot stored in `variables[slotVar]`. |
+| `2F` | `SAVEGAME` | `V slotVar` | 2/3 | Saves the 0x400-byte variable state to the selected slot. The first 15 variables encode the T7G save description. |
+| `30` | `HOTSPOT_BOTTOM_4` | `A16 target` | 3 | Declares the bottom 80-pixel region with cursor style 4. |
+| `31` | `MIDI_CONTROL` | `U16 value, U16 time` | 5 | If `value==0`, Windows stops MIDI; otherwise applies Miles sequence volume/ramp parameters. |
+| `32` | `JNE_INDIRECT` | `V selector, U16 rhs, A16 target` | 6/7 | Jumps if `variables[variables[selector]-0x31] != variables[rhs]`. |
+| `33` | `LOADSTRING_INDIRECT` | `V pointerVar, C...END` | variable | Starts at `variables[pointerVar]-0x31` and writes the decoded sequence to consecutive variables. |
+| `34` | `CHAR_GREATER_JMP` | `V start, C...END, A16 target` | variable | Jumps if any compared variable byte is greater than its encoded value. |
+| `35` | `VIDEOFLAG7_OFF` | — | 1 | Clears video/compositing flag 7. |
+| `36` | `CHAR_LESS_JMP` | `V start, C...END, A16 target` | variable | Jumps if any compared variable byte is less than its encoded value. |
+| `37` | `COPY_RECT_TO_BG` | `U16 left, top, right, bottom` | 9 | Copies the rectangle from the foreground/screen image into the background and marks it dirty. |
+| `38` | `RESTORESTACK` | — | 1 | Restores the call-stack depth checkpoint saved on entry to the current GRV. DOS main-script behavior is an explicit clear to depth zero. |
+| `39` | `GRID_SWAP` | `C row1, C col1, C row2, C col2` | variable | Swaps `variables[0x19+10×row1+col1]` and `variables[0x19+10×row2+col2]`; each component may be immediate or `#` indirect. |
+| `3A` | `PRINTSTRING` | `C...END` | variable | Converts values back with `+0x30`, sanitizes unsupported characters to spaces, and centers up to 14 characters in the top bar. |
+| `3B` | `HOTSPOT_SAVE_SLOT` | `U8 slot, U16 left, top, right, bottom, A16 target, U8 cursor` | 13 | Save/load-menu hotspot; displays the slot description while hovered and branches on click. |
+| `3C` | `CHECK_VALID_SAVES` | — | 1 | Scans slots 0–9, writes validity flags to variables `0x00`–`0x09`, and count to `0x104`. |
+| `3D` | `RESETVARS` | — | 1 | Clears variables `0x000`–`0x0FF`; higher engine/status variables are retained. |
+| `3E` | `MOD` | `V dst, U8 divisor` | 3/4 | Replaces the byte with its remainder modulo `divisor`; original code uses repeated subtraction. Divisor zero is invalid. |
+| `3F` | `LOADSCRIPT` | `ZSTR filename` | variable | Loads one child GRV, saves the parent context, and begins the child at offset zero. The filename is a plain string, not an RL resource name. |
+
+#### Opcodes 0x40-0x5A
+
+| Op | Working mnemonic | Operands | Size | Semantics and evidence |
+| -- | ---------------- | -------- | ---: | ---------------------- |
+| `40` | `SET_VIDEO_ORIGIN` | `S16 x, S16 y` | 5 | Sets flag 7 and changes the origin used when compositing the next VDX. |
+| `41` | `SUB` | `V dst, U16 src` | 4/5 | Subtracts `variables[src]` from `variables[dst]` modulo 256. |
+| `42` | `GAMELOGIC` | `U8 operation` | 2 | Invokes the hard-coded T7G microscope/cell puzzle logic using workspace `variables+0x19`; writes selected move coordinates to variables `0`–`3`. |
+| `43` | `RETURNSCRIPT` | `U8 result` | 2 | Returns from a child GRV, restores parent code/PC/stack/local variables, and stores result in `0x102`. |
+| `44` | `SET_HOTSPOT_RIGHT` | `A16 target` | 3 | Installs the persistent right-edge input-loop action. |
+| `45` | `SET_HOTSPOT_LEFT` | `A16 target` | 3 | Installs the persistent left-edge input-loop action. |
+| `46` | `RESOURCE_CONTEXT_SAVE` | — | 1 | DOS snapshots an internal archive/media position; Win and ScummVM can treat it as NOP because their resource managers reopen by reference. |
+| `47` | `RESOURCE_CONTEXT_RESTORE` | — | 1 | DOS synchronizes/reopens the selected resource archive; Win and ScummVM treat it as NOP. |
+| `48` | `SET_VDX_RATE_OVERRIDE` | `U8 rate` | 2 | DOS overrides the frame interval read from VDX header offset 6 when nonzero. Win/ScummVM consume it as NOP. |
+| `49` | `PALETTE_MERGE_ONCE` | — | 1 | DOS enables a one-shot palette-preservation/merge path for the next still frame, then clears it. Win/ScummVM treat it as NOP. |
+| `4A` | `MIDI_DRIVER_PARAM` | `U16 value` | 3 | DOS forwards a changed value to the active Miles sequence/driver; exact musical meaning is unresolved. Win/ScummVM consume it as NOP. |
+| `4B` | `SET_VIDEO_MODE` | `U8 mode` | 2 | DOS: zero re-enters the detected SVGA path; nonzero selects BIOS mode `0x13`. Win/ScummVM consume the byte as NOP. |
+| `4C` | `GETCD` | — | 1 | Writes media availability to variable `0x106`. DOS values: 0=both `B.GJD` and `AT.GJD`, 1=B, 2=AT, 3=neither. |
+| `4D` | `PLAYCD` | `U8 track/mode` | 2 | Stops MIDI and starts the requested CD/Redbook selection. Value 2 also drives alternate-logo handling in Windows. |
+| `4E` | `MUSICDELAY` | `U16 delay` | 3 | DOS stores a frame countdown before a background-music action. ScummVM models it as background-song delay; Windows consumes it. |
+| `4F` | `RESERVED_4F` | `U16 value` | 3 | Windows consumes it; ScummVM T7G uses `NOP16`. V2 uses this slot to save a screen buffer. Not handled by DOS v1.26. |
+| `50` | `RESERVED_50` | `U16 value` | 3 | Windows/ScummVM T7G consume it. V2 uses this slot to restore a screen buffer. Not handled by DOS. |
+| `51` | `SET_VIDEO_SKIP_CANDIDATE` | `A16 target` | 3 | Windows stores the target in otherwise unreferenced state; V2 uses the same slot as `SETVIDEOSKIP`. ScummVM T7G consumes it. |
+| `52` | `COMMIT_OVERLAY` | `U8 mode` | 2 | Windows commits/clears the active mask overlay and consumes `mode`. ScummVM T7G still marks this opcode invalid. |
+| `53` | `HOTSPOT_OUTSIDE_RECT` | `U16 left, top, right, bottom, A16 target` | 11 | Windows branches when the pointer is outside the rectangle. ScummVM implements the same behavior. Not handled by DOS. |
+| `54` | `NOP_54` | — | 1 | Default/no operation in Windows and ScummVM; not handled by DOS. |
+| `55` | `SET_SCRIPT_END_CANDIDATE` | `U16 target` | 3 | Windows stores the word in otherwise unreferenced state. V2 names the same slot `SETSCRIPTEND`. ScummVM T7G consumes it. |
+| `56` | `RESERVED_SOUND_SHAPE` | `U32 ref, U8 loops, U8 mode` | 7 | T7G Windows consumes the exact later-Groovie sound operand shape without acting. V2 uses it to play/stop background digital sound. |
+| `57` | `MASK_VIDEO_REF32` | `U32 ref` | 5 | **Recovered T7G Windows extension:** sets mask flag 4, commits the previous overlay, and plays a video by 32-bit reference. ScummVM T7G currently marks it invalid. |
+| `58` | `MASK_VIDEO_NAME` | `ZSTR name` | variable | **Recovered T7G Windows extension:** sets mask flag 4, commits the previous overlay, resolves an interpolated name, and plays the mask/wipe VDX. |
+| `59` | `CHECK_SOUND_OVERLAY_SHAPE` | `V dst, U8 mode` | 3/4 | T7G Windows consumes the operands without a visible write. V2 writes whether a background sound or overlay is active. |
+| `5A` | `UNSUPPORTED_T7G` | — | 1 | No DOS or Windows T7G handler. V2 uses `0x5A` for preview-loading part of a savegame. |
+
+The DOS v1.26 dispatcher explicitly recognizes only `0x00`–`0x4E`.
+Unrecognized low-seven-bit values fall through as one-byte no-ops. The Windows
+T7G player additionally recognizes operand layouts through `0x59`. ScummVM
+allocates a 91-entry namespace (`0x00`–`0x5A`) shared between Groovie v1 and
+v2, but some of its T7G entries remain invalid or conservatively stubbed.
+
+### Known GRV Variables
+
+GRV variable meanings are contextual, and room/puzzle scripts freely reuse
+large ranges. These locations have stable engine-level roles:
+
+| Index/range | Meaning |
+| ----------- | ------- |
+| `0x000`–`0x00E` | T7G save description bytes (`stored value + 0x30` produces display text) |
+| `0x000`–`0x009` | Overwritten by `CHECK_VALID_SAVES` with slot-valid flags |
+| `0x000`–`0x003` | Move origin/destination returned by T7G `GAMELOGIC` |
+| `0x019` onward | Common puzzle workspace and base of `|row,column` addressing |
+| `0x08C`, `0x08D` | Main-script room/location state used to decide whether direct saving is safe |
+| `0x091` | Input-loop cursor modifier; value 1 selects the high cursor-style bit |
+| `0x100` | MIDI device: 0=AdLib, 1=General MIDI, 2=MT-32 |
+| `0x102` | Return value written by `RET` and `RETURNSCRIPT` |
+| `0x103` | Engine timer byte, incremented periodically |
+| `0x104` | Number of valid saves found by opcode `0x3C` |
+| `0x106` | CD/data availability result written by opcode `0x4C` |
+| `0x107`–`0x286` | Subscript-local region saved on `LOADSCRIPT` and restored on `RETURNSCRIPT` |
+
+The save-game payload is the raw 0x400-byte variable bank. It is therefore
+both VM memory and the original persistent game-state format.
+
+### GRV C++23 Reference Structures
+
+The executable implementation is in [`include/grv.h`](include/grv.h),
+[`src/grv.cpp`](src/grv.cpp), and
+[`src/grv_editor.cpp`](src/grv_editor.cpp). The following condensed types
+describe the interpreter state still required by the future runtime VM:
+
+```cpp
+enum class GrvOpcode : std::uint8_t
+{
+    nop                  = 0x00,
+    playSong             = 0x02,
+    videoRef             = 0x09,
+    inputLoopStart       = 0x0B,
+    random               = 0x14,
+    jump                 = 0x15,
+    call                 = 0x18,
+    videoTransitionRef   = 0x1C,
+    endScript            = 0x2A,
+    loadScript           = 0x3F,
+    gameLogic            = 0x42,
+    returnScript         = 0x43,
+    getCd                = 0x4C,
+    maskVideoRef32       = 0x57,
+    maskVideoName        = 0x58
+};
+
+struct GrvVmState
+{
+    std::span<const std::uint8_t> code;
+    std::uint16_t pc{};
+
+    std::array<std::uint8_t, 0x400> variables{};
+    std::array<std::uint16_t, 0x20> callStack{};
+    std::uint8_t stackDepth{};
+    std::uint8_t stackCheckpoint{};
+
+    std::uint16_t videoFlags{};
+    std::uint16_t inputLoopAddress{};
+    std::uint16_t currentGjd{};
+};
+
+constexpr std::uint8_t grvOpcode(std::uint8_t raw) noexcept
+{
+    return raw & 0x7F;
+}
+
+constexpr bool grvShortForm(std::uint8_t raw) noexcept
+{
+    return (raw & 0x80) != 0;
+}
+```
+
+A safe reader should reject any operand crossing EOF, any branch target outside
+the current code span, a call depth greater than 32, malformed encoded values,
+unterminated strings, and variable indexes outside `0x000`–`0x3FF`.
+
+### GRV Worked Bytecode Example
+
+ScummVM preserves this sequence adapted from the canonical `script.grv` MIDI
+initialization path:
+
+```text
+Offset  Bytes                 Decoding
+------  --------------------  ---------------------------------------------
+0000    1A 00 01 B1 12 00     if variables[0x100] != [1], jump 0x0012
+0006    02 46 4C              play XMI reference 0x4C46
+0009    03                    fade in the next video
+000A    09 60 24              play VDX reference 0x2460
+000D    09 60 24              play VDX reference 0x2460 again
+0010    04                    palette fade out
+0011    29                    stop/wait for MIDI
+0012    1A 00 01 B2 21 00     if variables[0x100] != [2], jump 0x0021
+0018    02 45 4C              play XMI reference 0x4C45
+001B    03                    fade in the next video
+001C    09 61 24              play VDX reference 0x2461
+001F    04                    palette fade out
+0020    29                    stop/wait for MIDI
+0021    31 63 00 00 00        MIDI control (99, 0)
+0026    3C                    scan valid save slots
+0027    43 00                 return from subscript with result 0
+```
+
+This small program demonstrates little-endian references and branch targets,
+the `0xB1`/`0xB2` encoded-list terminators, media staging flags, VM variables,
+and subscript return behavior.
+
+### GRV Platform Differences and Open Questions
+
+The bytecode is a family, not one perfectly frozen specification:
+
+- DOS v1.26 and v1.30 dispatch through `0x4E`; Windows `v32tng` dispatches
+  through `0x59`.
+- Opcode `0x1E` consumes a word in both DOS 1.26 and 1.30 but a byte in Windows
+  and ScummVM. The supplied `MAZE.GRV` structurally favors the byte form, so
+  this is a real unresolved script/player dialect conflict.
+- Opcode `0x29` polls a Miles state in DOS but explicitly ends the sequence in
+  Windows.
+- Opcode `0x38` is now confirmed as restoring a saved call-stack checkpoint;
+  the DOS main-script checkpoint is zero.
+- DOS implements hardware-specific behavior for `0x48`–`0x4B` which Windows
+  intentionally consumes or ignores.
+- Windows implements T7G mask-video opcodes `0x57` and `0x58`, filling two
+  previously invalid T7G slots in ScummVM's table.
+- DOS `GETCD` can report both discs (`0`) or neither (`3`). The Windows beta
+  stops after finding the first usable archive; ScummVM uses its own
+  all-files-present interpretation.
+
+Still unresolved:
+
+1. The exact visual semantics of video flag 6.
+2. The original names and precise Miles-driver meaning of opcode `0x4A`.
+3. Whether `0x51` and `0x55`, absent from all 23 supplied retail scripts, were
+   active in another shipped T7G revision or merely forward-compatible fields.
+4. The meaning of the `mode` byte consumed by Windows opcode `0x52`.
+5. Which platform/version emitted the divergent `0x1E` operand width.
+6. Runtime-reachable control-flow coverage and comparison against independently
+   sourced DOS/Windows GRV revisions.
+
+These uncertainties are isolated: operand consumption is known through
+Windows opcode `0x59`, and every DOS v1.26 handler through `0x4E` has been
+accounted for.
 
 ## VDX
 
@@ -885,6 +1694,56 @@ During decompression, the function `lzssDecompress` reads and processes each byt
 3. Update `his_buf_pos` after each byte written using circular wrap: `(his_buf_pos + 1) & (N - 1)`
 
 The history buffer (`his_buf`) is used to store previous data, facilitating the LZSS decompression process. The compression scheme is well-suited for VDX data, which often contains repeated 4×4 pixel tiles.
+
+# Historical Development / Technoloy
+
+The strongest contemporary source is the scanned
+[*The 7th Guest: The Official Strategy Guide*](docs/7thGuestGuide.pdf),
+especially the Graeme Devine/Rob Landeros interview on printed pages 322–340
+(PDF pages 331–349). It names a much more specific production stack than most
+retrospectives:
+
+| Tool or technology | Documented use |
+|---|---|
+| **Microsoft Word for Windows** | Devine and Landeros bought it to write and repeatedly refine the original game/design proposal. |
+| **Autodesk 3D Studio** | Modeling, texture mapping, lighting, camera animation, room rendering, and even final animated cursor art. Robert Stein introduced the workflow; Stein, Landeros, and contractors built the mansion with it. This was the original DOS-era **3D Studio**, not the later 1996 product named **3D Studio Max**. |
+| **Autodesk Animator Pro** | Supplied after Animator author Jim Kent sent Devine a handwritten response to his shareware player. The interview says this began a close technical relationship with Autodesk. |
+| **Deluxe Paint (“D-Paint”) / Autodesk Animator** | Discussed as the conventional cell-animation route for interface icons. John Gaffey drew an early throbbing-brain animation in roughly eight cells before Landeros demonstrated how quickly it could instead be built and rendered in 3D Studio. |
+| **A hex editor** | Devine used one to reverse engineer Autodesk 3D Studio's undocumented high-resolution `.PIX` output. The exact editor is not named. |
+| **`Play` (custom Trilobyte shareware)** | Devine's roughly 20 KB Super VGA `.PIX` player. It doubled as public hardware testing: users exercised it with many Super VGA boards and frame grabbers. Autodesk adopted it internally because its own player was roughly a megabyte. This is an especially direct ancestor of the standalone media-player paths recovered in this repository. |
+| **Custom GROOVIE video player/codec** | Devine's compressed, double-resolution CD-streaming player became the engine's technical foundation. CD-ROM delivered only about 150 KB/s, so the team had to build the playback technology themselves. |
+| **Super VGA / 640x320 letterbox in a 640x480 screen** | Chosen to resemble television and laserdisc letterboxing. The strategy guide's design document specifies 640x480x256; the finished media occupies the familiar 640x320 cinematic band. |
+| **Blue-screen video and matte compositing** | Actors were filmed against blue paper rather than a proper green screen and matted over rendered rooms. The difficult blue removal produced the ghosts' characteristic fuzzy aura. A later Landeros interview identifies the recording medium as Betamax. |
+| **CD-R, tape, and a 100 MB file server** | Development-era builds cost about $100 per burned CD. The team could not keep the whole game on its 100 MB server disk and swapped room data to and from tape. |
+
+The rendering workload was formidable: the official interview reports roughly
+35 minutes per rendered frame and 120 frames for a 360-degree turn. It also
+documents custom production work that sounds strikingly familiar today:
+Devine first reverse engineered an external format, built a standalone player,
+distributed it for broad compatibility testing, and then folded that playback
+knowledge into the game.
+
+Sources beyond the supplied guide corroborate the account:
+
+- [Game Informer's oral history](https://gameinformer.com/b/features/archive/2012/11/26/horror-story-an-oral-history-of-the-7th-guest.aspx)
+  records the 150 KB/s CD constraint, custom double-resolution compressed
+  player, blue-paper shoot, $100 CD burns, 100 MB server, and tape swapping.
+- [GameSpot's Rob Landeros retrospective](https://www.gamespot.com/articles/the-7th-guest-a-condemned-classic/1100-6419968/)
+  confirms that the team had to invent both the 3D-production and high-resolution
+  animation pipeline. Its use of the later name “3D Studio Max” should be read
+  as a retrospective naming error; the contemporary guide consistently says
+  “3D Studio.”
+- [PC Gamer's 2026 Rob Landeros interview](https://www.pcgamer.com/games/puzzle/legend-has-it-that-the-7th-guests-creators-were-fired-on-the-spot-after-pitching-the-game-its-hyperbole-but-not-entirely-untrue/)
+  adds Betamax capture and Landeros's recollection that the cursor work
+  happened without Photoshop.
+
+Two often-repeated claims remain **unsubstantiated** by the guide, interviews,
+credits, or current binary analysis: no source found here places a NeXT
+computer in the original production pipeline, and no specific commercial
+assembler/compiler has been identified. The recovered DOS player is
+assembly-heavy and looks substantially hand-written, but that is binary
+evidence, not proof of a named language or tool. Those claims should stay open
+until a primary source, build artifact, or original source tree settles them.
 
 # Developers
 
