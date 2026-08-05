@@ -143,7 +143,7 @@ void VDXInfo(const std::string &filename)
 		{
 			std::print("{:02X} ", static_cast<int>(byte));
 		}
-		std::println("");
+		std::println("\n  Frame rate: {}", vdx.frameRate);
 	}
 
 	// Output 0x20 Bitmap table
@@ -289,7 +289,12 @@ void extractVDX(const std::string_view &filename)
 
 		std::ofstream vdxFileOut(vdxFileName, std::ios::binary);
 		vdxFileOut.write(reinterpret_cast<const char *>(&vdxFile.identifier), sizeof(vdxFile.identifier));
-		vdxFileOut.write(reinterpret_cast<const char *>(vdxFile.unknown.data()), 6);
+		vdxFileOut.write(
+			reinterpret_cast<const char *>(vdxFile.unknown.data()),
+			vdxFile.unknown.size());
+		vdxFileOut.write(
+			reinterpret_cast<const char *>(&vdxFile.frameRate),
+			sizeof(vdxFile.frameRate));
 
 		for (const auto &chunk : vdxFile.chunks)
 		{

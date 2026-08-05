@@ -2093,13 +2093,13 @@ static void PopulateVDXInfoList(const std::string& filename)
         PrepareVDXPlayback(filename, buffer);
         VDXFile& vdx = g_currentVDX;
         
-        // Display VDX Header information (only identifier + unknown bytes)
+        // Display the semantically decoded VDX header.
         char headerInfo[256];
         snprintf(headerInfo, sizeof(headerInfo),
-            "Identifier: 0x%04X   Unknown: {0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X}",
+            "Identifier: 0x%04X   Unknown: {0x%02X, 0x%02X, 0x%02X, 0x%02X}   FPS: %u",
             vdx.identifier,
             vdx.unknown[0], vdx.unknown[1], vdx.unknown[2],
-            vdx.unknown[3], vdx.unknown[4], vdx.unknown[5]);
+            vdx.unknown[3], static_cast<unsigned>(vdx.frameRate));
         SetWindowTextA(g_vdxControls[2], headerInfo);
         
         // Track counts for each type
@@ -2348,10 +2348,10 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
         // Display VDX Header
         char headerInfo[256];
         snprintf(headerInfo, sizeof(headerInfo),
-            "Identifier: 0x%04X   Unknown: {0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X}",
+            "Identifier: 0x%04X   Unknown: {0x%02X, 0x%02X, 0x%02X, 0x%02X}   FPS: %u",
             vdx.identifier,
             vdx.unknown[0], vdx.unknown[1], vdx.unknown[2],
-            vdx.unknown[3], vdx.unknown[4], vdx.unknown[5]);
+            vdx.unknown[3], static_cast<unsigned>(vdx.frameRate));
         SetWindowTextA(g_vdxControls[2], headerInfo);
         
         int count0x20 = 0, count0x25 = 0, count0x80 = 0;

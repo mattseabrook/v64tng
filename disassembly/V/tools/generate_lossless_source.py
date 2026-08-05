@@ -31,14 +31,31 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
         "standalone_vdx_or_diagnostics",
         "Verified ?, empty-tail, ~name, and loose-name.vdx startup path.",
     ),
-    0x0587: ("decode_vdx_bitmap_still", "Cross-version mapped VDX still/base-frame decoder."),
-    0x105A: ("decode_vdx_delta_frame", "Cross-version mapped VDX delta-frame/render core."),
+    0x0587: (
+        "decode_vdx_bitmap_still",
+        "Verified VDX 20h still/base-frame decoder; GRV video flags decide whether its pixels seed the displayed background or are skipped for a delta overlay.",
+    ),
+    0x105A: (
+        "decode_vdx_delta_frame",
+        "Verified VDX 25h palette-update and 4x4-tile delta compositor; unchanged tiles retain the prior persistent frame.",
+    ),
     0x23A5: ("copy_rect_to_background", "Verified GRV background rectangle-copy implementation."),
     0x2591: ("copy_background_to_foreground", "Verified GRV background restore implementation."),
-    0x2997: ("stream_media_buffer", "Cross-version mapped media stream/refill path."),
+    0x2997: (
+        "stream_media_buffer",
+        "Verified VDX chunk-stream/refill path; distinguishes interleaved 80h PCM from visual chunks while one VIDEOREF remains synchronous.",
+    ),
     0x2F84: ("detect_video_hardware", "Verified video hardware detection/diagnostic path."),
     0x368C: ("query_xms", "Verified XMS manager/version/free-memory query."),
     0x36D2: ("format_memory_diagnostic", "Verified diagnostic memory-number formatter."),
+    0x382D: (
+        "save_selected_archive_context",
+        "Verified opcode 46h helper: snapshots the current packed-resource archive selector for later restoration.",
+    ),
+    0x3838: (
+        "restore_selected_archive_context",
+        "Verified opcode 47h helper: restores the saved archive selector and reopens its indexed resource context when necessary.",
+    ),
     0x388A: (
         "select_grv_video_resource",
         "Verified packed GRV video ref resolver: selects archive, RL entry, and GJD offset.",
@@ -64,7 +81,12 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
         "load_selected_resource_file",
         "Verified selected resource open/read/close path into the GRV media buffer.",
     ),
-    0x3AC4: ("run_grv_vm", "Verified GRV bytecode interpreter entry."),
+    0x3AC4: (
+        "run_grv_vm",
+        "Verified GRV bytecode interpreter entry.\n"
+        "; VIDEOREF is synchronous: 03h/05h/06h/07h/0Ah stage bits 9/8/6/7/5, 09h resolves and plays one VDX, then transient flags clear.\n"
+        "; SCRIPT.GRV uses bit 5 to discard an overlay still and composite its deltas over the held background; an 80h sound chunk remains inside that same blocking playback.",
+    ),
     0x3EEA: (
         "grv_check_valid_saves",
         "Verified opcode 3Ch implementation: probes save.0 through save.9 and writes count/slot variables.",

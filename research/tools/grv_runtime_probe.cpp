@@ -11,6 +11,7 @@ int main()
 	const auto boot = runtime->boot();
 	assert(boot);
 	assert(boot->resources.song == 0x4c39);
+	assert(boot->resources.backgroundSong == 0x4c0c);
 	assert(boot->transition.videos.size() == 4);
 	assert(boot->transition.videos[0].ref == 0x2418);
 	assert(boot->transition.videos[0].flags == 0);
@@ -58,6 +59,11 @@ int main()
 	}
 	const auto hidden = runtime->hotspotAt(100, 75, 640, 320);
 	assert(hidden && hidden->target() == 0x1aa0 && hidden->cursor() == 7);
+	const auto hiddenTarget = runtime->activateAt(100, 75, 640, 320);
+	assert(hiddenTarget && *hiddenTarget == 0x1aa0);
+	const auto houseMap = runtime->follow(*hiddenTarget);
+	assert(houseMap && !houseMap->videos.empty());
+	assert((houseMap->videos.front().flags & (1u << 15)) != 0);
 
 	// The retail new-game branch itself reaches the first foyer loop.
 	auto game = GrvRuntime::load(root / "SCRIPT.GRV", root);

@@ -1,6 +1,6 @@
 ; Linear entry 0105A (1000:105a)
 ; Ghidra working symbol: FUN_1000_105a
-; Cross-version mapped VDX delta-frame/render core.
+; Verified VDX 25h palette-update and 4x4-tile delta compositor; unchanged tiles retain the prior persistent frame.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
 %macro emit_decode_vdx_delta_frame_part_00 0

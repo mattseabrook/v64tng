@@ -24,7 +24,10 @@ void musicShutdown();
 // Function prototypes
 std::vector<uint8_t> xmiConverter(const RLEntry &song);
 void PlayMIDI(const std::vector<uint8_t> &midiData, bool isTransient = false);
-void xmiPlay(const std::string &songName, bool isTransient = false);
+void xmiPlay(
+	const std::string &songName,
+	bool isTransient = false,
+	bool loop = false);
 void pushMainSong(const std::string &songName);
 void popMainSong();
 void applyMusicRuntimeSettings();

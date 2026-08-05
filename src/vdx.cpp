@@ -85,7 +85,7 @@ void parseVDXChunksFromSpan(VDXFile &vdxFile, std::span<const uint8_t> rawSpan)
 	vdxFile.chunks.reserve(preCount);
 
 	vdxFile.identifier = static_cast<uint16_t>(rawSpan[0] | (rawSpan[1] << 8));
-	std::copy(rawSpan.begin() + 2, rawSpan.begin() + 8, vdxFile.unknown.begin());
+	std::copy(rawSpan.begin() + 2, rawSpan.begin() + 6, vdxFile.unknown.begin());
 	vdxFile.frameRate = static_cast<uint16_t>(rawSpan[6] | rawSpan[7] << 8);
 
 	size_t offset = 8;
@@ -507,6 +507,23 @@ void parseVDXChunks(VDXFile &vdxFile)
 	parseVDXChunks(vdxFile, {}, 0);
 }
 
+double vdxPlaybackRate(const VDXFile &vdxFile)
+{
+	constexpr double kHeaderFallbackFPS = 15.0;
+	constexpr double kFastNavigationFPS = 26.0;
+	const double headerRate =
+		vdxFile.frameRate ? static_cast<double>(vdxFile.frameRate) : kHeaderFallbackFPS;
+
+	// The retail T7G player accelerates silent movement VDXes to 26 FPS.
+	// Encountering an interleaved sound chunk cancels that override, and
+	// SCRIPT.GRV also injects bit 15 for theater-mask/teeth actions that must
+	// obey the header rate even when the stream itself is silent.
+	if (!vdxFile.audioData.empty() ||
+		(vdxFile.playbackFlags & (1u << 15)) != 0)
+		return headerRate;
+	return kFastNavigationFPS;
+}
+
 /*
 ===============================================================================
 Function Name: vdxPlay
@@ -578,16 +595,11 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 	AnimationState prevAnim = state.animation;
 
 	// Setup playback
+	state.frameTiming.currentFPS = vdxPlaybackRate(*vdxToUse);
 	if (!vdxToUse->audioData.empty())
 	{
-		state.frameTiming.currentFPS =
-			vdxToUse->frameRate ? vdxToUse->frameRate : 15.0;
 		auto audioOwner = std::make_shared<std::vector<uint8_t>>(std::move(vdxToUse->audioData));
 		wavPlay(audioOwner);
-	}
-	else if (vdxToUse->frameRate)
-	{
-		state.frameTiming.currentFPS = vdxToUse->frameRate;
 	}
 
 	// Temporarily set currentVDX for rendering (non-owning during playback)

@@ -233,9 +233,9 @@ load_image_start:
     ; 0378F..0382C function
     emit_func_0378f_part_00
     ; 0382D..03837 function
-    emit_func_0382d_part_00
+    emit_save_selected_archive_context_part_00
     ; 03838..03889 function
-    emit_func_03838_part_00
+    emit_restore_selected_archive_context_part_00
     ; 0388A..03936 function
     emit_select_grv_video_resource_part_00
     ; 03937..03940 gap

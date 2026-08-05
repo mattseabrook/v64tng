@@ -47,6 +47,7 @@ struct GrvResource
 struct GrvBootResources
 {
 	uint16_t song = 0;
+	uint16_t backgroundSong = 0;
 };
 
 struct GrvVideoCommand
@@ -101,8 +102,10 @@ private:
 	size_t callDepth_ = 0;
 	uint16_t activeLoop_ = 0;
 	uint16_t songRef_ = 0;
+	uint16_t backgroundSongRef_ = 0;
 	uint16_t videoFlags_ = 0;
 	uint8_t videoRateOverride_ = 0;
+	uint8_t lastCursor_ = 0;
 	std::vector<GrvVideoCommand> videoCommands_;
 	bool ended_ = false;
 	std::array<uint16_t, 4> persistentHotspots_{};

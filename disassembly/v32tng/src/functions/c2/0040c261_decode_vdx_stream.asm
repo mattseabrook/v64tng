@@ -1,6 +1,6 @@
 ; PE virtual entry 0040C261
 ; Ghidra working symbol: FUN_0040c261
-; Verified VDX stream decoding/playback role.
+; Verified blocking VDX chunk decode/playback loop: still/delta composition and interleaved sound are consumed as one stream before GRV resumes.
 ; Generated losslessly; preserve byte identity after edits.
 
 %macro emit_decode_vdx_stream_part_00 0

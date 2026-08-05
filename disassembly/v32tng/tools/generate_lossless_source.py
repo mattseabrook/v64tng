@@ -60,7 +60,9 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
     ),
     0x004021D1: (
         "run_grv_vm",
-        "Verified central GRV bytecode interpreter and opcode dispatcher.",
+        "Verified central GRV bytecode interpreter and opcode dispatcher.\n"
+        "; VIDEOREF is synchronous: 03h/05h/06h/07h/0Ah stage bits 9/8/6/7/5, 09h resolves and plays one VDX, then transient flags clear.\n"
+        "; SCRIPT.GRV uses bit 5 to discard an overlay still and composite its deltas over the held background; interleaved sound remains part of that playback.",
     ),
     0x00404350: (
         "init_game_subsystems",
@@ -120,11 +122,11 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
     ),
     0x0040C1BD: (
         "configure_vdx_stream",
-        "Verified VDX stream callback/configuration role.",
+        "Verified VDX stream callback/configuration, header timing, and playback-state setup role.",
     ),
     0x0040C261: (
         "decode_vdx_stream",
-        "Verified VDX stream decoding/playback role.",
+        "Verified blocking VDX chunk decode/playback loop: still/delta composition and interleaved sound are consumed as one stream before GRV resumes.",
     ),
     0x0040D8A0: (
         "strcmp_runtime",

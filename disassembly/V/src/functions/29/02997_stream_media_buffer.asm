@@ -1,6 +1,6 @@
 ; Linear entry 02997 (1000:2997)
 ; Ghidra working symbol: FUN_1000_2997
-; Cross-version mapped media stream/refill path.
+; Verified VDX chunk-stream/refill path; distinguishes interleaved 80h PCM from visual chunks while one VIDEOREF remains synchronous.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
 %macro emit_stream_media_buffer_part_00 0

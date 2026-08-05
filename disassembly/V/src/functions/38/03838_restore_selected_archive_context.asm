@@ -1,11 +1,11 @@
 ; Linear entry 03838 (1000:3838)
 ; Ghidra working symbol: FUN_1000_3838
-; Role not yet verified; boundary is provisional.
+; Verified opcode 47h helper: restores the saved archive selector and reopens its indexed resource context when necessary.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_03838_part_00 0
+%macro emit_restore_selected_archive_context_part_00 0
     %%fragment_start:
-func_03838:
+restore_selected_archive_context:
     %%insn_03838:
     push ds ; 03838 1E
     %if ($ - %%insn_03838) > 1

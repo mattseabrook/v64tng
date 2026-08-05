@@ -31,6 +31,15 @@ GameState state;
 //=====================================================
 
 static std::optional<GrvRuntime> grvRuntime;
+static std::string pendingGrvBackgroundSong;
+
+static void startPendingGrvBackgroundSong()
+{
+	if (pendingGrvBackgroundSong.empty() || state.music_playing)
+		return;
+	std::string song = std::exchange(pendingGrvBackgroundSong, {});
+	xmiPlay(song, false, true);
+}
 
 //
 // Lookup table for named actions
@@ -96,8 +105,7 @@ static void setupView(const std::string &view_name, bool is_static, auto now)
 		state.currentVDX->parsed = true;
 	}
 	state.animation.totalFrames = state.currentVDX->frameData.size();
-	if (state.currentVDX->frameRate)
-		state.frameTiming.currentFPS = state.currentVDX->frameRate;
+	state.frameTiming.currentFPS = vdxPlaybackRate(*state.currentVDX);
 	state.currentFrameIndex = is_static ? (state.animation.totalFrames ? state.animation.totalFrames - 1 : 0) : 0;
 	state.animation.isPlaying = !is_static && state.animation.totalFrames > 0;
 	state.animation.lastFrameTime = now;
@@ -117,6 +125,8 @@ Description:
 */
 void viewHandler()
 {
+	startPendingGrvBackgroundSong();
+
 	if (state.raycast.enabled)
 	{
 		updateRaycasterMovement();
@@ -492,7 +502,10 @@ static bool playGrvVideo(const GrvVideoCommand &command)
 		parseVDXChunks(*loaded, background, command.flags);
 		loaded->parsed = true;
 		if (command.rateOverride)
+		{
 			loaded->frameRate = command.rateOverride;
+			loaded->playbackFlags |= 1u << 15;
+		}
 
 		// VIDEOREF is a blocking VM opcode: render every frame (and its
 		// interleaved PCM stream) before the interpreter's next command becomes
@@ -568,6 +581,15 @@ bool initializeGrvMainMenu()
 	}
 	state.mainMenu.active = true;
 	applyGrvTransition(boot->transition);
+	if (const auto background =
+			grvRuntime->resolve(boot->resources.backgroundSong))
+	{
+		// SETBACKGROUNDSONG is persistent VM state. The original starts it
+		// only after the one-shot song is over and SCRIPT.GRV is waiting for
+		// input, then repeats it until another music command changes it.
+		pendingGrvBackgroundSong = background->stem();
+		startPendingGrvBackgroundSong();
+	}
 	return true;
 }
 

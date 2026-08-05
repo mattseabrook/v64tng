@@ -41,12 +41,15 @@
       - [Input Loops and Hotspots](#input-loops-and-hotspots)
       - [Hotspot Storage and Scene Association](#hotspot-storage-and-scene-association)
       - [Video Staging Flags](#video-staging-flags)
+      - [`VIDEOREF` execution contract](#videoref-execution-contract)
+      - [VDX timing selected by the GRV player](#vdx-timing-selected-by-the-grv-player)
+      - [GRV music lifetime](#grv-music-lifetime)
     - [GRV Opcode Reference](#grv-opcode-reference)
       - [Opcodes 0x00-0x1F](#opcodes-0x00-0x1f)
       - [Opcodes 0x20-0x3F](#opcodes-0x20-0x3f)
       - [Opcodes 0x40-0x5A](#opcodes-0x40-0x5a)
     - [Known GRV Variables](#known-grv-variables)
-    - [GRV C++23 Reference Structures](#grv-c23-reference-structures)
+    - [GRV C++23 implementation](#grv-c23-implementation)
     - [GRV Worked Bytecode Example](#grv-worked-bytecode-example)
     - [GRV Platform Differences and Open Questions](#grv-platform-differences-and-open-questions)
   - [VDX](#vdx)
@@ -338,6 +341,29 @@ Evidence labels used in the opcode tables are:
 | ScummVM | Implemented or structurally described by ScummVM |
 | Reserved | Consumed but has no externally visible T7G effect |
 | V2 | Meaning is known only from a later Groovie v2 interpreter |
+
+#### Working names versus original symbols
+
+The GRV files contain opcode bytes, operands, strings, and branch targets; they
+do **not** contain mnemonic text. Names such as `VIDEOREF`, `PLAYSONG`, and
+`HOTSPOT_RECT` are semantic working names in this project, not recovered
+Trilobyte assembler labels.
+
+`VIDEOREF` is the project's compact spelling of the long-established
+`VIDEOFROMREF`/`o_videofromref` name in the Groovie reverse-engineering
+lineage. The name was adopted only after opcode `09h` had been matched in the
+DOS and Windows dispatchers to the same packed-reference selection and VDX
+playback path. Thus:
+
+- the **name's provenance** is reverse-engineering nomenclature;
+- the **operation's semantics** are independently verified in both original
+  executables;
+- no claim is made that Trilobyte's lost source used that exact identifier.
+
+The same policy applies to semantic function names in both mechanical
+disassemblies. Address names remain until behavior is supported by control
+flow, cross-version correspondence, runtime capture, or more than one of
+those sources.
 
 Where the implementations disagree, the table describes each behavior rather
 than silently choosing one. The reverse-engineering details and binary hashes
@@ -743,50 +769,116 @@ regions. Edge hotspots may persist from earlier setter instructions, and
 different variable/branch states can reach the same input loop after different
 videos.
 
-For a modern engine, the authoritative model is therefore:
+For a modern engine, the authoritative model is a bounded view over the
+instruction bytes, not a second hand-authored hotspot database:
 
 ```cpp
-struct GrvHotspot
+class GrvHotspotView
 {
-    std::uint16_t left;
-    std::uint16_t top;
-    std::uint16_t right;
-    std::uint16_t bottom;
-    std::uint16_t actionAddress;
-    std::uint8_t cursor;
-};
+    std::span<const std::uint8_t> instruction;
 
-struct GrvInputFrame
-{
-    std::uint16_t loopAddress;
-    std::vector<GrvHotspot> activeHotspots;
-    std::optional<std::uint16_t> currentVideoRef;
+public:
+    std::uint16_t left() const;
+    std::uint16_t top() const;
+    std::uint16_t right() const;
+    std::uint16_t bottom() const;
+    std::uint16_t actionAddress() const;
+    std::uint8_t cursor() const;
 };
 ```
 
-`currentVideoRef` is useful runtime context, not a field read from the VDX. A
-static modding tool can derive likely scene associations with control-flow
-analysis; an engine gets the exact association naturally by recording the
-active video and hotspot state while executing GRV.
+v64tng keeps the mapped `SCRIPT.GRV` bytes alive and decodes rectangle,
+target, and cursor fields on demand. It does not allocate a parallel
+`ClickArea`/`Hotspot` object per instruction. `currentVideoRef` remains useful
+VM state, but it is not a field read from VDX.
+
+The original coordinate system is 640×480, with the actual T7G picture at
+`y=80..399`. v64tng's presentation is a 640×320 content canvas. Pointer
+mapping therefore removes the window letterbox, maps content y back to GRV
+`y+80`, and rejects both the discarded black bars and GRV rectangles confined
+to `y<80` or `y>=400`. Rectangle tests are half-open:
+`left <= x < right`, `top <= y < bottom`.
 
 #### Video Staging Flags
 
 Several no-operand opcodes configure the next VDX operation. The state is
-normally cleared after the video completes.
+normally cleared after the video completes. These bits are interpreter-to-
+decoder control state; they are not stored in the VDX header.
 
 | Bit | Set/cleared by | Recovered effect |
 | ---: | -------------- | ---------------- |
-| 1 | `0x1C`, `0x27` | Transition/overlay video path |
-| 2 | High bit of `0x1C` or `0x27` | Use palette index `0xFF` as the transparent/mask value |
+| 0 | Internal/carry state | Parsed by the retail player; no ordinary T7G `09h` setter has been verified |
+| 1 | `0x1C`, `0x27` | Foreground/transition path; changes which persistent image buffer receives a still |
+| 2 | High bit of `0x1C` or `0x27` | Selects palette index `0xFF` rather than `0x00` as the transparent mask value |
+| 3 | Internal state | Present in the decoder state; complete T7G-visible meaning is not yet proven |
 | 4 | Win `0x57`, `0x58` | Mask/wipe video path |
-| 5 | `0x0A` | Skip/special handling for still chunks |
-| 6 | `0x06` | Special still/update behavior; exact visual effect remains uncertain |
-| 7 | `0x07`, `0x35`, `0x40` | Origin/mask compositing state |
+| 5 | `0x0A` | Suppresses the VDX `20h` still pixels so following `25h` deltas modify the already-held screen |
+| 6 | `0x06` | Stages special still/update state; the flag is verified but its complete visual effect remains unresolved |
+| 7 | `0x07`, cleared by `0x35`, also used by `0x40` | Mask/origin compositing state; participates in overlay setup without replacing the persistent backdrop |
 | 8 | `0x05` | Show only the first video frame |
 | 9 | `0x03` | Start video with a palette fade-in |
+| 15 | Injected by the T7G interpreter for cursor 4 or 7 in `SCRIPT.GRV` | Do not apply the 26 FPS fast-navigation override; obey the VDX header rate |
 
-The names above describe observed decoder behavior, not original Trilobyte
-symbol names.
+Bits 5 and 7 explain the main-menu transparency without an alpha channel.
+`sphinx.vdx` establishes the persistent image; `sphmen1i.vdx` and
+`sphprm1i.vdx` have their still chunks suppressed and their delta tiles alter
+that held image. Unchanged tiles are not black or transparent pixels—they are
+pixels deliberately inherited from the previous buffer.
+
+#### `VIDEOREF` execution contract
+
+Opcode `09h` is a blocking state-machine operation:
+
+1. Read a little-endian packed resource reference.
+2. Split it into `archive = ref >> 10` and `entry = ref & 0x03FF`.
+3. Select the matching RL/GJD archive and read that RL entry's name, offset,
+   and length.
+4. Open/configure one VDX stream with the currently staged video flags.
+5. Consume its `20h`, `25h`, `00h`, and `80h` chunks in stream order.
+6. Present visual frames at the selected timing and queue `80h` PCM as
+   unsigned 22,050 Hz mono.
+7. Do not advance the GRV program counter past the operation until the visual
+   stream and queued PCM have completed (unless playback is skipped).
+8. Preserve the final composed frame as the next operation's background and
+   clear transient video flags.
+
+This ordering is observable. Collapsing consecutive `VIDEOREF` instructions
+to the last reference loses the Ouija-board layers, prompt lettering, and
+other delta overlays even though the final hotspot loop remains correct.
+
+#### VDX timing selected by the GRV player
+
+The header rate is not the only timing input:
+
+- ordinary silent movement VDXes run at the original player's fast navigation
+  rate of **26 FPS**;
+- bit 15 disables that override for `SCRIPT.GRV` theater-mask and
+  chattering-teeth actions;
+- encountering an interleaved `80h` sound chunk also cancels the override, so
+  an audio-bearing FMV obeys its VDX header rate and stays synchronized;
+- opcode `48h` can override the header rate in DOS when its operand is
+  nonzero; the Windows T7G path consumes it without that effect.
+
+This distinction is why applying the nominal header rate indiscriminately
+makes walking/turning feel too slow while an FMV can still look and sound
+correct.
+
+#### GRV music lifetime
+
+`PLAYSONG` and `SETBACKGROUNDSONG` are intentionally different:
+
+- `PLAYSONG ref` interrupts the current sequence and plays the selected XMI
+  once.
+- `SETBACKGROUNDSONG ref` updates persistent VM state. It does not immediately
+  interrupt the one-shot song. Once the interpreter is waiting for input and
+  no foreground song is active, that background XMI starts and loops.
+
+At boot, `SCRIPT.GRV` plays `XMI[57]=gu61.xmi` once, then selects either
+`XMI[12]=gu16.xmi` or `XMI[0]=agu16.xmi` as the persistent background according
+to the MIDI-device branch. Ignoring opcode `08h` produces a silent main menu
+after `gu61` ends.
+
+The names above describe verified behavior, not original Trilobyte symbols.
 
 ### GRV Opcode Reference
 
@@ -947,12 +1039,20 @@ complete. The normal endgame separately writes the progression variables,
 creates the encoded `OPEN HOUSE` save description, and also sets `0x107` to
 240 so the same map remains available.
 
-### GRV C++23 Reference Structures
+### GRV C++23 implementation
 
-The executable implementation is in [`include/grv.h`](include/grv.h),
-[`src/grv.cpp`](src/grv.cpp), and
-[`src/grv_editor.cpp`](src/grv_editor.cpp). The following condensed types
-describe the interpreter state still required by the future runtime VM:
+The lossless research/disassembly layer is in
+[`include/grv.h`](include/grv.h), [`src/grv.cpp`](src/grv.cpp), and
+[`src/grv_editor.cpp`](src/grv_editor.cpp). The native game runtime is
+[`include/grv_runtime.h`](include/grv_runtime.h) and
+[`src/grv_runtime.cpp`](src/grv_runtime.cpp).
+
+The runtime memory-maps `SCRIPT.GRV`, executes directly from a bounded byte
+span, owns only mutable VM state, and returns lightweight views into
+instructions and archive records. It currently covers the verified main-script
+boot/input path and deliberately does not claim the entire game's opcode
+surface before live DOS/Win32 traces are available. Its core state corresponds
+to:
 
 ```cpp
 enum class GrvOpcode : std::uint8_t
@@ -1076,12 +1176,17 @@ The VDX file format is used to store video sequences and still images in The 7th
 
 ### Header
 
-| Name       | Type     | Description                                          |
-| ---------- | -------- | ---------------------------------------------------- |
-| identifier | uint16   | Magic number, always 0x6792 (little-endian)          |
-| unknown    | uint8[6] | Unknown purpose (possibly version or reserved space) |
+| Offset | Name       | Type      | Description |
+| -----: | ---------- | --------- | ----------- |
+| 0 | identifier | uint16 | Magic number `0x6792` (little-endian) |
+| 2 | unknown | uint8[4] | Four header bytes whose complete purpose remains unresolved |
+| 6 | frameRate | uint16 | Nominal frames per second, little-endian |
 
-The VDX header is always 8 bytes total. The identifier value `0x6792` is stored in little-endian format (bytes `0x92 0x67` in the file). The purpose of the 6-byte unknown field has not been determined—it varies across different VDX files but does not appear to affect decoding.
+The VDX header is always 8 bytes total. The identifier value `0x6792` is stored
+as bytes `92 67`. Bytes 6–7 are not part of one six-byte unknown field: both
+retail players consume them as the nominal frame rate. GRV/player state can
+override that value as described under
+[VDX timing selected by the GRV player](#vdx-timing-selected-by-the-grv-player).
 
 ### Chunk Header
 
@@ -1296,9 +1401,11 @@ struct WAVHeader {
 };
 ```
 
-Multiple `0x80` chunks in a single VDX file are concatenated to form one continuous audio stream. VDX files with audio are played at 15 FPS to maintain audio-video synchronization.
-
-**Note**: Full audio playback functionality is currently under development. The header structure and extraction are implemented, but integration with the Windows audio API for VDX audio playback is pending completion.
+Multiple `0x80` chunks in a single VDX file form one continuous audio stream.
+The first sound chunk disables the silent-navigation speed override; playback
+then follows the header rate while the PCM is queued. VIDEOREF does not finish
+until the queued audio has drained. v64tng implements this synchronized
+playback through its native Windows audio path.
 
 #### 0x00 Frame Duplication
 
@@ -1308,10 +1415,12 @@ This chunk type has no data payload—only the chunk header exists.
 
 #### Notes
 
-- Video sequences within a VDX file are intended to be played at 15 frames per second.
-- The first frame in any VDX video sequence is always a 0x20 chunk (full bitmap).
-- All subsequent frames use 0x25 chunks (delta bitmap) to encode changes from the previous frame.
-- Chunk type 0x00 (frame duplication) is used to extend the duration of a static frame without storing redundant pixel data.
+- The VDX header supplies the nominal rate; silent navigation is normally
+  accelerated to 26 FPS by player state.
+- A typical sequence begins with a `0x20` full bitmap and continues with
+  `0x25` deltas, but GRV flags may suppress that still and intentionally seed
+  the deltas from the persistent screen instead.
+- Chunk type `0x00` extends a held frame without storing redundant pixel data.
 
 ## XMI
 
@@ -1661,7 +1770,7 @@ The cursor system maintains state for all loaded cursors and handles animation t
    - Uses `CreateIconIndirect` to create the final cursor handle
 
 4. **Animation** (`updateCursorAnimation`):
-   - Runs at 15 FPS (same as VDX video playback)
+   - Runs at 15 FPS independently of VDX playback timing
    - Advances `currentFrame` for the active cursor
    - Wraps around when reaching the last frame
    - Only animates cursors with multiple frames
@@ -1688,7 +1797,7 @@ The cursor system integrates with the main game loop through:
 
 ### Technical Notes
 
-- All cursor animations in the original game run at 15 frames per second, matching the VDX video framerate
+- All cursor animations in the original game run at 15 frames per second
 - The first cursor (skeleton hand waving) is also used for the application icon (`icon.ico`)
 - The 5-bit palette index limitation means only 32 colors per cursor, with index 0 reserved for transparency
 - Cursor scaling uses nearest-neighbor interpolation to preserve the pixelated retro aesthetic

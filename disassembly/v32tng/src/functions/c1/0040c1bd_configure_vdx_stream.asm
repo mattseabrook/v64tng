@@ -1,6 +1,6 @@
 ; PE virtual entry 0040C1BD
 ; Ghidra working symbol: FUN_0040c1bd
-; Verified VDX stream callback/configuration role.
+; Verified VDX stream callback/configuration, header timing, and playback-state setup role.
 ; Generated losslessly; preserve byte identity after edits.
 
 %macro emit_configure_vdx_stream_part_00 0

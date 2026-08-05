@@ -4,23 +4,27 @@
 
 1. `0002 CALL 02F1` handles the configured MIDI-device intro.
 2. `001A PLAYSONG 4C39` selects `XMI[57]=gu61.xmi`.
-3. `0038 CALL 0367` performs the CD/data availability path.
-4. `003B VIDEOREF 2418` plays `INTRO[24]=sphinx.vdx` as the initial
+3. `0023 SETBACKGROUNDSONG 4C0C` selects `XMI[12]=gu16.xmi` for
+   AdLib, while the branch at `0029` selects `XMI[0]=agu16.xmi` for the
+   alternate device path. This is persistent background state: it begins
+   after the one-shot song ends and the VM is waiting for input, then loops.
+4. `0038 CALL 0367` performs the CD/data availability path.
+5. `003B VIDEOREF 2418` plays `INTRO[24]=sphinx.vdx` as the initial
    background.
-5. `003E VIDEOFLAG5_ON` + `003F VIDEOREF 241F` plays
+6. `003E VIDEOFLAG5_ON` + `003F VIDEOREF 241F` plays
    `sphmen1i.vdx`; bit 5 skips its still chunk so its delta chunks modify the
    held sphinx background.
-6. The same bit-5 operation at `0042` + `0043` applies
+7. The same bit-5 operation at `0042` + `0043` applies
    `sphprm1i.vdx`. These VIDEOREF operations are blocking and ordered; reducing
    them to the final reference loses the Ouija-board menu and prompt text.
-7. `0046 CHECK_VALID_SAVES` probes all ten save slots and writes the count to
+8. `0046 CHECK_VALID_SAVES` probes all ten save slots and writes the count to
    `v[104h]`.
-8. `0047 VIDEOFLAG7_ON` then `0049` selects
+9. `0047 VIDEOFLAG7_ON` then `0049` selects
    `GAMWAV[169]=gen_s_18.vdx` when the count is zero, or
    `GAMWAV[170]=gen_s_19.vdx` when it is nonzero.
    Their `80h` chunks are unsigned 22050 Hz PCM interleaved with duplicate
    video frames; VIDEOREF remains active until both frames and queued PCM end.
-9. `0059 INPUTLOOPSTART` begins the first live menu.
+10. `0059 INPUTLOOPSTART` begins the first live menu.
 
 The normal first loop exposes bytecode targets `0179` (saved-game menu, only
 when saves exist), `03E8` (new game), and `02AC` (quit prompt). Four additional
@@ -52,6 +56,12 @@ Both original interpreters use 11 styles over nine images:
 | 10 | 8 | eye, alternate palette |
 
 Styles 9 and 10 deliberately share pixels but select palettes 4 and 6.
+
+When a style-4 or style-7 hotspot launches a video from `SCRIPT.GRV`, the
+original interpreter injects video-state bit 15. That bit makes the VDX obey
+its header frame rate. Ordinary silent movement instead receives the player's
+26 FPS navigation override; the first interleaved sound chunk cancels that
+override for synchronized FMV playback.
 
 ## Executable correspondence
 

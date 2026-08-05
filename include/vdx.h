@@ -44,7 +44,7 @@ struct VDXFile
 {
     std::string filename;
     uint16_t identifier;
-    std::array<uint8_t, 6> unknown;
+    std::array<uint8_t, 4> unknown;
     uint16_t frameRate = 0;
     uint16_t playbackFlags = 0;
     int width = 0;
@@ -71,6 +71,7 @@ void parseVDXChunks(
     VDXFile &vdxFile,
     std::span<const uint8_t> background,
     uint16_t grvVideoFlags);
+[[nodiscard]] double vdxPlaybackRate(const VDXFile &vdxFile);
 void vdxPlay(const std::string &filename, VDXFile *preloadedVdx = nullptr);
 std::expected<VDXFile, std::string> loadSingleVDX(const std::string &room, const std::string &vdxName);
 VDXFile &getOrLoadVDX(const std::string &name);

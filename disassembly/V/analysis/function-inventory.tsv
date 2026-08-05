@@ -47,8 +47,8 @@ linear_entry	working_name	status	ghidra_entry	ghidra_name	source
 03774	func_03774	unidentified	1000:3774	FUN_1000_3774	src/functions/37/03774_func_03774.asm
 0377E	func_0377e	unidentified	1000:377e	FUN_1000_377e	src/functions/37/0377e_func_0377e.asm
 0378F	func_0378f	unidentified	1000:378f	FUN_1000_378f	src/functions/37/0378f_func_0378f.asm
-0382D	func_0382d	unidentified	1000:382d	FUN_1000_382d	src/functions/38/0382d_func_0382d.asm
-03838	func_03838	unidentified	1000:3838	FUN_1000_3838	src/functions/38/03838_func_03838.asm
+0382D	save_selected_archive_context	verified-role	1000:382d	FUN_1000_382d	src/functions/38/0382d_save_selected_archive_context.asm
+03838	restore_selected_archive_context	verified-role	1000:3838	FUN_1000_3838	src/functions/38/03838_restore_selected_archive_context.asm
 0388A	select_grv_video_resource	verified-role	1000:388a	FUN_1000_388a	src/functions/38/0388a_select_grv_video_resource.asm
 03941	select_grv_song_resource	verified-role	1000:3941	FUN_1000_3941	src/functions/39/03941_select_grv_song_resource.asm
 039EE	read_selected_archive	verified-role	1000:39ee	FUN_1000_39ee	src/functions/39/039ee_read_selected_archive.asm

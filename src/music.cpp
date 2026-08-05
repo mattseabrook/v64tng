@@ -1455,7 +1455,7 @@ Parameters:
 	- bool isTransient: Indicates whether the song is transient or not.
 ===============================================================================
 */
-void xmiPlay(const std::string &songName, bool isTransient)
+void xmiPlay(const std::string &songName, bool isTransient, bool loop)
 {
 	bool midi_enabled = config.value("midiEnabled", true);
 	int midi_volume = config.value("midiVolume", 100);
@@ -1491,7 +1491,7 @@ void xmiPlay(const std::string &songName, bool isTransient)
 		}
 
 		// Start new music thread
-		auto play_music = [songName, isTransient]()
+		auto play_music = [songName, isTransient, loop]()
 		{
 			try
 			{
@@ -1514,7 +1514,20 @@ void xmiPlay(const std::string &songName, bool isTransient)
 				if (song != xmiFiles.end())
 				{
 					auto midiData = xmiConverter(*song);
-					PlayMIDI(midiData, isTransient);
+					do
+					{
+						PlayMIDI(midiData, isTransient);
+						if (!loop)
+							break;
+
+						// A natural end-of-track repeats a GRV background
+						// song. A signalled stop means another song or engine
+						// shutdown owns the music device now.
+						ensureMusicStopEvent();
+						if (WaitForSingleObject(g_musicStopEvent, 50) == WAIT_OBJECT_0)
+							break;
+						state.main_song_position.store(0.0);
+					} while (true);
 				}
 				else
 				{

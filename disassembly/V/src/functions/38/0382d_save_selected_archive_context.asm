@@ -1,11 +1,11 @@
 ; Linear entry 0382D (1000:382d)
 ; Ghidra working symbol: FUN_1000_382d
-; Role not yet verified; boundary is provisional.
+; Verified opcode 46h helper: snapshots the current packed-resource archive selector for later restoration.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_0382d_part_00 0
+%macro emit_save_selected_archive_context_part_00 0
     %%fragment_start:
-func_0382d:
+save_selected_archive_context:
     %%insn_0382d:
     push ax ; 0382D 50
     %if ($ - %%insn_0382d) > 1

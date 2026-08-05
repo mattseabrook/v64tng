@@ -441,6 +441,9 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 		case 0x02:
 			songRef_ = read16(bytes_, pc + 1);
 			break;
+		case 0x08:
+			backgroundSongRef_ = read16(bytes_, pc + 1);
+			break;
 		case 0x03:
 			videoFlags_ |= 1u << 9;
 			break;
@@ -456,7 +459,14 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 		case 0x09:
 		{
 			const uint16_t ref = read16(bytes_, pc + 1);
-			videoCommands_.push_back({ref, videoFlags_, videoRateOverride_});
+			// SCRIPT.GRV's theater-mask and teeth actions request the VDX
+			// header rate instead of the retail player's 26 FPS navigation
+			// override. This is interpreter state, not a bit stored in GRV.
+			const uint16_t cursorRateFlag =
+				(lastCursor_ == 4 || lastCursor_ == 7) ? (1u << 15) : 0;
+			videoCommands_.push_back(
+				{ref, static_cast<uint16_t>(videoFlags_ | cursorRateFlag),
+				 videoRateOverride_});
 			// The retail video player consumes all transient flags when this
 			// VIDEOREF completes. The interpreter then resumes at the next op.
 			videoFlags_ = 0;
@@ -555,7 +565,9 @@ std::expected<GrvBoot, std::string> GrvRuntime::boot()
 		return std::unexpected(result.error());
 	if (!*result)
 		return std::unexpected("SCRIPT.GRV ended before its first input loop");
-	return GrvBoot{{songRef_}, {std::move(videoCommands_), ended_}};
+	return GrvBoot{
+		{songRef_, backgroundSongRef_},
+		{std::move(videoCommands_), ended_}};
 }
 
 std::expected<GrvTransition, std::string> GrvRuntime::follow(uint16_t target)
@@ -698,6 +710,7 @@ std::optional<uint16_t> GrvRuntime::activateAt(
 	const auto hotspot = hotspotAt(clientX, clientY, clientWidth, clientHeight);
 	if (!hotspot)
 		return std::nullopt;
+	lastCursor_ = hotspot->cursor();
 	return hotspot->target();
 }
 
