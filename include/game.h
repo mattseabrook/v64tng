@@ -66,55 +66,6 @@ struct AnimationState
 	}
 };
 
-//
-// Structure that defines clickable areas
-//
-struct ClickArea
-{
-	float x;
-	float y;
-	float width;
-	float height;
-	uint8_t cursorType = CURSOR_FORWARD;
-	int z_index = 0;
-};
-
-//
-// Hotspot structure defining clickable areas
-//
-struct Hotspot
-{
-	ClickArea area;
-	std::function<void()> action;
-};
-
-//
-// Navigation points for moving between views
-//
-struct Navigation
-{
-	ClickArea area;
-	std::string next_view;
-};
-
-//
-// View structure for each camera/viewpoint
-//
-struct View
-{
-	std::vector<Hotspot> hotspots;
-	std::vector<Navigation> navigations;
-};
-
-//
-// Structure for grouping views together
-//
-struct ViewGroup
-{
-	std::vector<const char *> names; // e.g., {"f_1bb", "f_1fa"}
-	View data;
-};
-
 ///////////////////////////////////////////////////////////////////////////////
 //     Per-frame timing state kept hot in cache
 ///////////////////////////////////////////////////////////////////////////////
@@ -188,8 +139,6 @@ struct GameState
 	std::vector<std::string> animation_sequence; // Stores the sequence of animations
 	size_t animation_queue_index = 0;			 // Current position in the animation sequence
 	std::function<void()> pending_action;		 // Optional action after the current animation
-
-	const View *view; // Current view object
 
 	//
 	// Boot main menu (sphinx.vdx from INTRO.GJD, held on its last frame)
@@ -295,12 +244,14 @@ private:
 //=============================================================================
 
 // Function prototypes
-const View *getView(std::string_view current_view);
-void buildViewMap();
 void viewHandler();
 void maybeRenderFrame(bool force = false);
 void startNewGame();
 void mainMenuKeyDown(char c);
+bool initializeGrvMainMenu();
+bool grvInputActive();
+bool grvPointerClick(int x, int y);
+uint8_t grvPointerCursor(int x, int y);
 void init();
 
 #endif // GAME_H

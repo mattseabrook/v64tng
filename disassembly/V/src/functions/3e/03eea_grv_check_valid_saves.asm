@@ -1,11 +1,11 @@
 ; Linear entry 03EEA (1000:3eea)
 ; Ghidra working symbol: FUN_1000_3eea
-; Role not yet verified; boundary is provisional.
+; Verified opcode 3Ch implementation: probes save.0 through save.9 and writes count/slot variables.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_03eea_part_00 0
+%macro emit_grv_check_valid_saves_part_00 0
     %%fragment_start:
-func_03eea:
+grv_check_valid_saves:
     %%insn_03eea:
     push ds ; 03EEA 1E
     %if ($ - %%insn_03eea) > 1

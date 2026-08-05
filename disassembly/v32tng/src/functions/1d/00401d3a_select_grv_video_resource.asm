@@ -1,11 +1,11 @@
 ; PE virtual entry 00401D3A
 ; Ghidra working symbol: FUN_00401d3a
-; Role not yet verified; analyzer boundary is provisional.
+; Verified packed GRV video ref resolver: selects archive/RL entry and stages its GJD stream.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_00401d3a_part_00 0
+%macro emit_select_grv_video_resource_part_00 0
     %%fragment_start:
-func_00401d3a:
+select_grv_video_resource:
     %%insn_00401d3a:
     push ebp ; 00401D3A 55
     %if ($ - %%insn_00401d3a) > 1

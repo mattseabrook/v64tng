@@ -1,11 +1,11 @@
 ; PE virtual entry 00401202
 ; Ghidra working symbol: FUN_00401202
-; Verified game resource-catalog initialization role.
+; Verified GRV state/variable initialization ending in the initial script.grv load.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_init_resource_catalog_part_00 0
+%macro emit_initialize_grv_runtime_and_load_script_part_00 0
     %%fragment_start:
-init_resource_catalog:
+initialize_grv_runtime_and_load_script:
     %%insn_00401202:
     push ebp ; 00401202 55
     %if ($ - %%insn_00401202) > 1

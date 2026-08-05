@@ -1,11 +1,11 @@
 ; Linear entry 0388A (1000:388a)
 ; Ghidra working symbol: FUN_1000_388a
-; Role not yet verified; boundary is provisional.
+; Verified packed GRV video ref resolver: selects archive, RL entry, and GJD offset.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_0388a_part_00 0
+%macro emit_select_grv_video_resource_part_00 0
     %%fragment_start:
-func_0388a:
+select_grv_video_resource:
     %%insn_0388a:
     pusha ; 0388A 60
     %if ($ - %%insn_0388a) > 1

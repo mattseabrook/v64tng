@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "game.h"
+#include "legacy_views.h"
 #include "music.h"
 
 /*

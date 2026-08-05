@@ -1,3 +1,230 @@
+
+.\analysis\RUNTIME_CAPTURE_WORKFLOW.md
+────────────────────────────────────────────────
+
+# DOS V1.30 runtime evidence workflow
+
+Runtime captures can turn neutral address-based symbols into accurate semantic
+names without sacrificing the byte-identical build.
+
+## What to record
+
+For every observation, preserve:
+
+1. the executable SHA-256 and the exact command line;
+2. DOSBox-X version and relevant machine, memory, video, audio, and CD settings;
+3. the game state, room/script, input, and visible or audible result;
+4. the breakpoint address as `CS:IP`, plus the DOS load segment if known;
+5. registers, flags, stack words, caller/return address, and relevant memory;
+6. file opens/seeks/reads and DOS, BIOS, XMS, video, mouse, or sound interrupts;
+7. whether the observation reproduced on another run.
+
+A useful compact record is:
+
+| Field | Example |
+|---|---|
+| Scenario | Standalone `~intro` playback, first video frame |
+| Command | `V.EXE ~intro` |
+| Asset/script | `intro.vdx` |
+| Runtime address | `CS:IP` and load segment |
+| Repository offset | Linear load-image offset |
+| Caller | Return address or caller offset |
+| Inputs | Registers, stack arguments, relevant globals |
+| Outputs | Return registers, modified globals, I/O, screen/audio effect |
+| Repetition | Run count and whether identical |
+
+## Converting a runtime address
+
+Repository symbols use a zero-based linear offset into the MZ load image.
+Given the executable's DOS load segment `L` and a runtime address `CS:IP`:
+
+```text
+repository_offset = ((CS - L) * 16) + IP
+```
+
+Segment aliases are normal in 16-bit real mode. Two different `CS:IP` pairs
+can identify the same linear byte. Record both the original pair and the
+calculated repository offset.
+
+Find the owning working symbol in `function-inventory.tsv`, or search source
+comments for the five-digit hexadecimal offset. For example, offset `03AC4`
+maps to `run_grv_vm`.
+
+## Evidence and renaming
+
+A proposed semantic name should record its basis:
+
+- **static**: callers, callees, constants, data references, interrupt use;
+- **cross-version**: a materially matching DOS/demo/Win32 routine;
+- **runtime**: observed inputs, outputs, side effects, or reached game state;
+- **external**: documentation or an original artifact.
+
+Use `candidate_...` in notes while evidence is incomplete. Promote a name to
+`verified-role` when the behavior is specific and repeatable, ideally supported
+by two independent evidence types. After any ownership or instruction edit,
+run `./build.sh`; exact identity must remain green.
+
+## What can and cannot be recovered
+
+With systematic traces, static analysis, and cross-version comparison, it is
+reasonable to assign accurate behavioral names to every reachable function
+and global subsystem. Dead/error-only paths may require forced conditions or
+static proof.
+
+Those names will be our canonical recovered symbols. They cannot be claimed as
+the original developers' exact labels, source filenames, comments, or object
+module layout unless an original symbol table, map file, source listing, or
+equivalent artifact is found.
+
+
+────────────────────────────────────────────────────────────
+
+.\analysis\SOURCE_COVERAGE.md
+───────────────────────────────────────
+
+# DOS V1.30 lossless source coverage
+
+This inventory describes **mechanical source coverage**, not complete semantic
+understanding.
+
+| Measure | Count |
+|---|---:|
+| Unpacked load-image bytes represented in source | 101,624 / 101,624 |
+| `incbin` directives | 0 |
+| Provisional Ghidra function entries | 261 |
+| Function-body bytes | 32,292 |
+| Function-body instructions decoded | 12,484 |
+| Instructions requiring exact `db` encoding fallback | 1,620 |
+| Bytes in encoding fallbacks | 3,477 |
+| Verified semantic function roles | 16 |
+| Unidentified/provisionally bounded functions | 245 |
+| Analyzed function/gap span end | `0892Ch` |
+| Non-function bytes in the load image | 69,332 |
+
+Every function-body instruction retains its runtime offset and original opcode
+bytes in a comment. A `db` line inside a function means the instruction was
+decoded, but NASM's preferred spelling would emit different bytes; the decoded
+mnemonic is preserved in the comment.
+
+Bytes outside Ghidra-owned bodies remain explicit data. Some may later prove to
+be undiscovered code, jump tables, inline constants, or alignment. Runtime
+evidence should change ownership only after the byte-identical build remains
+green.
+
+
+────────────────────────────────────────────────────────────
+
+.\README.md
+─────────────────────
+
+# DOS `V.EXE` 1.30 permanent disassembly
+
+This is the canonical lossless NASM source project for the DOS GROOVIE Player
+1.30. It represents every byte of the unpacked MZ executable in source and
+rebuilds that executable byte-for-byte.
+
+| Artifact | Size | SHA-256 |
+|---|---:|---|
+| Original LZEXE 0.91-packed `V.EXE` | 23,425 bytes | `e01c3a49cede63ad409e67ce10fdb9f98c6f42600cdfd67124b0d03f1c001585` |
+| Canonical unpacked/rebuilt target | 102,136 bytes | `f2f7febb70b5008ee94e535b0224e918eeec4c71404c899c0d6b50f10c0816c4` |
+
+Run:
+
+```sh
+./build.sh
+```
+
+The build verifies the packed original, deterministically decompresses LZEXE,
+assembles [`main.asm`](main.asm), verifies the rebuilt hash, and finally uses
+`cmp` to prove exact file identity. Only after those checks pass, it deploys
+the rebuilt executable as `/mnt/T7G/T7G.EXE`. The original `/mnt/T7G/V.EXE`
+is never removed or overwritten. It rejects any executable-byte `incbin`
+directive in the source tree.
+
+Set `V_DISASSEMBLY_NO_DEPLOY=1` to perform the complete build and verification
+without deploying.
+
+The first run may fetch and compile the pinned, MIT-licensed `lzexe` 0.1.1
+crate into the ignored `build/toolchain` directory. NASM and Python 3 are the
+other source-generation/build requirements.
+
+## What “complete” means today
+
+The project has **complete mechanical source coverage**:
+
+- all 512 MZ header bytes, including all 102 relocation records, are explicit
+  NASM source;
+- all 101,624 bytes in the DOS load image are explicit source;
+- 261 provisional Ghidra function entries are split into individual files;
+- all 12,484 instructions in those owned function ranges are decoded;
+- data, padding, tables, inline constants, and unowned gaps remain explicit
+  `db` data rather than disappearing into a binary include;
+- there are zero `incbin` directives.
+
+This is not yet complete semantic recovery. Ghidra's 261 function boundaries
+are analyzer findings, not original object-module boundaries. Some bytes now
+classified as data may prove to be code, and some functions may later be
+split, joined, or grouped. Of the 261 entries, 16 currently have verified
+semantic roles and 245 retain neutral `func_XXXXX` names.
+
+See [`analysis/SOURCE_COVERAGE.md`](analysis/SOURCE_COVERAGE.md) for exact
+counts, [`analysis/function-inventory.tsv`](analysis/function-inventory.tsv)
+for the working symbol table, and
+[`analysis/RUNTIME_CAPTURE_WORKFLOW.md`](analysis/RUNTIME_CAPTURE_WORKFLOW.md)
+for turning play-test/debugger observations into verified names.
+
+## Source organization
+
+| Path | Purpose |
+|---|---|
+| `main.asm` | Canonical assembly root and MZ/load-image section layout |
+| `src/header.asm` | Explicit DOS MZ header and relocation table |
+| `src/layout.asm` | Exact linear emission order for code fragments and data |
+| `src/functions/HH/*.asm` | One file per provisional function, grouped by the high byte of its linear entry |
+| `src/data/gaps.asm` | Explicit bytes between analyzer-owned function bodies |
+| `src/data/segments/*.asm` | Explicit post-code data in manageable chunks |
+| `analysis/function-map.tsv` | Preserved Ghidra ownership-range export |
+| `analysis/function-inventory.tsv` | Address, working name, confidence, and source path |
+| `tools/generate_lossless_source.py` | Deterministic source generator and byte-identity verifier |
+
+NASM is allowed to emit an instruction only when it reproduces its original
+encoding exactly. Where the same mnemonic would be canonically encoded
+differently, the source uses exact `db` bytes and retains the decoded mnemonic,
+address, and opcode in the comment. These are decoded instructions with
+noncanonical encodings, not unknown or omitted bytes.
+
+To regenerate the complete tree from the already-unpacked reference:
+
+```sh
+python3 tools/generate_lossless_source.py \
+  --reference build/reference/V130-unpacked.exe \
+  --function-map analysis/function-map.tsv
+```
+
+The generator rewrites generated function/data/layout files, assembles a
+probe, and refuses to finish unless the probe is byte-identical.
+
+## Naming policy
+
+Recovered names describe verified behavior; they are not claimed to be
+Trilobyte's original symbols. An address-based name stays in place until
+static control flow, cross-version correspondence, runtime evidence, or a
+combination of those sources supports a better one.
+
+It is realistic to determine what every reachable routine does. It is not
+realistic to promise the exact original source filenames, labels, comments,
+macros, or module boundaries without an original source/symbol artifact.
+
+The canonical target is the **unpacked** executable. Reproducing the original
+23,425-byte compressed file is a separate compressor-provenance milestone;
+unpacked program identity is already exact.
+
+
+────────────────────────────────────────────────────────────
+
+.\tools\generate_lossless_source.py
+─────────────────────────────────────────────
+
 #!/usr/bin/env python3
 """Generate a complete, lossless NASM source tree for DOS V.EXE 1.30.
 
@@ -39,36 +266,7 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
     0x2F84: ("detect_video_hardware", "Verified video hardware detection/diagnostic path."),
     0x368C: ("query_xms", "Verified XMS manager/version/free-memory query."),
     0x36D2: ("format_memory_diagnostic", "Verified diagnostic memory-number formatter."),
-    0x388A: (
-        "select_grv_video_resource",
-        "Verified packed GRV video ref resolver: selects archive, RL entry, and GJD offset.",
-    ),
-    0x3941: (
-        "select_grv_song_resource",
-        "Verified packed GRV song ref resolver: selects archive, RL entry, and GJD offset.",
-    ),
-    0x39EE: (
-        "read_selected_archive",
-        "Verified DOS read from the currently selected song/archive handle.",
-    ),
-    0x39F8: (
-        "build_resource_filename",
-        "Verified resource/save filename builder used before DOS file opens.",
-    ),
-    0x3A31: (
-        "open_resource_read_only",
-        "Verified filename-build plus DOS INT 21h read-only open wrapper.",
-    ),
-    0x3A47: ("close_resource_file", "Verified DOS INT 21h close wrapper."),
-    0x3A5B: (
-        "load_selected_resource_file",
-        "Verified selected resource open/read/close path into the GRV media buffer.",
-    ),
     0x3AC4: ("run_grv_vm", "Verified GRV bytecode interpreter entry."),
-    0x3EEA: (
-        "grv_check_valid_saves",
-        "Verified opcode 3Ch implementation: probes save.0 through save.9 and writes count/slot variables.",
-    ),
     0x447B: (
         "run_grv_input_loop",
         "Verified GRV INPUTLOOPSTART (0x0B) setup and input-action interpreter.",
@@ -82,10 +280,6 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
         "Verified GRV HOTSPOT_RECT (0x0D) coordinate hit-test and action handler.",
     ),
     0x576E: ("initialize_subsystems_xms", "Cross-version mapped main subsystem/XMS initialization."),
-    0x5BD1: (
-        "load_and_play_selected_xmi",
-        "Verified selected XMI read, sequence initialization, and playback path.",
-    ),
     0x5CED: ("shutdown_player", "Cross-version mapped global shutdown and cleanup path."),
 }
 
@@ -730,3 +924,7 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+────────────────────────────────────────────────────────────
+

@@ -1,11 +1,11 @@
 ; Linear entry 03941 (1000:3941)
 ; Ghidra working symbol: FUN_1000_3941
-; Role not yet verified; boundary is provisional.
+; Verified packed GRV song ref resolver: selects archive, RL entry, and GJD offset.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_03941_part_00 0
+%macro emit_select_grv_song_resource_part_00 0
     %%fragment_start:
-func_03941:
+select_grv_song_resource:
     %%insn_03941:
     pusha ; 03941 60
     %if ($ - %%insn_03941) > 1

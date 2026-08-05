@@ -28,12 +28,17 @@
 003F  09 1F 24                               VIDEOREF                      ref=0x241F (INTRO[31]=sphmen1i.vdx)
 0042  0A                                     VIDEOFLAG5_ON
 0043  09 25 24                               VIDEOREF                      ref=0x2425 (INTRO[37]=sphprm1i.vdx)
+; Both retail players probe ten slots here (DOS: save.0..save.9,
+; Win95: st7g.0..st7g.9).  Slot flags go to v[0]..v[9], and v[0x104]
+; receives the valid-save count.
 0046  3C                                     CHECK_VALID_SAVES
 0047  07                                     VIDEOFLAG7_ON
 0048  46                                     RESOURCE_CONTEXT_SAVE
 0049  1A 04 01 B0 55 00                      STRCMP_NE_JMP                 start=v[0x104], values=[0], target=0x0055
+; No saves: "Welcome to my house."
 004F  09 A9 50                               VIDEOREF                      ref=0x50A9 (GAMWAV[169]=gen_s_18.vdx)
 0052  15 58 00                               JMP                           target=0x0058
+; One or more saves: "Back for more?"
 0055  09 AA 50                               VIDEOREF                      ref=0x50AA (GAMWAV[170]=gen_s_19.vdx)
 0058  47                                     RESOURCE_CONTEXT_RESTORE
 0059  0B                                     INPUTLOOPSTART

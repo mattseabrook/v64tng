@@ -92,6 +92,9 @@ Trilobyte's original symbols. An address-based name stays in place until
 static control flow, cross-version correspondence, runtime evidence, or a
 combination of those sources supports a better one.
 
+The cross-version `SCRIPT.GRV` startup/save/audio correlation is recorded in
+[`../GRV/MAIN_MENU_BOOT_TRACE.md`](../GRV/MAIN_MENU_BOOT_TRACE.md).
+
 It is realistic to determine what every reachable routine does. It is not
 realistic to promise the exact original source filenames, labels, comments,
 macros, or module boundaries without an original source/symbol artifact.

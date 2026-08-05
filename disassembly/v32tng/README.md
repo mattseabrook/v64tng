@@ -89,6 +89,9 @@ finish unless its independently assembled probe is byte-identical.
 
 ## Verified semantic footholds
 
+The cross-version `SCRIPT.GRV` startup/save/audio correlation is recorded in
+[`../GRV/MAIN_MENU_BOOT_TRACE.md`](../GRV/MAIN_MENU_BOOT_TRACE.md).
+
 The first verified roles preserved in the generated inventory include:
 
 - the central GRV VM and its byte/word/dword operand readers;

@@ -1,11 +1,11 @@
 ; Linear entry 039F8 (1000:39f8)
 ; Ghidra working symbol: FUN_1000_39f8
-; Role not yet verified; boundary is provisional.
+; Verified resource/save filename builder used before DOS file opens.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_039f8_part_00 0
+%macro emit_build_resource_filename_part_00 0
     %%fragment_start:
-func_039f8:
+build_resource_filename:
     %%insn_039f8:
     push si ; 039F8 56
     %if ($ - %%insn_039f8) > 1

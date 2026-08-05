@@ -1493,30 +1493,41 @@ void xmiPlay(const std::string &songName, bool isTransient)
 		// Start new music thread
 		auto play_music = [songName, isTransient]()
 		{
-			auto xmiResult = parseRLFile("XMI.RL");
-			if (!xmiResult)
+			try
 			{
-				std::println(stderr, "ERROR: {}", xmiResult.error());
-				return;
-			}
-			auto xmiFiles = std::move(*xmiResult);
-			for (auto &entry : xmiFiles)
-			{
-				entry.filename.erase(entry.filename.find_last_of('.'));
-			}
+				auto xmiResult = parseRLFile("XMI.RL");
+				if (!xmiResult)
+				{
+					std::println(stderr, "ERROR: {}", xmiResult.error());
+					return;
+				}
+				auto xmiFiles = std::move(*xmiResult);
+				for (auto &entry : xmiFiles)
+				{
+					entry.filename.erase(entry.filename.find_last_of('.'));
+				}
 
-			auto song = std::find_if(xmiFiles.begin(), xmiFiles.end(),
-									 [&songName](const RLEntry &entry)
-									 { return entry.filename == songName; });
+				auto song = std::find_if(xmiFiles.begin(), xmiFiles.end(),
+										 [&songName](const RLEntry &entry)
+										 { return entry.filename == songName; });
 
-			if (song != xmiFiles.end())
-			{
-				auto midiData = xmiConverter(*song);
-				PlayMIDI(midiData, isTransient);
+				if (song != xmiFiles.end())
+				{
+					auto midiData = xmiConverter(*song);
+					PlayMIDI(midiData, isTransient);
+				}
+				else
+				{
+					std::println(stderr, "ERROR: XMI file '{}' not found.", songName);
+				}
 			}
-			else
+			catch (const std::exception &error)
 			{
-				std::println(stderr, "ERROR: XMI file '{}' not found.", songName);
+				std::println(stderr, "ERROR: XMI playback '{}': {}", songName, error.what());
+			}
+			catch (...)
+			{
+				std::println(stderr, "ERROR: Unknown XMI playback failure '{}'.", songName);
 			}
 		};
 		state.music_thread = std::thread(play_music);

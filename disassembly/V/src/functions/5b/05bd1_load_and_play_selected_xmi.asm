@@ -1,11 +1,11 @@
 ; Linear entry 05BD1 (1000:5bd1)
 ; Ghidra working symbol: FUN_1000_5bd1
-; Role not yet verified; boundary is provisional.
+; Verified selected XMI read, sequence initialization, and playback path.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_05bd1_part_00 0
+%macro emit_load_and_play_selected_xmi_part_00 0
     %%fragment_start:
-func_05bd1:
+load_and_play_selected_xmi:
     %%insn_05bd1:
     push ds ; 05BD1 1E
     %if ($ - %%insn_05bd1) > 1

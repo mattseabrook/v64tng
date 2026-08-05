@@ -1,11 +1,11 @@
 ; Linear entry 039EE (1000:39ee)
 ; Ghidra working symbol: FUN_1000_39ee
-; Role not yet verified; boundary is provisional.
+; Verified DOS read from the currently selected song/archive handle.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_039ee_part_00 0
+%macro emit_read_selected_archive_part_00 0
     %%fragment_start:
-func_039ee:
+read_selected_archive:
     %%insn_039ee:
     mov bx,[bp-0x2795] ; 039EE 8B9E6BD8
     %if ($ - %%insn_039ee) > 4

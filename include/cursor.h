@@ -36,6 +36,12 @@ struct CursorBlobInfo
     uint8_t paletteIdx;
 };
 
+struct CursorStyleInfo
+{
+    uint8_t image;
+    uint8_t palette;
+};
+
 //
 // CursorBlobInfo array
 //
@@ -51,20 +57,38 @@ inline constexpr std::array<CursorBlobInfo, 9> CursorBlobs{{
     /*8*/ {0x0A776, 4}  // Eyeball - Puzzle Action
 }};
 
+// SCRIPT.GRV stores one of these 11 retail cursor style numbers. Styles are
+// not identical to ROB.GJD image indices: several share an image, and the two
+// eye styles use the same pixels with different palettes.
+inline constexpr std::array<CursorStyleInfo, 11> CursorStyles{{
+    /* 0 forward */      {3, 0},
+    /* 1 turn left */    {5, 0},
+    /* 2 turn right */   {4, 0},
+    /* 3 forward */      {3, 0},
+    /* 4 theatre mask */ {1, 2},
+    /* 5 waving/no */    {0, 0},
+    /* 6 brain/puzzle */ {2, 1},
+    /* 7 teeth */        {6, 3},
+    /* 8 pyramid */      {7, 5},
+    /* 9 eye */          {8, 4},
+    /*10 eye alt */      {8, 6}
+}};
+
 //
 // Cursor Type Enum
 //
 enum CursorType
 {
-    CURSOR_DEFAULT = 0,
-    CURSOR_FMV = 1,
-    CURSOR_PUZZLE = 2,
-    CURSOR_FORWARD = 3,
-    CURSOR_RIGHT = 4,
-    CURSOR_LEFT = 5,
-    CURSOR_EASTER_EGG = 6,
-    CURSOR_PYRAMID = 7,
-    CURSOR_ACTION = 8
+    CURSOR_FORWARD = 0,
+    CURSOR_LEFT = 1,
+    CURSOR_RIGHT = 2,
+    CURSOR_FMV = 4,
+    CURSOR_DEFAULT = 5,
+    CURSOR_PUZZLE = 6,
+    CURSOR_EASTER_EGG = 7,
+    CURSOR_PYRAMID = 8,
+    CURSOR_ACTION = 9,
+    CURSOR_ACTION_ALT = 10
 };
 
 //
@@ -94,7 +118,7 @@ inline constexpr uint32_t CursorPaletteSizeBytes = 0x60;
 inline constexpr uint8_t NumCursorPalettes = 7;
 
 // Cursor system globals
-extern std::array<LoadedCursor, 9> g_cursors;
+extern std::array<LoadedCursor, 11> g_cursors;
 extern CursorType g_activeCursorType;
 extern uint64_t g_cursorLastFrameTime;
 extern bool g_cursorsInitialized;

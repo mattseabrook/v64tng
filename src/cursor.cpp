@@ -16,7 +16,7 @@
 //=============================================================================
 
 // Cursor system globals
-std::array<LoadedCursor, 9> g_cursors;
+std::array<LoadedCursor, 11> g_cursors;
 CursorType g_activeCursorType = CURSOR_DEFAULT;
 uint64_t g_cursorLastFrameTime = 0;
 bool g_cursorsInitialized = false;
@@ -348,12 +348,12 @@ bool initCursors(const std::string_view &robPath, float scale)
     std::vector<uint8_t> robData(fileSize);
     file.read(reinterpret_cast<char *>(robData.data()), fileSize);
     const size_t paletteBlockOffset = fileSize - (CursorPaletteSizeBytes * NumCursorPalettes);
-    for (size_t i = 0; i < CursorBlobs.size(); i++)
+    for (size_t i = 0; i < CursorStyles.size(); i++)
     {
-        auto blob = getCursorBlob(robData, i);
+        const auto &style = CursorStyles[i];
+        auto blob = getCursorBlob(robData, style.image);
         CursorImage img = unpackCursorBlob(blob);
-        const auto &meta = CursorBlobs[i];
-        const size_t palOff = paletteBlockOffset + meta.paletteIdx * CursorPaletteSizeBytes;
+        const size_t palOff = paletteBlockOffset + style.palette * CursorPaletteSizeBytes;
         std::span<const uint8_t> pal(&robData[palOff], CursorPaletteSizeBytes);
         g_cursors[i].image = img;
         g_cursors[i].currentFrame = 0;

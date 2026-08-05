@@ -603,7 +603,7 @@ needs_compile() {
     return 1
 }
 
-# Compile batch of sources in parallel (from phantom.sh)
+# Compile a batch of v64tng sources in parallel
 compile_batch() {
     local batch_sources=("$@")
     local pids=()

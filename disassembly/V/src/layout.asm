@@ -237,23 +237,23 @@ load_image_start:
     ; 03838..03889 function
     emit_func_03838_part_00
     ; 0388A..03936 function
-    emit_func_0388a_part_00
+    emit_select_grv_video_resource_part_00
     ; 03937..03940 gap
     emit_gap_038_03937
     ; 03941..039ED function
-    emit_func_03941_part_00
+    emit_select_grv_song_resource_part_00
     ; 039EE..039F7 function
-    emit_func_039ee_part_00
+    emit_read_selected_archive_part_00
     ; 039F8..03A30 function
-    emit_func_039f8_part_00
+    emit_build_resource_filename_part_00
     ; 03A31..03A46 function
-    emit_func_03a31_part_00
+    emit_open_resource_read_only_part_00
     ; 03A47..03A50 function
-    emit_func_03a47_part_00
+    emit_close_resource_file_part_00
     ; 03A51..03A5A function
     emit_func_03a51_part_00
     ; 03A5B..03A95 function
-    emit_func_03a5b_part_00
+    emit_load_selected_resource_file_part_00
     ; 03A96..03AC3 gap
     emit_gap_039_03a96
     ; 03AC4..03B12 function
@@ -273,7 +273,7 @@ load_image_start:
     ; 03EB8..03EE9 function
     emit_func_03eb8_part_00
     ; 03EEA..03F22 function
-    emit_func_03eea_part_00
+    emit_grv_check_valid_saves_part_00
     ; 03F23..03F76 function
     emit_func_03f23_part_00
     ; 03F77..03FC3 function
@@ -535,7 +535,7 @@ load_image_start:
     ; 05AAC..05BD0 function
     emit_func_05aac_part_00
     ; 05BD1..05C05 function
-    emit_func_05bd1_part_00
+    emit_load_and_play_selected_xmi_part_00
     ; 05C06..05CDD function
     emit_func_05c06_part_00
     ; 05CDE..05CEC gap

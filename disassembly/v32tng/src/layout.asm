@@ -22,13 +22,13 @@ emit_func_00401161_part_00
 %if ($ - $$) != 0x0005A3
     %error "layout drift at raw 0005A3"
 %endif
-emit_func_004011a3_part_00
+emit_load_grv_script_file_part_00
 
 ; raw 000602..00076E (function)
 %if ($ - $$) != 0x000602
     %error "layout drift at raw 000602"
 %endif
-emit_init_resource_catalog_part_00
+emit_initialize_grv_runtime_and_load_script_part_00
 
 ; raw 00076E..000849 (function)
 %if ($ - $$) != 0x00076E
@@ -124,13 +124,13 @@ emit_func_00401cdd_part_00
 %if ($ - $$) != 0x00113A
     %error "layout drift at raw 00113A"
 %endif
-emit_func_00401d3a_part_00
+emit_select_grv_video_resource_part_00
 
 ; raw 00135F..001467 (function)
 %if ($ - $$) != 0x00135F
     %error "layout drift at raw 00135F"
 %endif
-emit_func_00401f5f_part_00
+emit_select_grv_song_resource_part_00
 
 ; raw 001467..0014E7 (function)
 %if ($ - $$) != 0x001467
@@ -1012,7 +1012,7 @@ emit_func_0040c0bb_part_00
 %if ($ - $$) != 0x00B4E7
     %error "layout drift at raw 00B4E7"
 %endif
-emit_load_script_grv_part_00
+emit_allocate_grv_runtime_buffers_part_00
 
 ; raw 00B529..00B573 (function)
 %if ($ - $$) != 0x00B529

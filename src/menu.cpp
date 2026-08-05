@@ -18,8 +18,8 @@
 #include <string>
 
 #ifndef DBG_LOG
-#define DBG_LOG(msg) OutputDebugStringA("[Phantom:Menu] " msg "\n")
-#define DBG_LOGF(fmt, ...) do { char _dbg_buf[4096]; snprintf(_dbg_buf, sizeof(_dbg_buf), "[Phantom:Menu] " fmt "\n", __VA_ARGS__); OutputDebugStringA(_dbg_buf); } while(0)
+#define DBG_LOG(msg) OutputDebugStringA("[v64tng:Menu] " msg "\n")
+#define DBG_LOGF(fmt, ...) do { char _dbg_buf[4096]; snprintf(_dbg_buf, sizeof(_dbg_buf), "[v64tng:Menu] " fmt "\n", __VA_ARGS__); OutputDebugStringA(_dbg_buf); } while(0)
 #endif
 
 /*
@@ -169,7 +169,7 @@ static INT_PTR CALLBACK SettingsDialogProc(HWND dialog, UINT message, WPARAM wPa
         tip(IDC_SETTINGS_SUPERSAMPLE, IDC_SETTINGS_LABEL_SS,
             L"Sets how many sub-pixel rays are evaluated per output pixel. 1x is the fastest and is recommended for high frame rates; larger values reduce edge aliasing at a directly proportional GPU or CPU cost. High-resolution Vulkan rendering may clamp excessive values to protect frame time.");
         tip(IDC_SETTINGS_RENDERER, IDC_SETTINGS_LABEL_RENDERER,
-            L"Selects the graphics backend used by this Phantom Engine game. Vulkan uses the native compute and GPU model pipeline; DirectX 11 provides the Windows fallback renderer. The engine safely tears down the old backend and activates the new one when you press OK.");
+            L"Selects the graphics backend used by v64tng. Vulkan uses the native compute and GPU model pipeline; DirectX 11 provides the Windows fallback renderer. The engine safely tears down the old backend and activates the new one when you press OK.");
         return TRUE;
     }
     case WM_COMMAND:

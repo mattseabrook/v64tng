@@ -1,6 +1,11 @@
 ; Linear entry 03AC4 (1000:3ac4)
 ; Ghidra working symbol: FUN_1000_3ac4
 ; Verified GRV bytecode interpreter entry.
+; VIDEOREF is synchronous: opcodes 03h/05h/06h/07h/0Ah accumulate transient
+; VDX flags (bits 9/8/6/7/5), opcode 09h resolves and plays one stream, and
+; completion clears the transient flags before bytecode execution resumes.
+; SCRIPT.GRV uses bit 5 to skip an overlay's still chunk and apply its deltas
+; to the held background; bit 7 accompanies GAMWAV interleaved-PCM VDXes.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
 %macro emit_run_grv_vm_part_00 0

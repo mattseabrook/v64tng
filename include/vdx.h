@@ -45,6 +45,8 @@ struct VDXFile
     std::string filename;
     uint16_t identifier;
     std::array<uint8_t, 6> unknown;
+    uint16_t frameRate = 0;
+    uint16_t playbackFlags = 0;
     int width = 0;
     int height = 0;
     // Owning local storage for copied input bytes (standalone file path).
@@ -65,6 +67,10 @@ VDXFile parseVDXFile(std::string_view filename, std::span<const uint8_t> buffer)
 VDXFile parseVDXFile(std::string_view filename, std::vector<uint8_t> &&buffer);
 VDXFile parseVDXFileBorrowed(std::string_view filename, std::span<const uint8_t> buffer, std::shared_ptr<const uint8_t> owner);
 void parseVDXChunks(VDXFile &vdxFile);
+void parseVDXChunks(
+    VDXFile &vdxFile,
+    std::span<const uint8_t> background,
+    uint16_t grvVideoFlags);
 void vdxPlay(const std::string &filename, VDXFile *preloadedVdx = nullptr);
 std::expected<VDXFile, std::string> loadSingleVDX(const std::string &room, const std::string &vdxName);
 VDXFile &getOrLoadVDX(const std::string &name);

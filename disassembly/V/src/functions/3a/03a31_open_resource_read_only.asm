@@ -1,11 +1,11 @@
 ; Linear entry 03A31 (1000:3a31)
 ; Ghidra working symbol: FUN_1000_3a31
-; Role not yet verified; boundary is provisional.
+; Verified filename-build plus DOS INT 21h read-only open wrapper.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_03a31_part_00 0
+%macro emit_open_resource_read_only_part_00 0
     %%fragment_start:
-func_03a31:
+open_resource_read_only:
     %%insn_03a31:
     call 0x39f8 ; 03A31 E8C4FF
     %if ($ - %%insn_03a31) > 3

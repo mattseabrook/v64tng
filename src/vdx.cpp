@@ -18,6 +18,7 @@
 #include "game.h"
 #include "audio.h"
 #include "window.h"
+#include "assets.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -38,6 +39,23 @@ constexpr uint32_t readLE32(const uint8_t *p)
 		   (static_cast<uint32_t>(p[3]) << 24);
 }
 
+bool readStillPalette(
+	std::span<const uint8_t> data,
+	std::span<RGBColor> palette)
+{
+	if (data.size() < 6 || palette.size() < 256)
+		return false;
+	const uint16_t colourDepth = readLittleEndian16(data.subspan(4, 2));
+	if (colourDepth > 8)
+		return false;
+	const size_t colours = size_t{1} << colourDepth;
+	if (data.size() < 6 + colours * 3)
+		return false;
+	for (size_t i = 0; i < colours; ++i)
+		palette[i] = {data[6 + i * 3], data[7 + i * 3], data[8 + i * 3]};
+	return true;
+}
+
 void parseVDXChunksFromSpan(VDXFile &vdxFile, std::span<const uint8_t> rawSpan)
 {
 	if (rawSpan.size() < 8)
@@ -45,6 +63,7 @@ void parseVDXChunksFromSpan(VDXFile &vdxFile, std::span<const uint8_t> rawSpan)
 		// Graceful failure for malformed/truncated files.
 		vdxFile.identifier = 0;
 		vdxFile.unknown.fill(0);
+		vdxFile.frameRate = 0;
 		return;
 	}
 
@@ -67,6 +86,7 @@ void parseVDXChunksFromSpan(VDXFile &vdxFile, std::span<const uint8_t> rawSpan)
 
 	vdxFile.identifier = static_cast<uint16_t>(rawSpan[0] | (rawSpan[1] << 8));
 	std::copy(rawSpan.begin() + 2, rawSpan.begin() + 8, vdxFile.unknown.begin());
+	vdxFile.frameRate = static_cast<uint16_t>(rawSpan[6] | rawSpan[7] << 8);
 
 	size_t offset = 8;
 	while (offset + 8 <= rawSpan.size())
@@ -346,7 +366,10 @@ Parameters:
 	- vdxFile: Fully populated VDXFile object.
 ===============================================================================
 */
-void parseVDXChunks(VDXFile &vdxFile)
+void parseVDXChunks(
+	VDXFile &vdxFile,
+	std::span<const uint8_t> background,
+	uint16_t grvVideoFlags)
 {
 	// Palette state is shared by consecutive chunks in a VDX stream.
 	static thread_local std::vector<RGBColor> palette(256);
@@ -365,6 +388,9 @@ void parseVDXChunks(VDXFile &vdxFile)
 	// Reuse palette
 	palette.clear();
 	palette.resize(256);
+	vdxFile.playbackFlags = grvVideoFlags;
+	const bool skipStill =
+		(grvVideoFlags & ((1u << 5) | (1u << 7))) != 0;
 
 	// Process chunks
 	for (auto &chunk : vdxFile.chunks)
@@ -418,10 +444,19 @@ void parseVDXChunks(VDXFile &vdxFile)
 
 			if (chunk.chunkType == 0x20)
 			{
-				// Static: Process in place
-				if (!getBitmapDataChecked(dataToProcess, palette, std::span{*newFrame}))
+				if (skipStill)
+				{
+					// BF5/BF7 deliberately discard the VDX's still pixels.
+					// Its following deltas are applied to the persistent screen.
+					if (!readStillPalette(dataToProcess, palette))
+						throw std::runtime_error("Invalid VDX bitmap palette in " + vdxFile.filename);
+					if (background.size() == newFrame->size())
+						std::memcpy(newFrame->data(), background.data(), newFrame->size());
+				}
+				else if (!getBitmapDataChecked(dataToProcess, palette, std::span{*newFrame}))
+				{
 					throw std::runtime_error("Invalid VDX bitmap payload in " + vdxFile.filename);
-				// No need to update palette - it's already modified in place
+				}
 			}
 			else
 			{
@@ -432,7 +467,10 @@ void parseVDXChunks(VDXFile &vdxFile)
 						throw std::runtime_error("VDX delta frame dimensions changed in " + vdxFile.filename);
 					std::memcpy(newFrame->data(), prevFrame.data(), newFrame->size());
 				}
-				// else already zero from resize
+				else if (background.size() == newFrame->size())
+				{
+					std::memcpy(newFrame->data(), background.data(), newFrame->size());
+				}
 				std::span<uint8_t> mutableFrame{*newFrame};
 				if (!getDeltaBitmapDataChecked(dataToProcess, palette, mutableFrame, vdxFile.width))
 					throw std::runtime_error("Invalid VDX delta payload in " + vdxFile.filename);
@@ -462,6 +500,11 @@ void parseVDXChunks(VDXFile &vdxFile)
 	vdxFile.rawData.clear();
 	vdxFile.rawView = {};
 	vdxFile.externalDataOwner.reset();
+}
+
+void parseVDXChunks(VDXFile &vdxFile)
+{
+	parseVDXChunks(vdxFile, {}, 0);
 }
 
 /*
@@ -537,9 +580,14 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 	// Setup playback
 	if (!vdxToUse->audioData.empty())
 	{
-				state.frameTiming.currentFPS = 15.0;
+		state.frameTiming.currentFPS =
+			vdxToUse->frameRate ? vdxToUse->frameRate : 15.0;
 		auto audioOwner = std::make_shared<std::vector<uint8_t>>(std::move(vdxToUse->audioData));
 		wavPlay(audioOwner);
+	}
+	else if (vdxToUse->frameRate)
+	{
+		state.frameTiming.currentFPS = vdxToUse->frameRate;
 	}
 
 	// Temporarily set currentVDX for rendering (non-owning during playback)
@@ -549,6 +597,8 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 	state.currentFrameIndex = 0;
 	state.animation.isPlaying = true;
 	state.animation.totalFrames = streamDecoder ? streamDecoder->totalFrames : vdxToUse->frameData.size();
+	if ((vdxToUse->playbackFlags & (1u << 8)) != 0)
+		state.animation.totalFrames = (std::min)(state.animation.totalFrames, size_t{1});
 	state.animation.lastFrameTime = std::chrono::steady_clock::now();
 	state.frameTiming.dirtyFrame = true;
 	// Present the first frame immediately before processing queued window messages.
@@ -556,15 +606,22 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 
 	// Playback loop
 	bool playing = true;
+	bool skipped = false;
 	size_t displayedFrames = 1;
 	while (playing)
 	{
 		if (!processEvents())
+		{
+			skipped = true;
 			break;
+		}
 
 #ifdef _WIN32
 		if (GetAsyncKeyState(VK_SPACE) & 1)
+		{
+			skipped = true;
 			break;
+		}
 #endif
 
 		auto now = std::chrono::steady_clock::now();
@@ -599,6 +656,16 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 
 		maybeRenderFrame();
 
+	}
+
+	// The retail VDX player does not complete VIDEOREF until its queued PCM is
+	// drained. This matters for GAMWAV speech and for movies whose final audio
+	// buffer is slightly longer than their final duplicate frame.
+	while (!skipped && state.pcm_playing && !g_quitRequested)
+	{
+		if (!processEvents())
+			break;
+		maybeRenderFrame();
 	}
 
 	// Restore
@@ -639,7 +706,7 @@ std::expected<VDXFile, std::string> loadSingleVDX(const std::string &room, const
 {
 	// Cache RL parse results — the RL file is read-only and small, avoid re-parsing every VDX load
 	static std::unordered_map<std::string, std::vector<RLEntry>> rlCache;
-	const std::string rlKey = room + ".RL";
+	const std::string rlKey = assetPath(room + ".RL").string();
 	auto cacheIt = rlCache.find(rlKey);
 	if (cacheIt == rlCache.end())
 	{
@@ -663,7 +730,7 @@ std::expected<VDXFile, std::string> loadSingleVDX(const std::string &room, const
 	if (it == indices.end())
 		return std::unexpected("VDX not found in RL: " + vdxName);
 
-	std::string gjdPath = room + ".GJD";
+	std::string gjdPath = assetPath(room + ".GJD").string();
 
 	// Cache per-room GJD mappings weakly so multiple VDX loads from the same room
 	// reuse the memory map instead of repeatedly opening/mapping the file.

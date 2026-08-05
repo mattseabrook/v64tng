@@ -221,55 +221,14 @@ LRESULT HandleLButtonDown(LPARAM lParam)
 {
 	// Use GET_X/Y_LPARAM for proper signed coordinate handling (multi-monitor support)
 	POINT pt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
-	float nx = static_cast<float>(pt.x) / state.ui.width * 100.0f;
-	float ny = static_cast<float>(pt.y) / state.ui.height * 100.0f;
-	if (state.animation.isPlaying || state.transient_animation.isPlaying || !state.currentVDX || !state.view)
+	if (grvInputActive())
+	{
+		if (!state.animation.isPlaying && !state.transient_animation.isPlaying)
+			grvPointerClick(pt.x, pt.y);
 		return 0;
-	int maxZ = -1;
-	size_t tgtIdx = 0;
-	enum class Tgt
-	{
-		None,
-		Nav,
-		Hot
-	} tgt = Tgt::None;
-	for (size_t i = 0; i < state.view->navigations.size(); ++i)
-	{
-		const auto &area = state.view->navigations[i].area;
-		if (nx >= area.x && nx <= area.x + area.width && ny >= area.y && ny <= area.y + area.height && area.z_index > maxZ)
-		{
-			maxZ = area.z_index;
-			tgtIdx = i;
-			tgt = Tgt::Nav;
-		}
 	}
-	for (size_t i = 0; i < state.view->hotspots.size(); ++i)
-	{
-		const auto &area = state.view->hotspots[i].area;
-		if (nx >= area.x && nx <= area.x + area.width && ny >= area.y && ny <= area.y + area.height && area.z_index > maxZ)
-		{
-			maxZ = area.z_index;
-			tgtIdx = i;
-			tgt = Tgt::Hot;
-		}
-	}
-	if (tgt == Tgt::Nav)
-	{
-		state.current_view = state.view->navigations[tgtIdx].next_view;
-		state.animation_sequence.clear();
-		// Apply the view change immediately for snappy feedback
-		viewHandler();
-		maybeRenderFrame(true);
-		forceUpdateCursor();
-	}
-	else if (tgt == Tgt::Hot && state.view->hotspots[tgtIdx].action)
-	{
-		state.view->hotspots[tgtIdx].action();
-		// If hotspot triggered any animation/view, refresh promptly
-		viewHandler();
-		maybeRenderFrame(true);
-		forceUpdateCursor();
-	}
+	if (state.animation.isPlaying || state.transient_animation.isPlaying || !state.currentVDX)
+		return 0;
 	return 0;
 }
 
@@ -361,10 +320,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			else
 				raycastKeyDown(wParam);
 		}
-		else if (state.mainMenu.active && wParam >= 'A' && wParam <= 'Z')
-		{
+		return 0;
+	case WM_CHAR:
+		if (state.mainMenu.active && wParam <= 0xff)
 			mainMenuKeyDown(static_cast<char>(wParam));
-		}
 		return 0;
 	case WM_KEYUP:
 		if (state.raycast.enabled)
@@ -589,39 +548,21 @@ void updateCursorBasedOnPosition(POINT clientPos)
 		g_activeCursorType = CURSOR_DEFAULT; // Will use system arrow
 		return;
 	}
-	if (state.mainMenu.active)
+	if (grvInputActive())
 	{
-		g_activeCursorType = CURSOR_PYRAMID; // Boot main menu cursor
+		const uint8_t style = grvPointerCursor(clientPos.x, clientPos.y);
+		g_activeCursorType = state.animation.isPlaying || state.transient_animation.isPlaying ||
+			style >= CursorStyles.size()
+			? CURSOR_DEFAULT
+			: static_cast<CursorType>(style);
 		return;
 	}
-	if (state.raycast.enabled || state.animation.isPlaying || state.transient_animation.isPlaying || !state.view)
+	if (state.raycast.enabled || state.animation.isPlaying || state.transient_animation.isPlaying)
 	{
 		g_activeCursorType = CURSOR_DEFAULT; // Will show transparent or default
 		return;
 	}
-	float nx = static_cast<float>(clientPos.x) / state.ui.width * 100.0f;
-	float ny = static_cast<float>(clientPos.y) / state.ui.height * 100.0f;
-	int maxZ = -1;
-	uint8_t newType = CURSOR_DEFAULT;
-	for (const auto &nav : state.view->navigations)
-	{
-		const auto &area = nav.area;
-		if (nx >= area.x && nx <= area.x + area.width && ny >= area.y && ny <= area.y + area.height && area.z_index > maxZ)
-		{
-			maxZ = area.z_index;
-			newType = area.cursorType;
-		}
-	}
-	for (const auto &hot : state.view->hotspots)
-	{
-		const auto &area = hot.area;
-		if (nx >= area.x && nx <= area.x + area.width && ny >= area.y && ny <= area.y + area.height && area.z_index > maxZ)
-		{
-			maxZ = area.z_index;
-			newType = area.cursorType;
-		}
-	}
-	g_activeCursorType = static_cast<CursorType>(newType);
+	g_activeCursorType = CURSOR_DEFAULT;
 	// DO NOT call SetCursor() here - let WM_SETCURSOR handle it
 }
 

@@ -1,11 +1,11 @@
 ; PE virtual entry 0040C0E7
 ; Ghidra working symbol: FUN_0040c0e7
-; Verified script.grv load path.
+; Verified allocation/initialization of the 80400h runtime arena and 64 KiB GRV script buffer.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_load_script_grv_part_00 0
+%macro emit_allocate_grv_runtime_buffers_part_00 0
     %%fragment_start:
-load_script_grv:
+allocate_grv_runtime_buffers:
     %%insn_0040c0e7:
     push ebp ; 0040C0E7 55
     %if ($ - %%insn_0040c0e7) > 1

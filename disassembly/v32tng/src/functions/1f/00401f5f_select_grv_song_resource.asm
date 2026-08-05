@@ -1,11 +1,11 @@
 ; PE virtual entry 00401F5F
 ; Ghidra working symbol: FUN_00401f5f
-; Role not yet verified; analyzer boundary is provisional.
+; Verified packed GRV song ref resolver and sequence staging path.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_00401f5f_part_00 0
+%macro emit_select_grv_song_resource_part_00 0
     %%fragment_start:
-func_00401f5f:
+select_grv_song_resource:
     %%insn_00401f5f:
     push ebp ; 00401F5F 55
     %if ($ - %%insn_00401f5f) > 1

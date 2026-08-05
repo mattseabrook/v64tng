@@ -1,11 +1,11 @@
 ; Linear entry 03A5B (1000:3a5b)
 ; Ghidra working symbol: FUN_1000_3a5b
-; Role not yet verified; boundary is provisional.
+; Verified selected resource open/read/close path into the GRV media buffer.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_03a5b_part_00 0
+%macro emit_load_selected_resource_file_part_00 0
     %%fragment_start:
-func_03a5b:
+load_selected_resource_file:
     %%insn_03a5b:
     cmp word [bp-0x2652],0x0 ; 03A5B 83BEAED900
     %if ($ - %%insn_03a5b) > 5

@@ -10,6 +10,7 @@
 #include <thread>
 #include <filesystem>
 #include <fstream>
+#include <utility>
 
 #include "game.h"
 #include "window.h"
@@ -18,9 +19,8 @@
 #include "config.h"
 #include "cursor.h"
 #include "raycast.h"
-
-#include "fh.h"
-#include "dr.h"
+#include "assets.h"
+#include "grv_runtime.h"
 
 #ifdef _WIN32
 #endif
@@ -30,15 +30,7 @@ GameState state;
 
 //=====================================================
 
-//
-// Lookup map for views - uses transparent hash for string_view lookups without allocation
-//
-struct StringHash {
-    using is_transparent = void;
-    size_t operator()(std::string_view sv) const { return std::hash<std::string_view>{}(sv); }
-    size_t operator()(const std::string& s) const { return std::hash<std::string_view>{}(s); }
-};
-std::unordered_map<std::string, const View *, StringHash, std::equal_to<>> view_map;
+static std::optional<GrvRuntime> grvRuntime;
 
 //
 // Lookup table for named actions
@@ -49,47 +41,6 @@ static std::unordered_map<std::string, std::function<void()>> action_map = {
 ////////////////////////////////////////////////////////////////////////
 // Utility Functions
 ////////////////////////////////////////////////////////////////////////
-
-//
-// Boot main menu view: sphinx.vdx (from INTRO.GJD) plays once and holds its
-// last frame as the menu backdrop. Deliberately no hotspots/navigations yet —
-// the menu click areas are not wired up.
-//
-static const std::vector<ViewGroup> mainMenuViews = {
-	{{"sphinx"}, {}}};
-
-//
-// Builds the view map from predefined view groups
-//
-void buildViewMap()
-{
-	const std::vector<const std::vector<ViewGroup> *> room_data = {
-		&foyer,
-		&diningRoom,
-		&mainMenuViews,
-		// Add other rooms here...
-	};
-	for (const auto *entries : room_data)
-	{
-		for (const auto &group : *entries)
-		{
-			for (const char *name : group.names)
-			{
-				view_map[name] = &group.data;
-			}
-		}
-	}
-}
-
-//
-// Retrieves the current view based on the current_view string
-// Uses string_view for zero-allocation lookups via transparent hash
-//
-const View *getView(std::string_view current_view)
-{
-	auto it = view_map.find(current_view);
-	return (it != view_map.end()) ? it->second : nullptr;
-}
 
 //
 // Parse animation token (room:view;mods)
@@ -138,10 +89,6 @@ static std::unique_ptr<VDXFile> loadTransientVDX(const std::string &name)
 //
 static void setupView(const std::string &view_name, bool is_static, auto now)
 {
-	state.view = getView(view_name);
-	if (!state.view)
-		throw std::runtime_error("View not found: " + view_name);
-
 	getOrLoadVDX(view_name); // Sets state.currentVDX internally
 	if (!state.currentVDX->parsed)
 	{
@@ -149,6 +96,8 @@ static void setupView(const std::string &view_name, bool is_static, auto now)
 		state.currentVDX->parsed = true;
 	}
 	state.animation.totalFrames = state.currentVDX->frameData.size();
+	if (state.currentVDX->frameRate)
+		state.frameTiming.currentFPS = state.currentVDX->frameRate;
 	state.currentFrameIndex = is_static ? (state.animation.totalFrames ? state.animation.totalFrames - 1 : 0) : 0;
 	state.animation.isPlaying = !is_static && state.animation.totalFrames > 0;
 	state.animation.lastFrameTime = now;
@@ -196,13 +145,6 @@ void viewHandler()
 				state.transient_animation_name.clear();
 				state.frameTiming.dirtyFrame = true; // Ensure re-render after transient
 
-				// FIXED: Refresh view to restore hotspots without restarting animation
-				auto [room, view, is_static, action] = parseToken(state.current_view);
-				state.view = getView(view);
-				if (!state.view)
-				{
-					throw std::runtime_error("View not found after transient: " + view);
-				}
 				// CRITICAL: Ensure animation is stopped to allow hotspot interaction
 				state.animation.isPlaying = false;
 				forceUpdateCursor(); // CRITICAL: Force cursor system to recognize new hotspots
@@ -483,14 +425,14 @@ static void playIntroVideos()
 Function Name: enterFoyer
 
 Description:
-		- Leaves the boot main menu and enters the main foyer
-		  (FH:f_1bc, held on its last frame).
+	- Leaves the boot main menu and enters the main foyer
+	  (FH:f_1fb, the held frame at SCRIPT.GRV input loop 04FD).
 ===============================================================================
 */
 static void enterFoyer()
 {
 	state.mainMenu.active = false;
-	state.current_view = "FH:f_1bc;static";
+	state.current_view = "FH:f_1fb;static";
 	state.animation_sequence.clear();
 	viewHandler();
 	maybeRenderFrame(true);
@@ -503,8 +445,7 @@ Function Name: startNewGame
 
 Description:
 		- Starts a new game: logo cutscenes, then the main foyer.
-		- Not wired to any menu hotspot yet; will be hooked to the
-		  main menu's "New Game" option later.
+		- Invoked by the new-game branch target read from SCRIPT.GRV.
 ===============================================================================
 */
 void startNewGame()
@@ -513,7 +454,160 @@ void startNewGame()
 	playIntroVideos();
 	if (g_quitRequested)
 		return;
+	if (grvRuntime)
+	{
+		const auto transition = grvRuntime->follow(0x03E8);
+		if (!transition)
+			std::println(stderr, "WARNING: Cannot enter first GRV game loop: {}", transition.error());
+	}
 	enterFoyer();
+}
+
+static bool playGrvVideo(const GrvVideoCommand &command)
+{
+	if (!grvRuntime || !command.ref)
+		return false;
+	const auto resource = grvRuntime->resolve(command.ref);
+	if (!resource)
+	{
+		std::println(stderr, "WARNING: Unresolved GRV video ref 0x{:04X}", command.ref);
+		return false;
+	}
+	auto loaded = loadSingleVDX(std::string(resource->archive), resource->stem());
+	if (!loaded)
+	{
+		std::println(stderr, "WARNING: Cannot load GRV video 0x{:04X}: {}",
+			command.ref, loaded.error());
+		return false;
+	}
+	try
+	{
+		std::span<const uint8_t> background;
+		if (state.currentVDX && !state.currentVDX->frameData.empty())
+		{
+			const size_t frame = (std::min)(
+				state.currentFrameIndex, state.currentVDX->frameData.size() - 1);
+			background = *state.currentVDX->frameData[frame];
+		}
+		parseVDXChunks(*loaded, background, command.flags);
+		loaded->parsed = true;
+		if (command.rateOverride)
+			loaded->frameRate = command.rateOverride;
+
+		// VIDEOREF is a blocking VM opcode: render every frame (and its
+		// interleaved PCM stream) before the interpreter's next command becomes
+		// visible. The decoded last frame then becomes the persistent backdrop
+		// for BF5 delta overlays.
+		vdxPlay(std::string(resource->name()), &*loaded);
+
+		if (!loaded->frameData.empty())
+		{
+			state.currentVDX =
+				std::make_unique<VDXFile>(std::move(*loaded));
+			state.current_room = std::string(resource->archive);
+			state.previous_room = state.current_room;
+			state.current_view = resource->stem() + ";static";
+			state.previous_view = state.current_view;
+			state.currentFrameIndex = state.currentVDX->frameData.size() - 1;
+			state.animation.isPlaying = false;
+			state.animation.totalFrames = state.currentVDX->frameData.size();
+			state.animation_sequence.clear();
+			state.frameTiming.dirtyFrame = true;
+		}
+		return true;
+	}
+	catch (const std::exception &error)
+	{
+		std::println(stderr, "WARNING: Cannot decode/play GRV video 0x{:04X}: {}",
+			command.ref, error.what());
+		return false;
+	}
+}
+
+static void applyGrvTransition(const GrvTransition &transition)
+{
+	for (const auto &video : transition.videos)
+	{
+		if (g_quitRequested)
+			return;
+		playGrvVideo(video);
+	}
+	if (transition.ended)
+	{
+		PostQuitMessage(0);
+		return;
+	}
+	maybeRenderFrame(true);
+	forceUpdateCursor();
+}
+
+bool initializeGrvMainMenu()
+{
+	auto runtime = GrvRuntime::load(assetPath("SCRIPT.GRV"), assetRoot());
+	if (!runtime)
+	{
+		std::println(stderr, "WARNING: {}", runtime.error());
+		return false;
+	}
+	grvRuntime.emplace(std::move(*runtime));
+	const auto boot = grvRuntime->boot();
+	if (!boot)
+	{
+		std::println(stderr, "WARNING: {}", boot.error());
+		grvRuntime.reset();
+		return false;
+	}
+
+	if (const auto song = grvRuntime->resolve(boot->resources.song))
+		xmiPlay(song->stem());
+	if (boot->transition.videos.empty())
+	{
+		std::println(stderr, "WARNING: SCRIPT.GRV boot emitted no VIDEOREF commands");
+		grvRuntime.reset();
+		return false;
+	}
+	state.mainMenu.active = true;
+	applyGrvTransition(boot->transition);
+	return true;
+}
+
+bool grvInputActive()
+{
+	return grvRuntime && grvRuntime->activeLoop() != 0;
+}
+
+uint8_t grvPointerCursor(int x, int y)
+{
+	if (!grvRuntime)
+		return CURSOR_DEFAULT;
+	const auto hotspot = grvRuntime->hotspotAt(x, y, state.ui.width, state.ui.height);
+	return hotspot ? hotspot->cursor() : CURSOR_DEFAULT;
+}
+
+bool grvPointerClick(int x, int y)
+{
+	if (!grvRuntime)
+		return false;
+	const auto target = grvRuntime->activateAt(x, y, state.ui.width, state.ui.height);
+	if (!target)
+		return false;
+
+	// The original new-game target begins the full title/opening sequence.
+	// Keep the existing native player for that sequence while taking the target
+	// itself (and all geometry/cursor metadata) directly from SCRIPT.GRV.
+	if (state.mainMenu.active && *target == 0x03E8)
+	{
+		startNewGame();
+		return true;
+	}
+	const auto transition = grvRuntime->follow(*target);
+	if (!transition)
+	{
+		std::println(stderr, "WARNING: GRV target 0x{:04X}: {}", *target, transition.error());
+		return true;
+	}
+	applyGrvTransition(*transition);
+	return true;
 }
 
 /*
@@ -522,8 +616,8 @@ Function Name: mainMenuKeyDown
 
 Description:
 		- Handles cheat code entry on the boot main menu.
-		- Typing "zaphodbeeblebrox" (the original game's god-mode cheat)
-		  jumps straight to the main foyer, skipping the intro cutscenes.
+		- Feeds characters to SCRIPT.GRV's original case-sensitive
+		  "Zaphod Beeblebrox" key-action state machine.
 ===============================================================================
 */
 void mainMenuKeyDown(char c)
@@ -531,16 +625,24 @@ void mainMenuKeyDown(char c)
 	if (!state.mainMenu.active)
 		return;
 
+	if (grvRuntime)
+	{
+		const auto transition = grvRuntime->handleKey(static_cast<uint8_t>(c));
+		if (!transition)
+			std::println(stderr, "WARNING: GRV key handler: {}", transition.error());
+		else if (*transition)
+			applyGrvTransition(**transition);
+		return;
+	}
+
+	// Compatibility fallback if SCRIPT.GRV was unavailable at boot.
 	static constexpr std::string_view cheat = "zaphodbeeblebrox";
 	auto &buf = state.mainMenu.cheatBuffer;
 	buf.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
 	if (buf.size() > cheat.size())
 		buf.erase(0, buf.size() - cheat.size());
 	if (buf == cheat)
-	{
-		buf.clear();
 		enterFoyer();
-	}
 }
 
 /*
@@ -564,17 +666,18 @@ void init()
 	initWindow();
 	musicInit();
 
-	buildViewMap();
-
 	// Boot into the main menu: gu61 starts immediately, then sphinx.vdx from
 	// INTRO.GJD plays once (synchronized with the music) and holds its last
 	// frame as the menu backdrop. The two logo cutscenes only play on
 	// "New Game" (see startNewGame). Skip the menu entirely in raycast mode.
 	if (!state.raycast.enabled && !g_quitRequested)
 	{
-		xmiPlay("gu61");
-		state.mainMenu.active = true;
-		state.current_view = "INTRO:sphinx";
+		if (!initializeGrvMainMenu())
+		{
+			xmiPlay("gu61");
+			state.mainMenu.active = true;
+			state.current_view = "INTRO:sphinx";
+		}
 	}
 
 	if (!g_quitRequested)

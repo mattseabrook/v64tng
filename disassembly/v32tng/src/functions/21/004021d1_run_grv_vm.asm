@@ -1,6 +1,11 @@
 ; PE virtual entry 004021D1
 ; Ghidra working symbol: FUN_004021d1
 ; Verified central GRV bytecode interpreter and opcode dispatcher.
+; VIDEOREF is synchronous: opcodes 03h/05h/06h/07h/0Ah accumulate transient
+; VDX flags (bits 9/8/6/7/5), opcode 09h resolves and plays one stream, and
+; completion clears the transient flags before bytecode execution resumes.
+; SCRIPT.GRV uses bit 5 to skip an overlay's still chunk and apply its deltas
+; to the held background; bit 7 accompanies GAMWAV interleaved-PCM VDXes.
 ; Generated losslessly; preserve byte identity after edits.
 
 %macro emit_run_grv_vm_part_00 0
@@ -8161,6 +8166,8 @@ run_grv_vm:
         %error "LONG_00403B5A"
     %endif
     times 5 - ($ - %%insn_00403b5a) db 0
+; Opcode 3Ch: probes st7g.0 through st7g.9 and stores slot flags plus v[104h] count.
+grv_check_valid_saves:
     %%insn_00403b5f:
     mov dword [ebp-0xc],0x0 ; 00403B5F C745F400000000
     %if ($ - %%insn_00403b5f) > 7

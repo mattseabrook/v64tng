@@ -1,11 +1,11 @@
 ; Linear entry 03A47 (1000:3a47)
 ; Ghidra working symbol: FUN_1000_3a47
-; Role not yet verified; boundary is provisional.
+; Verified DOS INT 21h close wrapper.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_03a47_part_00 0
+%macro emit_close_resource_file_part_00 0
     %%fragment_start:
-func_03a47:
+close_resource_file:
     %%insn_03a47:
     mov bx,[bp-0x2634] ; 03A47 8B9ECCD9
     %if ($ - %%insn_03a47) > 4

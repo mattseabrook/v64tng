@@ -1,8 +1,8 @@
 entry	working_name	status	ghidra_name	source
 00401000	func_00401000	unidentified	FUN_00401000	src/functions/10/00401000_func_00401000.asm
 00401161	func_00401161	unidentified	FUN_00401161	src/functions/11/00401161_func_00401161.asm
-004011A3	func_004011a3	unidentified	FUN_004011a3	src/functions/11/004011a3_func_004011a3.asm
-00401202	init_resource_catalog	verified-role	FUN_00401202	src/functions/12/00401202_init_resource_catalog.asm
+004011A3	load_grv_script_file	verified-role	FUN_004011a3	src/functions/11/004011a3_load_grv_script_file.asm
+00401202	initialize_grv_runtime_and_load_script	verified-role	FUN_00401202	src/functions/12/00401202_initialize_grv_runtime_and_load_script.asm
 0040136E	func_0040136e	unidentified	FUN_0040136e	src/functions/13/0040136e_func_0040136e.asm
 00401449	grv_read_u8	verified-role	FUN_00401449	src/functions/14/00401449_grv_read_u8.asm
 00401473	grv_read_u16_le	verified-role	FUN_00401473	src/functions/14/00401473_grv_read_u16_le.asm
@@ -18,8 +18,8 @@ entry	working_name	status	ghidra_name	source
 00401C55	func_00401c55	unidentified	FUN_00401c55	src/functions/1c/00401c55_func_00401c55.asm
 00401C99	func_00401c99	unidentified	FUN_00401c99	src/functions/1c/00401c99_func_00401c99.asm
 00401CDD	func_00401cdd	unidentified	FUN_00401cdd	src/functions/1c/00401cdd_func_00401cdd.asm
-00401D3A	func_00401d3a	unidentified	FUN_00401d3a	src/functions/1d/00401d3a_func_00401d3a.asm
-00401F5F	func_00401f5f	unidentified	FUN_00401f5f	src/functions/1f/00401f5f_func_00401f5f.asm
+00401D3A	select_grv_video_resource	verified-role	FUN_00401d3a	src/functions/1d/00401d3a_select_grv_video_resource.asm
+00401F5F	select_grv_song_resource	verified-role	FUN_00401f5f	src/functions/1f/00401f5f_select_grv_song_resource.asm
 00402067	func_00402067	unidentified	FUN_00402067	src/functions/20/00402067_func_00402067.asm
 004020E7	func_004020e7	unidentified	FUN_004020e7	src/functions/20/004020e7_func_004020e7.asm
 00402172	func_00402172	unidentified	FUN_00402172	src/functions/21/00402172_func_00402172.asm
@@ -147,7 +147,7 @@ entry	working_name	status	ghidra_name	source
 0040B198	func_0040b198	unidentified	FUN_0040b198	src/functions/b1/0040b198_func_0040b198.asm
 0040BFF4	func_0040bff4	unidentified	FUN_0040bff4	src/functions/bf/0040bff4_func_0040bff4.asm
 0040C0BB	func_0040c0bb	unidentified	FUN_0040c0bb	src/functions/c0/0040c0bb_func_0040c0bb.asm
-0040C0E7	load_script_grv	verified-role	FUN_0040c0e7	src/functions/c0/0040c0e7_load_script_grv.asm
+0040C0E7	allocate_grv_runtime_buffers	verified-role	FUN_0040c0e7	src/functions/c0/0040c0e7_allocate_grv_runtime_buffers.asm
 0040C129	func_0040c129	unidentified	FUN_0040c129	src/functions/c1/0040c129_func_0040c129.asm
 0040C180	init_archive_tables	verified-role	FUN_0040c180	src/functions/c1/0040c180_init_archive_tables.asm
 0040C197	func_0040c197	unidentified	FUN_0040c197	src/functions/c1/0040c197_func_0040c197.asm

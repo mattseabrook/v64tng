@@ -1,11 +1,11 @@
 ; PE virtual entry 004011A3
 ; Ghidra working symbol: FUN_004011a3
-; Role not yet verified; analyzer boundary is provisional.
+; Verified mmioOpen/mmioRead path used for script.grv and GRV LOADSCRIPT files.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_004011a3_part_00 0
+%macro emit_load_grv_script_file_part_00 0
     %%fragment_start:
-func_004011a3:
+load_grv_script_file:
     %%insn_004011a3:
     push ebp ; 004011A3 55
     %if ($ - %%insn_004011a3) > 1

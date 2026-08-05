@@ -1,3 +1,208 @@
+
+.\analysis\RUNTIME_CAPTURE_WORKFLOW.md
+────────────────────────────────────────────────
+
+# Win32 v32tng 1.02b1 runtime evidence workflow
+
+ProcMon, API traces, and debugger captures can progressively replace neutral
+address-based names with verified behavioral names while the exact PE rebuild
+remains the regression oracle.
+
+## Capture record
+
+For each observation, preserve:
+
+1. executable SHA-256 and complete command line;
+2. Windows version/compatibility environment and relevant media configuration;
+3. game state, script/room, user input, and visible or audible result;
+4. instruction address, caller/return address, registers, stack, and flags;
+5. relevant pointed-to buffers and modified globals;
+6. file, registry, multimedia, DirectDraw, window, and message activity;
+7. whether the behavior reproduced on another run.
+
+The executable's preferred image base is `00400000h`. With no rebasing, a
+debugger address such as `00408DF6h` maps directly to source
+`open_loose_vdx`. If ASLR/rebasing changes the load base, calculate:
+
+```text
+repository_VA = runtime_address - runtime_module_base + 00400000h
+```
+
+Search `analysis/function-inventory.tsv` for the resulting address, or search
+function comments for its eight-digit hexadecimal form.
+
+## Evidence and renaming
+
+Record whether a proposed name comes from:
+
+- **static** control flow, constants, imports, globals, and data references;
+- **cross-version** correspondence with DOS/demo/other Win32 code;
+- **runtime** inputs, outputs, calls, side effects, and reached game state;
+- **external** documentation or an original artifact.
+
+Keep uncertain interpretations as notes or `candidate_...` names. Promote a
+role when it is specific and repeatable, ideally supported by two independent
+evidence types. Every source or ownership change must retain a green
+`./build.sh` result until intentional mod development begins.
+
+Systematic evidence can recover accurate behavioral names for reachable
+functions. Exact original private symbol spelling, comments, filenames, and
+object-module boundaries require the missing PDB, map, source, or an equivalent
+original artifact.
+
+
+────────────────────────────────────────────────────────────
+
+.\analysis\SOURCE_COVERAGE.md
+───────────────────────────────────────
+
+# Win32 v32tng 1.02b1 lossless source coverage
+
+This inventory describes **mechanical source coverage**, not complete semantic
+understanding.
+
+| Measure | Count |
+|---|---:|
+| PE file bytes represented in source | 144,896 / 144,896 |
+| `incbin` directives | 0 |
+| Provisional Ghidra function entries | 336 |
+| Function-body bytes | 81,159 |
+| Function-body instructions decoded | 25,181 |
+| Instructions requiring exact `db` encoding fallback | 1,992 |
+| Bytes in encoding fallbacks | 4,159 |
+| Verified semantic function roles | 23 |
+| Unidentified/provisionally bounded functions | 313 |
+| Non-function PE file bytes | 63,737 |
+
+All headers, section padding, code gaps, `.rdata`, `.data`, imports, resources,
+relocations, and the raw debug tail are explicit NASM data. Every decoded
+instruction retains its PE virtual address and original opcode bytes.
+
+A `db` line inside a function means the instruction is decoded but NASM's
+preferred spelling emits different bytes. Its mnemonic remains in the comment.
+Analyzer ownership is provisional: explicit data may later prove to be code,
+jump tables, inline constants, or alignment.
+
+
+────────────────────────────────────────────────────────────
+
+.\README.md
+─────────────────────
+
+# Win32 `v32tng.exe` 1.02b1 permanent disassembly
+
+This is the canonical lossless NASM source project for the Windows 95
+Trilobyte Media Player 1.02b1. It represents every byte of the original PE in
+source and rebuilds the executable byte-for-byte.
+
+| Artifact | Size | SHA-256 |
+|---|---:|---|
+| Original/rebuilt `v32tng.exe` | 144,896 bytes | `3c8c3fd3edc27717ae2a08b1f98c7a58f72bd91860a080a29e40d1da8854c36c` |
+
+Run:
+
+```sh
+./build.sh
+```
+
+The build verifies the supplied original, assembles [`main.asm`](main.asm)
+without reading or importing the reference file, verifies the rebuilt hash,
+and uses `cmp` to prove exact file identity. It rejects any executable-byte
+`incbin` directive in the source tree.
+
+## What “complete” means today
+
+The project has **complete mechanical source coverage**:
+
+- all 144,896 raw PE file bytes are explicit NASM source;
+- all PE headers, section padding, imports, resources, relocations, debug
+  directories, FPO data, and the NB10 CodeView tail are explicit data;
+- 336 provisional Ghidra function entries are split into individual files;
+- all 25,181 instructions in analyzer-owned function ranges are decoded;
+- all remaining bytes are explicit `db` data;
+- there are zero `incbin` directives.
+
+This is not yet complete semantic recovery. Ghidra's function ownership is
+provisional and does not reveal the original Visual C++ object-module layout.
+Some explicit data may later prove to be code, jump tables, inline constants,
+or alignment. Twenty-three entries currently have verified semantic roles;
+the other 313 retain neutral `func_XXXXXXXX` names.
+
+See [`analysis/SOURCE_COVERAGE.md`](analysis/SOURCE_COVERAGE.md) for exact
+counts, [`analysis/function-inventory.tsv`](analysis/function-inventory.tsv)
+for the working symbol table, and
+[`analysis/RUNTIME_CAPTURE_WORKFLOW.md`](analysis/RUNTIME_CAPTURE_WORKFLOW.md)
+for turning debugger observations into verified names.
+
+## Known PE provenance
+
+| Property | Value |
+|---|---|
+| PE type | 32-bit Intel GUI executable |
+| Linker | Microsoft linker 5.00 |
+| Timestamp | 19 March 1997, 22:17:13 |
+| Image base | `00400000h` |
+| Entry RVA/VA | `0000DBF0h` / `0040DBF0h` |
+| Sections | `.text`, `.rdata`, `.data`, `.idata`, `.rsrc`, `.reloc` |
+| CodeView | NB10 |
+| Embedded PDB path | `C:\Program Files\DevStudio\MyProjects\v32tng\v32tng.pdb` |
+
+The original PDB itself is not present. The embedded path is valuable
+provenance, but it does not restore original private symbols.
+
+## Source organization
+
+| Path | Purpose |
+|---|---|
+| `main.asm` | Canonical flat-PE assembly root |
+| `src/layout.asm` | Exact raw-file emission order |
+| `src/functions/HH/*.asm` | One file per provisional function |
+| `src/data/chunks/*.asm` | Explicit headers, gaps, section data, and debug tail |
+| `analysis/function-map.tsv` | Preserved Ghidra function/range export |
+| `analysis/function-inventory.tsv` | Address, working name, confidence, and source path |
+| `tools/generate_lossless_source.py` | Deterministic source generator and verifier |
+
+NASM emits mnemonic source only when it reproduces the historical encoding
+exactly. If NASM's canonical encoding differs, the generated source retains
+the exact opcode bytes with the decoded virtual address and mnemonic in its
+comment. Those lines are decoded instructions, not opaque regions.
+
+To regenerate the complete source tree:
+
+```sh
+python3 tools/generate_lossless_source.py \
+  --reference ../../research/v32tng/v32tng.exe \
+  --function-map analysis/function-map.tsv
+```
+
+The generator rewrites generated function/data/layout files and refuses to
+finish unless its independently assembled probe is byte-identical.
+
+## Verified semantic footholds
+
+The first verified roles preserved in the generated inventory include:
+
+- the central GRV VM and its byte/word/dword operand readers;
+- keyboard-buffer dequeue and Miles MIDI playback-status checks;
+- exact-name loose VDX opening and the little-endian `9267h` magic check;
+- empty command line versus loose-VDX game dispatch;
+- `SETUPEXEC` handling and the WinMain message loop;
+- named-semaphore single-instance enforcement;
+- archive, resource, subsystem, and game-state initialization;
+- `script.grv` loading;
+- VDX stream configuration and playback;
+- global player shutdown;
+- the PE entry point and recognized `strcmp` runtime.
+
+Recovered labels are our semantic working names, not claims about the exact
+original PDB identifiers.
+
+
+────────────────────────────────────────────────────────────
+
+.\tools\generate_lossless_source.py
+─────────────────────────────────────────────
+
 #!/usr/bin/env python3
 """Generate a complete lossless NASM tree for v32tng.exe 1.02b1.
 
@@ -30,13 +235,9 @@ TEXT_FILE_BIAS = TEXT_VA - TEXT_RAW
 DATA_CHUNK_SIZE = 0x1000
 
 VERIFIED_NAMES: dict[int, tuple[str, str]] = {
-    0x004011A3: (
-        "load_grv_script_file",
-        "Verified mmioOpen/mmioRead path used for script.grv and GRV LOADSCRIPT files.",
-    ),
     0x00401202: (
-        "initialize_grv_runtime_and_load_script",
-        "Verified GRV state/variable initialization ending in the initial script.grv load.",
+        "init_resource_catalog",
+        "Verified game resource-catalog initialization role.",
     ),
     0x00401449: (
         "grv_read_u8",
@@ -49,14 +250,6 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
     0x004014CB: (
         "grv_read_u32_le",
         "Verified GRV little-endian dword reader; advances the script PC by four.",
-    ),
-    0x00401D3A: (
-        "select_grv_video_resource",
-        "Verified packed GRV video ref resolver: selects archive/RL entry and stages its GJD stream.",
-    ),
-    0x00401F5F: (
-        "select_grv_song_resource",
-        "Verified packed GRV song ref resolver and sequence staging path.",
     ),
     0x004021D1: (
         "run_grv_vm",
@@ -111,8 +304,8 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
         "Verified game-state initialization role.",
     ),
     0x0040C0E7: (
-        "allocate_grv_runtime_buffers",
-        "Verified allocation/initialization of the 80400h runtime arena and 64 KiB GRV script buffer.",
+        "load_script_grv",
+        "Verified script.grv load path.",
     ),
     0x0040C180: (
         "init_archive_tables",
@@ -133,13 +326,6 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
     0x0040DBF0: (
         "pe_entry",
         "Verified PE AddressOfEntryPoint.",
-    ),
-}
-
-VERIFIED_INSTRUCTION_LABELS: dict[int, tuple[str, str]] = {
-    0x00403B5F: (
-        "grv_check_valid_saves",
-        "Opcode 3Ch: probes st7g.0 through st7g.9 and stores slot flags plus v[104h] count.",
     ),
 }
 
@@ -369,9 +555,6 @@ def write_function_sources(
                 instruction_index[instruction.address] = instruction
                 if instruction.address == function.entry:
                     lines.append(f"{function.source_name}:")
-                if instruction.address in VERIFIED_INSTRUCTION_LABELS:
-                    label_name, label_note = VERIFIED_INSTRUCTION_LABELS[instruction.address]
-                    lines.extend([f"; {label_note}", f"{label_name}:"])
                 raw_text = instruction.raw.hex().upper()
                 if instruction.address in fallbacks:
                     lines.append(
@@ -730,3 +913,7 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+────────────────────────────────────────────────────────────
+
