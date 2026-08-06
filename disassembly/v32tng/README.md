@@ -14,10 +14,9 @@ Run:
 ./build.sh
 ```
 
-The build verifies the supplied original, assembles [`main.asm`](main.asm)
-without reading or importing the reference file, verifies the rebuilt hash,
-and uses `cmp` to prove exact file identity. Executable-byte `incbin`
-directives are prohibited throughout the source tree.
+The build assembles [`src/main.asm`](src/main.asm), rejects executable-byte
+`incbin` directives, and verifies the canonical PE SHA-256. It does not need
+the original executable, Python, Ghidra, or any reverse-engineering tool.
 
 ## What “complete” means today
 
@@ -37,9 +36,9 @@ Some explicit data may later prove to be code, jump tables, inline constants,
 or alignment. Thirty entries currently have verified semantic roles; the
 other 306 retain neutral address-based names.
 
-Exact generated coverage and the complete function address map are maintained
-later in this README. This file is the public, monolithic research record for
-the Win32 reconstruction.
+Exact coverage and the complete function address map are maintained later in
+this README. This file is the public, monolithic research record for the
+Win32 reconstruction.
 
 ## Addresses, opcodes, and function identity
 
@@ -50,11 +49,12 @@ bytecodes. A former filename such as
 semantic working name.
 
 The assembler does not derive placement from filenames. Exact placement comes
-from `src/layout.asm`, emission macros, labels, instruction-size guards, and
-padding. Verified function files can therefore use semantic filenames without
-changing the PE. Original addresses remain in source preambles and in the
-function address map below. Unidentified functions retain address-bearing
-filenames because the entry address is still their only trustworthy identity.
+from the raw-file emission order embedded in `src/main.asm`, emission macros,
+labels, instruction-size guards, and padding. Verified function files can
+therefore use semantic filenames without changing the PE. Original addresses
+remain in source preambles and in the function address map below. Unidentified
+functions retain address-bearing filenames because the entry address is still
+their only trustworthy identity.
 
 The preferred image base is `00400000h`. With no rebasing, a debugger address
 such as `00408DF6h` maps directly to `open_loose_vdx`. If the module is
@@ -84,8 +84,7 @@ does not restore original private symbols.
 
 | Path | Purpose |
 |---|---|
-| `main.asm` | Canonical flat-PE assembly root |
-| `src/layout.asm` | Exact raw-file emission order |
+| `src/main.asm` | Canonical flat-PE assembly root and exact raw-file emission order |
 | `src/functions/grv/*.asm` | Verified GRV interpreter, readers, and runtime helpers |
 | `src/functions/vdx/*.asm` | Verified VDX stream, frame, and LZSS routines |
 | `src/functions/audio/*.asm` | Verified music/audio routines |
@@ -94,8 +93,6 @@ does not restore original private symbols.
 | `src/functions/runtime/*.asm` | Verified application startup, dispatch, state, support, and shutdown routines |
 | `src/functions/unknown/*.asm` | Provisional functions retaining address-based identities |
 | `src/data/chunks/*.asm` | Explicit headers, gaps, section data, and debug tail |
-| `tools/function-map.tsv` | Machine-readable preserved Ghidra ownership-range export |
-| `tools/generate_lossless_source.py` | Deterministic source, README-map, and byte-identity generator |
 
 The semantic directories express verified subsystem ownership. They are not
 claims about the original Visual C++ object modules.
@@ -105,18 +102,11 @@ exactly. If NASM's preferred encoding differs, the generated source retains
 the exact opcode bytes with the decoded virtual address and mnemonic in its
 comment. Those lines are decoded instructions, not opaque regions.
 
-To regenerate the complete source tree:
-
-```sh
-python3 tools/generate_lossless_source.py \
-  --reference ../../research/v32tng/v32tng.exe
-```
-
-The default ownership input is `tools/function-map.tsv`. The optional
-`--function-map` argument can select another compatible Ghidra export. The
-generator rewrites generated function/data/layout files, refreshes the
-coverage and address-map sections in this README, and refuses to finish unless
-its independently assembled probe is byte-identical.
+This is the permanent source tree, not a reverse-engineering workspace. It
+contains no generator, analyzer export, disassembler automation, or private
+reference executable. Historical addresses, analyzer symbols, ownership
+ranges, confidence, and source paths remain preserved in the function map
+below. `build.sh` is the sole required entry point.
 
 ## Verified semantic footholds
 
@@ -178,7 +168,6 @@ For every observation, preserve:
 Search the function address map below for the normalized repository address,
 or search source comments for its eight-digit hexadecimal form.
 
-<!-- BEGIN GENERATED FUNCTION REFERENCE -->
 ## Lossless source coverage
 
 This inventory describes **mechanical source coverage**, not complete semantic
@@ -551,5 +540,3 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `004191A0` | unidentified | `func_004191a0` | `FUN_004191a0` | `004191A0–0041934F` | [`src/functions/unknown/004191a0_func_004191a0.asm`](src/functions/unknown/004191a0_func_004191a0.asm) |
 | `00419350` | unidentified | `func_00419350` | `FUN_00419350` | `00419350–0041939F` | [`src/functions/unknown/00419350_func_00419350.asm`](src/functions/unknown/00419350_func_00419350.asm) |
 | `004194A2` | unidentified | `func_004194a2` | `RtlUnwind` | `004194A2–004194A7` | [`src/functions/unknown/004194a2_func_004194a2.asm`](src/functions/unknown/004194a2_func_004194a2.asm) |
-
-<!-- END GENERATED FUNCTION REFERENCE -->

@@ -221,9 +221,10 @@ Representative exact foyer evidence:
 
 The generated `*.grv.asm` files retain every original instruction byte. The
 native C++23 implementation in `src/grv.cpp` validates listing offsets and
-rebuilds the raw byte stream. `research/tools/grv_roundtrip.cpp` has rebuilt
-all 23 supplied retail listings and compared each result byte-for-byte with
-its original GRV successfully.
+rebuilds the raw byte stream.
+`research/probes/grv/grv_roundtrip.cpp` has rebuilt all 23 supplied retail
+listings and compared each result byte-for-byte with its original GRV
+successfully.
 
 This proves lossless disassembly/reassembly today. It is not yet a full
 symbolic assembler: editing mnemonics or labels does not currently rewrite

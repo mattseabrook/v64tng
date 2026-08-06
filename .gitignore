@@ -39,5 +39,9 @@ config.json
 /P/
 /XMI/
 
-# Ignore crap
+# Ignore local example output
 examples/
+
+# Python analysis caches
+__pycache__/
+*.pyc

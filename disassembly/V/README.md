@@ -15,19 +15,18 @@ Run:
 ./build.sh
 ```
 
-The build verifies the packed original, deterministically decompresses LZEXE,
-assembles [`main.asm`](main.asm), verifies the rebuilt hash, and uses `cmp` to
-prove exact file identity. Only after those checks pass does it deploy the
-rebuilt executable as `/mnt/T7G/T7G.EXE`. The original `/mnt/T7G/V.EXE` is
-never removed or overwritten. Executable-byte `incbin` directives are
-prohibited throughout the source tree.
+The build assembles [`src/main.asm`](src/main.asm), rejects executable-byte
+`incbin` directives, and verifies the canonical unpacked SHA-256. Only after
+that check passes does it deploy the rebuilt executable as
+`/mnt/T7G/T7G.EXE`. The original `/mnt/T7G/V.EXE` is never removed or
+overwritten.
 
 Set `V_DISASSEMBLY_NO_DEPLOY=1` to perform the complete build and verification
 without deploying.
 
-The first run may fetch and compile the pinned, MIT-licensed `lzexe` 0.1.1
-crate into the ignored `build/toolchain` directory. NASM and Python 3 are the
-other source-generation/build requirements.
+NASM, ripgrep, and standard SHA-256 utilities are the only build requirements.
+The project does not need Python, Ghidra, an unpacker, the packed original, or
+any reverse-engineering tool.
 
 ## What “complete” means today
 
@@ -48,9 +47,9 @@ classified as data may prove to be code, and some functions may later be
 split, joined, or grouped. Of the 261 entries, 48 currently have verified
 semantic roles and 213 retain neutral address-based names.
 
-Exact generated coverage and the complete function address map are maintained
-later in this README. This file is the public, monolithic research record for
-the DOS reconstruction.
+Exact coverage and the complete function address map are maintained later in
+this README. This file is the public, monolithic research record for the DOS
+reconstruction.
 
 ## Addresses, opcodes, and function identity
 
@@ -68,11 +67,12 @@ instruction bytes begin with `83 BE 16 F3 02`. GRV opcodes such as `17h`,
 function addresses.
 
 The assembler does not derive placement from filenames. Exact placement comes
-from `src/layout.asm`, emission macros, labels, instruction-size guards, and
-padding. Verified function files can therefore use semantic filenames without
-changing a byte. Their original addresses remain in source preambles and in
-the function address map below. Unidentified functions retain address-bearing
-filenames because the entry offset is still their only trustworthy identity.
+from the emission order embedded in `src/main.asm`, emission macros, labels,
+instruction-size guards, and padding. Verified function files can therefore
+use semantic filenames without changing a byte. Their original addresses
+remain in source preambles and in the function address map below. Unidentified
+functions retain address-bearing filenames because the entry offset is still
+their only trustworthy identity.
 
 Repository symbols use a zero-based linear offset into the MZ load image.
 Given the executable's DOS load segment `L` and a runtime address `CS:IP`:
@@ -94,9 +94,7 @@ the canonical unpacked entry represented by this source tree.
 
 | Path | Purpose |
 |---|---|
-| `main.asm` | Canonical assembly root and MZ/load-image section layout |
-| `src/header.asm` | Explicit DOS MZ header and relocation table |
-| `src/layout.asm` | Exact linear emission order for code fragments and data |
+| `src/main.asm` | Canonical assembly root, explicit MZ header/relocations, section declarations, and exact linear emission order |
 | `src/functions/grv/*.asm` | Verified GRV interpreter and opcode helpers |
 | `src/functions/vdx/*.asm` | Verified VDX stream, frame, palette, and LZSS routines |
 | `src/functions/audio/*.asm` | Verified music/audio routines |
@@ -107,8 +105,6 @@ the canonical unpacked entry represented by this source tree.
 | `src/functions/unknown/*.asm` | Provisional functions retaining address-based identities |
 | `src/data/gaps.asm` | Explicit bytes between analyzer-owned function bodies |
 | `src/data/segments/*.asm` | Explicit post-code data in manageable chunks |
-| `tools/function-map.tsv` | Machine-readable preserved Ghidra ownership-range export |
-| `tools/generate_lossless_source.py` | Deterministic source, README-map, and byte-identity generator |
 
 The semantic directories express verified subsystem ownership. They are not
 claims about Trilobyte's original object modules.
@@ -119,18 +115,11 @@ bytes and retains the decoded mnemonic, address, and opcode in the comment.
 These are decoded instructions with noncanonical encodings, not unknown or
 omitted bytes.
 
-To regenerate the complete tree from the already-unpacked reference:
-
-```sh
-python3 tools/generate_lossless_source.py \
-  --reference build/reference/V130-unpacked.exe
-```
-
-The default ownership input is `tools/function-map.tsv`. The optional
-`--function-map` argument can select another compatible Ghidra export. The
-generator rewrites generated function/data/layout files, refreshes the
-coverage and address-map sections in this README, assembles a probe, and
-refuses to finish unless the probe is byte-identical.
+This is the permanent source tree, not a reverse-engineering workspace. It
+contains no generator, analyzer export, disassembler automation, or private
+reference executable. Historical addresses, analyzer symbols, ownership
+ranges, confidence, and source paths remain preserved in the function map
+below. `build.sh` is the sole required entry point.
 
 ## Naming and evidence policy
 
@@ -208,7 +197,6 @@ may require forced conditions or static proof. Exact original private symbol
 spelling, comments, filenames, and object-module layout require an original
 symbol artifact.
 
-<!-- BEGIN GENERATED FUNCTION REFERENCE -->
 ## Lossless source coverage
 
 This inventory describes **mechanical source coverage**, not complete semantic
@@ -508,5 +496,3 @@ Owned ranges are inclusive linear offsets into the unpacked load image.
 | `08891` | `1000:8891` | unidentified | `func_08891` | `FUN_1000_8891` | `08891–088D8` | [`src/functions/unknown/08891_func_08891.asm`](src/functions/unknown/08891_func_08891.asm) |
 | `088D9` | `1702:18b9` | unidentified | `func_088d9` | `FUN_1702_18b9` | `088D9–0891C` | [`src/functions/unknown/088d9_func_088d9.asm`](src/functions/unknown/088d9_func_088d9.asm) |
 | `0891D` | `1000:891d` | unidentified | `func_0891d` | `FUN_1000_891d` | `0891D–0892B` | [`src/functions/unknown/0891d_func_0891d.asm`](src/functions/unknown/0891d_func_0891d.asm) |
-
-<!-- END GENERATED FUNCTION REFERENCE -->

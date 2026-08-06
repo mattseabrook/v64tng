@@ -19,17 +19,18 @@ whole-corpus regression test on Linux:
 
 ```sh
 clang++ -std=c++23 -O2 -Iinclude \
-  research/tools/grv_roundtrip.cpp src/grv.cpp src/rl.cpp \
+  research/probes/grv/grv_roundtrip.cpp \
+  src/grv.cpp src/rl.cpp \
   -o /tmp/grv_roundtrip
 /tmp/grv_roundtrip T7G
 ```
 
 This offset/size/hash-checked round trip succeeds byte-for-byte for all 23
-supplied GRVs. See [`../GRV_ROOM_CROSSCHECK.md`](../GRV_ROOM_CROSSCHECK.md) for
+supplied GRVs. See [`GRV_ROOM_CROSSCHECK.md`](GRV_ROOM_CROSSCHECK.md) for
 the `F.GRV`/`DR.GRV` puzzle findings and room-navigation comparison.
 
 The native retail decoder uses the one-byte `0x1E` operand required for
 coherent `MAZE.GRV` media flow and matching Windows/ScummVM behavior.
 
-See [`../DOS/V126_V130_COMPARISON.md`](../DOS/V126_V130_COMPARISON.md) for the
+See [`V126_V130_COMPARISON.md`](V126_V130_COMPARISON.md) for the
 binary evidence and dialect discussion.

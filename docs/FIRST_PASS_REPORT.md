@@ -42,19 +42,20 @@ pseudocode—names, types, comments, and original source structure are absent.
 
 The originals were not modified. Analysis used copies unpacked into a temporary
 working directory. The reusable Ghidra export script is checked in at
-[`tools/ExportDecomp.java`](tools/ExportDecomp.java).
+[`../research/reverse-eng/ghidra/ExportDecomp.java`](../research/reverse-eng/ghidra/ExportDecomp.java).
 
-The demo ZIP already in `docs/` was also extracted to [`demo/`](demo/) so its
-launch sequence and player binaries can be studied independently.
+The demo ZIP was also extracted to
+[`../research/DOS/demo/`](../research/DOS/demo/) so its launch sequence and
+player binaries can be studied independently.
 
 ### Primary artifact fingerprints
 
 | Artifact | Size | SHA-256 |
 |---|---:|---|
-| [`DOS/126/V.EXE`](DOS/126/V.EXE) | 21,473 | `e5f56abc8962ee2ea6b7ac7aa8168f7fffe8c24cd394fad2c05fd98f015cedb1` |
-| [`demo/VDX.EXE`](demo/VDX.EXE) | 4,690 | `09417b43ba02161477abc9fbec5c5ca40a2dc73d76a47c40e32c5f19355f14cf` |
-| [`demo/PLAYTLC.EXE`](demo/PLAYTLC.EXE) | 254,768 | `ca5699ab5065364c98cb319c418a015fcdc1428b0af15f1d6909b4ff3406e885` |
-| [`v32tng/v32tng.exe`](v32tng/v32tng.exe) | 144,896 | `3c8c3fd3edc27717ae2a08b1f98c7a58f72bd91860a080a29e40d1da8854c36c` |
+| [`../research/DOS/126/V.EXE`](../research/DOS/126/V.EXE) | 21,473 | `e5f56abc8962ee2ea6b7ac7aa8168f7fffe8c24cd394fad2c05fd98f015cedb1` |
+| [`../research/DOS/demo/VDX.EXE`](../research/DOS/demo/VDX.EXE) | 4,690 | `09417b43ba02161477abc9fbec5c5ca40a2dc73d76a47c40e32c5f19355f14cf` |
+| [`../research/DOS/demo/PLAYTLC.EXE`](../research/DOS/demo/PLAYTLC.EXE) | 254,768 | `ca5699ab5065364c98cb319c418a015fcdc1428b0af15f1d6909b4ff3406e885` |
+| [`../research/v32tng/v32tng.exe`](../research/v32tng/v32tng.exe) | 144,896 | `3c8c3fd3edc27717ae2a08b1f98c7a58f72bd91860a080a29e40d1da8854c36c` |
 | `docs/7thguest DEMO.zip` | 3,167,149 | `08e8fcb039ab239e7c271d7e13291c51a76fd5fff2ac357afac508b9570b477a` |
 
 ## DOS `V.EXE`
@@ -207,7 +208,8 @@ not "there is no protection."
 ## Promotional DOS demo
 
 The archive is not a stripped, unprotected build of the same full game player.
-[`DEMO.BAT`](demo/DEMO.BAT) reveals the complete launch sequence:
+[`DEMO.BAT`](../research/DOS/demo/DEMO.BAT) reveals the complete launch
+sequence:
 
 ```bat
 playtlc TRIPRO.tlc -l1 -g
@@ -360,8 +362,8 @@ copy protection.
 
 ## Reproducible tooling
 
-[`tools/ExportDecomp.java`](tools/ExportDecomp.java) is a Ghidra headless
-post-script which exports:
+[`../research/reverse-eng/ghidra/ExportDecomp.java`](../research/reverse-eng/ghidra/ExportDecomp.java)
+is a Ghidra headless post-script which exports:
 
 - `functions.tsv`: entry address, current function name, and body range
 - `decompiled.c`: best-effort decompiler output for every discovered function
@@ -371,13 +373,15 @@ Example use:
 ```sh
 /opt/ghidra/support/analyzeHeadless PROJECT_DIR PROJECT \
   -process PROGRAM \
-  -scriptPath research/tools \
+  -scriptPath research/reverse-eng/ghidra \
   -postScript ExportDecomp.java OUTPUT_DIR
 ```
 
-The unpacked executables and generated decompiler dumps have deliberately not
-been committed yet. A future committed pipeline should record the exact
-unpacker version and regenerate them from the hashed originals.
+Private unpacked analysis copies, Ghidra databases, and generated decompiler
+dumps are deliberately not committed. The complete Arch Linux reconstruction
+procedure, pinned LZEXE step, Ghidra exporters, and generic byte-identical NASM
+generator are now maintained in
+[`../research/reverse-eng`](../research/reverse-eng).
 
 ## Limits of this pass
 
@@ -400,7 +404,8 @@ To grow this into a proper, reviewable disassembly without jumping layers:
 3. Create a named DOS function map, starting with startup, diagnostics, file
    I/O, video, and script dispatch.
 4. Reconstruct the `.GRV` interpreter opcode table and cross-check it against
-   the existing ScummVM/Groovie sources already present in this repository.
+   the ScummVM/Groovie implementation used as a historical external
+   cross-check. That formerly bundled source snapshot has since been removed.
 5. Document `.GJD` lookup and VDX chunk dispatch before attempting source-level
    reimplementation.
 6. Treat the TLC demo player as a separate historical branch and recover that

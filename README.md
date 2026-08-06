@@ -340,10 +340,10 @@ implementations:
    (`05/20/93 15:54:08`). Its interpreter begins at `1000:35B2`.
 2. Trilobyte's Windows player `v32tng.exe` v1.02b1. Its interpreter is the
    switch in the function at PE address `0x004021D1`.
-3. The bundled ScummVM Groovie implementation in
-   [`docs/scummvm-groovie/script.cpp`](docs/scummvm-groovie/script.cpp) and
-   [`script.h`](docs/scummvm-groovie/script.h), checked against the
-   [current upstream implementation](https://github.com/scummvm/scummvm/blob/master/engines/groovie/script.cpp).
+3. A historical cross-check against the
+   [upstream ScummVM Groovie implementation](https://github.com/scummvm/scummvm/tree/master/engines/groovie).
+   The formerly bundled source snapshot was audited and then removed; it is
+   not a build dependency or a canonical behavioral authority.
 
 Evidence labels used in the opcode tables are:
 
@@ -354,6 +354,27 @@ Evidence labels used in the opcode tables are:
 | ScummVM | Implemented or structurally described by ScummVM |
 | Reserved | Consumed but has no externally visible T7G effect |
 | V2 | Meaning is known only from a later Groovie v2 interpreter |
+
+#### Retired ScummVM reference audit
+
+Before removing the bundled snapshot, its T7G-specific script, VDX/LZSS,
+resource, save, cursor, and music paths were checked against this project's
+native implementation and the two original-player disassemblies.
+
+| Area | Information retained in this repository | Canonical decision |
+|---|---|---|
+| GRV dispatch | Operand shapes and working meanings through `0x59`, including `0x56` and `0x59` stub shapes | Original DOS/Win dispatchers and the retail corpus define the specification; ScummVM is only historical corroboration |
+| Encoded values | Immediate, `#` indirect, and `|row,column` access plus string interpolation | Preserved in the GRV reference, bounded decoder, runtime, and regression tests |
+| Input | Local declaration order, persistent edge regions, cursor 5 fallback, and variable `0x91` high-bit behavior | Preserved and checked against the original interpreters |
+| VDX | `00h`, `20h`, `25h`, and `80h` chunk roles, palette/tile grammar, persistent foreground/background model | Original disassemblies are authoritative |
+| Compression | LSB-first flags, zero token terminator, parameterized distance/length split, overlap copying | ScummVM's parameter-byte compression heuristic was explicitly rejected; original coding markers `67h`/`77h` select raw/compressed payloads |
+| Resources and saves | Packed RL/GJD references, name lookup, ten slots, and a `0x400`-byte native variable bank | DOS `save.N` and Win32 `st7g.N` remain separate native formats; ScummVM wrapper metadata is not treated as an original format |
+| Cursors and music | ROB offsets/style mapping, cursor compression/palettes, XMI background state, and delay semantics | Format facts are preserved in this README and native code; host-framework abstractions were not imported |
+| Puzzle logic | Opcode `42h` consumes one operation byte, operates on `variables+0x19`, and returns move coordinates in variables `0`–`3` | Third-party GPL puzzle-AI source was not transplanted; remaining internals must be recovered from the original executable disassemblies |
+
+No ScummVM source is vendored in this repository. References to “ScummVM” in
+the tables record provenance, agreement, or a known divergence; they do not
+indicate copied code or a runtime/build dependency.
 
 #### Working names versus original symbols
 
@@ -381,7 +402,7 @@ those sources.
 Where the implementations disagree, the table describes each behavior rather
 than silently choosing one. The reverse-engineering details and binary hashes
 are recorded in
-[`research/FIRST_PASS_REPORT.md`](research/FIRST_PASS_REPORT.md).
+[`docs/FIRST_PASS_REPORT.md`](docs/FIRST_PASS_REPORT.md).
 
 Known canonical PC `script.grv` releases are 16,659 bytes. ScummVM identifies
 the common version using MD5 `d1b8033b40aa67c076039881eccce90d` over its first
@@ -429,18 +450,17 @@ Generated research artifacts are:
   lossless assembly listing writer, and raw-column rebuilder;
 - [`src/grv_editor.cpp`](src/grv_editor.cpp): live Win32 GRV editor, VDX scene
   resolver, hotspot overlay, playback controls, and decompile/assemble dialogs;
-- [`research/tools/grv_roundtrip.cpp`](research/tools/grv_roundtrip.cpp):
+- [`research/probes/grv/grv_roundtrip.cpp`](research/probes/grv/grv_roundtrip.cpp):
   standalone native regression test for the entire retail corpus;
-- [`research/grv-corpus/OPCODE_CENSUS.md`](research/grv-corpus/OPCODE_CENSUS.md):
+- [`docs/OPCODE_CENSUS.md`](docs/OPCODE_CENSUS.md):
   every opcode count and every script which uses it;
-- [`research/grv-corpus/HOTSPOTS.md`](research/grv-corpus/HOTSPOTS.md): all 376
+- [`docs/HOTSPOTS.md`](docs/HOTSPOTS.md): all 376
   input loops, scene candidates, coordinates, cursors, and action targets;
-- [`research/grv-corpus/corpus.json`](research/grv-corpus/corpus.json):
-  machine-readable file metadata, opcode counts, and input-loop records;
-- [`research/GRV_ROOM_CROSSCHECK.md`](research/GRV_ROOM_CROSSCHECK.md):
+- [`docs/GRV_ROOM_CROSSCHECK.md`](docs/GRV_ROOM_CROSSCHECK.md):
   `F.GRV`/`DR.GRV` puzzle analysis and the exact comparison with the
   hand-authored `fh.h`/`dr.h` navigation data;
-- `research/grv-corpus/*.grv.asm`: complete offset-preserving assembly listings.
+- [`disassembly/GRV`](disassembly/GRV): complete offset-preserving assembly
+  listings.
 
 The raw-byte column in every listing is lossless. The native C++23 toolchain
 rebuilds all 23 listings byte-identically to the supplied originals, including
@@ -463,7 +483,7 @@ flow when opcode `0x1E` consumes one byte, as in Windows and ScummVM. Both DOS
 1.26 and 1.30 demonstrably consume a word. The research tool defaults to the
 corpus/Windows interpretation but supports `--reserved-1e-width 2` for exact
 DOS decoding. See
-[`research/DOS/V126_V130_COMPARISON.md`](research/DOS/V126_V130_COMPARISON.md)
+[`docs/V126_V130_COMPARISON.md`](docs/V126_V130_COMPARISON.md)
 for the byte-level evidence.
 
 ### GRV File Layout
@@ -1177,8 +1197,8 @@ from these presentation fields.
 
 ### GRV Worked Bytecode Example
 
-ScummVM preserves this sequence adapted from the canonical `script.grv` MIDI
-initialization path:
+This project preserves the following sequence from the canonical `script.grv`
+MIDI initialization path; it was also part of the historical cross-check:
 
 ```text
 Offset  Bytes                 Decoding
@@ -2236,6 +2256,47 @@ The permanent NASM projects now begin at:
 Both trees now have complete byte coverage, but byte coverage and semantic
 understanding are tracked separately: runtime traces will refine boundaries
 and names while each canonical `main.asm` byte comparison remains intact.
+
+## Portable reverse-engineering kit
+
+The reconstruction laboratory is retained separately in
+[`research/reverse-eng`](research/reverse-eng). It is a portable, game-agnostic
+x86 workflow for:
+
+- fingerprinting and inspecting DOS MZ and PE32 inputs;
+- exporting provisional function ownership, decompiler evidence, and
+  comparison signatures from Ghidra;
+- generating explicit NASM for every file byte without `incbin`;
+- detecting and preserving noncanonical historical instruction encodings;
+- refusing completion until the rebuilt file is byte-identical to the declared
+  canonical target;
+- turning the mechanical result into a maintained semantic disassembly without
+  making the published disassembly depend on the laboratory.
+
+The documented Arch Linux procedure and generic generator were independently
+validated against both permanent disassemblies. They reproduced the
+102,136-byte DOS unpacked MZ and the 144,896-byte Win32 PE with their canonical
+SHA-256 hashes.
+
+The separate
+[`future differential-validation design`](docs/DIFFERENTIAL_VALIDATION_PLAN.md)
+records the architecture reviewed in
+[`mattseabrook/zelda3`](https://github.com/mattseabrook/zelda3) and translates
+its original-code/native-code state comparison and deterministic replay model
+to GRV opcode, VDX chunk, and scenario boundaries. That document is a plan;
+no dual-execution machinery is part of the current runtime.
+
+The near-term engineering queue is:
+
+1. validate the current v64tng build through structured gameplay sessions;
+2. add a Quake-style tilde console consuming the same structured GRV/VDX event
+   stream used by external traces;
+3. capture deterministic DOS and Win32 oracle sessions and implement
+   first-divergence comparison;
+4. build a VDX encoder in independently testable still, delta, palette, LZSS,
+   audio, and container layers;
+5. validate newly encoded content in v64tng, `v32tng.exe`, DOSBox-X, and real
+   DOS hardware with `V.EXE ~NAME.VDX`.
 
 ## Runtime capture and differential validation
 

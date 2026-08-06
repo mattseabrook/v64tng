@@ -2,8 +2,6 @@
 set -euo pipefail
 
 project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-repo_dir="$(cd -- "$project_dir/../.." && pwd)"
-reference="$repo_dir/research/v32tng/v32tng.exe"
 build_dir="$project_dir/build"
 rebuilt="$build_dir/v32tng-rebuilt.exe"
 expected_hash="3c8c3fd3edc27717ae2a08b1f98c7a58f72bd91860a080a29e40d1da8854c36c"
@@ -21,19 +19,17 @@ verify_hash() {
 }
 
 mkdir -p "$build_dir"
-verify_hash "$reference"
 
 if rg --line-number '^[[:space:]]*incbin([[:space:]]|$)' \
-    "$project_dir/main.asm" "$project_dir/src"; then
+    "$project_dir/src"; then
     echo "error: lossless source tree contains an incbin directive" >&2
     exit 1
 fi
 
 (
     cd "$project_dir"
-    nasm -f bin -o "$rebuilt" main.asm
+    nasm -f bin -o "$rebuilt" src/main.asm
 )
 
 verify_hash "$rebuilt"
-cmp --silent "$reference" "$rebuilt"
-echo "v32tng 1.02b1: byte-identical PE rebuild verified"
+echo "v32tng 1.02b1: canonical PE SHA-256 verified"
