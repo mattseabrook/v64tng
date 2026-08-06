@@ -1366,11 +1366,11 @@ The remaining body loads the complete palette and expands every two-colour
 ```
 
 The complete, byte-preserving routines are
-[`decode_vdx_stream`](disassembly/V/src/functions/03/0030e_decode_vdx_stream.asm),
+[`decode_vdx_stream`](disassembly/V/src/functions/vdx/decode_vdx_stream.asm),
 the DOS
-[`decode_vdx_bitmap_still`](disassembly/V/src/functions/05/00587_decode_vdx_bitmap_still.asm),
+[`decode_vdx_bitmap_still`](disassembly/V/src/functions/vdx/decode_vdx_bitmap_still.asm),
 and the Win32
-[`decode_vdx_bitmap_still`](disassembly/v32tng/src/functions/ab/0040ab84_decode_vdx_bitmap_still.asm).
+[`decode_vdx_bitmap_still`](disassembly/v32tng/src/functions/vdx/decode_vdx_bitmap_still.asm).
 These files are the complete disassembled implementations; the excerpts above
 show only the dispatch and compression boundary.
 
@@ -1530,11 +1530,11 @@ are separate branches of this one routine. The Win32 implementation at
 state.
 
 The complete canonical code is the DOS
-[`apply_vdx_delta_palette`](disassembly/V/src/functions/04/0040d_apply_vdx_delta_palette.asm)
+[`apply_vdx_delta_palette`](disassembly/V/src/functions/vdx/apply_vdx_delta_palette.asm)
 plus
-[`decode_vdx_delta_frame`](disassembly/V/src/functions/10/0105a_decode_vdx_delta_frame.asm),
+[`decode_vdx_delta_frame`](disassembly/V/src/functions/vdx/decode_vdx_delta_frame.asm),
 and the Win32
-[`decode_vdx_delta_frame`](disassembly/v32tng/src/functions/b1/0040b198_decode_vdx_delta_frame.asm).
+[`decode_vdx_delta_frame`](disassembly/v32tng/src/functions/vdx/decode_vdx_delta_frame.asm).
 
 | Concern | Original DOS/Win32 players | v64tng |
 |---|---|---|
@@ -2016,7 +2016,7 @@ the regular relation `lengthMask == (1 << lengthBits) - 1`.
 ### Original DOS implementation
 
 The complete DOS decoder is
-[`decompress_vdx_lzss`](disassembly/V/src/functions/23/0236a_decompress_vdx_lzss.asm).
+[`decompress_vdx_lzss`](disassembly/V/src/functions/vdx/decompress_vdx_lzss.asm).
 Its core is only 59 bytes. `DS:SI` is the encoded source and `ES:DI` is the
 output:
 
@@ -2047,9 +2047,9 @@ decoder is specialized for each chunk before it runs.
 ### Original Win32 implementation
 
 The Windows player replaces the self-modification with ordinary parameters.
-[`decompress_vdx_chunk`](disassembly/v32tng/src/functions/c0/0040c0bb_decompress_vdx_chunk.asm)
+[`decompress_vdx_chunk`](disassembly/v32tng/src/functions/vdx/decompress_vdx_chunk.asm)
 passes the source, reusable output buffer, mask, and bit count to
-[`decompress_vdx_lzss`](disassembly/v32tng/src/functions/8a/00408a80_decompress_vdx_lzss.asm).
+[`decompress_vdx_lzss`](disassembly/v32tng/src/functions/vdx/decompress_vdx_lzss.asm).
 The latter independently confirms the same LSB-first flags, zero token,
 `(token & mask) + 3` length, `token >> bits` distance, and overlapping
 output-relative copy. Its return value is the decoded byte count.
@@ -2583,7 +2583,7 @@ commonly one to two times the trace size. It should therefore be reserved for
 a short unresolved divergence, not routine room capture.
 
 The detailed address-conversion and evidence policy remains in
-[`disassembly/V/analysis/RUNTIME_CAPTURE_WORKFLOW.md`](disassembly/V/analysis/RUNTIME_CAPTURE_WORKFLOW.md).
+[`disassembly/V/README.md`](disassembly/V/README.md#runtime-evidence-workflow).
 
 Sources beyond the supplied guide corroborate the account:
 

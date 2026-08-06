@@ -156,6 +156,44 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
     ),
 }
 
+FUNCTION_CATEGORIES: dict[str, str] = {
+    "load_grv_script_file": "grv",
+    "initialize_grv_runtime_and_load_script": "grv",
+    "grv_read_u8": "grv",
+    "grv_read_u16_le": "grv",
+    "grv_read_u32_le": "grv",
+    "select_grv_video_resource": "resource_io",
+    "select_grv_song_resource": "resource_io",
+    "run_grv_vm": "grv",
+    "init_game_subsystems": "runtime",
+    "dequeue_key_input": "input",
+    "is_midi_sequence_playing": "audio",
+    "decompress_vdx_lzss": "vdx",
+    "open_loose_vdx": "vdx",
+    "dispatch_game_or_loose_vdx": "runtime",
+    "pump_media_and_game": "runtime",
+    "enforce_single_instance": "runtime",
+    "fatal_media_error": "runtime",
+    "shutdown_player": "runtime",
+    "winmain": "runtime",
+    "setup_window_and_runtime": "runtime",
+    "init_game_state": "runtime",
+    "decode_vdx_bitmap_still": "vdx",
+    "decode_vdx_delta_frame": "vdx",
+    "decompress_vdx_chunk": "vdx",
+    "allocate_grv_runtime_buffers": "grv",
+    "init_archive_tables": "resource_io",
+    "configure_vdx_stream": "vdx",
+    "decode_vdx_stream": "vdx",
+    "strcmp_runtime": "runtime",
+    "pe_entry": "runtime",
+}
+
+if set(FUNCTION_CATEGORIES) != {
+    source_name for source_name, _ in VERIFIED_NAMES.values()
+}:
+    raise RuntimeError("Every verified Win32 function must have one semantic category")
+
 VERIFIED_INSTRUCTION_LABELS: dict[int, tuple[str, str]] = {
     0x00402338: (
         "grv_opcode_dispatch",
@@ -364,13 +402,13 @@ def write_function_sources(
     instruction_count = 0
 
     for function in functions:
-        group = f"{(function.entry >> 8) & 0xFF:02x}"
-        relative_path = (
-            Path("src")
-            / "functions"
-            / group
-            / f"{function.entry:08x}_{function.source_name}.asm"
-        )
+        if function.entry in VERIFIED_NAMES:
+            category = FUNCTION_CATEGORIES[function.source_name]
+            filename = f"{function.source_name}.asm"
+        else:
+            category = "unknown"
+            filename = f"{function.entry:08x}_{function.source_name}.asm"
+        relative_path = Path("src") / "functions" / category / filename
         output_path = root / relative_path
         output_path.parent.mkdir(parents=True, exist_ok=True)
         function.source_path = relative_path
@@ -551,24 +589,6 @@ org 0x00400C00
     (root / "main.asm").write_text(text, encoding="utf-8")
 
 
-def write_inventory(root: Path, functions: list[Function]) -> None:
-    lines = ["entry\tworking_name\tstatus\tghidra_name\tsource"]
-    for function in functions:
-        status = (
-            "verified-role"
-            if function.entry in VERIFIED_NAMES
-            else "unidentified"
-        )
-        assert function.source_path is not None
-        lines.append(
-            f"{function.entry:08X}\t{function.source_name}\t{status}\t"
-            f"{function.ghidra_name}\t{function.source_path.as_posix()}"
-        )
-    (root / "analysis" / "function-inventory.tsv").write_text(
-        "\n".join(lines) + "\n", encoding="utf-8"
-    )
-
-
 def write_coverage(
     root: Path,
     functions: list[Function],
@@ -580,35 +600,90 @@ def write_coverage(
     verified = sum(
         function.entry in VERIFIED_NAMES for function in functions
     )
-    text = f"""# Win32 v32tng 1.02b1 lossless source coverage
+    begin_marker = "<!-- BEGIN GENERATED FUNCTION REFERENCE -->"
+    end_marker = "<!-- END GENERATED FUNCTION REFERENCE -->"
+    lines = [
+        begin_marker,
+        "## Lossless source coverage",
+        "",
+        "This inventory describes **mechanical source coverage**, not complete semantic",
+        "understanding.",
+        "",
+        "| Measure | Count |",
+        "|---|---:|",
+        f"| PE file bytes represented in source | {EXPECTED_SIZE:,} / {EXPECTED_SIZE:,} |",
+        "| `incbin` directives | 0 |",
+        f"| Provisional Ghidra function entries | {len(functions):,} |",
+        f"| Function-body bytes | {function_bytes:,} |",
+        f"| Function-body instructions decoded | {instruction_count:,} |",
+        f"| Instructions requiring exact `db` encoding fallback | {len(fallbacks):,} |",
+        f"| Bytes in encoding fallbacks | {fallback_bytes:,} |",
+        f"| Verified semantic function roles | {verified:,} |",
+        f"| Unidentified/provisionally bounded functions | {len(functions) - verified:,} |",
+        f"| Non-function PE file bytes | {EXPECTED_SIZE - function_bytes:,} |",
+        "",
+        "All headers, section padding, code gaps, `.rdata`, `.data`, imports, resources,",
+        "relocations, and the raw debug tail are explicit NASM data. Every decoded",
+        "instruction retains its PE virtual address and original opcode bytes.",
+        "",
+        "A `db` line inside a function means the instruction is decoded but NASM's",
+        "preferred spelling emits different bytes. Its mnemonic remains in the comment.",
+        "Analyzer ownership is provisional: explicit data may later prove to be code,",
+        "jump tables, inline constants, or alignment.",
+        "",
+        "## Function address map",
+        "",
+        "This is the permanent research and reversibility map. Entry values are PE",
+        "virtual addresses, not CPU or GRV opcodes. Verified filenames are semantic and",
+        "address-free; unidentified filenames retain their only trustworthy identity.",
+        "Owned ranges are inclusive PE virtual-address ranges.",
+        "",
+        "| PE virtual entry | Status | Working name | Analyzer symbol | Owned ranges | Source |",
+        "|---:|---|---|---|---|---|",
+    ]
+    for function in functions:
+        status = "verified-role" if function.entry in VERIFIED_NAMES else "unidentified"
+        ranges = "<br>".join(
+            f"`{start:08X}–{end - 1:08X}`" for start, end in function.ranges
+        )
+        assert function.source_path is not None
+        source_path = function.source_path.as_posix()
+        lines.append(
+            f"| `{function.entry:08X}` | {status} | `{function.source_name}` | "
+            f"`{function.ghidra_name}` | {ranges} | "
+            f"[`{source_path}`]({source_path}) |"
+        )
+    lines.extend(["", end_marker, ""])
+    section = "\n".join(lines)
 
-This inventory describes **mechanical source coverage**, not complete semantic
-understanding.
+    readme_path = root / "README.md"
+    readme = readme_path.read_text(encoding="utf-8")
+    if begin_marker in readme or end_marker in readme:
+        if begin_marker not in readme or end_marker not in readme:
+            raise RuntimeError("README function-reference markers are incomplete")
+        start = readme.index(begin_marker)
+        end = readme.index(end_marker, start) + len(end_marker)
+        readme = readme[:start] + section.rstrip() + readme[end:]
+    else:
+        readme = readme.rstrip() + "\n\n" + section
+    readme_path.write_text(readme, encoding="utf-8")
 
-| Measure | Count |
-|---|---:|
-| PE file bytes represented in source | {EXPECTED_SIZE:,} / {EXPECTED_SIZE:,} |
-| `incbin` directives | 0 |
-| Provisional Ghidra function entries | {len(functions):,} |
-| Function-body bytes | {function_bytes:,} |
-| Function-body instructions decoded | {instruction_count:,} |
-| Instructions requiring exact `db` encoding fallback | {len(fallbacks):,} |
-| Bytes in encoding fallbacks | {fallback_bytes:,} |
-| Verified semantic function roles | {verified:,} |
-| Unidentified/provisionally bounded functions | {len(functions) - verified:,} |
-| Non-function PE file bytes | {EXPECTED_SIZE - function_bytes:,} |
 
-All headers, section padding, code gaps, `.rdata`, `.data`, imports, resources,
-relocations, and the raw debug tail are explicit NASM data. Every decoded
-instruction retains its PE virtual address and original opcode bytes.
-
-A `db` line inside a function means the instruction is decoded but NASM's
-preferred spelling emits different bytes. Its mnemonic remains in the comment.
-Analyzer ownership is provisional: explicit data may later prove to be code,
-jump tables, inline constants, or alignment.
-"""
-    (root / "analysis" / "SOURCE_COVERAGE.md").write_text(
-        text, encoding="utf-8"
+def write_context_bundle(root: Path) -> None:
+    sections: list[str] = []
+    for relative_path in (
+        Path("README.md"),
+        Path("tools/generate_lossless_source.py"),
+    ):
+        display_path = ".\\" + str(relative_path).replace("/", "\\")
+        body = (root / relative_path).read_text(encoding="utf-8").rstrip()
+        sections.append(
+            f"{display_path}\n"
+            f"{'─' * max(48, len(display_path))}\n\n"
+            f"{body}\n"
+        )
+    (root / "v32tng.txt").write_text(
+        "\n\n" + "\n\n".join(sections), encoding="utf-8"
     )
 
 
@@ -623,7 +698,6 @@ def prepare_generated_tree(root: Path) -> None:
         path = root / relative
         if path.exists():
             shutil.rmtree(path)
-    (root / "analysis").mkdir(parents=True, exist_ok=True)
 
 
 def assemble(root: Path, output: Path) -> subprocess.CompletedProcess[bytes]:
@@ -649,7 +723,6 @@ def generate_once(
     )
     all_ranges = write_data_sources(root, reference, function_ranges)
     write_layout(root, all_ranges, len(reference))
-    write_inventory(root, functions)
     function_bytes = sum(
         end - start
         for function in functions
@@ -664,7 +737,7 @@ def main() -> int:
     parser.add_argument(
         "--function-map",
         type=Path,
-        default=Path("analysis/function-map.tsv"),
+        default=Path("tools/function-map.tsv"),
     )
     parser.add_argument(
         "--root",
@@ -748,6 +821,7 @@ def main() -> int:
         fallbacks,
         fallback_bytes,
     )
+    write_context_bundle(root)
     print(
         f"Generated {len(functions)} functions, {instruction_count} instructions, "
         f"{len(fallbacks)} exact-encoding fallbacks"

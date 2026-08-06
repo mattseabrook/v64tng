@@ -185,6 +185,62 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
     0x5CED: ("shutdown_player", "Cross-version mapped global shutdown and cleanup path."),
 }
 
+FUNCTION_CATEGORIES: dict[str, str] = {
+    "entry": "runtime",
+    "standalone_vdx_or_diagnostics": "runtime",
+    "read_vdx_stream_bytes": "vdx",
+    "read_and_validate_vdx_header": "vdx",
+    "decode_vdx_stream": "vdx",
+    "apply_vdx_delta_palette": "vdx",
+    "load_vdx_still_palette": "vdx",
+    "decode_vdx_bitmap_still": "vdx",
+    "decode_vdx_delta_frame": "vdx",
+    "decompress_vdx_lzss": "vdx",
+    "copy_rect_to_background": "vdx",
+    "copy_background_to_foreground": "vdx",
+    "stream_media_buffer": "vdx",
+    "detect_video_hardware": "platform",
+    "query_xms": "platform",
+    "format_memory_diagnostic": "platform",
+    "save_selected_archive_context": "resource_io",
+    "restore_selected_archive_context": "resource_io",
+    "select_grv_video_resource": "resource_io",
+    "select_grv_song_resource": "resource_io",
+    "read_selected_archive": "resource_io",
+    "build_resource_filename": "resource_io",
+    "open_resource_read_only": "resource_io",
+    "close_resource_file": "resource_io",
+    "load_selected_resource_file": "resource_io",
+    "run_grv_vm": "grv",
+    "grv_load_child_script": "grv",
+    "grv_return_from_child_script": "grv",
+    "grv_check_valid_saves": "savegame",
+    "grv_save_game": "savegame",
+    "grv_swap_variables": "grv",
+    "grv_move_variable": "grv",
+    "grv_decrement_variable": "grv",
+    "grv_random": "grv",
+    "grv_xor_obfuscate_variables": "grv",
+    "grv_char_less_jump": "grv",
+    "grv_jump_if_indirect_not_equal": "grv",
+    "grv_load_string_indirect": "grv",
+    "grv_compare_indirect_and_jump": "grv",
+    "grv_play_transition_video_ref": "grv",
+    "grv_play_video_name": "grv",
+    "grv_sleep": "grv",
+    "run_grv_input_loop": "grv",
+    "match_grv_key_action": "grv",
+    "test_grv_hotspot_rect": "grv",
+    "initialize_subsystems_xms": "platform",
+    "load_and_play_selected_xmi": "audio",
+    "shutdown_player": "runtime",
+}
+
+if set(FUNCTION_CATEGORIES) != {
+    source_name for source_name, _ in VERIFIED_NAMES.values()
+}:
+    raise RuntimeError("Every verified DOS function must have one semantic category")
+
 
 @dataclasses.dataclass(frozen=True)
 class Instruction:
@@ -362,10 +418,13 @@ def write_function_sources(
     instruction_count = 0
 
     for function in functions:
-        group = f"{function.entry >> 8:02x}"
-        relative_path = Path("src") / "functions" / group / (
-            f"{function.entry:05x}_{function.source_name}.asm"
-        )
+        if function.entry in VERIFIED_NAMES:
+            category = FUNCTION_CATEGORIES[function.source_name]
+            filename = f"{function.source_name}.asm"
+        else:
+            category = "unknown"
+            filename = f"{function.entry:05x}_{function.source_name}.asm"
+        relative_path = Path("src") / "functions" / category / filename
         output_path = root / relative_path
         output_path.parent.mkdir(parents=True, exist_ok=True)
         function.source_path = relative_path
@@ -625,20 +684,6 @@ section .image follows=.header vstart=0 align=1
     (root / "main.asm").write_text(main, encoding="utf-8")
 
 
-def write_inventory(root: Path, functions: list[Function]) -> None:
-    lines = ["linear_entry\tworking_name\tstatus\tghidra_entry\tghidra_name\tsource"]
-    for function in functions:
-        status = "verified-role" if function.entry in VERIFIED_NAMES else "unidentified"
-        lines.append(
-            f"{function.entry:05X}\t{function.source_name}\t{status}\t"
-            f"{function.ghidra_entry}\t{function.ghidra_name}\t"
-            f"{function.source_path.as_posix() if function.source_path else ''}"
-        )
-    (root / "analysis" / "function-inventory.tsv").write_text(
-        "\n".join(lines) + "\n", encoding="utf-8"
-    )
-
-
 def assemble(root: Path, output: Path) -> subprocess.CompletedProcess[bytes]:
     return subprocess.run(
         ["nasm", "-f", "bin", "-o", str(output), "main.asm"],
@@ -657,7 +702,6 @@ def prepare_generated_tree(root: Path) -> None:
             shutil.rmtree(target)
     (root / "src" / "functions").mkdir(parents=True)
     (root / "src" / "data" / "segments").mkdir(parents=True)
-    (root / "analysis").mkdir(parents=True, exist_ok=True)
     (root / "build").mkdir(parents=True, exist_ok=True)
 
 
@@ -679,7 +723,6 @@ def generate_once(
     data_ranges = write_post_code_data(root, image, code_end)
     write_layout(root, function_ranges + gap_ranges + data_ranges, len(image))
     write_main(root)
-    write_inventory(root, functions)
     function_bytes = sum(end - start for start, end in occupied)
     return instruction_index, instruction_count, function_bytes, code_end
 
@@ -695,36 +738,93 @@ def write_coverage(
     fallback_bytes: int,
 ) -> None:
     verified = sum(function.entry in VERIFIED_NAMES for function in functions)
-    text = f"""# DOS V1.30 lossless source coverage
+    begin_marker = "<!-- BEGIN GENERATED FUNCTION REFERENCE -->"
+    end_marker = "<!-- END GENERATED FUNCTION REFERENCE -->"
+    lines = [
+        begin_marker,
+        "## Lossless source coverage",
+        "",
+        "This inventory describes **mechanical source coverage**, not complete semantic",
+        "understanding.",
+        "",
+        "| Measure | Count |",
+        "|---|---:|",
+        f"| Unpacked load-image bytes represented in source | {image_size:,} / {image_size:,} |",
+        "| `incbin` directives | 0 |",
+        f"| Provisional Ghidra function entries | {len(functions)} |",
+        f"| Function-body bytes | {function_bytes:,} |",
+        f"| Function-body instructions decoded | {instruction_count:,} |",
+        f"| Instructions requiring exact `db` encoding fallback | {len(fallbacks):,} |",
+        f"| Bytes in encoding fallbacks | {fallback_bytes:,} |",
+        f"| Verified semantic function roles | {verified} |",
+        f"| Unidentified/provisionally bounded functions | {len(functions) - verified} |",
+        f"| Analyzed function/gap span end | `{code_end:05X}h` |",
+        f"| Non-function bytes in the load image | {image_size - function_bytes:,} |",
+        "",
+        "Every function-body instruction retains its runtime offset and original opcode",
+        "bytes in a comment. A `db` line inside a function means the instruction was",
+        "decoded, but NASM's preferred spelling would emit different bytes; the decoded",
+        "mnemonic remains in the comment.",
+        "",
+        "Bytes outside Ghidra-owned bodies remain explicit data. Some may later prove to",
+        "be undiscovered code, jump tables, inline constants, or alignment. Runtime",
+        "evidence should change ownership only after the byte-identical build remains",
+        "green.",
+        "",
+        "## Function address map",
+        "",
+        "This is the permanent research and reversibility map. The entry values are code",
+        "locations, not CPU or GRV opcodes. Verified filenames are semantic and",
+        "address-free; unidentified filenames retain their only trustworthy identity.",
+        "Owned ranges are inclusive linear offsets into the unpacked load image.",
+        "",
+        "| Linear entry | Ghidra entry | Status | Working name | Analyzer symbol | Owned ranges | Source |",
+        "|---:|---:|---|---|---|---|---|",
+    ]
+    for function in functions:
+        status = "verified-role" if function.entry in VERIFIED_NAMES else "unidentified"
+        ranges = "<br>".join(
+            f"`{start:05X}–{end - 1:05X}`" for start, end in function.ranges
+        )
+        assert function.source_path is not None
+        source_path = function.source_path.as_posix()
+        lines.append(
+            f"| `{function.entry:05X}` | `{function.ghidra_entry}` | {status} | "
+            f"`{function.source_name}` | `{function.ghidra_name}` | {ranges} | "
+            f"[`{source_path}`]({source_path}) |"
+        )
+    lines.extend(["", end_marker, ""])
+    section = "\n".join(lines)
 
-This inventory describes **mechanical source coverage**, not complete semantic
-understanding.
+    readme_path = root / "README.md"
+    readme = readme_path.read_text(encoding="utf-8")
+    if begin_marker in readme or end_marker in readme:
+        if begin_marker not in readme or end_marker not in readme:
+            raise RuntimeError("README function-reference markers are incomplete")
+        start = readme.index(begin_marker)
+        end = readme.index(end_marker, start) + len(end_marker)
+        readme = readme[:start] + section.rstrip() + readme[end:]
+    else:
+        readme = readme.rstrip() + "\n\n" + section
+    readme_path.write_text(readme, encoding="utf-8")
 
-| Measure | Count |
-|---|---:|
-| Unpacked load-image bytes represented in source | {image_size:,} / {image_size:,} |
-| `incbin` directives | 0 |
-| Provisional Ghidra function entries | {len(functions)} |
-| Function-body bytes | {function_bytes:,} |
-| Function-body instructions decoded | {instruction_count:,} |
-| Instructions requiring exact `db` encoding fallback | {len(fallbacks):,} |
-| Bytes in encoding fallbacks | {fallback_bytes:,} |
-| Verified semantic function roles | {verified} |
-| Unidentified/provisionally bounded functions | {len(functions) - verified} |
-| Analyzed function/gap span end | `{code_end:05X}h` |
-| Non-function bytes in the load image | {image_size - function_bytes:,} |
 
-Every function-body instruction retains its runtime offset and original opcode
-bytes in a comment. A `db` line inside a function means the instruction was
-decoded, but NASM's preferred spelling would emit different bytes; the decoded
-mnemonic is preserved in the comment.
-
-Bytes outside Ghidra-owned bodies remain explicit data. Some may later prove to
-be undiscovered code, jump tables, inline constants, or alignment. Runtime
-evidence should change ownership only after the byte-identical build remains
-green.
-"""
-    (root / "analysis" / "SOURCE_COVERAGE.md").write_text(text, encoding="utf-8")
+def write_context_bundle(root: Path) -> None:
+    sections: list[str] = []
+    for relative_path in (
+        Path("README.md"),
+        Path("tools/generate_lossless_source.py"),
+    ):
+        display_path = ".\\" + str(relative_path).replace("/", "\\")
+        body = (root / relative_path).read_text(encoding="utf-8").rstrip()
+        sections.append(
+            f"{display_path}\n"
+            f"{'─' * max(48, len(display_path))}\n\n"
+            f"{body}\n"
+        )
+    (root / "V-disassembly.txt").write_text(
+        "\n\n" + "\n\n".join(sections), encoding="utf-8"
+    )
 
 
 def main() -> int:
@@ -733,7 +833,7 @@ def main() -> int:
     parser.add_argument(
         "--function-map",
         type=Path,
-        default=Path("analysis/function-map.tsv"),
+        default=Path("tools/function-map.tsv"),
     )
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     args = parser.parse_args()
@@ -816,6 +916,7 @@ def main() -> int:
         fallbacks,
         fallback_bytes,
     )
+    write_context_bundle(root)
     print(
         f"Generated {len(functions)} functions, {instruction_count} instructions, "
         f"{len(fallbacks)} exact-encoding fallbacks"
