@@ -285,7 +285,7 @@ def write_function_sources(
     bits: int,
     model: AddressModel,
     fallbacks: set[int],
-) -> tuple[list[EmitRange], dict[int, Instruction], int]:
+) -> tuple[list[EmitRange], dict[int, Instruction], int, list[str]]:
     function_root = root / "src" / "functions"
     function_root.mkdir(parents=True, exist_ok=True)
     includes: list[str] = []
@@ -361,11 +361,7 @@ def write_function_sources(
             )
         (root / relative_path).write_text("\n".join(lines), encoding="utf-8")
 
-    (function_root / "all.asm").write_text(
-        "\n".join(includes) + ("\n" if includes else ""),
-        encoding="utf-8",
-    )
-    return emit_ranges, instruction_index, instruction_count
+    return emit_ranges, instruction_index, instruction_count, includes
 
 
 def write_data_sources(
@@ -374,8 +370,8 @@ def write_data_sources(
     function_ranges: list[EmitRange],
     prefix_size: int,
     chunk_size: int,
-) -> list[EmitRange]:
-    data_root = root / "src" / "data" / "chunks"
+) -> tuple[list[EmitRange], list[str]]:
+    data_root = root / "src" / "data"
     data_root.mkdir(parents=True, exist_ok=True)
     occupied = sorted(function_ranges, key=lambda item: item.raw_start)
     result = list(occupied)
@@ -393,7 +389,6 @@ def write_data_sources(
             relative_path = (
                 Path("src")
                 / "data"
-                / "chunks"
                 / f"data_{data_index:04d}_{cursor:08x}.asm"
             )
             block = reference[cursor:boundary]
@@ -422,11 +417,7 @@ def write_data_sources(
     if cursor < len(reference):
         emit_gap(cursor, len(reference))
 
-    (data_root / "all.asm").write_text(
-        "\n".join(includes) + ("\n" if includes else ""),
-        encoding="utf-8",
-    )
-    return sorted(result, key=lambda item: item.raw_start)
+    return sorted(result, key=lambda item: item.raw_start), includes
 
 
 def append_layout(
@@ -475,6 +466,8 @@ def write_main(
     ranges: list[EmitRange],
     reference_size: int,
     title: str,
+    function_includes: list[str],
+    data_includes: list[str],
 ) -> None:
     lines = [
         f"; {title} -- mechanically generated lossless source root.",
@@ -485,8 +478,11 @@ def write_main(
         "",
         f"bits {bits}",
         "",
-        '%include "src/functions/all.asm"',
-        '%include "src/data/chunks/all.asm"',
+        "; Functions",
+        *function_includes,
+        "",
+        "; Data Segments",
+        *data_includes,
         "",
     ]
     if model.prefix_size:
@@ -689,7 +685,7 @@ def main() -> int:
     instruction_count = 0
     convergence_limit = 50
     for _ in range(convergence_limit):
-        function_ranges, instruction_index, instruction_count = (
+        function_ranges, instruction_index, instruction_count, function_includes = (
             write_function_sources(
                 root,
                 functions,
@@ -699,7 +695,7 @@ def main() -> int:
                 fallbacks,
             )
         )
-        ranges = write_data_sources(
+        ranges, data_includes = write_data_sources(
             root,
             reference,
             function_ranges,
@@ -713,6 +709,8 @@ def main() -> int:
             ranges,
             len(reference),
             args.title,
+            function_includes,
+            data_includes,
         )
         result = assemble(root)
         stderr = result.stderr.decode("utf-8", errors="replace")

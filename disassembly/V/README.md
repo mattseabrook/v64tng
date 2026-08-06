@@ -104,7 +104,7 @@ the canonical unpacked entry represented by this source tree.
 | `src/functions/runtime/*.asm` | Verified startup, dispatch, and shutdown routines |
 | `src/functions/unknown/*.asm` | Provisional functions retaining address-based identities |
 | `src/data/gaps.asm` | Explicit bytes between analyzer-owned function bodies |
-| `src/data/segments/*.asm` | Explicit post-code data in manageable chunks |
+| `src/data/data_*.asm` | Explicit post-code data in manageable chunks |
 
 The semantic directories express verified subsystem ownership. They are not
 claims about Trilobyte's original object modules.

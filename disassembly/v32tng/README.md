@@ -92,7 +92,7 @@ does not restore original private symbols.
 | `src/functions/resource_io/*.asm` | Verified archive and resource-selection routines |
 | `src/functions/runtime/*.asm` | Verified application startup, dispatch, state, support, and shutdown routines |
 | `src/functions/unknown/*.asm` | Provisional functions retaining address-based identities |
-| `src/data/chunks/*.asm` | Explicit headers, gaps, section data, and debug tail |
+| `src/data/data_*.asm` | Explicit headers, gaps, section data, and debug tail |
 
 The semantic directories express verified subsystem ownership. They are not
 claims about the original Visual C++ object modules.
