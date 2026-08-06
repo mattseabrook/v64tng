@@ -1,11 +1,11 @@
 ; Linear entry 03EB8 (1000:3eb8)
 ; Ghidra working symbol: FUN_1000_3eb8
-; Role not yet verified; boundary is provisional.
+; Verified GRV RETURNSCRIPT (43h): restores the parent context and returns a byte result.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_03eb8_part_00 0
+%macro emit_grv_return_from_child_script_part_00 0
     %%fragment_start:
-func_03eb8:
+grv_return_from_child_script:
     %%insn_03eb8:
     lodsb ; 03EB8 AC
     %if ($ - %%insn_03eb8) > 1

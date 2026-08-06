@@ -1,11 +1,11 @@
 ; Linear entry 041DF (1000:41df)
 ; Ghidra working symbol: FUN_1000_41df
-; Role not yet verified; boundary is provisional.
+; Verified GRV XOR_OBFUSCATE (1Bh) variable-sequence handler.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_041df_part_00 0
+%macro emit_grv_xor_obfuscate_variables_part_00 0
     %%fragment_start:
-func_041df:
+grv_xor_obfuscate_variables:
     %%insn_041df:
     call 0x400a ; 041DF E828FE
     %if ($ - %%insn_041df) > 3

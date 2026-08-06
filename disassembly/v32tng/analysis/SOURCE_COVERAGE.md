@@ -12,8 +12,8 @@ understanding.
 | Function-body instructions decoded | 25,181 |
 | Instructions requiring exact `db` encoding fallback | 1,992 |
 | Bytes in encoding fallbacks | 4,159 |
-| Verified semantic function roles | 26 |
-| Unidentified/provisionally bounded functions | 310 |
+| Verified semantic function roles | 30 |
+| Unidentified/provisionally bounded functions | 306 |
 | Non-function PE file bytes | 63,737 |
 
 All headers, section padding, code gaps, `.rdata`, `.data`, imports, resources,

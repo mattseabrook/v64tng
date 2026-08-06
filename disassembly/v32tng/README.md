@@ -34,8 +34,8 @@ The project has **complete mechanical source coverage**:
 This is not yet complete semantic recovery. Ghidra's function ownership is
 provisional and does not reveal the original Visual C++ object-module layout.
 Some explicit data may later prove to be code, jump tables, inline constants,
-or alignment. Twenty-three entries currently have verified semantic roles;
-the other 313 retain neutral `func_XXXXXXXX` names.
+or alignment. Thirty entries currently have verified semantic roles; the
+other 306 retain neutral `func_XXXXXXXX` names.
 
 See [`analysis/SOURCE_COVERAGE.md`](analysis/SOURCE_COVERAGE.md) for exact
 counts, [`analysis/function-inventory.tsv`](analysis/function-inventory.tsv)
@@ -103,6 +103,8 @@ The first verified roles preserved in the generated inventory include:
 - archive, resource, subsystem, and game-state initialization;
 - `script.grv` loading;
 - VDX stream configuration and playback;
+- parameterized VDX LZSS decompression;
+- `20h` still-frame and `25h` palette/tile-delta decoding;
 - global player shutdown;
 - the PE entry point and recognized `strcmp` runtime.
 

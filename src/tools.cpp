@@ -2116,7 +2116,7 @@ static void PopulateVDXInfoList(const std::string& filename)
             data.chunkType = chunk.chunkType;
             data.offset = currentOffset;
             data.size = chunk.dataSize;
-            data.lzssCompressed = (chunk.lengthMask != 0 && chunk.lengthBits != 0);
+            data.lzssCompressed = vdxChunkIsCompressed(chunk);
             
             // VDX chunk header is 8 bytes
             currentOffset += 8 + chunk.dataSize;
@@ -2137,7 +2137,7 @@ static void PopulateVDXInfoList(const std::string& filename)
                     std::vector<uint8_t> decompData;
                     std::span<const uint8_t> dataToRead;
                     
-                    if (chunk.lengthBits != 0 && chunk.lengthMask != 0) {
+                    if (vdxChunkIsCompressed(chunk)) {
                         // LZSS compressed - decompress
                         decompData.resize(chunk.dataSize * 20);
                         size_t decompSize = lzssDecompress(chunk.data, decompData, chunk.lengthMask, chunk.lengthBits);
@@ -2186,7 +2186,7 @@ static void PopulateVDXInfoList(const std::string& filename)
                 dc.chunkType = chunk.chunkType;
                 dc.chunkIndex = idx;
                 if (chunk.chunkType == 0x25 && chunk.data.size() > 0) {
-                    if (chunk.lengthBits != 0 && chunk.lengthMask != 0) {
+                    if (vdxChunkIsCompressed(chunk)) {
                         dc.data.resize(chunk.dataSize * 20);
                         size_t decompSize = lzssDecompress(chunk.data, dc.data, chunk.lengthMask, chunk.lengthBits);
                         dc.data.resize(decompSize);
@@ -2367,7 +2367,7 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
             data.chunkType = chunk.chunkType;
             data.offset = currentOffset;
             data.size = chunk.dataSize;
-            data.lzssCompressed = (chunk.lengthMask != 0 && chunk.lengthBits != 0);
+            data.lzssCompressed = vdxChunkIsCompressed(chunk);
             
             currentOffset += 8 + chunk.dataSize;
             g_vdxChunks.push_back(data);
@@ -2383,7 +2383,7 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
                     std::vector<uint8_t> decompData;
                     std::span<const uint8_t> dataToRead;
                     
-                    if (chunk.lengthBits != 0 && chunk.lengthMask != 0) {
+                    if (vdxChunkIsCompressed(chunk)) {
                         decompData.resize(chunk.dataSize * 20);
                         size_t decompSize = lzssDecompress(chunk.data, decompData, chunk.lengthMask, chunk.lengthBits);
                         decompData.resize(decompSize);
@@ -2430,7 +2430,7 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
                 dc.chunkType = chunk.chunkType;
                 dc.chunkIndex = idx;
                 if (chunk.chunkType == 0x25 && chunk.data.size() > 0) {
-                    if (chunk.lengthBits != 0 && chunk.lengthMask != 0) {
+                    if (vdxChunkIsCompressed(chunk)) {
                         dc.data.resize(chunk.dataSize * 20);
                         size_t decompSize = lzssDecompress(chunk.data, dc.data, chunk.lengthMask, chunk.lengthBits);
                         dc.data.resize(decompSize);

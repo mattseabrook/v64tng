@@ -1,11 +1,11 @@
 ; PE virtual entry 00408A80
 ; Ghidra working symbol: FUN_00408a80
-; Role not yet verified; analyzer boundary is provisional.
+; Verified parameterized VDX LZSS decoder: LSB-first flags, zero-word terminator, length=(token&mask)+3, and overlapping output-distance copies.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_00408a80_part_00 0
+%macro emit_decompress_vdx_lzss_part_00 0
     %%fragment_start:
-func_00408a80:
+decompress_vdx_lzss:
     %%insn_00408a80:
     push ebp ; 00408A80 55
     %if ($ - %%insn_00408a80) > 1

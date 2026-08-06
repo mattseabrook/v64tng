@@ -1,11 +1,11 @@
 ; Linear entry 04292 (1000:4292)
 ; Ghidra working symbol: FUN_1000_4292
-; Role not yet verified; boundary is provisional.
+; Verified GRV LOADSTRING_INDIRECT (33h): dereferences pointerVar, subtracts 31h, then writes the decoded sequence.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_04292_part_00 0
+%macro emit_grv_load_string_indirect_part_00 0
     %%fragment_start:
-func_04292:
+grv_load_string_indirect:
     %%insn_04292:
     call 0x400a ; 04292 E875FD
     %if ($ - %%insn_04292) > 3

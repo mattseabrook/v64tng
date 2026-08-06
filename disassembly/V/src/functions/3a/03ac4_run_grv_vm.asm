@@ -1,6 +1,8 @@
 ; Linear entry 03AC4 (1000:3ac4)
 ; Ghidra working symbol: FUN_1000_3ac4
 ; Verified GRV bytecode interpreter entry.
+; RET (17h) writes its immediate byte to v[102h] before popping the call stack.
+; LOADSTRING_INDIRECT (33h) dereferences pointerVar and subtracts 31h before decoding into the destination.
 ; VIDEOREF is synchronous: 03h/05h/06h/07h/0Ah stage bits 9/8/6/7/5, 09h resolves and plays one VDX, then transient flags clear.
 ; SCRIPT.GRV uses bit 5 to discard an overlay still and composite its deltas over the held background; an 80h sound chunk remains inside that same blocking playback.
 ; Generated losslessly; edit names/comments only after preserving build identity.

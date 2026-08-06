@@ -571,6 +571,8 @@ decode_vdx_stream:
         %error "LONG_0040C399"
     %endif
     times 3 - ($ - %%insn_0040c399) db 0
+; Per-chunk VDX type dispatch after raw or 77h-LZSS payload preparation.
+vdx_chunk_dispatch:
     %%insn_0040c39c:
     sub ecx,0x6700 ; 0040C39C 81E900670000
     %if ($ - %%insn_0040c39c) > 6

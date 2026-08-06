@@ -1,11 +1,11 @@
 ; PE virtual entry 0040B198
 ; Ghidra working symbol: FUN_0040b198
-; Role not yet verified; analyzer boundary is provisional.
+; Verified VDX 25h local-palette and 4x4 tile-opcode delta compositor.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_0040b198_part_00 0
+%macro emit_decode_vdx_delta_frame_part_00 0
     %%fragment_start:
-func_0040b198:
+decode_vdx_delta_frame:
     %%insn_0040b198:
     push ebp ; 0040B198 55
     %if ($ - %%insn_0040b198) > 1

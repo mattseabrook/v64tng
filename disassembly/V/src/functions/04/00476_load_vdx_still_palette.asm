@@ -1,11 +1,11 @@
 ; Linear entry 00476 (1000:0476)
 ; Ghidra working symbol: FUN_1000_0476
-; Role not yet verified; boundary is provisional.
+; Verified 20h full-palette loader and VGA/in-memory palette updater.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_00476_part_00 0
+%macro emit_load_vdx_still_palette_part_00 0
     %%fragment_start:
-func_00476:
+load_vdx_still_palette:
     %%insn_00476:
     cmp byte [bp-0x2606],0x2 ; 00476 80BEFAD902
     %if ($ - %%insn_00476) > 5

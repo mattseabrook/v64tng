@@ -105,7 +105,7 @@ entry	working_name	status	ghidra_name	source
 0040881E	func_0040881e	unidentified	FUN_0040881e	src/functions/88/0040881e_func_0040881e.asm
 00408846	func_00408846	unidentified	FUN_00408846	src/functions/88/00408846_func_00408846.asm
 00408920	func_00408920	unidentified	FUN_00408920	src/functions/89/00408920_func_00408920.asm
-00408A80	func_00408a80	unidentified	FUN_00408a80	src/functions/8a/00408a80_func_00408a80.asm
+00408A80	decompress_vdx_lzss	verified-role	FUN_00408a80	src/functions/8a/00408a80_decompress_vdx_lzss.asm
 00408BB4	func_00408bb4	unidentified	FUN_00408bb4	src/functions/8b/00408bb4_func_00408bb4.asm
 00408D00	func_00408d00	unidentified	FUN_00408d00	src/functions/8d/00408d00_func_00408d00.asm
 00408D12	func_00408d12	unidentified	FUN_00408d12	src/functions/8d/00408d12_func_00408d12.asm
@@ -143,10 +143,10 @@ entry	working_name	status	ghidra_name	source
 0040A7AA	func_0040a7aa	unidentified	FUN_0040a7aa	src/functions/a7/0040a7aa_func_0040a7aa.asm
 0040A84B	func_0040a84b	unidentified	FUN_0040a84b	src/functions/a8/0040a84b_func_0040a84b.asm
 0040AA45	func_0040aa45	unidentified	FUN_0040aa45	src/functions/aa/0040aa45_func_0040aa45.asm
-0040AB84	func_0040ab84	unidentified	FUN_0040ab84	src/functions/ab/0040ab84_func_0040ab84.asm
-0040B198	func_0040b198	unidentified	FUN_0040b198	src/functions/b1/0040b198_func_0040b198.asm
+0040AB84	decode_vdx_bitmap_still	verified-role	FUN_0040ab84	src/functions/ab/0040ab84_decode_vdx_bitmap_still.asm
+0040B198	decode_vdx_delta_frame	verified-role	FUN_0040b198	src/functions/b1/0040b198_decode_vdx_delta_frame.asm
 0040BFF4	func_0040bff4	unidentified	FUN_0040bff4	src/functions/bf/0040bff4_func_0040bff4.asm
-0040C0BB	func_0040c0bb	unidentified	FUN_0040c0bb	src/functions/c0/0040c0bb_func_0040c0bb.asm
+0040C0BB	decompress_vdx_chunk	verified-role	FUN_0040c0bb	src/functions/c0/0040c0bb_decompress_vdx_chunk.asm
 0040C0E7	allocate_grv_runtime_buffers	verified-role	FUN_0040c0e7	src/functions/c0/0040c0e7_allocate_grv_runtime_buffers.asm
 0040C129	func_0040c129	unidentified	FUN_0040c129	src/functions/c1/0040c129_func_0040c129.asm
 0040C180	init_archive_tables	verified-role	FUN_0040c180	src/functions/c1/0040c180_init_archive_tables.asm

@@ -1,11 +1,11 @@
 ; Linear entry 04451 (1000:4451)
 ; Ghidra working symbol: FUN_1000_4451
-; Role not yet verified; boundary is provisional.
+; Verified GRV SLEEP (19h) tick-delay handler.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_04451_part_00 0
+%macro emit_grv_sleep_part_00 0
     %%fragment_start:
-func_04451:
+grv_sleep:
     %%insn_04451:
     lodsw ; 04451 AD
     %if ($ - %%insn_04451) > 1

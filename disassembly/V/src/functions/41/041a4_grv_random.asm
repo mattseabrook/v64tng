@@ -1,11 +1,11 @@
 ; Linear entry 041A4 (1000:41a4)
 ; Ghidra working symbol: FUN_1000_41a4
-; Role not yet verified; boundary is provisional.
+; Verified GRV RANDOM (14h) bounded random-byte handler.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_041a4_part_00 0
+%macro emit_grv_random_part_00 0
     %%fragment_start:
-func_041a4:
+grv_random:
     %%insn_041a4:
     push ax ; 041A4 50
     %if ($ - %%insn_041a4) > 1

@@ -61,6 +61,8 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
     0x004021D1: (
         "run_grv_vm",
         "Verified central GRV bytecode interpreter and opcode dispatcher.\n"
+        "; RET (17h) writes its immediate byte to v[102h] before popping the call stack.\n"
+        "; LOADSTRING_INDIRECT (33h) dereferences pointerVar and subtracts 31h before decoding into the destination.\n"
         "; VIDEOREF is synchronous: 03h/05h/06h/07h/0Ah stage bits 9/8/6/7/5, 09h resolves and plays one VDX, then transient flags clear.\n"
         "; SCRIPT.GRV uses bit 5 to discard an overlay still and composite its deltas over the held background; interleaved sound remains part of that playback.",
     ),
@@ -75,6 +77,10 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
     0x00407146: (
         "is_midi_sequence_playing",
         "Verified Miles AIL sequence-status query; true when status is playing (4).",
+    ),
+    0x00408A80: (
+        "decompress_vdx_lzss",
+        "Verified parameterized VDX LZSS decoder: LSB-first flags, zero-word terminator, length=(token&mask)+3, and overlapping output-distance copies.",
     ),
     0x00408DF6: (
         "open_loose_vdx",
@@ -112,6 +118,18 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
         "init_game_state",
         "Verified game-state initialization role.",
     ),
+    0x0040AB84: (
+        "decode_vdx_bitmap_still",
+        "Verified VDX 20h full-palette and 4x4 two-colour tile decoder.",
+    ),
+    0x0040B198: (
+        "decode_vdx_delta_frame",
+        "Verified VDX 25h local-palette and 4x4 tile-opcode delta compositor.",
+    ),
+    0x0040C0BB: (
+        "decompress_vdx_chunk",
+        "Verified 77h VDX chunk wrapper around the shared LZSS decoder; returns the reusable output buffer and records its decoded length.",
+    ),
     0x0040C0E7: (
         "allocate_grv_runtime_buffers",
         "Verified allocation/initialization of the 80400h runtime arena and 64 KiB GRV script buffer.",
@@ -139,9 +157,17 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
 }
 
 VERIFIED_INSTRUCTION_LABELS: dict[int, tuple[str, str]] = {
+    0x00402338: (
+        "grv_opcode_dispatch",
+        "Central GRV interpreter iteration: reads the opcode at script base plus PC, advances PC, and dispatches through the 01h-59h jump table.",
+    ),
     0x00403B5F: (
         "grv_check_valid_saves",
         "Opcode 3Ch: probes st7g.0 through st7g.9 and stores slot flags plus v[104h] count.",
+    ),
+    0x0040C39C: (
+        "vdx_chunk_dispatch",
+        "Per-chunk VDX type dispatch after raw or 77h-LZSS payload preparation.",
     ),
 }
 

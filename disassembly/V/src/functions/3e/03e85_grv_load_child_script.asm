@@ -1,11 +1,11 @@
 ; Linear entry 03E85 (1000:3e85)
 ; Ghidra working symbol: FUN_1000_3e85
-; Role not yet verified; boundary is provisional.
+; Verified GRV LOADSCRIPT (3Fh): saves the parent VM context and loads one child GRV.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_03e85_part_00 0
+%macro emit_grv_load_child_script_part_00 0
     %%fragment_start:
-func_03e85:
+grv_load_child_script:
     %%insn_03e85:
     mov bx,0xd8a1 ; 03E85 BBA1D8
     %if ($ - %%insn_03e85) > 3

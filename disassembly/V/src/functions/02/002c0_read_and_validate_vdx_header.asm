@@ -1,11 +1,11 @@
 ; Linear entry 002C0 (1000:02c0)
 ; Ghidra working symbol: FUN_1000_02c0
-; Role not yet verified; boundary is provisional.
+; Verified eight-byte VDX header reader; checks little-endian magic 9267h and derives the playback interval from the header rate or GRV override.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_002c0_part_00 0
+%macro emit_read_and_validate_vdx_header_part_00 0
     %%fragment_start:
-func_002c0:
+read_and_validate_vdx_header:
     %%insn_002c0:
     cmp word [bp-0xcea],0x2 ; 002C0 83BE16F302
     %if ($ - %%insn_002c0) > 5

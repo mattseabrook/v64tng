@@ -1,11 +1,11 @@
 ; Linear entry 0426A (1000:426a)
 ; Ghidra working symbol: FUN_1000_426a
-; Role not yet verified; boundary is provisional.
+; Verified GRV JNE_INDIRECT (32h) variable-indirection branch handler.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_0426a_part_00 0
+%macro emit_grv_jump_if_indirect_not_equal_part_00 0
     %%fragment_start:
-func_0426a:
+grv_jump_if_indirect_not_equal:
     %%insn_0426a:
     call 0x400a ; 0426A E89DFD
     %if ($ - %%insn_0426a) > 3

@@ -1,11 +1,11 @@
 ; PE virtual entry 0040C0BB
 ; Ghidra working symbol: FUN_0040c0bb
-; Role not yet verified; analyzer boundary is provisional.
+; Verified 77h VDX chunk wrapper around the shared LZSS decoder; returns the reusable output buffer and records its decoded length.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_0040c0bb_part_00 0
+%macro emit_decompress_vdx_chunk_part_00 0
     %%fragment_start:
-func_0040c0bb:
+decompress_vdx_chunk:
     %%insn_0040c0bb:
     push ebp ; 0040C0BB 55
     %if ($ - %%insn_0040c0bb) > 1

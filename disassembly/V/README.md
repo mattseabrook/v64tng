@@ -45,8 +45,8 @@ The project has **complete mechanical source coverage**:
 This is not yet complete semantic recovery. Ghidra's 261 function boundaries
 are analyzer findings, not original object-module boundaries. Some bytes now
 classified as data may prove to be code, and some functions may later be
-split, joined, or grouped. Of the 261 entries, 16 currently have verified
-semantic roles and 245 retain neutral `func_XXXXX` names.
+split, joined, or grouped. Of the 261 entries, 33 currently have verified
+semantic roles and 228 retain neutral `func_XXXXX` names.
 
 See [`analysis/SOURCE_COVERAGE.md`](analysis/SOURCE_COVERAGE.md) for exact
 counts, [`analysis/function-inventory.tsv`](analysis/function-inventory.tsv)

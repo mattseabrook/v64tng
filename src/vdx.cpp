@@ -93,7 +93,7 @@ void parseVDXChunksFromSpan(VDXFile &vdxFile, std::span<const uint8_t> rawSpan)
 	{
 		VDXChunk chunk;
 		chunk.chunkType = rawSpan[offset];
-		chunk.unknown = rawSpan[offset + 1];
+		chunk.coding = rawSpan[offset + 1];
 		chunk.dataSize = readLE32(rawSpan.data() + offset + 2);
 		chunk.lengthMask = rawSpan[offset + 6];
 		chunk.lengthBits = rawSpan[offset + 7];
@@ -231,7 +231,7 @@ struct StreamingVDXDecoder
 
 	std::span<const uint8_t> decodeChunk(const VDXChunk &chunk)
 	{
-		if (chunk.lengthBits == 0)
+		if (!vdxChunkIsCompressed(chunk))
 			return chunk.data;
 		auto result = lzssDecompressChecked(chunk.data, chunk.lengthMask, chunk.lengthBits);
 		if (!result)
@@ -389,15 +389,14 @@ void parseVDXChunks(
 	palette.clear();
 	palette.resize(256);
 	vdxFile.playbackFlags = grvVideoFlags;
-	const bool skipStill =
-		(grvVideoFlags & ((1u << 5) | (1u << 7))) != 0;
+	const bool skipStill = vdxSkipStill(grvVideoFlags);
 
 	// Process chunks
 	for (auto &chunk : vdxFile.chunks)
 	{
 		std::span<const uint8_t> dataToProcess;
 
-		if (chunk.lengthBits != 0)
+		if (vdxChunkIsCompressed(chunk))
 		{
 			auto decompressed = lzssDecompressChecked(chunk.data, chunk.lengthMask, chunk.lengthBits);
 			if (!decompressed)
@@ -446,7 +445,7 @@ void parseVDXChunks(
 			{
 				if (skipStill)
 				{
-					// BF5/BF7 deliberately discard the VDX's still pixels.
+					// BF5 deliberately discards the VDX's still pixels.
 					// Its following deltas are applied to the persistent screen.
 					if (!readStillPalette(dataToProcess, palette))
 						throw std::runtime_error("Invalid VDX bitmap palette in " + vdxFile.filename);
@@ -513,6 +512,8 @@ double vdxPlaybackRate(const VDXFile &vdxFile)
 	constexpr double kFastNavigationFPS = 26.0;
 	const double headerRate =
 		vdxFile.frameRate ? static_cast<double>(vdxFile.frameRate) : kHeaderFallbackFPS;
+	if (vdxFile.rateOverride)
+		return vdxFile.rateOverride;
 
 	// The retail T7G player accelerates silent movement VDXes to 26 FPS.
 	// Encountering an interleaved sound chunk cancels that override, and

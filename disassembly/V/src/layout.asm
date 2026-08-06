@@ -15,27 +15,27 @@ load_image_start:
     ; 0020A..0021A function
     emit_func_0020a_part_00
     ; 0021B..002BF function
-    emit_func_0021b_part_00
+    emit_read_vdx_stream_bytes_part_00
     ; 002C0..0030D function
-    emit_func_002c0_part_00
+    emit_read_and_validate_vdx_header_part_00
     ; 0030E..00382 function
-    emit_func_0030e_part_00
+    emit_decode_vdx_stream_part_00
     ; 00383..00384 gap
     emit_gap_001_00383
     ; 00385..0038D function
-    emit_func_0030e_part_01
+    emit_decode_vdx_stream_part_01
     ; 0038E..0038F gap
     emit_gap_002_0038e
     ; 00390..0039B function
-    emit_func_0030e_part_02
+    emit_decode_vdx_stream_part_02
     ; 0039C..0039D gap
     emit_gap_003_0039c
     ; 0039E..0040C function
-    emit_func_0030e_part_03
+    emit_decode_vdx_stream_part_03
     ; 0040D..00475 function
-    emit_func_0040d_part_00
+    emit_apply_vdx_delta_palette_part_00
     ; 00476..00500 function
-    emit_func_00476_part_00
+    emit_load_vdx_still_palette_part_00
     ; 00501..00586 function
     emit_func_00501_part_00
     ; 00587..005E6 function
@@ -133,7 +133,7 @@ load_image_start:
     ; 0230F..02369 function
     emit_func_0230f_part_00
     ; 0236A..023A4 function
-    emit_func_0236a_part_00
+    emit_decompress_vdx_lzss_part_00
     ; 023A5..02590 function
     emit_copy_rect_to_background_part_00
     ; 02591..026E4 function
@@ -269,13 +269,13 @@ load_image_start:
     ; 03E44..03E84 function
     emit_func_03e44_part_00
     ; 03E85..03EB7 function
-    emit_func_03e85_part_00
+    emit_grv_load_child_script_part_00
     ; 03EB8..03EE9 function
-    emit_func_03eb8_part_00
+    emit_grv_return_from_child_script_part_00
     ; 03EEA..03F22 function
     emit_grv_check_valid_saves_part_00
     ; 03F23..03F76 function
-    emit_func_03f23_part_00
+    emit_grv_save_game_part_00
     ; 03F77..03FC3 function
     emit_func_03f77_part_00
     ; 03FC4..04000 function
@@ -291,9 +291,9 @@ load_image_start:
     ; 04087..0409A function
     emit_func_04087_part_00
     ; 0409B..040B1 function
-    emit_func_0409b_part_00
+    emit_grv_swap_variables_part_00
     ; 040B2..040C6 function
-    emit_func_040b2_part_00
+    emit_grv_move_variable_part_00
     ; 040C7..040DE function
     emit_func_040c7_part_00
     ; 040DF..040F6 function
@@ -301,27 +301,27 @@ load_image_start:
     ; 040F7..04102 function
     emit_func_040f7_part_00
     ; 04103..0410E function
-    emit_func_04103_part_00
+    emit_grv_decrement_variable_part_00
     ; 0410F..041A3 function
     emit_func_0410f_part_00
     ; 041A4..041CA function
-    emit_func_041a4_part_00
+    emit_grv_random_part_00
     ; 041CB..041DE function
     emit_func_041cb_part_00
     ; 041DF..041F7 function
-    emit_func_041df_part_00
+    emit_grv_xor_obfuscate_variables_part_00
     ; 041F8..0421D function
     emit_func_041f8_part_00
     ; 0421E..04243 function
     emit_func_0421e_part_00
     ; 04244..04269 function
-    emit_func_04244_part_00
+    emit_grv_char_less_jump_part_00
     ; 0426A..04291 function
-    emit_func_0426a_part_00
+    emit_grv_jump_if_indirect_not_equal_part_00
     ; 04292..042B0 function
-    emit_func_04292_part_00
+    emit_grv_load_string_indirect_part_00
     ; 042B1..042CA function
-    emit_func_042b1_part_00
+    emit_grv_compare_indirect_and_jump_part_00
     ; 042CB..042F0 function
     emit_func_042cb_part_00
     ; 042F1..04326 function
@@ -329,13 +329,13 @@ load_image_start:
     ; 04327..0432A function
     emit_func_04327_part_00
     ; 0432B..04374 function
-    emit_func_0432b_part_00
+    emit_grv_play_transition_video_ref_part_00
     ; 04375..043C8 function
     emit_func_04375_part_00
     ; 043C9..043D1 function
     emit_func_043c9_part_00
     ; 043D2..04405 function
-    emit_func_043d2_part_00
+    emit_grv_play_video_name_part_00
     ; 04406..04439 function
     emit_func_04406_part_00
     ; 0443A..04449 function
@@ -343,7 +343,7 @@ load_image_start:
     ; 0444A..04450 function
     emit_func_0444a_part_00
     ; 04451..04460 function
-    emit_func_04451_part_00
+    emit_grv_sleep_part_00
     ; 04461..0447A function
     emit_func_04461_part_00
     ; 0447B..046F4 function

@@ -57,6 +57,7 @@
     - [Chunk Header](#chunk-header)
     - [Chunk Types](#chunk-types)
       - [0x20 Bitmap](#0x20-bitmap)
+        - [Original-player `20h` path](#original-player-20h-path)
       - [0x25 Delta Bitmap](#0x25-delta-bitmap)
         - [Opcodes](#opcodes)
           - [Tile Alteration Using Predefined Map (0x00 - 0x5F)](#tile-alteration-using-predefined-map-0x00---0x5f)
@@ -66,6 +67,7 @@
           - [Solid Tile Filling with a Single Color (0x6C - 0x75)](#solid-tile-filling-with-a-single-color-0x6c---0x75)
           - [Multiple Tile Filling with Different Colors (0x76 - 0x7F)](#multiple-tile-filling-with-different-colors-0x76---0x7f)
           - [Variable Palette Tile Coloring (0x80 - 0xFF)](#variable-palette-tile-coloring-0x80---0xff)
+        - [Original-player `25h` path](#original-player-25h-path)
       - [0x80 Raw WAV data](#0x80-raw-wav-data)
       - [0x00 Frame Duplication](#0x00-frame-duplication)
       - [Notes](#notes)
@@ -96,12 +98,23 @@
     - [Integration with Game Engine](#integration-with-game-engine)
     - [Technical Notes](#technical-notes)
   - [LZSS](#lzss)
-- [Historical Development / Technoloy](#historical-development--technoloy)
+    - [Original DOS implementation](#original-dos-implementation)
+    - [Original Win32 implementation](#original-win32-implementation)
+    - [v64tng implementation](#v64tng-implementation)
+- [Historical Development / Technology](#historical-development--technology)
   - [`Play`, `PLAYTLC`, and the promotional demo](#play-playtlc-and-the-promotional-demo)
     - [Recovered TLC/FLIC bridge](#recovered-tlcflic-bridge)
   - [What “PIX” format can actually be specified](#what-pix-format-can-actually-be-specified)
   - [PIX-to-VDX production path: confirmed endpoints](#pix-to-vdx-production-path-confirmed-endpoints)
   - [Permanent original-player disassemblies](#permanent-original-player-disassemblies)
+  - [Runtime capture and differential validation](#runtime-capture-and-differential-validation)
+    - [Reproducible DOS baseline](#reproducible-dos-baseline)
+    - [Fork and build workflow](#fork-and-build-workflow)
+    - [Scenario protocol](#scenario-protocol)
+    - [Trace schema and alignment](#trace-schema-and-alignment)
+    - [High-value probe map](#high-value-probe-map)
+    - [DOSBox-X instrumentation architecture](#dosbox-x-instrumentation-architecture)
+    - [Win32 capture alternative](#win32-capture-alternative)
 - [Developers](#developers)
   - [Build System Overview](#build-system-overview)
     - [Key Features](#key-features)
@@ -299,7 +312,7 @@ It doesn't have a fixed header structure, footer, or internal metadata—it is s
 | VDX Data  | uint8_t[length] | VDX file data blob, length and offset determined by corresponding RL file entry |
 | ...       | ...             | Additional VDX data blobs, concatenated without delimiters or padding           |
 
-The engine uses memory-mapped I/O (on both Windows and Unix systems) for zero-copy access to GJD files, as they can be quite large. Each VDX blob within a GJD file begins with the standard VDX header (identifier `0x6792`) followed by chunk data.
+The engine uses memory-mapped I/O (on both Windows and Unix systems) for zero-copy access to GJD files, as they can be quite large. Each VDX blob within a GJD file begins with the standard VDX header (identifier `0x9267`) followed by chunk data.
 
 ## GRV
 
@@ -819,11 +832,13 @@ decoder control state; they are not stored in the VDX header.
 | 9 | `0x03` | Start video with a palette fade-in |
 | 15 | Injected by the T7G interpreter for cursor 4 or 7 in `SCRIPT.GRV` | Do not apply the 26 FPS fast-navigation override; obey the VDX header rate |
 
-Bits 5 and 7 explain the main-menu transparency without an alpha channel.
-`sphinx.vdx` establishes the persistent image; `sphmen1i.vdx` and
-`sphprm1i.vdx` have their still chunks suppressed and their delta tiles alter
-that held image. Unchanged tiles are not black or transparent pixels—they are
-pixels deliberately inherited from the previous buffer.
+Bit 5 is the verified still-suppression control. Bit 7 participates in the
+separate origin/mask compositing path and must not independently suppress a
+`20h` still. For the main menu, `sphinx.vdx` establishes the persistent image;
+`sphmen1i.vdx` and `sphprm1i.vdx` are preceded by opcode `0Ah`, so their still
+chunks are suppressed and their delta tiles alter that held image. Unchanged
+tiles are not black or transparent pixels—they are pixels deliberately
+inherited from the previous buffer.
 
 #### `VIDEOREF` execution contract
 
@@ -858,6 +873,13 @@ The header rate is not the only timing input:
   an audio-bearing FMV obeys its VDX header rate and stays synchronized;
 - opcode `48h` can override the header rate in DOS when its operand is
   nonzero; the Windows T7G path consumes it without that effect.
+
+The native `VDXFile` stores the opcode-`48h` override separately from both the
+header rate and playback flags. It no longer rewrites the parsed header or
+sets bit 15 as a surrogate. Audio-bearing playback still pre-collects the
+interleaved PCM before presentation, so its current timing choice is
+stream-wide; reproducing the exact transition from 26 FPS at the first `80h`
+chunk remains a trace-guided streaming milestone.
 
 This distinction is why applying the nominal header rate indiscriminately
 makes walking/turning feel too slow while an FMV can still look and sound
@@ -1047,12 +1069,12 @@ The lossless research/disassembly layer is in
 [`include/grv_runtime.h`](include/grv_runtime.h) and
 [`src/grv_runtime.cpp`](src/grv_runtime.cpp).
 
-The runtime memory-maps `SCRIPT.GRV`, executes directly from a bounded byte
+The runtime memory-maps the active GRV, executes directly from a bounded byte
 span, owns only mutable VM state, and returns lightweight views into
-instructions and archive records. It currently covers the verified main-script
-boot/input path and deliberately does not claim the entire game's opcode
-surface before live DOS/Win32 traces are available. Its core state corresponds
-to:
+instructions and archive records. One child script may replace the active
+mapping while the parent mapping, return PC, stack checkpoint, and
+`0x107`–`0x286` local-variable range remain saved. This is the one-level
+contract implemented by both retail T7G players.
 
 ```cpp
 enum class GrvOpcode : std::uint8_t
@@ -1100,9 +1122,58 @@ constexpr bool grvShortForm(std::uint8_t raw) noexcept
 }
 ```
 
-A safe reader should reject any operand crossing EOF, any branch target outside
-the current code span, a call depth greater than 32, malformed encoded values,
-unterminated strings, and variable indexes outside `0x000`–`0x3FF`.
+The C++23 interpreter implements the verified byte-state and control-flow
+surface rather than silently advancing over unknown behavior:
+
+| Area | Native runtime status |
+|---|---|
+| Calls and scripts | `CALL`, `RET`, `RESTORESTACK`, `LOADSCRIPT`, and `RETURNSCRIPT`, including the `v[0x102]` result contract and child-local restoration |
+| Encoded values | Immediate, `#variable`, and `|row,column` forms for loads and comparisons; grid references address `v[0x19 + 10*row + column]` |
+| Byte operations | `RANDOM`, `XOR_OBFUSCATE`, `SWAP`, `INC`, `DEC`, `MOV`, `ADD`, `SUB`, `MOD`, and `GRID_SWAP`, with byte wraparound |
+| Branches | Direct string equality/inequality, indirect grid comparison, indirect `JNE`, and greater/less sequence branches |
+| Media selection | Reference and interpolated-name video operations, including `1Ch`/`27h` transition, transparency, and flag-7 clearing rules |
+| Persistence | Raw `0x400`-byte load/save plus an explicit DOS `save.N` or Windows `st7g.N` convention rooted only at the configured asset directory |
+| Input | Local hotspot declaration order precedes the four persistent edge declarations; the no-hit cursor candidate is style 5 and `v[0x91] == 1` preserves the `0x8000` style bit |
+
+Rendering operations that require a foreground/background surface transaction
+are not faked inside the byte-only VM. `COPY_BG_TO_FG` (`22h`),
+`COPY_RECT_TO_BG` (`37h`), and `PRINTSTRING` (`3Ah`) currently stop execution
+with a diagnostic. On Windows the diagnostic is also displayed in a message
+box containing the normalized opcode, raw opcode byte, script filename, and
+PC. Every other unimplemented opcode uses the same failure path; there is no
+default silent no-op. Operations proven externally inert for this native
+target remain explicit cases.
+
+The known non-inert gaps are intentionally visible:
+
+| Opcode(s) | Missing native subsystem |
+|---|---|
+| `04h` | Timed palette fade-out over the current RGB presentation |
+| `22h`, `37h` | Ordered foreground/background surface-copy commands |
+| `3Ah` | Original-font top-bar text rendering |
+| `40h`, `49h` | Video-origin and one-shot palette-merge presentation state |
+| `42h` | Hard-coded microscope/cell puzzle solver |
+| `4Dh`, `4Eh` | CD-audio selection and background-music delay |
+| `4Fh`–`59h` except hotspot `53h` | Later/reserved Windows and Groovie-v2 extension state |
+
+The focused regression program in
+[`tests/grv_runtime_tests.cpp`](tests/grv_runtime_tests.cpp) covers return
+values, indirect destinations, two-dimensional references, transition flags,
+hotspot priority, save dialect isolation, child-script restoration, explicit
+unimplemented-opcode reporting, and the canonical retail `SCRIPT.GRV` boot
+path.
+
+A safe reader rejects any operand crossing EOF, malformed encoded values,
+unterminated strings, call-stack overflow/underflow, indirect-index underflow,
+and variable indexes outside `0x000`–`0x3FF`.
+
+`GameState::previous_room` and `previous_view` are render-cache sentinels, not
+the GRV VM's historical room/view pair. Assigning them after a frame becomes
+current suppresses redundant decode/setup work; converting those assignments
+to old-value history would change the cache contract. `previous_room`
+currently has no read site. GRV navigation history, if required by a future
+opcode, must therefore be introduced as separate VM state rather than inferred
+from these presentation fields.
 
 ### GRV Worked Bytecode Example
 
@@ -1165,6 +1236,11 @@ Still unresolved:
 5. Which platform/version emitted the divergent `0x1E` operand width.
 6. Runtime-reachable control-flow coverage and comparison against independently
    sourced DOS/Windows GRV revisions.
+7. The exact retail PRNG range difference: DOS/ScummVM evidence is inclusive
+   `0..max`, while the recovered Windows path appears to use modulo `max`.
+8. The exact playback-clock handoff at the first interleaved `80h` audio chunk;
+   the native player currently selects header timing for the complete
+   audio-bearing stream.
 
 These uncertainties are isolated: operand consumption is known through
 Windows opcode `0x59`, and every DOS v1.26 handler through `0x4E` has been
@@ -1178,12 +1254,12 @@ The VDX file format is used to store video sequences and still images in The 7th
 
 | Offset | Name       | Type      | Description |
 | -----: | ---------- | --------- | ----------- |
-| 0 | identifier | uint16 | Magic number `0x6792` (little-endian) |
+| 0 | identifier | uint16 | Magic number `0x9267` (little-endian) |
 | 2 | unknown | uint8[4] | Four header bytes whose complete purpose remains unresolved |
 | 6 | frameRate | uint16 | Nominal frames per second, little-endian |
 
-The VDX header is always 8 bytes total. The identifier value `0x6792` is stored
-as bytes `92 67`. Bytes 6–7 are not part of one six-byte unknown field: both
+The VDX header is always 8 bytes total. The identifier value `0x9267` is stored
+as bytes `67 92`. Bytes 6–7 are not part of one six-byte unknown field: both
 retail players consume them as the nominal frame rate. GRV/player state can
 override that value as described under
 [VDX timing selected by the GRV player](#vdx-timing-selected-by-the-grv-player).
@@ -1195,19 +1271,26 @@ Each chunk following the VDX header has an 8-byte header followed by the chunk d
 | Offset | Type    | Field      | Description                                                            |
 | ------ | ------- | ---------- | ---------------------------------------------------------------------- |
 | 0      | uint8   | ChunkType  | Determines the type of data (0x20, 0x25, 0x80, 0x00, etc.)             |
-| 1      | uint8   | Unknown    | Purpose unknown (possibly related to replay or synchronization)        |
+| 1      | uint8   | Coding     | `0x67` for a raw payload; `0x77` for a parameterized LZSS payload      |
 | 2-5    | uint32  | DataSize   | Size of chunk data in bytes (little-endian, excludes 8-byte header)    |
 | 6      | uint8   | LengthMask | LZSS parameter: bitmask for isolating length field (0 if uncompressed) |
 | 7      | uint8   | LengthBits | LZSS parameter: bits used for length encoding (0 if uncompressed)      |
 | 8+     | uint8[] | Data       | Chunk data payload with length determined by `DataSize`                |
 
-**Compression Detection**: If both `LengthMask` and `LengthBits` are **non-zero**, the chunk data is LZSS-compressed and must be decompressed before further processing. If either value is zero, the data is uncompressed and can be processed directly.
+The coding byte, not an inference from the final two fields, is the original
+players' compression discriminator. Both DOS visual decoders compare the high
+byte of the chunk-type word directly with `0x77`; the Win32 stream decoder
+accepts `0x67` (raw) and `0x77` (compressed). In the supplied retail corpus,
+all raw chunks use `67 00 00`, while every compressed chunk uses `77`, a
+nonzero mask, and a bit count from 3 through 7. Consequently, testing the
+parameter fields happens to classify this corpus correctly, but it is not the
+historical dispatch rule.
 
 ### Chunk Types
 
 #### 0x20 Bitmap
 
-This chunk, as processed by the function `getBitmapData`, contains a static bitmap image. The chunk data (after LZSS decompression if necessary) has the following structure:
+This chunk, as processed by `getBitmapDataChecked`, contains a static bitmap image. The chunk data (after LZSS decompression if necessary) has the following structure:
 
 | Offset | Type       | Size (bytes) | Field       | Description                                                       |
 | ------ | ---------- | ------------ | ----------- | ----------------------------------------------------------------- |
@@ -1248,6 +1331,56 @@ For each pixel `i` (0-15):
 - **Bit set to 0**: Use `colour0` palette entry
 
 This 2-color-per-tile encoding provides efficient compression while allowing relatively rich detail through careful color selection per tile.
+
+##### Original-player `20h` path
+
+`20h` is a literal VDX chunk type, not a GRV VM opcode. The DOS chunk loop
+loads the first two header bytes together, leaving the type in `AL` and the
+coding marker in `AH`, and dispatches directly:
+
+```asm
+; DOS V.EXE 1.30, zero-based unpacked load-image offsets
+00355  mov ax,[si]
+0035D  cmp al,0x25
+00361  call 0x105a
+00366  cmp al,0x20
+0036A  call 0x587
+00385  cmp al,0x80
+00389  call 0x2997
+```
+
+At `00587h`, the `20h` handler checks `AH` against the compressed marker. For
+a `77h` chunk it reads the mask and bit count from header offset 6, installs
+them in the DOS decoder's two immediate operands, reads the encoded payload,
+and calls the shared decoder at `0236Ah`. A raw `67h` chunk is read directly.
+The remaining body loads the complete palette and expands every two-colour
+4×4 tile into the persistent indexed display surface.
+
+```asm
+00593  cmp ah,0x77
+0059A  mov ax,[si+0x6]       ; AL=mask, AH=bit count
+0059D  mov [cs:0x2383],ah    ; immediate of "shr ax,bits"
+005A2  mov [cs:0x2386],al    ; immediate of "and cx,mask"
+005AC  call 0x21b            ; read encoded payload
+005B9  call 0x236a           ; decode to working buffer
+```
+
+The complete, byte-preserving routines are
+[`decode_vdx_stream`](disassembly/V/src/functions/03/0030e_decode_vdx_stream.asm),
+the DOS
+[`decode_vdx_bitmap_still`](disassembly/V/src/functions/05/00587_decode_vdx_bitmap_still.asm),
+and the Win32
+[`decode_vdx_bitmap_still`](disassembly/v32tng/src/functions/ab/0040ab84_decode_vdx_bitmap_still.asm).
+These files are the complete disassembled implementations; the excerpts above
+show only the dispatch and compression boundary.
+
+| Concern | Original DOS/Win32 players | v64tng |
+|---|---|---|
+| Payload selection | Dispatches on coding marker `67h`/`77h`; compressed data goes through the common decoder. | `VDXChunk::coding` preserves header byte 1. Both streaming and retained nonstreaming paths invoke checked LZSS only for `77h`; mask and bit count remain decoder parameters rather than compression classifiers. |
+| Palette | Installs 256 entries in an indexed palette and, on DOS, programs the VGA DAC after reducing stored 8-bit channels to DAC precision. | Retains 8-bit RGB triplets in `RGBColor` values; the renderer consumes full RGB output. |
+| Tile expansion | Writes palette indices into the original indexed frame/display storage. | `getBitmapDataChecked` expands the same MSB-first selector maps into bounds-checked RGB frame storage. |
+| GRV composition | Player flags may display the still, retain it as a background, or suppress it so following deltas overlay the existing frame. | Preserves the same persistent-frame and overlay decision in the VDX playback path without exposing VGA memory. |
+| Failure model | Assumes structurally valid retail data and writes fixed working/display buffers. | Rejects truncated headers, palettes, tiles, and oversized decompression output before mutation. |
 
 #### 0x25 Delta Bitmap
 
@@ -1370,6 +1503,46 @@ For opcodes in the range `0x80` to `0xFF` within the VDX file's delta frame proc
 | Map        | opcode byte and the subsequent byte together form a 16-bit color map. |
 | colour1    | opcode + 2 palette entry index                                        |
 | colour0    | opcode + 3 palette entry index                                        |
+
+##### Original-player `25h` path
+
+The DOS dispatcher shown above sends `AL == 25h` to `0105Ah`. That handler
+uses the same raw/compressed split and the same shared LZSS routine as `20h`;
+the duplication is in the two chunk front ends, not in the decompressor:
+
+```asm
+0105A  cmp ah,0x77
+01061  mov ax,[si+0x6]       ; AL=mask, AH=bit count
+01064  mov [cs:0x2383],ah
+01069  mov [cs:0x2386],al
+01073  call 0x21b            ; read encoded payload
+01080  call 0x236a           ; shared LZSS decoder
+01087  call 0x21b            ; raw-payload path
+```
+
+After payload preparation, `apply_vdx_delta_palette` reads the 32-byte
+selection field and only the RGB triples corresponding to selected entries.
+The main `0105Ah` body then interprets the tile stream in place over the
+persistent frame. Static maps, 16-index literal tiles, row changes,
+horizontal skips, repeated and distinct solid fills, and literal 16-bit maps
+are separate branches of this one routine. The Win32 implementation at
+`0040B198h` performs the same format-level work against its Windows display
+state.
+
+The complete canonical code is the DOS
+[`apply_vdx_delta_palette`](disassembly/V/src/functions/04/0040d_apply_vdx_delta_palette.asm)
+plus
+[`decode_vdx_delta_frame`](disassembly/V/src/functions/10/0105a_decode_vdx_delta_frame.asm),
+and the Win32
+[`decode_vdx_delta_frame`](disassembly/v32tng/src/functions/b1/0040b198_decode_vdx_delta_frame.asm).
+
+| Concern | Original DOS/Win32 players | v64tng |
+|---|---|---|
+| Frame basis | Mutates the held indexed frame; skipped tiles are unchanged by definition. | Clones or retains the preceding RGB frame, then mutates only addressed tiles. |
+| Local palette | Applies the 256-bit selection map to the indexed palette before tile operations; DOS also updates the VGA DAC. | Updates the same logical entries in an RGB palette after validating the selection map and available triples. |
+| Opcode stream | Uses branch-heavy assembly specialized for the fixed 4×4 representation and original display layout. | `getDeltaBitmapDataChecked` expresses the same opcode classes over bounded spans and explicit width. |
+| Coordinates | Advances original surface pointers and tile coordinates directly. | Checks row, tile, pixel, palette, and input bounds before each write. |
+| Observability | Intermediate state exists in guest buffers, VGA memory, and player globals. | Intermediate state is native C++ data and can be hashed or logged at each chunk boundary for differential testing. |
 
 #### 0x80 Raw WAV data
 
@@ -1805,33 +1978,107 @@ The cursor system integrates with the main game loop through:
   
 ## LZSS
 
-VDX chunks can optionally be compressed using a common variant of the LZSS algorithm. The chunks are compressed if, and only if, both `lengthMask` and `lengthBits` are not equal to zero. Decompression will occur using a circular history buffer (`his_buf`) and a sliding window with the following parameters:
+VDX coding marker `77h` selects a parameterized LZSS stream. Marker `67h`
+selects a raw payload. A compressed stream is a sequence of control bytes and
+items:
 
+1. A control byte supplies eight flags, consumed least-significant bit first.
+2. A set flag copies one literal byte.
+3. A clear flag reads one little-endian 16-bit token. Token zero terminates
+   the stream.
+4. For a nonzero token:
+
+   ```text
+   distance = token >> lengthBits
+   length   = (token & lengthMask) + 3
+   source   = current output position - distance
+   ```
+
+5. The decoder copies `length` bytes from `source`. Source and destination may
+   overlap; newly emitted bytes can therefore become input to the same copy.
+
+The supplied retail data set contains 3,626 valid VDX resources and 130,289
+chunks. Every raw chunk has marker `67h` and zero parameters. Every compressed
+chunk has marker `77h` and one of the following pairs:
+
+| `lengthBits` | `lengthMask` | Maximum match | Maximum distance |
+|---:|---:|---:|---:|
+| 3 | `07h` | 10 bytes | 8,191 bytes |
+| 4 | `0Fh` | 18 bytes | 4,095 bytes |
+| 5 | `1Fh` | 34 bytes | 2,047 bytes |
+| 6 | `3Fh` | 66 bytes | 1,023 bytes |
+| 7 | `7Fh` | 130 bytes | 511 bytes |
+
+The mask is not redundant historical padding. It is loaded independently and
+used in the token-length expression, even though all observed encoders chose
+the regular relation `lengthMask == (1 << lengthBits) - 1`.
+
+### Original DOS implementation
+
+The complete DOS decoder is
+[`decompress_vdx_lzss`](disassembly/V/src/functions/23/0236a_decompress_vdx_lzss.asm).
+Its core is only 59 bytes. `DS:SI` is the encoded source and `ES:DI` is the
+output:
+
+```asm
+0236A  mov dl,[si]           ; next control byte
+0236D  mov dh,0xff           ; flag-byte sentinel
+0236F  shr dx,1              ; next flag enters CF
+02371  jnc 0x237a
+02373  movsb                 ; literal
+...
+0237A  lodsw                 ; little-endian token
+0237D  jz 0x23a2             ; zero terminator
+0237F  mov cl,al
+02381  shr ax,byte 0x0       ; immediate patched with lengthBits
+02384  and cx,0x0            ; immediate patched with lengthMask
+02387  add cx,0x3
+0238E  mov si,di
+02390  sub si,ax             ; source = output - distance
+02396  rep movsb             ; deliberately permits overlap
 ```
-N (buffer size) = 1 << (16 - lengthBits)
-F (window size) = 1 << lengthBits
-THRESHOLD = 3
+
+The apparent zero operands at `02381h` and `02384h` are not missing analysis.
+The `20h`, `25h`, and `80h` compressed front ends copy header byte 7 into the
+shift immediate at `CS:2383h` and byte 6 into the mask immediate at
+`CS:2386h`. This is deliberate real-mode self-modifying code: one compact
+decoder is specialized for each chunk before it runs.
+
+### Original Win32 implementation
+
+The Windows player replaces the self-modification with ordinary parameters.
+[`decompress_vdx_chunk`](disassembly/v32tng/src/functions/c0/0040c0bb_decompress_vdx_chunk.asm)
+passes the source, reusable output buffer, mask, and bit count to
+[`decompress_vdx_lzss`](disassembly/v32tng/src/functions/8a/00408a80_decompress_vdx_lzss.asm).
+The latter independently confirms the same LSB-first flags, zero token,
+`(token & mask) + 3` length, `token >> bits` distance, and overlapping
+output-relative copy. Its return value is the decoded byte count.
+
+### v64tng implementation
+
+[`src/lzss.cpp`](src/lzss.cpp) represents the same history using an explicit
+circular buffer:
+
+```text
+historySize = 1 << (16 - lengthBits)
+lookahead   = 1 << lengthBits
+historyPos  = historySize - lookahead
 ```
 
-All references are relative to the current write position in the history buffer, which is tracked by `his_buf_pos`. Initially, writing begins at `N - F`. The `lengthMask` value from the Chunk Header can isolate the length portion of a buffer reference, though this seems a bit redundant since the number of bits used (`lengthBits`) is also specified.
+For valid retail streams, reading from
+`(historyPos - distance) & (historySize - 1)` and writing each emitted byte
+back into that ring is equivalent to the originals' overlapping
+`output - distance` copy. The representation differs, not the token format.
+The checked v64tng entry point additionally validates the bit count, detects
+truncated literals and references, enforces an output limit, and requires a
+zero terminator. These checks intentionally define safe failure behavior that
+the fixed-buffer originals did not provide.
 
-During decompression, the function `lzssDecompress` reads and processes each byte from the input `compressedData` and populates the output buffer. The algorithm works as follows:
+There is a separate DOS decoder at `0230Fh` with a fixed four-bit token split,
+used by cursor data. It is not the VDX decoder and must not be used as evidence
+for the `20h`/`25h` chunk format.
 
-1. Read a control byte (`flags`) containing 8 flag bits
-2. For each bit (processed LSB to MSB):
-   - **Bit = 1**: Copy next byte literally to output and history buffer
-   - **Bit = 0**: Read 2-byte back-reference:
-     - `low_byte` and `high_byte` form `ofs_len = low_byte | (high_byte << 8)`
-     - If `ofs_len == 0`, this is an **end marker**—decompression terminates
-     - Otherwise:
-       - `offset = (his_buf_pos - (ofs_len >> lengthBits)) & (N - 1)`
-       - `length = (ofs_len & lengthMask) + THRESHOLD`
-       - Copy `length` bytes from history buffer at `offset` to output
-3. Update `his_buf_pos` after each byte written using circular wrap: `(his_buf_pos + 1) & (N - 1)`
-
-The history buffer (`his_buf`) is used to store previous data, facilitating the LZSS decompression process. The compression scheme is well-suited for VDX data, which often contains repeated 4×4 pixel tiles.
-
-# Historical Development / Technoloy
+# Historical Development / Technology
 
 The strongest contemporary source is the scanned
 [*The 7th Guest: The Official Strategy Guide*](docs/7thGuestGuide.pdf),
@@ -1977,17 +2224,366 @@ The permanent NASM projects now begin at:
   deterministically from the hashed LZEXE original. Its complete lossless NASM
   tree represents the MZ header, relocations, all analyzer-owned instructions,
   and every remaining data byte without `incbin`, then verifies byte-identical
-  unpacked MZ output. The current 261 function boundaries are provisional; 13
-  roles are verified and the remaining names stay address-based.
+  unpacked MZ output. The current 261 function boundaries are provisional; 48
+  roles are verified and the remaining 213 names stay address-based.
 - [`disassembly/v32tng`](disassembly/v32tng): Windows player 1.02b1. Its loose
   VDX open/magic path, game/VDX command dispatch, `SETUPEXEC` handling, and
   `WinMain` message loop retain verified names inside a complete lossless NASM
   tree. All 144,896 PE bytes and 336 provisional function entries are explicit
-  source with no `incbin`, rebuilding into a byte-identical PE.
+  source with no `incbin`; 30 roles are verified and 306 remain address-based.
+  The project rebuilds into a byte-identical PE.
 
 Both trees now have complete byte coverage, but byte coverage and semantic
 understanding are tracked separately: runtime traces will refine boundaries
 and names while each canonical `main.asm` byte comparison remains intact.
+
+## Runtime capture and differential validation
+
+The preferred reference platform is the original DOS `V.EXE` running in a
+small DOSBox-X instrumentation fork. The Win32 player is an excellent
+independent oracle and is easier to inspect immediately, but DOSBox-X provides
+save states, a controllable emulated clock, guest-level file and device
+visibility, and a single place to observe the real-mode player without
+patching it.
+
+The objective is not a complete CPU trace. It is a deterministic sequence of
+semantic events sufficient to answer:
+
+- which GRV instruction, branch, variable write, resource selection, and input
+  action occurred;
+- which VDX resource and chunk were consumed;
+- what entered and left LZSS, `20h`, and `25h` processing;
+- what the palette and persistent frame hashes were after each visual chunk;
+- where the original and v64tng first ceased to agree.
+
+### Reproducible DOS baseline
+
+Use the original packed `T7G/V.EXE`, whose SHA-256 is
+`e01c3a49cede63ad409e67ce10fdb9f98c6f42600cdfd67124b0d03f1c001585`.
+Do not invoke the repository's current `T7G.BAT`, because that batch file
+intentionally starts v64tng. The original game command is:
+
+```dos
+V.EXE !
+```
+
+For loose-media investigation, the original player's `~name` path remains
+useful, for example `V.EXE ~intro`. Start from an otherwise known-working game
+configuration and freeze it for all reference sessions. The tracing-specific
+minimum is:
+
+```ini
+[dosbox]
+machine=svga_s3
+memsize=16
+
+[cpu]
+core=normal
+cputype=486
+cycles=fixed 12000
+
+[autoexec]
+mount c "D:\path\to\the\working\installation"
+c:
+cd \T7G
+V.EXE !
+```
+
+`12000` is a reproducible starting point, approximately the DOSBox-X guide's
+486DX/33 reference. If a known-working installation needs a different fixed
+value, select it once, record it in the trace manifest, and never change it
+between paired sessions. `core=normal` is required for the proposed
+instruction-boundary probes; DOSBox-X documents it as the interpreter that
+executes one guest instruction at a time. The official
+[CPU guide](https://dosbox-x.com/wiki/Guide%3ACPU-settings-in-DOSBox%E2%80%90X)
+also cautions that the emulator is not cycle-accurate, so event ordering and
+emulated timer values are stronger comparison keys than host wall time.
+
+Build DOSBox-X with its debugger enabled. Either start with `-break-start`, or
+replace the final command above with:
+
+```dos
+DEBUGBOX V.EXE !
+```
+
+`DEBUGBOX` is the documented command that runs a program and breaks at its
+entry point. The retail file is LZEXE-packed, so this first stop is the packer
+stub at relative `CS:IP = 0598h:000Eh`, not the canonical player entry. Compute
+the module load segment as `L = CS - 0598h`, set a breakpoint at `L:0000h`,
+and continue through decompression. That second stop is the byte-identical
+unpacked program represented by this repository. The repository then uses
+zero-based offsets in that load image:
+
+```text
+repository_offset = ((CS - L) * 16) + IP
+```
+
+Conversely, a repository offset `R` can be addressed through the real-mode
+alias `(L + (R >> 4)):(R & 0xF)`. Segment aliases are expected, so logs must
+retain both the observed `CS:IP` and the normalized repository offset.
+
+DOSBox-X exposes `-log-int21` and `-log-fileio`, and its debugger can log CPU
+state and dump memory. Those facilities are useful during probe development,
+but not as the primary evidence format. An open upstream
+[reverse-engineering debugger request](https://github.com/joncampbell123/dosbox-x/issues/5371)
+describes the same missing capability: automatically log selected state at
+repeated breakpoints without stopping. Whole-instruction logs should remain a
+short, explicitly enabled last resort.
+
+DOSBox-X save states are appropriate scenario roots. On Windows, the default
+host-key combinations are `F11+S` to save and `F11+L` to load; named
+`savefile` values can isolate scenario baselines. The official
+[save-state documentation](https://dosbox-x.com/wiki/Home) explains slots,
+remarks, and custom save files. A state is valid only with the same DOSBox-X
+build, configuration, memory size, executable, and mounted data recorded in
+its manifest.
+
+### Fork and build workflow
+
+Create a conventional GitHub fork, then preserve the exact upstream base:
+
+```sh
+git clone https://github.com/<account>/dosbox-x.git
+cd dosbox-x
+git remote add upstream https://github.com/joncampbell123/dosbox-x.git
+git fetch upstream
+git switch -c v64tng-trace <pinned-upstream-commit>
+git rev-parse HEAD
+```
+
+Do not base evidence sessions on an unpinned rolling branch. First build and
+run the selected upstream commit without tracer changes; that establishes
+that any later behavioral change belongs to the fork.
+
+On Linux, DOSBox-X's official
+[`BUILD.md`](https://github.com/joncampbell123/dosbox-x/blob/master/BUILD.md)
+uses `./build-debug` for SDL1 or `./build-debug-sdl2` for SDL2; the debugger
+requires curses. On Windows, open `vs/dosbox-x.sln` in Visual Studio
+2017–2022, select the desired x64 SDL configuration, and build the debug
+target. The build documentation also exposes `--enable-debug=heavy` for
+additional debug facilities. Prefer SDL2 for a new tracing fork unless the
+known-good game configuration requires SDL1.
+
+Keep the tracer as a reviewable sequence:
+
+1. trace schema, file writer, manifest, and disabled-state tests;
+2. module/load-segment normalization;
+3. non-stopping address probes and bounded register/memory capture;
+4. DOS file, input, frame, and save-state events;
+5. local control transport and companion CLI;
+6. replay and original-versus-v64tng comparison tooling.
+
+Every stage must retain a trace-disabled regression run. The trace manifest
+records both the pinned upstream commit and fork commit so a capture can
+always be reproduced from source.
+
+### Scenario protocol
+
+A complete room survey should be represented as a parent scenario containing
+short child captures, not one uninterrupted log. Thirty to ninety seconds or
+one navigation/click consequence per child is usually sufficient:
+
+1. Reach a stable room state and save it as the scenario baseline.
+2. Load the baseline, start a new trace, and emit a human-readable marker.
+3. Perform a written action list: coordinates, button/key, intended target,
+   and the stable visual state to await after each action.
+4. Stop immediately after the consequence settles; do not include unrelated
+   idle time.
+5. Repeat the child once against the original to prove stability.
+6. Replay the same logical actions in v64tng and compare the event streams.
+
+The proposed foyer survey therefore becomes children such as
+`foyer/idling`, `foyer/walk-left`, `foyer/click-clock`,
+`foyer/stairs-transition`, and `upstairs/click-portrait`. A parent manifest
+preserves their order. This subdivision localizes a mismatch and permits one
+child to be repeated without re-recording the entire tour.
+
+Manual play is enough to discover behavior. Exact differential work should
+replay recorded logical input—guest mouse coordinates, buttons/keys, and the
+semantic wait condition—rather than host timestamps. The wait condition can
+be “GRV input loop reached,” “VIDEOREF returned,” or “frame hash remained
+unchanged for two presentation ticks.”
+
+Each capture should be self-contained:
+
+```text
+trace/<scenario>/<run>/
+    manifest.json
+    events.ndjson
+    inputs.ndjson
+    blobs/
+    frames/
+```
+
+The manifest records executable and asset hashes, DOSBox-X commit/config,
+load segment, save-state hash, scenario text, enabled probes, event count, and
+whether any event was lost. `events.ndjson` is the primary artifact. Raw
+frames, palettes, scripts, or compressed/decompressed payloads belong in
+content-addressed sidecars and are written only on request or mismatch.
+
+### Trace schema and alignment
+
+One versioned JSON object per line makes captures streamable, diffable, and
+recoverable after interruption:
+
+```json
+{"schema":"v64tng.trace/1","seq":1842,"session":"foyer/click-clock/original-01","source":"dos-v130","tick":91244,"event":"vdx.chunk.end","guest":{"cs":"13ac","ip":"0004","image_offset":"03ac4"},"resource":{"archive":2,"name":"clock","chunk":17,"type":"25","coding":"77","encoded_size":4312,"decoded_size":6850},"state":{"palette_sha256":"...","frame_sha256":"..."}}
+```
+
+All events require `schema`, monotonic `seq`, session, source build, emulated
+tick, event name, and normalized execution location. Event-specific fields
+are additive. Addresses and byte values use fixed-width hexadecimal strings;
+sizes and ordinals use JSON integers. Buffers are represented by length and
+SHA-256 plus an optional relative sidecar path, never inline hexadecimal.
+
+The first useful event classes are:
+
+| Event family | Minimum payload |
+|---|---|
+| `session.*` | start/stop/marker, manifest identity, enabled filter |
+| `input.*` | logical action ordinal, guest coordinates/key/button, pressed/released state |
+| `grv.instruction` | script resource, PC before/after, opcode, decoded operands |
+| `grv.branch` | condition inputs, taken target, resulting PC |
+| `grv.variable` | variable index, old/new value, originating opcode |
+| `resource.*` | GRV video/song reference, archive/RL identity, GJD offset/length, open/seek/read result |
+| `vdx.header` | resource identity, header rate, player override, validity |
+| `vdx.chunk.*` | ordinal, type, coding, encoded/decoded sizes, mask/bits |
+| `vdx.palette` | changed indexes or count, before/after hash |
+| `vdx.frame` | dimensions, persistent-frame hash, optional sidecar |
+| `error.*` | subsystem, guest location, error code, relevant bounded state |
+
+Pair traces by semantic keys, not timestamps:
+
+1. input action ordinal;
+2. script identity plus GRV PC;
+3. resource identity plus VDX chunk ordinal;
+4. palette/frame state after that chunk.
+
+The comparison report should stop at the first unequal event and include the
+last equal event, relevant decoded operands, and sidecar hashes. This makes a
+VM fault actionable: it distinguishes wrong operand consumption from wrong
+branching, resource selection, decompression, palette application, or tile
+composition.
+
+### High-value probe map
+
+The following entries are already strong enough to use as non-stopping
+semantic probes:
+
+| Event | DOS repository offset | Win32 VA |
+|---|---:|---:|
+| GRV VM entry | `03AC4h` | `004021D1h` |
+| GRV opcode fetch/dispatch iteration | `03B00h` | `00402338h` |
+| GRV input loop | `0447Bh` | within the named VM path |
+| Select video resource | `0388Ah` | `00401D3Ah` |
+| Read/validate VDX header | `002C0h` | configuration path `0040C1BDh` |
+| VDX stream entry | `0030Eh` | `0040C261h` |
+| VDX chunk dispatch iteration | `00355h` | `0040C39Ch` |
+| Parameterized VDX LZSS | `0236Ah` | `00408A80h` |
+| Decode `20h` still | `00587h` | `0040AB84h` |
+| Apply `25h` local palette | `0040Dh` | inside `0040B198h` |
+| Decode `25h` delta | `0105Ah` | `0040B198h` |
+
+Entry probes alone establish reachability. Entry and return probes yield
+bounded input/output records. GRV instruction records should be emitted once
+per VM iteration, not once per x86 instruction. VDX records should be emitted
+at header, payload-ready, decoder-return, and frame-committed boundaries.
+
+### DOSBox-X instrumentation architecture
+
+The fork should add a small tracing subsystem beside the existing debugger,
+with no guest patches:
+
+1. **Module identity.** Observe DOS EXEC/MZ loading, hash the host executable,
+   record its load segment, and normalize all probe addresses.
+2. **Fast probe dispatch.** In the normal CPU core, perform one disabled-state
+   branch and then a page/offset bitmap lookup before executing an instruction.
+   Only registered addresses call the tracer.
+3. **Semantic adapters.** Register named entry/return probes for the table
+   above and bounded memory readers for their established arguments/globals.
+4. **System events.** Observe DOS open/read/seek/close, keyboard/mouse delivery,
+   and save-state operations at their emulator implementations.
+5. **Stable output.** Serialize events through a dedicated writer. If its
+   bounded queue fills, pause emulation and report backpressure; never silently
+   drop evidence.
+
+The likely source touch points in the
+[DOSBox-X repository](https://github.com/joncampbell123/dosbox-x) are the
+normal CPU core, debugger/breakpoint implementation, DOS EXEC and INT 21h file
+handlers, input delivery, and save-state code. Keep game-specific decoding in
+probe definitions or an adapter module rather than scattering `V.EXE`
+conditions through the emulator.
+
+Use two transport planes:
+
+- a local JSON-RPC control channel over a Unix-domain socket on Unix and a
+  named pipe on Windows;
+- NDJSON events written to disk and optionally mirrored over a second socket.
+
+The initial control API only needs:
+
+```text
+hello
+session.start / session.stop / session.mark
+filter.set
+probe.add / probe.remove / probe.list
+execution.pause / execution.continue / execution.step
+state.save / state.load
+input.send
+memory.read
+frame.capture
+manifest.get
+```
+
+Each request carries an ID; each response reports success or a structured
+error. Mutating calls are serialized on the emulator thread at safe points.
+A randomly generated per-run token and filesystem permissions should protect
+the endpoint. Bind neither control nor event traffic to a public network
+interface.
+
+Shared memory is unnecessary for the first implementation. Text events are
+low volume after filtering, while content-addressed disk sidecars handle
+large frames and buffers reliably. A shared-memory ring becomes worthwhile
+only if later measurements show that live frame transport dominates.
+
+A socket on a separate Windows workstation is not automatically reachable by
+Codex running in this repository environment. Automation requires either
+running the companion client in the same environment, copying completed trace
+directories into the repository, or exposing the control protocol through an
+explicit authenticated bridge. A small CLI should be the first client; an MCP
+adapter can later present the same API to Codex without changing the emulator.
+
+### Win32 capture alternative
+
+For immediate work, open
+`research/v32tng/v32tng.exe` in x32dbg and place software breakpoints at the
+Win32 addresses in the probe table. For each breakpoint:
+
+1. set the break condition to `0`;
+2. leave fast resume disabled so logging still executes;
+3. make the breakpoint silent;
+4. set a log condition of `1`;
+5. log only the relevant registers, stack arguments, bounded memory values,
+   and a monotonically increasing hit count.
+
+x32dbg's official
+[conditional-breakpoint documentation](https://help.x64dbg.com/en/latest/introduction/ConditionalBreakpoint.html)
+specifically supports a never-breaking breakpoint with formatted logging.
+This is sufficient to confirm reachability and arguments. A plugin or
+debugger script is preferable when NDJSON, return probes, memory hashing, or
+input replay is required.
+
+Procmon can corroborate filenames and host file offsets, and ProcDump can
+preserve crash state; neither observes GRV or VDX semantics. WinDbg Time
+Travel Debugging is valuable when the failing location is unknown, but
+Microsoft's
+[trace-file documentation](https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/time-travel-debugging-trace-file-information)
+estimates active traces at roughly 5–50 MB per second, with index files
+commonly one to two times the trace size. It should therefore be reserved for
+a short unresolved divergence, not routine room capture.
+
+The detailed address-conversion and evidence policy remains in
+[`disassembly/V/analysis/RUNTIME_CAPTURE_WORKFLOW.md`](disassembly/V/analysis/RUNTIME_CAPTURE_WORKFLOW.md).
 
 Sources beyond the supplied guide corroborate the account:
 

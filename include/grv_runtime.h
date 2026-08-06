@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <random>
 #include <span>
 #include <string>
 #include <string_view>
@@ -69,12 +70,19 @@ struct GrvBoot
 	GrvTransition transition;
 };
 
+enum class GrvSaveConvention
+{
+	Dos,
+	Windows
+};
+
 class GrvRuntime
 {
 public:
 	static std::expected<GrvRuntime, std::string> load(
 		const std::filesystem::path &scriptPath,
-		const std::filesystem::path &assetRoot);
+		const std::filesystem::path &assetRoot,
+		GrvSaveConvention saveConvention = GrvSaveConvention::Dos);
 
 	[[nodiscard]] std::expected<GrvBoot, std::string> boot();
 	[[nodiscard]] std::optional<GrvHotspotView> hotspotAt(
@@ -86,17 +94,46 @@ public:
 		handleKey(uint8_t key);
 	[[nodiscard]] std::optional<GrvResource> resolve(uint16_t ref) const;
 	[[nodiscard]] uint16_t activeLoop() const { return activeLoop_; }
+	[[nodiscard]] std::span<const uint8_t> variables() const { return variables_; }
+	[[nodiscard]] uint16_t cursorStyleAt(
+		int clientX, int clientY, int clientWidth, int clientHeight) const;
 
 private:
+	struct ParentScript
+	{
+		std::shared_ptr<const uint8_t> owner;
+		std::span<const uint8_t> bytes;
+		std::filesystem::path path;
+		uint16_t returnPc = 0;
+		size_t stackCheckpoint = 0;
+		std::array<uint8_t, 0x180> localVariables{};
+	};
+
 	std::expected<bool, std::string> executeUntilInputLoop(uint16_t entry);
 	std::optional<GrvHotspotView> hotspotAtCanonical(uint16_t x, uint16_t y) const;
+	std::optional<uint8_t> decodeChar(
+		size_t &encoded, uint8_t &last, bool allowGrid,
+		bool limitValue, bool limitVariable) const;
 	bool sequenceEquals(uint16_t variable, size_t encoded) const;
+	bool sequenceAnyGreater(uint16_t variable, size_t encoded) const;
+	bool sequenceAnyLess(uint16_t variable, size_t encoded) const;
 	size_t loadSequence(uint16_t variable, size_t encoded);
-	void checkValidSaves();
+	std::expected<std::string, std::string> interpolateString(size_t encoded) const;
+	std::expected<uint16_t, std::string> resolveVideoName(
+		std::string_view name) const;
+	std::expected<void, std::string> checkValidSaves();
+	std::expected<void, std::string> loadGame(uint8_t slot);
+	std::expected<void, std::string> saveGame(uint8_t slot) const;
+	[[nodiscard]] std::filesystem::path savePath(uint8_t slot) const;
+	[[nodiscard]] std::string unimplementedOpcode(
+		uint8_t raw, uint16_t pc) const;
 
 	std::shared_ptr<const uint8_t> owner_;
 	std::span<const uint8_t> bytes_;
+	std::filesystem::path scriptPath_;
 	std::filesystem::path assetRoot_;
+	GrvSaveConvention saveConvention_ = GrvSaveConvention::Dos;
+	std::optional<ParentScript> parentScript_;
 	std::array<uint8_t, 0x400> variables_{};
 	std::array<uint16_t, 32> callStack_{};
 	size_t callDepth_ = 0;
@@ -109,6 +146,7 @@ private:
 	std::vector<GrvVideoCommand> videoCommands_;
 	bool ended_ = false;
 	std::array<uint16_t, 4> persistentHotspots_{};
+	std::mt19937 random_{std::random_device{}()};
 };
 
 #endif // GRV_RUNTIME_H

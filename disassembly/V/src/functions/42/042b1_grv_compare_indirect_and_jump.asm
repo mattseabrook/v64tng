@@ -1,11 +1,11 @@
 ; Linear entry 042B1 (1000:42b1)
 ; Ghidra working symbol: FUN_1000_42b1
-; Role not yet verified; boundary is provisional.
+; Verified GRV STRCMP_NE_JMP_INDIRECT (21h) handler.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_042b1_part_00 0
+%macro emit_grv_compare_indirect_and_jump_part_00 0
     %%fragment_start:
-func_042b1:
+grv_compare_indirect_and_jump:
     %%insn_042b1:
     call 0x400a ; 042B1 E856FD
     %if ($ - %%insn_042b1) > 3

@@ -1,11 +1,11 @@
 ; Linear entry 040B2 (1000:40b2)
 ; Ghidra working symbol: FUN_1000_40b2
-; Role not yet verified; boundary is provisional.
+; Verified GRV MOV (24h) byte-variable handler.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_040b2_part_00 0
+%macro emit_grv_move_variable_part_00 0
     %%fragment_start:
-func_040b2:
+grv_move_variable:
     %%insn_040b2:
     call 0x400a ; 040B2 E855FF
     %if ($ - %%insn_040b2) > 3

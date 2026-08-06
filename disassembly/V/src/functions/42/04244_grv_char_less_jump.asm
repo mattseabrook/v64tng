@@ -1,11 +1,11 @@
 ; Linear entry 04244 (1000:4244)
 ; Ghidra working symbol: FUN_1000_4244
-; Role not yet verified; boundary is provisional.
+; Verified GRV CHAR_LESS_JMP (36h) comparison-and-branch handler.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_04244_part_00 0
+%macro emit_grv_char_less_jump_part_00 0
     %%fragment_start:
-func_04244:
+grv_char_less_jump:
     %%insn_04244:
     call 0x400a ; 04244 E8C3FD
     %if ($ - %%insn_04244) > 3

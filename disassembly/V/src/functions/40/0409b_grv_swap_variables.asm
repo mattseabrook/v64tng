@@ -1,11 +1,11 @@
 ; Linear entry 0409B (1000:409b)
 ; Ghidra working symbol: FUN_1000_409b
-; Role not yet verified; boundary is provisional.
+; Verified GRV SWAP (1Dh) byte-variable handler.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_0409b_part_00 0
+%macro emit_grv_swap_variables_part_00 0
     %%fragment_start:
-func_0409b:
+grv_swap_variables:
     %%insn_0409b:
     call 0x400a ; 0409B E86CFF
     %if ($ - %%insn_0409b) > 3

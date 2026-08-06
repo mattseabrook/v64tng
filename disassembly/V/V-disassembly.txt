@@ -42,6 +42,11 @@ Given the executable's DOS load segment `L` and a runtime address `CS:IP`:
 repository_offset = ((CS - L) * 16) + IP
 ```
 
+The retail executable is LZEXE-packed. `DEBUGBOX V.EXE !` first stops in the
+packer stub at relative `0598h:000Eh`; at that stop calculate
+`L = CS - 0598h`, then continue to a breakpoint at `L:0000h`. That second
+location is the canonical unpacked entry represented by this source tree.
+
 Segment aliases are normal in 16-bit real mode. Two different `CS:IP` pairs
 can identify the same linear byte. Record both the original pair and the
 calculated repository offset.
@@ -76,6 +81,10 @@ the original developers' exact labels, source filenames, comments, or object
 module layout unless an original symbol table, map file, source listing, or
 equivalent artifact is found.
 
+The complete event schema, scenario protocol, DOSBox-X fork architecture, IPC
+surface, and original-versus-v64tng alignment method are documented in the
+root [`README.md`](../../../README.md#runtime-capture-and-differential-validation).
+
 
 ────────────────────────────────────────────────────────────
 
@@ -96,8 +105,8 @@ understanding.
 | Function-body instructions decoded | 12,484 |
 | Instructions requiring exact `db` encoding fallback | 1,620 |
 | Bytes in encoding fallbacks | 3,477 |
-| Verified semantic function roles | 16 |
-| Unidentified/provisionally bounded functions | 245 |
+| Verified semantic function roles | 33 |
+| Unidentified/provisionally bounded functions | 228 |
 | Analyzed function/gap span end | `0892Ch` |
 | Non-function bytes in the load image | 69,332 |
 
@@ -164,8 +173,8 @@ The project has **complete mechanical source coverage**:
 This is not yet complete semantic recovery. Ghidra's 261 function boundaries
 are analyzer findings, not original object-module boundaries. Some bytes now
 classified as data may prove to be code, and some functions may later be
-split, joined, or grouped. Of the 261 entries, 16 currently have verified
-semantic roles and 245 retain neutral `func_XXXXX` names.
+split, joined, or grouped. Of the 261 entries, 33 currently have verified
+semantic roles and 228 retain neutral `func_XXXXX` names.
 
 See [`analysis/SOURCE_COVERAGE.md`](analysis/SOURCE_COVERAGE.md) for exact
 counts, [`analysis/function-inventory.tsv`](analysis/function-inventory.tsv)
@@ -927,4 +936,3 @@ if __name__ == "__main__":
 
 
 ────────────────────────────────────────────────────────────
-

@@ -1,11 +1,11 @@
 ; Linear entry 0236A (1000:236a)
 ; Ghidra working symbol: FUN_1000_236a
-; Role not yet verified; boundary is provisional.
+; Verified parameterized VDX LZSS decoder: LSB-first flags, zero-word terminator, length=(token&mask)+3, and overlapping output-distance copies.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_0236a_part_00 0
+%macro emit_decompress_vdx_lzss_part_00 0
     %%fragment_start:
-func_0236a:
+decompress_vdx_lzss:
     %%insn_0236a:
     mov dl,[si] ; 0236A 8A14
     %if ($ - %%insn_0236a) > 2

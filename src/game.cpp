@@ -502,10 +502,7 @@ static bool playGrvVideo(const GrvVideoCommand &command)
 		parseVDXChunks(*loaded, background, command.flags);
 		loaded->parsed = true;
 		if (command.rateOverride)
-		{
-			loaded->frameRate = command.rateOverride;
-			loaded->playbackFlags |= 1u << 15;
-		}
+			loaded->rateOverride = command.rateOverride;
 
 		// VIDEOREF is a blocking VM opcode: render every frame (and its
 		// interleaved PCM stream) before the interpreter's next command becomes
@@ -602,8 +599,8 @@ uint8_t grvPointerCursor(int x, int y)
 {
 	if (!grvRuntime)
 		return CURSOR_DEFAULT;
-	const auto hotspot = grvRuntime->hotspotAt(x, y, state.ui.width, state.ui.height);
-	return hotspot ? hotspot->cursor() : CURSOR_DEFAULT;
+	return static_cast<uint8_t>(
+		grvRuntime->cursorStyleAt(x, y, state.ui.width, state.ui.height) & 0xff);
 }
 
 bool grvPointerClick(int x, int y)

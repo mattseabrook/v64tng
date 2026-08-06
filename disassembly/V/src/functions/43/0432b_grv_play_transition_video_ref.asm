@@ -1,11 +1,11 @@
 ; Linear entry 0432B (1000:432b)
 ; Ghidra working symbol: FUN_1000_432b
-; Role not yet verified; boundary is provisional.
+; Verified GRV VIDEO_TRANSITION_REF (1Ch) flag staging and playback handler.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_0432b_part_00 0
+%macro emit_grv_play_transition_video_ref_part_00 0
     %%fragment_start:
-func_0432b:
+grv_play_transition_video_ref:
     %%insn_0432b:
     push es ; 0432B 06
     %if ($ - %%insn_0432b) > 1

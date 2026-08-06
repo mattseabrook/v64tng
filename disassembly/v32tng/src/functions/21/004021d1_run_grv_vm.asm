@@ -1,6 +1,8 @@
 ; PE virtual entry 004021D1
 ; Ghidra working symbol: FUN_004021d1
 ; Verified central GRV bytecode interpreter and opcode dispatcher.
+; RET (17h) writes its immediate byte to v[102h] before popping the call stack.
+; LOADSTRING_INDIRECT (33h) dereferences pointerVar and subtracts 31h before decoding into the destination.
 ; VIDEOREF is synchronous: 03h/05h/06h/07h/0Ah stage bits 9/8/6/7/5, 09h resolves and plays one VDX, then transient flags clear.
 ; SCRIPT.GRV uses bit 5 to discard an overlay still and composite its deltas over the held background; interleaved sound remains part of that playback.
 ; Generated losslessly; preserve byte identity after edits.
@@ -466,6 +468,8 @@ run_grv_vm:
         %error "LONG_0040232F"
     %endif
     times 9 - ($ - %%insn_0040232f) db 0
+; Central GRV interpreter iteration: reads the opcode at script base plus PC, advances PC, and dispatches through the 01h-59h jump table.
+grv_opcode_dispatch:
     %%insn_00402338:
     mov eax,[0x41f284] ; 00402338 A184F24100
     %if ($ - %%insn_00402338) > 5

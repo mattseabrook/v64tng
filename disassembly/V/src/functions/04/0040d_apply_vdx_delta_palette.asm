@@ -1,11 +1,11 @@
 ; Linear entry 0040D (1000:040d)
 ; Ghidra working symbol: FUN_1000_040d
-; Role not yet verified; boundary is provisional.
+; Verified 25h local-palette bit-field decoder and VGA/in-memory palette updater.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_0040d_part_00 0
+%macro emit_apply_vdx_delta_palette_part_00 0
     %%fragment_start:
-func_0040d:
+apply_vdx_delta_palette:
     %%insn_0040d:
     cmp byte [bp-0x2606],0x2 ; 0040D 80BEFAD902
     %if ($ - %%insn_0040d) > 5

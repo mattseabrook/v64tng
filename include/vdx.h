@@ -30,7 +30,7 @@
 struct VDXChunk
 {
     uint8_t chunkType;
-    uint8_t unknown;
+    uint8_t coding;
     uint32_t dataSize;
     uint8_t lengthMask;
     uint8_t lengthBits;
@@ -46,6 +46,7 @@ struct VDXFile
     uint16_t identifier;
     std::array<uint8_t, 4> unknown;
     uint16_t frameRate = 0;
+    uint8_t rateOverride = 0;
     uint16_t playbackFlags = 0;
     int width = 0;
     int height = 0;
@@ -62,6 +63,16 @@ struct VDXFile
     std::vector<uint8_t> audioData;
     bool parsed = false;
 };
+
+[[nodiscard]] constexpr bool vdxChunkIsCompressed(const VDXChunk &chunk)
+{
+    return chunk.coding == 0x77;
+}
+
+[[nodiscard]] constexpr bool vdxSkipStill(uint16_t grvVideoFlags)
+{
+    return (grvVideoFlags & (1u << 5)) != 0;
+}
 
 VDXFile parseVDXFile(std::string_view filename, std::span<const uint8_t> buffer);
 VDXFile parseVDXFile(std::string_view filename, std::vector<uint8_t> &&buffer);

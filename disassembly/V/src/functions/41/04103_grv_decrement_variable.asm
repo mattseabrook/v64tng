@@ -1,11 +1,11 @@
 ; Linear entry 04103 (1000:4103)
 ; Ghidra working symbol: FUN_1000_4103
-; Role not yet verified; boundary is provisional.
+; Verified GRV DEC (20h) byte-variable handler.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_04103_part_00 0
+%macro emit_grv_decrement_variable_part_00 0
     %%fragment_start:
-func_04103:
+grv_decrement_variable:
     %%insn_04103:
     call 0x400a ; 04103 E804FF
     %if ($ - %%insn_04103) > 3

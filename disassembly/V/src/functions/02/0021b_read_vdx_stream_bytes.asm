@@ -1,11 +1,11 @@
 ; Linear entry 0021B (1000:021b)
 ; Ghidra working symbol: FUN_1000_021b
-; Role not yet verified; boundary is provisional.
+; Verified VDX byte-source abstraction: reads from the selected DOS file or advances through the staged archive buffer.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_0021b_part_00 0
+%macro emit_read_vdx_stream_bytes_part_00 0
     %%fragment_start:
-func_0021b:
+read_vdx_stream_bytes:
     %%insn_0021b:
     cmp word [bp-0xcea],0x2 ; 0021B 83BE16F302
     %if ($ - %%insn_0021b) > 5

@@ -1,11 +1,11 @@
 ; Linear entry 043D2 (1000:43d2)
 ; Ghidra working symbol: FUN_1000_43d2
-; Role not yet verified; boundary is provisional.
+; Verified GRV VIDEO_NAME (26h) interpolated-name playback handler.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_043d2_part_00 0
+%macro emit_grv_play_video_name_part_00 0
     %%fragment_start:
-func_043d2:
+grv_play_video_name:
     %%insn_043d2:
     mov word [bp-0x30d2],0x1 ; 043D2 C7862ECF0100
     %if ($ - %%insn_043d2) > 6

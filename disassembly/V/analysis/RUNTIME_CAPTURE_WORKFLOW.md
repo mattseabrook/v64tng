@@ -38,6 +38,11 @@ Given the executable's DOS load segment `L` and a runtime address `CS:IP`:
 repository_offset = ((CS - L) * 16) + IP
 ```
 
+The retail executable is LZEXE-packed. `DEBUGBOX V.EXE !` first stops in the
+packer stub at relative `0598h:000Eh`; at that stop calculate
+`L = CS - 0598h`, then continue to a breakpoint at `L:0000h`. That second
+location is the canonical unpacked entry represented by this source tree.
+
 Segment aliases are normal in 16-bit real mode. Two different `CS:IP` pairs
 can identify the same linear byte. Record both the original pair and the
 calculated repository offset.
@@ -71,3 +76,7 @@ Those names will be our canonical recovered symbols. They cannot be claimed as
 the original developers' exact labels, source filenames, comments, or object
 module layout unless an original symbol table, map file, source listing, or
 equivalent artifact is found.
+
+The complete event schema, scenario protocol, DOSBox-X fork architecture, IPC
+surface, and original-versus-v64tng alignment method are documented in the
+root [`README.md`](../../../README.md#runtime-capture-and-differential-validation).

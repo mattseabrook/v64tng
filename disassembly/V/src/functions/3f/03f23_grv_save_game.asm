@@ -1,11 +1,11 @@
 ; Linear entry 03F23 (1000:3f23)
 ; Ghidra working symbol: FUN_1000_3f23
-; Role not yet verified; boundary is provisional.
+; Verified GRV SAVEGAME (2Fh): writes the 400h-byte variable bank to save.N.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_03f23_part_00 0
+%macro emit_grv_save_game_part_00 0
     %%fragment_start:
-func_03f23:
+grv_save_game:
     %%insn_03f23:
     lodsw ; 03F23 AD
     %if ($ - %%insn_03f23) > 1

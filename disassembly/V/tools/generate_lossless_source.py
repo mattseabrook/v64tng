@@ -31,6 +31,26 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
         "standalone_vdx_or_diagnostics",
         "Verified ?, empty-tail, ~name, and loose-name.vdx startup path.",
     ),
+    0x021B: (
+        "read_vdx_stream_bytes",
+        "Verified VDX byte-source abstraction: reads from the selected DOS file or advances through the staged archive buffer.",
+    ),
+    0x02C0: (
+        "read_and_validate_vdx_header",
+        "Verified eight-byte VDX header reader; checks little-endian magic 9267h and derives the playback interval from the header rate or GRV override.",
+    ),
+    0x030E: (
+        "decode_vdx_stream",
+        "Verified VDX chunk loop and type dispatcher for 00h holds, 20h stills, 25h deltas, and interleaved 80h audio.",
+    ),
+    0x040D: (
+        "apply_vdx_delta_palette",
+        "Verified 25h local-palette bit-field decoder and VGA/in-memory palette updater.",
+    ),
+    0x0476: (
+        "load_vdx_still_palette",
+        "Verified 20h full-palette loader and VGA/in-memory palette updater.",
+    ),
     0x0587: (
         "decode_vdx_bitmap_still",
         "Verified VDX 20h still/base-frame decoder; GRV video flags decide whether its pixels seed the displayed background or are skipped for a delta overlay.",
@@ -38,6 +58,10 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
     0x105A: (
         "decode_vdx_delta_frame",
         "Verified VDX 25h palette-update and 4x4-tile delta compositor; unchanged tiles retain the prior persistent frame.",
+    ),
+    0x236A: (
+        "decompress_vdx_lzss",
+        "Verified parameterized VDX LZSS decoder: LSB-first flags, zero-word terminator, length=(token&mask)+3, and overlapping output-distance copies.",
     ),
     0x23A5: ("copy_rect_to_background", "Verified GRV background rectangle-copy implementation."),
     0x2591: ("copy_background_to_foreground", "Verified GRV background restore implementation."),
@@ -84,13 +108,63 @@ VERIFIED_NAMES: dict[int, tuple[str, str]] = {
     0x3AC4: (
         "run_grv_vm",
         "Verified GRV bytecode interpreter entry.\n"
+        "; RET (17h) writes its immediate byte to v[102h] before popping the call stack.\n"
+        "; LOADSTRING_INDIRECT (33h) dereferences pointerVar and subtracts 31h before decoding into the destination.\n"
         "; VIDEOREF is synchronous: 03h/05h/06h/07h/0Ah stage bits 9/8/6/7/5, 09h resolves and plays one VDX, then transient flags clear.\n"
         "; SCRIPT.GRV uses bit 5 to discard an overlay still and composite its deltas over the held background; an 80h sound chunk remains inside that same blocking playback.",
+    ),
+    0x3E85: (
+        "grv_load_child_script",
+        "Verified GRV LOADSCRIPT (3Fh): saves the parent VM context and loads one child GRV.",
+    ),
+    0x3EB8: (
+        "grv_return_from_child_script",
+        "Verified GRV RETURNSCRIPT (43h): restores the parent context and returns a byte result.",
     ),
     0x3EEA: (
         "grv_check_valid_saves",
         "Verified opcode 3Ch implementation: probes save.0 through save.9 and writes count/slot variables.",
     ),
+    0x3F23: (
+        "grv_save_game",
+        "Verified GRV SAVEGAME (2Fh): writes the 400h-byte variable bank to save.N.",
+    ),
+    0x409B: ("grv_swap_variables", "Verified GRV SWAP (1Dh) byte-variable handler."),
+    0x40B2: ("grv_move_variable", "Verified GRV MOV (24h) byte-variable handler."),
+    0x4103: (
+        "grv_decrement_variable",
+        "Verified GRV DEC (20h) byte-variable handler.",
+    ),
+    0x41A4: ("grv_random", "Verified GRV RANDOM (14h) bounded random-byte handler."),
+    0x41DF: (
+        "grv_xor_obfuscate_variables",
+        "Verified GRV XOR_OBFUSCATE (1Bh) variable-sequence handler.",
+    ),
+    0x4244: (
+        "grv_char_less_jump",
+        "Verified GRV CHAR_LESS_JMP (36h) comparison-and-branch handler.",
+    ),
+    0x426A: (
+        "grv_jump_if_indirect_not_equal",
+        "Verified GRV JNE_INDIRECT (32h) variable-indirection branch handler.",
+    ),
+    0x4292: (
+        "grv_load_string_indirect",
+        "Verified GRV LOADSTRING_INDIRECT (33h): dereferences pointerVar, subtracts 31h, then writes the decoded sequence.",
+    ),
+    0x42B1: (
+        "grv_compare_indirect_and_jump",
+        "Verified GRV STRCMP_NE_JMP_INDIRECT (21h) handler.",
+    ),
+    0x432B: (
+        "grv_play_transition_video_ref",
+        "Verified GRV VIDEO_TRANSITION_REF (1Ch) flag staging and playback handler.",
+    ),
+    0x43D2: (
+        "grv_play_video_name",
+        "Verified GRV VIDEO_NAME (26h) interpolated-name playback handler.",
+    ),
+    0x4451: ("grv_sleep", "Verified GRV SLEEP (19h) tick-delay handler."),
     0x447B: (
         "run_grv_input_loop",
         "Verified GRV INPUTLOOPSTART (0x0B) setup and input-action interpreter.",

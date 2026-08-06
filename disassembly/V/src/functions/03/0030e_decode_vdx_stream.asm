@@ -1,11 +1,11 @@
 ; Linear entry 0030E (1000:030e)
 ; Ghidra working symbol: FUN_1000_030e
-; Role not yet verified; boundary is provisional.
+; Verified VDX chunk loop and type dispatcher for 00h holds, 20h stills, 25h deltas, and interleaved 80h audio.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_0030e_part_00 0
+%macro emit_decode_vdx_stream_part_00 0
     %%fragment_start:
-func_0030e:
+decode_vdx_stream:
     %%insn_0030e:
     mov word [cs:0x5cde],0x0 ; 0030E 2EC706DE5C0000
     %if ($ - %%insn_0030e) > 7
@@ -232,7 +232,7 @@ func_0030e:
     %endif
 %endmacro
 
-%macro emit_func_0030e_part_01 0
+%macro emit_decode_vdx_stream_part_01 0
     %%fragment_start:
     %%insn_00385:
     cmp al,0x80 ; 00385 3C80
@@ -263,7 +263,7 @@ func_0030e:
     %endif
 %endmacro
 
-%macro emit_func_0030e_part_02 0
+%macro emit_decode_vdx_stream_part_02 0
     %%fragment_start:
     %%insn_00390:
     cmp al,0x0 ; 00390 3C00
@@ -294,7 +294,7 @@ func_0030e:
     %endif
 %endmacro
 
-%macro emit_func_0030e_part_03 0
+%macro emit_decode_vdx_stream_part_03 0
     %%fragment_start:
     %%insn_0039e:
     call 0x28ad ; 0039E E80C25

@@ -79,7 +79,7 @@ Parameters:
 	- filename: The filename of the VDX or GJD file to analyze
 
 Notes:
-	- Assumes the file starts with a VDX header (identifier 0x6792).
+	- Assumes the file starts with a VDX header (identifier 0x9267).
 	- Does not rely on RL files, treating the input as raw VDX data.
 ===============================================================================
 */
@@ -121,7 +121,7 @@ void VDXInfo(const std::string &filename)
 		{
 			VDXChunk chunk;
 			chunk.chunkType = rawSpan[offset];
-			chunk.unknown = rawSpan[offset + 1];
+			chunk.coding = rawSpan[offset + 1];
 			chunk.dataSize = *reinterpret_cast<const uint32_t *>(&rawSpan[offset + 2]);
 			chunk.lengthMask = rawSpan[offset + 6];
 			chunk.lengthBits = rawSpan[offset + 7];
@@ -209,7 +209,7 @@ void VDXInfo(const std::string &filename)
 
 	// Output chunk table (same for both VDX and GJD)
 	const int chunkTypeWidth = 6;	// Fits "0x20"
-	const int unknownWidth = 8;		// Fits "0x77"
+	const int codingWidth = 8;		// Fits "0x77"
 	const int dataSizeWidth = 10;	// Fits "10073" (right-aligned decimal)
 	const int lengthMaskWidth = 10; // Fits "0x7F"
 	const int lengthBitsWidth = 10; // Fits "0x07"
@@ -222,19 +222,19 @@ void VDXInfo(const std::string &filename)
 	std::println("\nChunk Information:");
 	// Column headers with space padding
 	std::println("{:<{}}| {:<{}}| {:<{}}| {:<{}}| {:<{}}",
-		"Type", chunkTypeWidth, "Unknown", unknownWidth,
+		"Type", chunkTypeWidth, "Coding", codingWidth,
 		"Data Size", dataSizeWidth, "Length Mask", lengthMaskWidth,
 		"Length Bits", lengthBitsWidth);
 
 	// Divider line
 	std::println("{}", std::string(
-		chunkTypeWidth + unknownWidth + dataSizeWidth + lengthMaskWidth + lengthBitsWidth + 4, '-'));
+		chunkTypeWidth + codingWidth + dataSizeWidth + lengthMaskWidth + lengthBitsWidth + 4, '-'));
 
 	// Chunk data
 	for (const auto &chunk : vdx.chunks)
 	{
 		std::println("{:<{}}| {:<{}}| {:>{}}| {:<{}}| {:<{}}",
-			hex8(chunk.chunkType), chunkTypeWidth, hex8(chunk.unknown), unknownWidth,
+			hex8(chunk.chunkType), chunkTypeWidth, hex8(chunk.coding), codingWidth,
 			chunk.dataSize, dataSizeWidth, hex8(chunk.lengthMask), lengthMaskWidth,
 			hex8(chunk.lengthBits), lengthBitsWidth);
 	}
@@ -300,7 +300,7 @@ void extractVDX(const std::string_view &filename)
 		{
 			// Write chunk header
 			vdxFileOut.write(reinterpret_cast<const char *>(&chunk.chunkType), sizeof(chunk.chunkType));
-			vdxFileOut.write(reinterpret_cast<const char *>(&chunk.unknown), sizeof(chunk.unknown));
+			vdxFileOut.write(reinterpret_cast<const char *>(&chunk.coding), sizeof(chunk.coding));
 			vdxFileOut.write(reinterpret_cast<const char *>(&chunk.dataSize), sizeof(chunk.dataSize));
 			vdxFileOut.write(reinterpret_cast<const char *>(&chunk.lengthMask), sizeof(chunk.lengthMask));
 			vdxFileOut.write(reinterpret_cast<const char *>(&chunk.lengthBits), sizeof(chunk.lengthBits));

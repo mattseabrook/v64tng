@@ -694,7 +694,7 @@ emit_file_data_0008_007e7e
 %if ($ - $$) != 0x007E80
     %error "layout drift at raw 007E80"
 %endif
-emit_func_00408a80_part_00
+emit_decompress_vdx_lzss_part_00
 
 ; raw 007FB4..0080F5 (function)
 %if ($ - $$) != 0x007FB4
@@ -988,13 +988,13 @@ emit_func_0040aa45_part_00
 %if ($ - $$) != 0x009F84
     %error "layout drift at raw 009F84"
 %endif
-emit_func_0040ab84_part_00
+emit_decode_vdx_bitmap_still_part_00
 
 ; raw 00A598..00B3F4 (function)
 %if ($ - $$) != 0x00A598
     %error "layout drift at raw 00A598"
 %endif
-emit_func_0040b198_part_00
+emit_decode_vdx_delta_frame_part_00
 
 ; raw 00B3F4..00B4BB (function)
 %if ($ - $$) != 0x00B3F4
@@ -1006,7 +1006,7 @@ emit_func_0040bff4_part_00
 %if ($ - $$) != 0x00B4BB
     %error "layout drift at raw 00B4BB"
 %endif
-emit_func_0040c0bb_part_00
+emit_decompress_vdx_chunk_part_00
 
 ; raw 00B4E7..00B529 (function)
 %if ($ - $$) != 0x00B4E7
