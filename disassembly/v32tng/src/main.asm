@@ -345,7 +345,7 @@ bits 32
 %include "src/functions/unknown/004194a2_func_004194a2.asm"
 
 ; Data Segments
-%include "src/data/data_0000_000000.asm"
+%include "src/data/pe_headers_and_section_table.asm"
 %include "src/data/data_0001_0035e0.asm"
 %include "src/data/data_0002_004278.asm"
 %include "src/data/data_0003_005d93.asm"
@@ -596,11 +596,11 @@ org 0x00400C00
 
 ; Exact raw-file emission order. Do not reorder.
 
-; raw 000000..000400 (explicit-data)
+; raw 000000..000400 (PE headers and section table)
 %if ($ - $$) != 0x000000
     %error "layout drift at raw 000000"
 %endif
-emit_file_data_0000_000000
+emit_pe_headers_and_section_table
 
 ; raw 000400..000561 (function)
 %if ($ - $$) != 0x000400
