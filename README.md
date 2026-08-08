@@ -325,11 +325,15 @@ The RL (Rob Landeros) file is an index file that contains information about VDX 
 
 The total file size divided by 20 gives the number of entries. The engine reads RL files sequentially, parsing 20-byte blocks until EOF. Each filename typically includes a file extension (e.g., `.VDX`) but the engine may strip this extension during lookup operations.
 
+For write-side tooling, a canonical generated RL should preserve that exact 20-byte record layout with no per-entry padding, no file header, and no trailer. `grooviev1` now mirrors this directly when producing `.RL`/`.GJD` pairs from loose files.
+
 ## GJD
 
 The GJD (Graeme J Devine) file is an archive file format that is essentially a collection of VDX data blobs concatenated together, with their structure and location determined by the corresponding `*.RL` index file.
 
 It doesn't have a fixed header structure, footer, or internal metadata—it is simply a flat binary concatenation of VDX files. The `*.RL` file acts as the external index that maps filenames to byte ranges within the GJD archive. Using the `offset` and `length` from each `*.RL` entry, the VDX data is read directly from the GJD file.
+
+For write-side tooling, a canonical generated GJD is therefore just the raw bytewise concatenation of the referenced payloads in RL order. `grooviev1` now packs archives that way and emits the matching RL offsets and lengths directly from the concatenated stream.
 
 | Component | Type            | Description                                                                     |
 | --------- | --------------- | ------------------------------------------------------------------------------- |
@@ -1344,7 +1348,7 @@ This chunk, as processed by `getBitmapDataChecked`, contains a static bitmap ima
 | 6+     | RGBColor[] | varies       | palette     | RGB color entries: `(1 << colourDepth) * 3` bytes (768 for 8-bit) |
 | varies | uint8_t[]  | varies       | image       | Tile data: 4 bytes per tile (colour1, colour0, colourMap[2])      |
 
-The overall bitmap dimensions are derived from these tile counts. Width is `numXTiles * 4` pixels and height is `numYTiles * 4` pixels. Most assets measure 640×320 pixels (160×80 tiles), but `Vielogo.vdx` from the Windows release uses 640×480 pixels (160×120 tiles).
+The overall bitmap dimensions are derived from these tile counts. Width is `numXTiles * 4` pixels and height is `numYTiles * 4` pixels. Most assets measure 640×320 pixels (160×80 tiles), but `Vielogo.vdx` from the Windows release uses 640×480 pixels (160×120 tiles). In other words, the player does not hardcode 640×320 as the only legal VDX height; dimensions come from the encoded tile counts, although 640×320 remains the canonical in-game movie size.
 
 The palette contains `(1 << colourDepth)` RGB triplets. For 8-bit color depth, this is 256 colors × 3 bytes = 768 bytes.
 
@@ -1547,6 +1551,18 @@ For opcodes in the range `0x80` to `0xFF` within the VDX file's delta frame proc
 | Map        | opcode byte and the subsequent byte together form a 16-bit color map. |
 | colour1    | opcode + 2 palette entry index                                        |
 | colour0    | opcode + 3 palette entry index                                        |
+
+###### Encoder Preference Profile
+
+When `grooviev1` emits `25h` delta streams, it currently prefers opcode families in this order to stay as close as practical to observed retail structure while still falling back safely for arbitrary source material:
+
+1. `0x00..0x5F` predefined-map two-colour tiles when the 4×4 pattern fits one of the known retail selector maps, including near-fits chosen by heuristic scoring.
+2. `0x62..0x6B` horizontal skip runs for unchanged tile spans.
+3. `0x6C..0x75` repeated solid-tile runs when several adjacent changed tiles share one palette entry.
+4. `0x76..0x7F` solid-tile sequences when adjacent changed tiles are each solid but use different palette entries.
+5. `0x60` full 16-byte per-pixel indexed tiles, then generic `0x80..0xFF` two-colour map form as fallback.
+
+That ordering is an encoder policy, not a player requirement. The original players accept any structurally valid mix of the documented opcode classes.
 
 ##### Original-player `25h` path
 

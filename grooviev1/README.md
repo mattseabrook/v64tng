@@ -1,0 +1,112 @@
+# grooviev1
+
+Standalone VDX encoder prototype for The 7th Guest pipeline.
+
+The executable now also includes RL/GJD archive helpers for packing and unpacking loose media files.
+
+Current scope:
+- Writes VDX header and chunk stream.
+- Emits `0x20` still frame from first input frame.
+- Emits `0x25` delta frames for subsequent changed frames.
+- Emits adaptive `0x25` local-palette updates for stronger canonical similarity.
+- Emits `0x00` duplicate-frame chunks when frame data is unchanged.
+- Optionally interleaves WAV PCM as `0x80` chunks.
+- Optional LZSS compression (`coding=0x77`, configurable length mask/bits).
+- Runs an internal decode/compare validation pass (can be disabled).
+
+This first version is intentionally focused on end-to-end VDX authoring only.
+RL/GJD/GRV authoring is out of scope for now.
+
+## Build (Linux -> Windows x64)
+
+```bash
+cd grooviev1
+chmod +x build.sh
+./build.sh
+```
+
+Output:
+- `grooviev1/build/grooviev1.exe`
+- If `/mnt/T7G` exists, it is also copied to `/mnt/T7G/grooviev1.exe`
+
+## Usage
+
+### Encode VDX
+
+```bash
+grooviev1.exe --output out.vdx [options] frame1 frame2 ...
+```
+
+or
+
+```bash
+grooviev1.exe --output out.vdx --input-dir frames [options]
+```
+
+Options:
+- `--output PATH` output VDX path (required)
+- `--input-dir DIR` discover input frames from directory (sorted lexicographically)
+- `--raw` treat input frames as raw RGB24 files
+- `--width N` width in pixels (required for `--raw`)
+- `--height N` height in pixels (required for `--raw`)
+- `--resize WxH` resize all frames before encoding
+- `--dos-canonical` shorthand for `--resize 640x320`
+- `--fps N` VDX header frame rate (default: `15`)
+- `--wav PATH` optional WAV source for `0x80` interleave
+- `--audio-chunk-bytes N` audio bytes per `0x80` chunk (default: `2048`)
+- `--lower-intermediate-quality 0..9` lower quality for frames `1..N-1` only (off by default)
+- `--max-local-palette-updates N` max palette edits per `0x25` (default: `32`)
+- `--no-compress` disable LZSS chunk compression
+- `--length-mask N` LZSS length mask (default: `127`)
+- `--length-bits N` LZSS length bits (default: `7`)
+- `--no-validate` skip internal round-trip validation
+
+### Pack RL/GJD
+
+```bash
+grooviev1.exe archive-pack --rl ROOM.RL --gjd ROOM.GJD --input-dir ./vdx
+```
+
+or
+
+```bash
+grooviev1.exe archive-pack --rl ROOM.RL --gjd ROOM.GJD A.VDX B.VDX C.VDX
+```
+
+### List RL/GJD
+
+```bash
+grooviev1.exe archive-list --rl ROOM.RL [--gjd ROOM.GJD]
+```
+
+### Unpack RL/GJD
+
+```bash
+grooviev1.exe archive-unpack --rl ROOM.RL --out-dir ./out [--gjd ROOM.GJD]
+```
+
+## Notes
+
+- Default is full quality for all frames.
+- `--lower-intermediate-quality` is optional and only affects frames from
+  first through second-last; the last frame remains full quality.
+- Image decoding uses Windows WIC (PNG/BMP/JPEG/TIFF/GIF/WebP depending on installed codecs).
+- WAV input is converted to unsigned 8-bit mono 22050 Hz PCM for `0x80` chunks.
+- Frame dimensions must be divisible by 4 for Groovie tile encoding.
+- Canonical T7G movie content is typically `640x320` (`160x80` tiles), though
+  the VDX header stores dimensions and other sizes can be encoded.
+- `archive-pack` writes the RL file as exact 20-byte records and writes the GJD
+  as raw concatenated payloads in RL order.
+- RL entry names must fit the original 12-byte filename field.
+
+## Example
+
+```bash
+grooviev1.exe \
+  --output INTRO_TEST.VDX \
+  --input-dir ./frames \
+  --dos-canonical \
+  --fps 12 \
+  --wav ./audio.wav \
+  --lower-intermediate-quality 6
+```
