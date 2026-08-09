@@ -32,6 +32,7 @@ class DecoderTests(unittest.TestCase):
                 "attached": ["grv.dispatch"],
                 "failures": [],
                 "input_hooks": [],
+                "save_file_hooks": ["CreateFileA", "WriteFile"],
             },
             {
                 "schema": "v64tng.trace/2",
@@ -72,6 +73,25 @@ class DecoderTests(unittest.TestCase):
             {
                 "schema": "v64tng.trace/2",
                 "seq": 7,
+                "host_ms": 14,
+                "probe": "grv.save_game",
+                "script": "SCRIPT.GRV",
+                "pc_after_opcode": 3,
+            },
+            {
+                "schema": "v64tng.trace/2",
+                "seq": 8,
+                "host_ms": 15,
+                "probe": "save.file_write",
+                "path": "C:\\T7G\\st7g.0",
+                "requested": 1024,
+                "actual": 1024,
+                "success": True,
+                "data": "00" * 1024,
+            },
+            {
+                "schema": "v64tng.trace/2",
+                "seq": 9,
                 "host_ms": 20,
                 "probe": "grv.dispatch",
                 "script": "SCRIPT.GRV",
@@ -98,6 +118,8 @@ class DecoderTests(unittest.TestCase):
             self.assertIn("type=0x20 (still) coding=0x77", scene)
             self.assertIn("v[0x104] 0 -> 1", scene)
             self.assertIn("VIDEOREF 0x2418=INTRO[24]", scene)
+            self.assertIn("grv.save_game: x1", scene)
+            self.assertIn("write C:\\T7G\\st7g.0 requested=1024 actual=1024", scene)
             self.assertTrue((trace / "digest" / "report.json").is_file())
 
 

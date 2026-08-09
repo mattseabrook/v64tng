@@ -8,8 +8,8 @@ disassembly and v64tng.
 
 The number of hook addresses is not the completeness measure. The important
 part is reading the correct state at stable semantic boundaries. This version
-uses 12 validated native probes, two optional Win32 input API hooks, and direct
-reads of the verified GRV globals.
+uses 15 validated native probes, two optional Win32 input API hooks, five
+filtered save-file API hooks, and direct reads of the verified GRV globals.
 
 ## What changed from the first draft
 
@@ -33,6 +33,8 @@ The current kit instead:
 - captures exact bounded instruction bytes and diffs the 0x400-byte GRV
   variable bank without writing whole snapshots to the log;
 - records loaded script names, video refs, and song refs;
+- records the verified LOADGAME, SAVEGAME, and CHECK_VALID_SAVES handler
+  boundaries plus exact bounded `st7g.N` read/write payloads;
 - records VDX type/coding/size, stream state, LZSS parameters and decoded
   length, plus still/delta decoder arguments and returns;
 - records key and mouse-button messages (not noisy mouse-move traffic);
@@ -141,7 +143,7 @@ The process starts suspended, the agent validates and attaches its probes, and
 then the host resumes the game. The expected readiness line is approximately:
 
 ```text
-tracer ready: 12 semantic probes attached; 0 failures; input hooks ['GetMessageA', 'PeekMessageA']
+tracer ready: 15 semantic probes attached; 0 failures; input hooks ['GetMessageA', 'PeekMessageA']; save hooks ['CreateFileA', 'WriteFile', 'ReadFile', 'CloseHandle', 'DeleteFileA']
 ```
 
 One input hook may be absent if that API is not available in the process. That
@@ -154,15 +156,37 @@ While playing:
 - Type a label and press Enter in the capture console when convenient.
 - Quit the game normally, or press Ctrl+C in the capture console.
 
-Suggested first capture:
+### Round 1: clean menu, Zaphod, reveal, and first save
 
-1. start the tracer and press F9 immediately;
-2. let the intro and main menu settle, then mark `main-menu`;
-3. start a new game and mark `foyer`;
-4. walk the foyer and exercise several hotspots;
-5. mark `dining-door`, click the dining-room door, and let the video and first
-   puzzle screen settle;
-6. mark `dining-puzzle`, then quit normally.
+Use a game directory with no existing `st7g.N` save files, as planned. Do not
+delete anything solely for tracing; first verify the directory is already in
+the desired clean state.
+
+Use F9 for these boundaries while the game retains focus. The automatic names
+will be `mark-1`, `mark-2`, and so on, so keep this list beside you:
+
+1. **F9 / mark-1:** immediately after the traced game appears;
+2. allow the initial menu to settle completely;
+3. **F9 / mark-2:** stable clean menu, before entering the Zaphod Beeblebrox sequence;
+4. **F9 / mark-3:** immediately before entering the sequence;
+5. enter the complete Zaphod Beeblebrox sequence once, then wait for every
+   visible/audible consequence to settle;
+6. **F9 / mark-4:** after the Zaphod result has settled;
+7. exercise every newly revealed menu item or state that can be inspected
+   without beginning the Round 2 intro playthrough, pausing for transitions;
+8. **F9 / mark-5:** after the revealed menu exploration;
+9. **F9 / mark-6:** immediately before creating the first save;
+10. create the save and wait until the menu is stable again;
+11. **F9 / mark-7:** immediately after the save has completed;
+12. revisit the menu/load display far enough to make the new slot visible, but
+    do not load it unless that is required to verify the slot;
+13. **F9 / mark-8:** saved-slot display settled;
+14. quit normally and leave the capture console open until it reports that the
+    process exited.
+
+Do not combine the intro sequence with this capture. Round 2 will start from a
+fresh trace and cover Start through the complete intro up to first player
+control.
 
 By default, output is written below:
 
@@ -232,6 +256,8 @@ Each scene report includes:
 - scripts, video refs, and song refs;
 - VDX chunk type/coding/size and decoder calls;
 - GRV variable writes with the originating instruction when known;
+- load/save/check-valid-saves handler hits and `st7g.N` open/read/write/close
+  evidence, including SHA-256 of captured payloads;
 - filtered input event counts;
 - opcode coverage;
 - an exact GRV trace with PC, instruction bytes, decoded mnemonic/operands,
@@ -247,14 +273,14 @@ semantic source: direct profile globals (trusted)
 
 ## What to bring back after the first run
 
-The most useful initial evidence is:
+For Round 1, bring back:
 
 1. `manifest.json`;
 2. `digest\INDEX.txt`;
 3. `digest\DIAGNOSTICS.txt`;
-4. the boot/main-menu scene;
-5. the foyer scene;
-6. the dining-door/puzzle scene.
+4. every `00-boot.txt` / `mark-N` scene file;
+5. `digest\report.json`;
+6. the newly created `st7g.N` save file if you are comfortable including it.
 
 Keep `events.ndjson`. It is the lossless replay source and lets the digester be
 improved without repeating the play session. If sharing the whole file is

@@ -37,6 +37,24 @@
           "expected": "a184f24100030500f34100"
         },
         {
+          "name": "grv.load_game",
+          "group": "grv",
+          "va": "0x004034ef",
+          "expected": "668b95dcfeffff52"
+        },
+        {
+          "name": "grv.save_game",
+          "group": "grv",
+          "va": "0x00403524",
+          "expected": "668b85dcfeffff50"
+        },
+        {
+          "name": "grv.check_valid_saves",
+          "group": "grv",
+          "va": "0x00403b5f",
+          "expected": "c745f400000000c785ccfeffff000000"
+        },
+        {
           "name": "grv.video_select",
           "group": "resource",
           "va": "0x00401d3a",

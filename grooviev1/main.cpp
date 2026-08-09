@@ -11,6 +11,7 @@
 #include <iostream>
 #include <limits>
 #include <map>
+#include <sstream>
 #include <span>
 #include <string>
 #include <string_view>
@@ -54,16 +55,19 @@ struct Block
     std::vector<uint8_t> data;
 };
 
+// Canonical table: DOS V.EXE DS:D48E and Win32 v32tng.exe VA 0041A088.
+// The two independently compiled decoder tables are byte-for-byte identical.
+// Verified 192-byte SHA-256: 16c066d8cf21fa1b07d1ede81e4fdd2e7f91b91752c8c9c644472ada6943439c.
 static constexpr std::array<uint8_t, 192> kMapField = {
     0x00, 0xc8, 0x80, 0xec, 0xc8, 0xfe, 0xec, 0xff, 0xfe, 0xff, 0x00, 0x31, 0x10, 0x73, 0x31, 0xf7,
     0x73, 0xff, 0xf7, 0xff, 0x80, 0x6c, 0xc8, 0x36, 0x6c, 0x13, 0x10, 0x63, 0x31, 0xc6, 0x63, 0x8c,
     0x00, 0xf0, 0x00, 0xff, 0xf0, 0xff, 0x11, 0x11, 0x33, 0x33, 0x77, 0x77, 0x66, 0x66, 0xcc, 0xcc,
-    0xf0, 0x0f, 0xff, 0x00, 0xcc, 0xff, 0x76, 0x00, 0x33, 0xff, 0xe6, 0x0e, 0xff, 0xcc, 0x70, 0x67,
-    0xff, 0x33, 0xe0, 0x6e, 0x00, 0x48, 0x80, 0x24, 0x48, 0x12, 0x24, 0x00, 0x12, 0x00, 0x00, 0x21,
-    0x10, 0x42, 0x21, 0x84, 0x42, 0x00, 0x84, 0x00, 0x88, 0xf8, 0x44, 0x00, 0x32, 0x00, 0x1f, 0x11,
+    0xf0, 0x0f, 0xff, 0x00, 0xcc, 0xff, 0x76, 0x07, 0x33, 0xff, 0xe6, 0x0e, 0xff, 0xcc, 0x70, 0x67,
+    0xff, 0x33, 0xe0, 0x6e, 0x00, 0x48, 0x80, 0x24, 0x48, 0x12, 0x24, 0x01, 0x12, 0x00, 0x00, 0x21,
+    0x10, 0x42, 0x21, 0x84, 0x42, 0x08, 0x84, 0x00, 0x88, 0xf8, 0x44, 0x07, 0x32, 0x00, 0x1f, 0x11,
     0xe0, 0x22, 0x00, 0x4c, 0x8f, 0x88, 0x70, 0x44, 0x00, 0x23, 0x11, 0xf1, 0x22, 0x0e, 0xc4, 0x00,
     0x3f, 0xf3, 0xcf, 0xfc, 0x99, 0xff, 0xff, 0x99, 0x44, 0x44, 0x22, 0x22, 0xee, 0xcc, 0x33, 0x77,
-    0xf8, 0x00, 0xf1, 0x00, 0xbb, 0x00, 0xdd, 0x0c, 0x0f, 0x0f, 0x88, 0x0f, 0xf1, 0x13, 0xb3, 0x19,
+    0xf8, 0x01, 0xf1, 0x08, 0xbb, 0x09, 0xdd, 0x0c, 0x0f, 0x0f, 0x88, 0x0f, 0xf1, 0x13, 0xb3, 0x19,
     0x80, 0x1f, 0x6f, 0x22, 0xec, 0x27, 0x77, 0x30, 0x67, 0x32, 0xe4, 0x37, 0xe3, 0x38, 0x90, 0x3f,
     0xcf, 0x44, 0xd9, 0x4c, 0x99, 0x4c, 0x55, 0x55, 0x3f, 0x60, 0x77, 0x60, 0x37, 0x62, 0xc9, 0x64,
     0xcd, 0x64, 0xd9, 0x6c, 0xef, 0x70, 0x00, 0x0f, 0xf0, 0x00, 0x00, 0x00, 0x44, 0x44, 0x22, 0x22};
@@ -89,6 +93,9 @@ static void printUsage()
         << "  archive-pack   Pack loose files into .GJD and generate matching .RL\n"
         << "  archive-list   List entries from an .RL/.GJD pair\n"
         << "  archive-unpack Extract entries from an .RL/.GJD pair\n\n"
+        << "  fnt-list       Inspect SPHINX.FNT layout and glyph metadata\n"
+        << "  fnt-extract    Export SPHINX.FNT glyph bitmaps + metadata files\n"
+        << "  fnt-pack       Rebuild SPHINX.FNT from extracted glyph bitmaps\n\n"
         << "Usage:\n"
         << "  grooviev1.exe --output out.vdx [options] frame1 frame2 ...\n"
         << "  grooviev1.exe --output out.vdx --input-dir frames [options]\n\n"
@@ -112,7 +119,11 @@ static void printUsage()
         << "Archive usage:\n"
         << "  grooviev1.exe archive-pack --rl ROOM.RL --gjd ROOM.GJD [--input-dir DIR] [files...]\n"
         << "  grooviev1.exe archive-list --rl ROOM.RL [--gjd ROOM.GJD]\n"
-        << "  grooviev1.exe archive-unpack --rl ROOM.RL --out-dir DIR [--gjd ROOM.GJD]\n";
+        << "  grooviev1.exe archive-unpack --rl ROOM.RL --out-dir DIR [--gjd ROOM.GJD]\n\n"
+        << "FNT usage:\n"
+        << "  grooviev1.exe fnt-list --fnt SPHINX.FNT\n"
+        << "  grooviev1.exe fnt-extract --fnt SPHINX.FNT --out-dir ./sphinx_font\n"
+        << "  grooviev1.exe fnt-pack --input-dir ./sphinx_font --output SPHINX_NEW.FNT [--charmap ./sphinx_font/charmap.bin] [--glyphs ./sphinx_font/glyphs.csv]\n";
 }
 
 static bool parseInt(const std::string &s, int &out)
@@ -1447,6 +1458,531 @@ static std::string defaultGjdPathFromRl(const std::string &rlPath)
     return path.string();
 }
 
+struct FntGlyph
+{
+    uint8_t width = 0;
+    uint8_t meta1 = 0;
+    uint8_t meta2 = 0;
+    std::vector<uint8_t> pixels;
+};
+
+struct FntFile
+{
+    std::array<uint8_t, 128> charMap{};
+    std::vector<FntGlyph> glyphs;
+};
+
+static bool isPrintableAscii(uint8_t c)
+{
+    return c >= 32 && c <= 126;
+}
+
+static std::string asciiDescribe(uint8_t c)
+{
+    if (isPrintableAscii(c) && c != '\\')
+        return std::string("'") + static_cast<char>(c) + "'";
+    std::ostringstream oss;
+    oss << "0x" << std::hex << std::uppercase;
+    if (c < 16)
+        oss << '0';
+    oss << static_cast<int>(c);
+    return oss.str();
+}
+
+static uint32_t readLE32Ptr(const uint8_t *p)
+{
+    return static_cast<uint32_t>(p[0]) |
+           (static_cast<uint32_t>(p[1]) << 8) |
+           (static_cast<uint32_t>(p[2]) << 16) |
+           (static_cast<uint32_t>(p[3]) << 24);
+}
+
+static void writeLE16Ptr(uint8_t *p, uint16_t v)
+{
+    p[0] = static_cast<uint8_t>(v & 0xFF);
+    p[1] = static_cast<uint8_t>((v >> 8) & 0xFF);
+}
+
+static void writeLE32Ptr(uint8_t *p, uint32_t v)
+{
+    p[0] = static_cast<uint8_t>(v & 0xFF);
+    p[1] = static_cast<uint8_t>((v >> 8) & 0xFF);
+    p[2] = static_cast<uint8_t>((v >> 16) & 0xFF);
+    p[3] = static_cast<uint8_t>((v >> 24) & 0xFF);
+}
+
+static std::vector<uint8_t> readBinaryRequired(const std::string &path)
+{
+    std::vector<uint8_t> data = readBinaryFile(path);
+    if (data.empty())
+        throw std::runtime_error("File is empty: " + path);
+    return data;
+}
+
+static FntFile parseGroovieFnt(const std::string &path)
+{
+    const std::vector<uint8_t> bytes = readBinaryRequired(path);
+    if (bytes.size() < 128 + 2)
+        throw std::runtime_error("FNT too small: " + path);
+
+    FntFile out;
+    std::copy(bytes.begin(), bytes.begin() + 128, out.charMap.begin());
+
+    uint8_t maxIndex = 0;
+    for (uint8_t v : out.charMap)
+        if (v > maxIndex)
+            maxIndex = v;
+    const size_t glyphCount = static_cast<size_t>(maxIndex) + 1;
+    const size_t tableStart = 128;
+    const size_t tableBytes = glyphCount * 2;
+    if (bytes.size() < tableStart + tableBytes)
+        throw std::runtime_error("FNT truncated offset table: " + path);
+
+    std::vector<uint16_t> offsets(glyphCount);
+    for (size_t i = 0; i < glyphCount; ++i)
+        offsets[i] = readLE16(bytes.data() + tableStart + i * 2);
+
+    const uint16_t recordsStart = static_cast<uint16_t>(tableStart + tableBytes);
+    if (offsets.empty() || offsets[0] < recordsStart)
+        throw std::runtime_error("FNT invalid first glyph offset: " + path);
+    for (size_t i = 1; i < offsets.size(); ++i)
+    {
+        if (offsets[i] <= offsets[i - 1])
+            throw std::runtime_error("FNT offsets not strictly increasing: " + path);
+    }
+    if (offsets.back() >= bytes.size())
+        throw std::runtime_error("FNT final offset outside file: " + path);
+
+    out.glyphs.reserve(glyphCount);
+    for (size_t i = 0; i < glyphCount; ++i)
+    {
+        const size_t start = offsets[i];
+        const size_t end = (i + 1 < glyphCount) ? offsets[i + 1] : bytes.size();
+        if (end <= start || end - start < 3)
+            throw std::runtime_error("FNT glyph record too small at index " + std::to_string(i));
+
+        FntGlyph g;
+        g.width = bytes[start + 0];
+        g.meta1 = bytes[start + 1];
+        g.meta2 = bytes[start + 2];
+        if (g.width == 0)
+            throw std::runtime_error("FNT glyph width is zero at index " + std::to_string(i));
+
+        g.pixels.assign(bytes.begin() + static_cast<std::ptrdiff_t>(start + 3),
+                        bytes.begin() + static_cast<std::ptrdiff_t>(end));
+        if ((g.pixels.size() % g.width) != 0)
+            throw std::runtime_error("FNT glyph payload does not divide by width at index " + std::to_string(i));
+
+        out.glyphs.push_back(std::move(g));
+    }
+
+    return out;
+}
+
+static std::vector<uint8_t> buildGroovieFntBytes(const FntFile &fnt)
+{
+    if (fnt.glyphs.empty())
+        throw std::runtime_error("Cannot build FNT with zero glyphs");
+
+    uint8_t maxIndex = 0;
+    for (uint8_t v : fnt.charMap)
+        if (v > maxIndex)
+            maxIndex = v;
+    if (static_cast<size_t>(maxIndex) >= fnt.glyphs.size())
+        throw std::runtime_error("Character map references missing glyph index");
+
+    const size_t tableStart = 128;
+    const size_t tableBytes = fnt.glyphs.size() * 2;
+    const size_t recordsStart = tableStart + tableBytes;
+    if (recordsStart > 0xFFFF)
+        throw std::runtime_error("FNT header/table exceeds 16-bit offset range");
+
+    std::vector<uint8_t> out(recordsStart, 0);
+    std::copy(fnt.charMap.begin(), fnt.charMap.end(), out.begin());
+
+    uint32_t cursor = static_cast<uint32_t>(recordsStart);
+    std::vector<uint16_t> offsets(fnt.glyphs.size());
+
+    for (size_t i = 0; i < fnt.glyphs.size(); ++i)
+    {
+        const FntGlyph &g = fnt.glyphs[i];
+        if (g.width == 0)
+            throw std::runtime_error("FNT glyph width cannot be zero at index " + std::to_string(i));
+        if ((g.pixels.size() % g.width) != 0)
+            throw std::runtime_error("FNT glyph payload size is not divisible by width at index " + std::to_string(i));
+
+        if (cursor > 0xFFFFu)
+            throw std::runtime_error("FNT glyph offset exceeds 16-bit range");
+        offsets[i] = static_cast<uint16_t>(cursor);
+
+        out.push_back(g.width);
+        out.push_back(g.meta1);
+        out.push_back(g.meta2);
+        out.insert(out.end(), g.pixels.begin(), g.pixels.end());
+        cursor = static_cast<uint32_t>(out.size());
+    }
+
+    for (size_t i = 0; i < offsets.size(); ++i)
+        writeLE16Ptr(out.data() + tableStart + i * 2, offsets[i]);
+
+    return out;
+}
+
+static void writeBinaryFile(const std::string &path, const std::vector<uint8_t> &data)
+{
+    std::ofstream out(path, std::ios::binary);
+    if (!out)
+        throw std::runtime_error("Failed to write file: " + path);
+    if (!data.empty())
+        out.write(reinterpret_cast<const char *>(data.data()), static_cast<std::streamsize>(data.size()));
+}
+
+static void writeBmpGray24(const std::string &path,
+                           int width,
+                           int height,
+                           const std::vector<uint8_t> &pixels)
+{
+    if (width <= 0 || height <= 0)
+        throw std::runtime_error("Invalid BMP dimensions");
+    if (pixels.size() != static_cast<size_t>(width) * static_cast<size_t>(height))
+        throw std::runtime_error("BMP pixel payload size mismatch");
+
+    const uint32_t rowStride = static_cast<uint32_t>((width * 3 + 3) & ~3);
+    const uint32_t pixelBytes = rowStride * static_cast<uint32_t>(height);
+    const uint32_t fileSize = 54 + pixelBytes;
+    std::vector<uint8_t> out(fileSize, 0);
+
+    out[0] = 'B';
+    out[1] = 'M';
+    writeLE32Ptr(out.data() + 2, fileSize);
+    writeLE32Ptr(out.data() + 10, 54);
+    writeLE32Ptr(out.data() + 14, 40);
+    writeLE32Ptr(out.data() + 18, static_cast<uint32_t>(width));
+    writeLE32Ptr(out.data() + 22, static_cast<uint32_t>(height));
+    writeLE16Ptr(out.data() + 26, 1);
+    writeLE16Ptr(out.data() + 28, 24);
+    writeLE32Ptr(out.data() + 34, pixelBytes);
+
+    uint8_t *dst = out.data() + 54;
+    for (int y = 0; y < height; ++y)
+    {
+        const int srcY = height - 1 - y;
+        uint8_t *row = dst + static_cast<size_t>(y) * rowStride;
+        for (int x = 0; x < width; ++x)
+        {
+            const uint8_t v = pixels[static_cast<size_t>(srcY) * static_cast<size_t>(width) + static_cast<size_t>(x)];
+            row[static_cast<size_t>(x) * 3 + 0] = v;
+            row[static_cast<size_t>(x) * 3 + 1] = v;
+            row[static_cast<size_t>(x) * 3 + 2] = v;
+        }
+    }
+
+    writeBinaryFile(path, out);
+}
+
+static std::vector<uint8_t> readBmpGray(const std::string &path, int &width, int &height)
+{
+    const std::vector<uint8_t> b = readBinaryRequired(path);
+    if (b.size() < 54 || b[0] != 'B' || b[1] != 'M')
+        throw std::runtime_error("Unsupported BMP (missing BM header): " + path);
+
+    const uint32_t pixelOff = readLE32Ptr(b.data() + 10);
+    const uint32_t dibSize = readLE32Ptr(b.data() + 14);
+    if (dibSize < 40 || b.size() < 14 + dibSize)
+        throw std::runtime_error("Unsupported BMP DIB header: " + path);
+
+    const int32_t w = static_cast<int32_t>(readLE32Ptr(b.data() + 18));
+    const int32_t hSigned = static_cast<int32_t>(readLE32Ptr(b.data() + 22));
+    const uint16_t planes = readLE16(b.data() + 26);
+    const uint16_t bpp = readLE16(b.data() + 28);
+    const uint32_t compression = readLE32Ptr(b.data() + 30);
+    if (planes != 1 || compression != 0 || (bpp != 24 && bpp != 32))
+        throw std::runtime_error("Only uncompressed 24-bit/32-bit BMP is supported: " + path);
+    if (w <= 0 || hSigned == 0)
+        throw std::runtime_error("Invalid BMP dimensions: " + path);
+
+    width = static_cast<int>(w);
+    height = static_cast<int>(hSigned > 0 ? hSigned : -hSigned);
+
+    const uint32_t rowStride = (bpp == 24)
+                                   ? static_cast<uint32_t>((width * 3 + 3) & ~3)
+                                   : static_cast<uint32_t>(width * 4);
+    const uint64_t required = static_cast<uint64_t>(pixelOff) + static_cast<uint64_t>(rowStride) * static_cast<uint64_t>(height);
+    if (required > b.size())
+        throw std::runtime_error("BMP pixel data truncated: " + path);
+
+    std::vector<uint8_t> out(static_cast<size_t>(width) * static_cast<size_t>(height));
+    for (int y = 0; y < height; ++y)
+    {
+        const int srcY = (hSigned > 0) ? (height - 1 - y) : y;
+        const uint8_t *row = b.data() + pixelOff + static_cast<size_t>(srcY) * rowStride;
+        for (int x = 0; x < width; ++x)
+        {
+            const size_t p = static_cast<size_t>(x) * (bpp / 8);
+            const uint8_t bb = row[p + 0];
+            const uint8_t gg = row[p + 1];
+            const uint8_t rr = row[p + 2];
+            out[static_cast<size_t>(y) * static_cast<size_t>(width) + static_cast<size_t>(x)] =
+                static_cast<uint8_t>((static_cast<uint16_t>(rr) + static_cast<uint16_t>(gg) + static_cast<uint16_t>(bb)) / 3);
+        }
+    }
+
+    return out;
+}
+
+static std::vector<std::string> splitComma(const std::string &line)
+{
+    std::vector<std::string> out;
+    std::string current;
+    for (char c : line)
+    {
+        if (c == ',')
+        {
+            out.push_back(current);
+            current.clear();
+        }
+        else
+        {
+            current.push_back(c);
+        }
+    }
+    out.push_back(current);
+    return out;
+}
+
+static void fntListCommand(int argc, char **argv)
+{
+    std::string fntPath;
+    for (int i = 2; i < argc; ++i)
+    {
+        const std::string arg = argv[i];
+        if (arg == "--fnt")
+        {
+            if (i + 1 >= argc)
+                throw std::runtime_error("Missing value for --fnt");
+            fntPath = argv[++i];
+        }
+    }
+    if (fntPath.empty())
+        throw std::runtime_error("fnt-list requires --fnt");
+
+    const std::vector<uint8_t> raw = readBinaryRequired(fntPath);
+    const FntFile fnt = parseGroovieFnt(fntPath);
+
+    std::vector<std::vector<uint8_t>> glyphToChars(fnt.glyphs.size());
+    for (int c = 0; c < 128; ++c)
+    {
+        const uint8_t idx = fnt.charMap[static_cast<size_t>(c)];
+        if (idx < glyphToChars.size())
+            glyphToChars[idx].push_back(static_cast<uint8_t>(c));
+    }
+
+    std::cout << "FNT: " << fntPath << "\n";
+    std::cout << "File size: " << raw.size() << " bytes\n";
+    std::cout << "Character map bytes: 128\n";
+    std::cout << "Glyph count: " << fnt.glyphs.size() << "\n\n";
+    std::cout << "Glyph records:\n";
+    for (size_t i = 0; i < fnt.glyphs.size(); ++i)
+    {
+        const FntGlyph &g = fnt.glyphs[i];
+        const size_t h = g.pixels.size() / g.width;
+        std::cout << "  [" << i << "] width=" << static_cast<int>(g.width)
+                  << " height=" << h
+                  << " meta1=" << static_cast<int>(g.meta1)
+                  << " meta2=" << static_cast<int>(g.meta2)
+                  << " chars=";
+        if (glyphToChars[i].empty())
+        {
+            std::cout << "(none)";
+        }
+        else
+        {
+            for (size_t k = 0; k < glyphToChars[i].size(); ++k)
+            {
+                if (k)
+                    std::cout << ' ';
+                std::cout << asciiDescribe(glyphToChars[i][k]);
+            }
+        }
+        std::cout << "\n";
+    }
+}
+
+static void fntExtractCommand(int argc, char **argv)
+{
+    std::string fntPath;
+    std::string outDir;
+    for (int i = 2; i < argc; ++i)
+    {
+        const std::string arg = argv[i];
+        if (arg == "--fnt")
+        {
+            if (i + 1 >= argc)
+                throw std::runtime_error("Missing value for --fnt");
+            fntPath = argv[++i];
+        }
+        else if (arg == "--out-dir")
+        {
+            if (i + 1 >= argc)
+                throw std::runtime_error("Missing value for --out-dir");
+            outDir = argv[++i];
+        }
+    }
+    if (fntPath.empty() || outDir.empty())
+        throw std::runtime_error("fnt-extract requires --fnt and --out-dir");
+
+    const FntFile fnt = parseGroovieFnt(fntPath);
+    fs::create_directories(outDir);
+
+    const fs::path charMapPath = fs::path(outDir) / "charmap.bin";
+    writeBinaryFile(charMapPath.string(), std::vector<uint8_t>(fnt.charMap.begin(), fnt.charMap.end()));
+
+    std::ofstream csv((fs::path(outDir) / "glyphs.csv").string(), std::ios::binary);
+    if (!csv)
+        throw std::runtime_error("Failed to create glyphs.csv");
+    csv << "index,width,meta1,meta2,height,file\n";
+
+    for (size_t i = 0; i < fnt.glyphs.size(); ++i)
+    {
+        const FntGlyph &g = fnt.glyphs[i];
+        const int w = static_cast<int>(g.width);
+        const int h = static_cast<int>(g.pixels.size() / g.width);
+
+        std::ostringstream name;
+        name << "glyph_";
+        if (i < 10)
+            name << '0';
+        name << i << ".bmp";
+        const fs::path bmpPath = fs::path(outDir) / name.str();
+        writeBmpGray24(bmpPath.string(), w, h, g.pixels);
+
+        csv << i << ','
+            << w << ','
+            << static_cast<int>(g.meta1) << ','
+            << static_cast<int>(g.meta2) << ','
+            << h << ','
+            << name.str() << "\n";
+    }
+
+    std::cout << "Extracted glyph bitmaps: " << fnt.glyphs.size() << "\n";
+    std::cout << "Output directory: " << outDir << "\n";
+}
+
+static void fntPackCommand(int argc, char **argv)
+{
+    std::string inputDir;
+    std::string outputPath;
+    std::string charMapPath;
+    std::string glyphsPath;
+
+    for (int i = 2; i < argc; ++i)
+    {
+        const std::string arg = argv[i];
+        if (arg == "--input-dir")
+        {
+            if (i + 1 >= argc)
+                throw std::runtime_error("Missing value for --input-dir");
+            inputDir = argv[++i];
+        }
+        else if (arg == "--output")
+        {
+            if (i + 1 >= argc)
+                throw std::runtime_error("Missing value for --output");
+            outputPath = argv[++i];
+        }
+        else if (arg == "--charmap")
+        {
+            if (i + 1 >= argc)
+                throw std::runtime_error("Missing value for --charmap");
+            charMapPath = argv[++i];
+        }
+        else if (arg == "--glyphs")
+        {
+            if (i + 1 >= argc)
+                throw std::runtime_error("Missing value for --glyphs");
+            glyphsPath = argv[++i];
+        }
+    }
+
+    if (inputDir.empty() || outputPath.empty())
+        throw std::runtime_error("fnt-pack requires --input-dir and --output");
+
+    if (charMapPath.empty())
+        charMapPath = (fs::path(inputDir) / "charmap.bin").string();
+    if (glyphsPath.empty())
+        glyphsPath = (fs::path(inputDir) / "glyphs.csv").string();
+
+    const std::vector<uint8_t> charMapData = readBinaryRequired(charMapPath);
+    if (charMapData.size() != 128)
+        throw std::runtime_error("charmap.bin must be exactly 128 bytes");
+
+    FntFile fnt;
+    std::copy(charMapData.begin(), charMapData.end(), fnt.charMap.begin());
+
+    std::ifstream csv(glyphsPath, std::ios::binary);
+    if (!csv)
+        throw std::runtime_error("Failed to open glyphs CSV: " + glyphsPath);
+
+    std::string line;
+    if (!std::getline(csv, line))
+        throw std::runtime_error("glyphs CSV is empty");
+
+    while (std::getline(csv, line))
+    {
+        if (line.empty())
+            continue;
+        const auto fields = splitComma(line);
+        if (fields.size() < 6)
+            throw std::runtime_error("Invalid glyphs CSV line: " + line);
+
+        int index = -1;
+        int widthField = 0;
+        int meta1 = 0;
+        int meta2 = 0;
+        int heightField = 0;
+        if (!parseInt(fields[0], index) || !parseInt(fields[1], widthField) ||
+            !parseInt(fields[2], meta1) || !parseInt(fields[3], meta2) || !parseInt(fields[4], heightField))
+            throw std::runtime_error("Invalid numeric fields in glyphs CSV line: " + line);
+
+        if (index != static_cast<int>(fnt.glyphs.size()))
+            throw std::runtime_error("glyphs CSV indices must be contiguous from 0");
+        if (meta1 < 0 || meta1 > 255 || meta2 < 0 || meta2 > 255)
+            throw std::runtime_error("glyph metadata must be in [0,255]");
+
+        const fs::path bmpPath = fs::path(inputDir) / fields[5];
+        int w = 0;
+        int h = 0;
+        std::vector<uint8_t> pixels = readBmpGray(bmpPath.string(), w, h);
+        if (w <= 0 || h <= 0)
+            throw std::runtime_error("Invalid glyph bitmap dimensions: " + bmpPath.string());
+        if (widthField > 0 && widthField != w)
+            throw std::runtime_error("Glyph width mismatch between CSV and BMP: " + bmpPath.string());
+        if (heightField > 0 && heightField != h)
+            throw std::runtime_error("Glyph height mismatch between CSV and BMP: " + bmpPath.string());
+
+        FntGlyph g;
+        g.width = static_cast<uint8_t>(w);
+        g.meta1 = static_cast<uint8_t>(meta1);
+        g.meta2 = static_cast<uint8_t>(meta2);
+        g.pixels = std::move(pixels);
+        fnt.glyphs.push_back(std::move(g));
+    }
+
+    if (fnt.glyphs.empty())
+        throw std::runtime_error("No glyphs found in glyphs.csv");
+
+    uint8_t maxIndex = 0;
+    for (uint8_t v : fnt.charMap)
+        if (v > maxIndex)
+            maxIndex = v;
+    if (static_cast<size_t>(maxIndex) >= fnt.glyphs.size())
+        throw std::runtime_error("Character map references glyph index beyond CSV entries");
+
+    writeBinaryFile(outputPath, buildGroovieFntBytes(fnt));
+    std::cout << "Packed FNT: " << outputPath << "\n";
+    std::cout << "Glyphs: " << fnt.glyphs.size() << "\n";
+}
+
 static void archivePackCommand(int argc, char **argv)
 {
     std::string rlPath;
@@ -1873,6 +2409,21 @@ int main(int argc, char **argv)
             if (command == "archive-unpack")
             {
                 archiveUnpackCommand(argc, argv);
+                return 0;
+            }
+            if (command == "fnt-list")
+            {
+                fntListCommand(argc, argv);
+                return 0;
+            }
+            if (command == "fnt-extract")
+            {
+                fntExtractCommand(argc, argv);
+                return 0;
+            }
+            if (command == "fnt-pack")
+            {
+                fntPackCommand(argc, argv);
                 return 0;
             }
             if (command == "encode")

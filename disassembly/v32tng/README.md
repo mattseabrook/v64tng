@@ -80,6 +80,19 @@ repository_VA = runtime_address - runtime_module_base + 00400000h
 The original PDB is not present. The embedded path is valuable provenance but
 does not restore original private symbols.
 
+## Verified Visual C++ resources
+
+The `.rsrc` directory has now been parsed and labeled semantically in the
+lossless source. It contains one version record, one 32x32 4-bpp icon image,
+one group-icon selector, and two English (language 1033) string-table blocks.
+The group record proves that application icon ID 101 selects `RT_ICON/1`;
+this is not a signature-based identification.
+
+The reconstructed historical icon and a reproducible PE-resource extractor
+are in [`resources/`](resources/README.md). The extracted ICO has SHA-256
+`28364f76490e22fc1fca5c3c88b79c7870cd11d172cbf1ced06516be864b28cd`
+and is unrelated to the repository-root v64tng icon.
+
 ## Source organization
 
 | Path | Purpose |
@@ -92,10 +105,19 @@ does not restore original private symbols.
 | `src/functions/resource_io/*.asm` | Verified archive and resource-selection routines |
 | `src/functions/runtime/*.asm` | Verified application startup, dispatch, state, support, and shutdown routines |
 | `src/functions/unknown/*.asm` | Provisional functions retaining address-based identities |
-| `src/data/data_*.asm` | Explicit headers, gaps, section data, and debug tail |
+| `src/data/data_*.asm` | Only explicit ranges whose individual semantics remain unresolved |
+| Named `src/data/*.asm` files | Address-free semantic names for extracted GRV globals, PE imports/resources/relocations, padding, and other verified ranges |
+| `resources/` | Verified PE resource inventory and reconstructed historical icon |
+| `tools/extract_icon.py` | Hash-checked PE resource parser and ICO reconstructor |
 
 The semantic directories express verified subsystem ownership. They are not
 claims about the original Visual C++ object modules.
+
+Verified data ranges are not left as comments inside generic chunks. Each is
+emitted from a dedicated semantic file; `data_*.asm` remains only for ranges
+that have not yet earned a precise identity. The long-term completion
+criterion is to reduce those generic files to zero through evidence-backed
+splitting and naming.
 
 NASM emits mnemonic source only when it reproduces the historical encoding
 exactly. If NASM's preferred encoding differs, the generated source retains

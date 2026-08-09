@@ -112,6 +112,12 @@ Semantic-disassembly completeness is the share of provisional analyzer function 
       - [Song Stack Operations](#song-stack-operations)
     - [Configuration Options](#configuration-options)
     - [XMI Song Index](#xmi-song-index)
+  - [SPHINX.FNT](#sphinxfnt)
+    - [Container Layout](#container-layout)
+    - [Character Map (128 bytes)](#character-map-128-bytes)
+    - [Glyph Offset Table](#glyph-offset-table)
+    - [Glyph Record Format](#glyph-record-format)
+    - [Compatibility Notes](#compatibility-notes)
   - [Cursors](#cursors)
     - [ROB.GJD Structure](#robgjd-structure)
     - [Cursor Blob Metadata](#cursor-blob-metadata)
@@ -1483,12 +1489,12 @@ When an opcode within this range is encountered, the process uses a predefined m
  0x00, 0xc8, 0x80, 0xec, 0xc8, 0xfe, 0xec, 0xff, 0xfe, 0xff, 0x00, 0x31, 0x10, 0x73, 0x31, 0xf7,
  0x73, 0xff, 0xf7, 0xff, 0x80, 0x6c, 0xc8, 0x36, 0x6c, 0x13, 0x10, 0x63, 0x31, 0xc6, 0x63, 0x8c,
  0x00, 0xf0, 0x00, 0xff, 0xf0, 0xff, 0x11, 0x11, 0x33, 0x33, 0x77, 0x77, 0x66, 0x66, 0xcc, 0xcc,
- 0xf0, 0x0f, 0xff, 0x00, 0xcc, 0xff, 0x76, 0x00, 0x33, 0xff, 0xe6, 0x0e, 0xff, 0xcc, 0x70, 0x67,
- 0xff, 0x33, 0xe0, 0x6e, 0x00, 0x48, 0x80, 0x24, 0x48, 0x12, 0x24, 0x00, 0x12, 0x00, 0x00, 0x21,
- 0x10, 0x42, 0x21, 0x84, 0x42, 0x00, 0x84, 0x00, 0x88, 0xf8, 0x44, 0x00, 0x32, 0x00, 0x1f, 0x11,
+ 0xf0, 0x0f, 0xff, 0x00, 0xcc, 0xff, 0x76, 0x07, 0x33, 0xff, 0xe6, 0x0e, 0xff, 0xcc, 0x70, 0x67,
+ 0xff, 0x33, 0xe0, 0x6e, 0x00, 0x48, 0x80, 0x24, 0x48, 0x12, 0x24, 0x01, 0x12, 0x00, 0x00, 0x21,
+ 0x10, 0x42, 0x21, 0x84, 0x42, 0x08, 0x84, 0x00, 0x88, 0xf8, 0x44, 0x07, 0x32, 0x00, 0x1f, 0x11,
  0xe0, 0x22, 0x00, 0x4c, 0x8f, 0x88, 0x70, 0x44, 0x00, 0x23, 0x11, 0xf1, 0x22, 0x0e, 0xc4, 0x00,
  0x3f, 0xf3, 0xcf, 0xfc, 0x99, 0xff, 0xff, 0x99, 0x44, 0x44, 0x22, 0x22, 0xee, 0xcc, 0x33, 0x77,
- 0xf8, 0x00, 0xf1, 0x00, 0xbb, 0x00, 0xdd, 0x0c, 0x0f, 0x0f, 0x88, 0x0f, 0xf1, 0x13, 0xb3, 0x19,
+ 0xf8, 0x01, 0xf1, 0x08, 0xbb, 0x09, 0xdd, 0x0c, 0x0f, 0x0f, 0x88, 0x0f, 0xf1, 0x13, 0xb3, 0x19,
  0x80, 0x1f, 0x6f, 0x22, 0xec, 0x27, 0x77, 0x30, 0x67, 0x32, 0xe4, 0x37, 0xe3, 0x38, 0x90, 0x3f,
  0xcf, 0x44, 0xd9, 0x4c, 0x99, 0x4c, 0x55, 0x55, 0x3f, 0x60, 0x77, 0x60, 0x37, 0x62, 0xc9, 0x64,
  0xcd, 0x64, 0xd9, 0x6c, 0xef, 0x70, 0x00, 0x0f, 0xf0, 0x00, 0x00, 0x00, 0x44, 0x44, 0x22, 0x22
@@ -1896,6 +1902,80 @@ Here is the table of how the original songs are packed in `XMI.GJD`:
 | gu76          | 246326 | 1688         |                        | End Game?                                                   |
 | ini_mt_o      | 248015 | 900          |                        |                                                             |
 | ini_sci       | 248916 | 8334         |                        |                                                             |
+
+## SPHINX.FNT
+
+`SPHINX.FNT` is the bitmap font asset referenced by both DOS `V.EXE` and
+Win32 `v32tng.exe` (`"sphinx.fnt"` + `"couldn't read font file"` strings are
+present in both player data sets). The file is self-contained and uses a fixed
+ASCII map plus variable-size glyph records.
+
+### Container Layout
+
+All offsets below are file-relative and little-endian:
+
+- `0x0000..0x007F`: character map (`128` bytes)
+- `0x0080..`: glyph offset table (`uint16_le[glyph_count]`)
+- `offset[glyph_index]..`: glyph record payloads
+
+`glyph_count` is derivable from the character map as `max(charmap) + 1`.
+For the retail `SPHINX.FNT` in this repository, `glyph_count = 37`.
+
+### Character Map (128 bytes)
+
+Each byte maps one ASCII code (`0..127`) to a glyph index.
+
+- Uppercase letters are contiguous: `'A'..'Z' -> 0..25`
+- Digits are contiguous: `'0'..'9' -> 26..35`
+- Unknown/unmapped entries point at the fallback glyph index (`36` in retail)
+- Lowercase letters mirror uppercase indices in the retail file
+
+This map is what controls which glyph is shown for each ASCII byte, not the
+glyph table order alone.
+
+### Glyph Offset Table
+
+The table starts at `0x80` and contains one `uint16` per glyph.
+
+- Offsets are strictly increasing
+- The first offset points to the first glyph record
+- The last glyph extends to end-of-file
+
+For the retail file in this repo, the first few offsets are:
+`00CA, 020F, 0354, 0499, ...` and the last is `2AA5`.
+
+### Glyph Record Format
+
+Each glyph record has a 3-byte header followed by row-major grayscale bytes:
+
+```text
+u8 width
+u8 meta1
+u8 meta2
+u8 pixels[width * height]
+```
+
+`height` is implicit and computed from the next offset:
+
+$$
+\text{height} = \frac{\text{record_size} - 3}{\text{width}}
+$$
+
+`meta1`/`meta2` are preserved exactly; they are player-interpreted per glyph
+and should be treated as required compatibility metadata.
+
+Pixel bytes are 8-bit intensity/index values used directly by the original
+renderers. In the retail font, most non-zero samples are in the `0xE2..0xF6`
+range, producing anti-aliased text edges.
+
+### Compatibility Notes
+
+- `grooviev1.exe fnt-list` validates and reports this structure.
+- `grooviev1.exe fnt-extract` exports per-glyph BMP bitmaps plus metadata
+  (`charmap.bin`, `glyphs.csv`).
+- `grooviev1.exe fnt-pack` rebuilds the offset table and writes a new FNT that
+  preserves map semantics and per-glyph metadata, suitable for use by
+  `V.EXE` and `v32tng.exe`.
 
 ## Cursors
 

@@ -272,24 +272,19 @@ bits 16
 
 %include "src/data/gaps.asm"
 ; Data Segments
-; Generated post-code data macro inventory.
-%include "src/data/data_0892c.asm"
-%include "src/data/data_0992c.asm"
-%include "src/data/data_0a92c.asm"
-%include "src/data/data_0b92c.asm"
-%include "src/data/data_0c92c.asm"
-%include "src/data/data_0d92c.asm"
-%include "src/data/data_0e92c.asm"
-%include "src/data/data_0f92c.asm"
-%include "src/data/data_1092c.asm"
-%include "src/data/data_1192c.asm"
-%include "src/data/data_1292c.asm"
-%include "src/data/data_1392c.asm"
-%include "src/data/data_1492c.asm"
-%include "src/data/data_1592c.asm"
-%include "src/data/data_1692c.asm"
-%include "src/data/data_1792c.asm"
-%include "src/data/data_1892c.asm"
+; Semantically extracted ranges and the initialized ranges still under study.
+%include "src/data/post_code_alignment.asm"
+%include "src/data/zero_initialized_static_workspace_08930_1584f.asm"
+%include "src/data/unresolved_initialized_runtime_data.asm"
+%include "src/data/vdx_delta_tile_map.asm"
+%include "src/data/unresolved_initialized_tables_and_templates.asm"
+%include "src/data/unresolved_pre_configuration_runtime_data.asm"
+%include "src/data/groovie_configuration_strings.asm"
+%include "src/data/unresolved_lookup_structures.asm"
+%include "src/data/zero_initialized_static_workspace_1724c_17c2d.asm"
+%include "src/data/unresolved_initialized_word.asm"
+%include "src/data/zero_initialized_static_workspace_17c30_18151.asm"
+%include "src/data/runtime_diagnostic_and_configuration_strings.asm"
 
 
 section .header start=0 vstart=0 align=1
@@ -1372,40 +1367,30 @@ load_image_start:
     emit_func_088d9_part_00
     ; 0891D..0892B function
     emit_func_0891d_part_00
-    ; 0892C..0992B data
-    emit_data_0892c
-    ; 0992C..0A92B data
-    emit_data_0992c
-    ; 0A92C..0B92B data
-    emit_data_0a92c
-    ; 0B92C..0C92B data
-    emit_data_0b92c
-    ; 0C92C..0D92B data
-    emit_data_0c92c
-    ; 0D92C..0E92B data
-    emit_data_0d92c
-    ; 0E92C..0F92B data
-    emit_data_0e92c
-    ; 0F92C..1092B data
-    emit_data_0f92c
-    ; 1092C..1192B data
-    emit_data_1092c
-    ; 1192C..1292B data
-    emit_data_1192c
-    ; 1292C..1392B data
-    emit_data_1292c
-    ; 1392C..1492B data
-    emit_data_1392c
-    ; 1492C..1592B data
-    emit_data_1492c
-    ; 1592C..1692B data
-    emit_data_1592c
-    ; 1692C..1792B data
-    emit_data_1692c
-    ; 1792C..1892B data
-    emit_data_1792c
-    ; 1892C..18CF7 data
-    emit_data_1892c
+    ; 0892C..0892F verified alignment
+    emit_post_code_alignment
+    ; 08930..1584F verified startup DS zero-initialized workspace
+    emit_zero_initialized_static_workspace_08930_1584f
+    ; 15850..15DBD unresolved initialized runtime data
+    emit_unresolved_initialized_runtime_data
+    ; 15DBE..15E7D verified VDX delta tile-map table
+    emit_vdx_delta_tile_map
+    ; 15E7E..1692B unresolved initialized tables and templates
+    emit_unresolved_initialized_tables_and_templates
+    ; 1692C..169F7 unresolved initialized runtime data
+    emit_unresolved_pre_configuration_runtime_data
+    ; 169F8..16A89 verified Groovie configuration strings
+    emit_groovie_configuration_strings_169f8_16a89
+    ; 16A8A..1724B unresolved initialized lookup structures
+    emit_unresolved_lookup_structures
+    ; 1724C..17C2D verified zero-initialized static workspace
+    emit_zero_initialized_static_workspace_1724c_17c2d
+    ; 17C2E..17C2F unresolved initialized word (C8 C8)
+    emit_unresolved_initialized_word
+    ; 17C30..18151 verified zero-initialized static workspace
+    emit_zero_initialized_static_workspace_17c30_18151
+    ; 18152..18CF7 verified diagnostic/configuration string corpus
+    emit_runtime_diagnostic_and_configuration_strings
 
     %if ($ - load_image_start) != 0x18CF8
         %error "LOAD_IMAGE_SIZE"

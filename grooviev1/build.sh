@@ -9,7 +9,7 @@ mkdir -p "${OUT_DIR}"
 
 CXX=""
 CXXFLAGS=("-std=c++20" "-O2")
-LDFLAGS=("-lole32" "-luuid" "-lwindowscodecs")
+LDFLAGS=("-Wl,--no-insert-timestamp" "-lole32" "-luuid" "-lwindowscodecs")
 
 if command -v x86_64-w64-mingw32-g++ >/dev/null 2>&1; then
   CXX="x86_64-w64-mingw32-g++"

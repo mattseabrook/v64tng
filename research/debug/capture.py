@@ -395,7 +395,8 @@ def main() -> int:
                     print(
                         f"tracer ready: {len(attached)} semantic probes attached; "
                         f"{len(failures)} failures; input hooks "
-                        f"{payload.get('input_hooks', [])}"
+                        f"{payload.get('input_hooks', [])}; save hooks "
+                        f"{payload.get('save_file_hooks', [])}"
                     )
                 elif probe == "tracer.attach_fail":
                     print(f"!! probe rejected: {payload}", flush=True)

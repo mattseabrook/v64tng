@@ -14,6 +14,7 @@ Turns a raw events.ndjson capture into paste-ready scene digests:
 - Writes digest/<scene>.txt — copy/paste those into your agent.
 """
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -530,6 +531,62 @@ def append_variable_section(lines, events):
     lines.append("")
 
 
+def append_save_section(lines, events):
+    boundaries = Counter(
+        event.get("probe")
+        for event in events
+        if event.get("probe") in (
+            "grv.load_game", "grv.save_game", "grv.check_valid_saves"
+        )
+    )
+    file_events = [
+        event for event in events
+        if str(event.get("probe", "")).startswith("save.file_")
+    ]
+    if not boundaries and not file_events:
+        return
+
+    lines.append("Save-system evidence:")
+    for probe, count in boundaries.items():
+        lines.append(f"  {probe}: x{count}")
+    for event in file_events[:100]:
+        probe = str(event.get("probe"))
+        path = event.get("path", "?")
+        if probe == "save.file_open":
+            lines.append(
+                f"  open {path} access={event.get('access')} "
+                f"disposition={event.get('creation_disposition')} "
+                f"success={event.get('success')}"
+            )
+        elif probe in ("save.file_read", "save.file_write"):
+            payload = event.get("data")
+            digest = "unavailable"
+            captured = 0
+            if isinstance(payload, str):
+                try:
+                    raw = bytes.fromhex(payload)
+                    actual = event.get("actual")
+                    if isinstance(actual, int) and 0 <= actual <= len(raw):
+                        raw = raw[:actual]
+                    captured = len(raw)
+                    digest = hashlib.sha256(raw).hexdigest()
+                except ValueError:
+                    digest = "malformed-hex"
+            operation = "read" if probe.endswith("read") else "write"
+            lines.append(
+                f"  {operation} {path} requested={event.get('requested')} "
+                f"actual={event.get('actual')} captured={captured} "
+                f"sha256={digest} success={event.get('success')}"
+            )
+        elif probe == "save.file_close":
+            lines.append(f"  close {path} success={event.get('success')}")
+        elif probe == "save.file_delete":
+            lines.append(f"  delete {path} success={event.get('success')}")
+    if len(file_events) > 100:
+        lines.append(f"  … {len(file_events) - 100} more; see events.ndjson")
+    lines.append("")
+
+
 def make_trace_rows(events, legacy_confident):
     rows = []
     anomalies = []
@@ -689,7 +746,8 @@ def main():
         (
             f"probe health: {attached_count} attached, "
             f"{ready_failure_count} rejected, "
-            f"input hooks={ready.get('input_hooks', [])}"
+            f"input hooks={ready.get('input_hooks', [])}, "
+            f"save hooks={ready.get('save_file_hooks', [])}"
         ),
         "",
         "scenes:",
@@ -745,6 +803,7 @@ def main():
         append_resource_section(lines, scene_events, legacy_slot)
         append_vdx_section(lines, scene_events)
         append_variable_section(lines, scene_events)
+        append_save_section(lines, scene_events)
 
         inputs = Counter(
             event.get("message")

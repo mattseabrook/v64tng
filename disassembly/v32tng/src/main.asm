@@ -582,9 +582,20 @@ bits 32
 %include "src/data/data_0234_01a8a8.asm"
 %include "src/data/data_0235_01b8a8.asm"
 %include "src/data/data_0236_01c8a8.asm"
-%include "src/data/data_0237_01d8a8.asm"
-%include "src/data/data_0238_01e8a8.asm"
-%include "src/data/data_0239_01f8a8.asm"
+%include "src/data/unresolved_file_backed_data_values.asm"
+%include "src/data/grv_runtime_globals.asm"
+%include "src/data/unresolved_file_backed_data_tail.asm"
+%include "src/data/pe_import_section.asm"
+%include "src/data/pe_resource_directory.asm"
+%include "src/data/version_info_resource.asm"
+%include "src/data/application_icon_resource.asm"
+%include "src/data/group_icon_resource.asm"
+%include "src/data/string_table_resource_block_primary.asm"
+%include "src/data/pe_resource_alignment.asm"
+%include "src/data/string_table_resource_block_secondary.asm"
+%include "src/data/pe_resource_section_padding.asm"
+%include "src/data/pe_base_relocation_section.asm"
+%include "src/data/unresolved_post_section_debug_tail.asm"
 %include "src/data/data_0240_0208a8.asm"
 %include "src/data/data_0241_0218a8.asm"
 %include "src/data/data_0242_0228a8.asm"
@@ -4322,23 +4333,46 @@ emit_file_data_0235_01b8a8
 %endif
 emit_file_data_0236_01c8a8
 
-; raw 01D8A8..01E8A8 (explicit-data)
+; raw 01D8A8..01DC80 unresolved file-backed .data
 %if ($ - $$) != 0x01D8A8
     %error "layout drift at raw 01D8A8"
 %endif
-emit_file_data_0237_01d8a8
+emit_unresolved_file_backed_data_values
 
-; raw 01E8A8..01F8A8 (explicit-data)
-%if ($ - $$) != 0x01E8A8
-    %error "layout drift at raw 01E8A8"
+; raw 01DC80..01DD40 verified GRV runtime globals
+%if ($ - $$) != 0x01DC80
+    %error "layout drift at raw 01DC80"
 %endif
-emit_file_data_0238_01e8a8
+emit_grv_runtime_globals
 
-; raw 01F8A8..0208A8 (explicit-data)
-%if ($ - $$) != 0x01F8A8
-    %error "layout drift at raw 01F8A8"
-%endif
-emit_file_data_0239_01f8a8
+; raw 01DD40..01DE00 unresolved file-backed .data tail
+emit_unresolved_file_backed_data_tail
+
+; raw 01DE00..01F200 verified PE import section
+emit_pe_import_section
+
+; raw 01F200..01F360 verified PE resource directory
+emit_pe_resource_directory
+; raw 01F360..01F628 verified version resource
+emit_version_info_resource
+; raw 01F628..01F910 verified application icon DIB
+emit_application_icon_resource
+; raw 01F910..01F924 verified group-icon selector
+emit_group_icon_resource
+; raw 01F924..01FC9E verified string-table block 1
+emit_string_table_resource_block_primary
+; raw 01FC9E..01FCA0 verified resource alignment
+emit_pe_resource_alignment
+; raw 01FCA0..01FEDA verified string-table block 2
+emit_string_table_resource_block_secondary
+; raw 01FEDA..020000 verified .rsrc section padding
+emit_pe_resource_section_padding
+
+; raw 020000..020600 verified PE base-relocation section
+emit_pe_base_relocation_section
+
+; raw 020600..0208A8 unresolved post-section/debug-tail data
+emit_unresolved_post_section_debug_tail
 
 ; raw 0208A8..0218A8 (explicit-data)
 %if ($ - $$) != 0x0208A8

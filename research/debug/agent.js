@@ -184,6 +184,15 @@ function scriptIdentity(scriptBase) {
   return scriptNames[key] || (key === null ? '<unknown>' : `<script@${key}>`);
 }
 
+function emitGrvSaveBoundary(probe) {
+  const scriptBase = readPointerGlobal('script_base');
+  emit(probe, {
+    script: scriptIdentity(scriptBase),
+    script_base: pointerHex(scriptBase),
+    pc_after_opcode: readU32(globalAddress('script_pc'))
+  });
+}
+
 const handlers = {
   'grv.load_script': {
     onEnter(args) {
@@ -263,6 +272,20 @@ const handlers = {
         opcode: rawOpcode === null ? null : rawOpcode & 0x7f
       };
     }
+  },
+
+  // These are verified internal opcode-handler boundaries, not function
+  // entries. Variable effects are captured at the next GRV dispatch.
+  'grv.load_game': {
+    onEnter() { emitGrvSaveBoundary('grv.load_game'); }
+  },
+
+  'grv.save_game': {
+    onEnter() { emitGrvSaveBoundary('grv.save_game'); }
+  },
+
+  'grv.check_valid_saves': {
+    onEnter() { emitGrvSaveBoundary('grv.check_valid_saves'); }
   },
 
   'grv.video_select': {
@@ -499,6 +522,135 @@ if (GROUPS.has('input')) {
   }
 }
 
+// Capture the exact st7g.N payloads used by the menu's load/save operations.
+// Other game/resource file traffic is deliberately ignored.
+const saveFileHooks = [];
+const saveHandles = new Map();
+
+function globalExport(name) {
+  if (typeof Module.findGlobalExportByName === 'function')
+    return Module.findGlobalExportByName(name);
+  if (typeof Module.findExportByName === 'function')
+    return Module.findExportByName(null, name);
+  return null;
+}
+
+function savePath(path) {
+  return path !== null && /(^|[\\/])st7g\.[0-9]+$/i.test(path);
+}
+
+function attachSaveFileHook(api, callbacks) {
+  const address = globalExport(api);
+  if (address === null)
+    return;
+  try {
+    Interceptor.attach(address, callbacks);
+    saveFileHooks.push(api);
+  } catch (error) {
+    emit('tracer.attach_fail', { name: 'save.' + api, reason: String(error) });
+  }
+}
+
+if (GROUPS.has('grv')) {
+  attachSaveFileHook('CreateFileA', {
+    onEnter(args) {
+      this.path = readCString(args[0], 1024);
+      this.interesting = savePath(this.path);
+      if (!this.interesting)
+        return;
+      this.access = args[1].toUInt32();
+      this.creationDisposition = args[4].toUInt32();
+    },
+    onLeave(retval) {
+      if (!this.interesting)
+        return;
+      const failed = retval.equals(ptr(-1));
+      if (!failed)
+        saveHandles.set(pointerHex(retval), this.path);
+      emit('save.file_open', {
+        path: this.path,
+        access: asHex(this.access),
+        creation_disposition: this.creationDisposition,
+        handle: pointerHex(retval),
+        success: !failed
+      });
+    }
+  });
+
+  attachSaveFileHook('WriteFile', {
+    onEnter(args) {
+      this.handle = pointerHex(args[0]);
+      this.path = saveHandles.get(this.handle) || null;
+      if (this.path === null)
+        return;
+      this.requested = args[2].toUInt32();
+      this.written = args[3];
+      this.data = readBytes(args[1], Math.min(this.requested, 0x2000));
+    },
+    onLeave(retval) {
+      if (this.path === null)
+        return;
+      emit('save.file_write', {
+        path: this.path,
+        handle: this.handle,
+        requested: this.requested,
+        actual: readU32(this.written),
+        success: retval.toInt32() !== 0,
+        data: this.data
+      });
+    }
+  });
+
+  attachSaveFileHook('ReadFile', {
+    onEnter(args) {
+      this.handle = pointerHex(args[0]);
+      this.path = saveHandles.get(this.handle) || null;
+      if (this.path === null)
+        return;
+      this.buffer = args[1];
+      this.requested = args[2].toUInt32();
+      this.read = args[3];
+    },
+    onLeave(retval) {
+      if (this.path === null)
+        return;
+      const actual = readU32(this.read);
+      emit('save.file_read', {
+        path: this.path,
+        handle: this.handle,
+        requested: this.requested,
+        actual: actual,
+        success: retval.toInt32() !== 0,
+        data: actual === null ? null : readBytes(this.buffer, Math.min(actual, 0x2000))
+      });
+    }
+  });
+
+  attachSaveFileHook('CloseHandle', {
+    onEnter(args) {
+      this.handle = pointerHex(args[0]);
+      this.path = saveHandles.get(this.handle) || null;
+      if (this.path !== null)
+        saveHandles.delete(this.handle);
+    },
+    onLeave(retval) {
+      if (this.path !== null)
+        emit('save.file_close', { path: this.path, handle: this.handle, success: retval.toInt32() !== 0 });
+    }
+  });
+
+  attachSaveFileHook('DeleteFileA', {
+    onEnter(args) {
+      this.path = readCString(args[0], 1024);
+      this.interesting = savePath(this.path);
+    },
+    onLeave(retval) {
+      if (this.interesting)
+        emit('save.file_delete', { path: this.path, success: retval.toInt32() !== 0 });
+    }
+  });
+}
+
 emit('tracer.ready', {
   profile: PROFILE.id,
   module: mod.name,
@@ -508,6 +660,7 @@ emit('tracer.ready', {
   attached: attached,
   input_hooks: inputHooks,
   input_failures: inputFailures,
+  save_file_hooks: saveFileHooks,
   failures: failures,
   variable_count: VARIABLE_COUNT,
   variable_diffs: CAPTURE_VARIABLES,

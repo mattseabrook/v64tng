@@ -104,10 +104,55 @@ the canonical unpacked entry represented by this source tree.
 | `src/functions/runtime/*.asm` | Verified startup, dispatch, and shutdown routines |
 | `src/functions/unknown/*.asm` | Provisional functions retaining address-based identities |
 | `src/data/gaps.asm` | Explicit bytes between analyzer-owned function bodies |
-| `src/data/data_*.asm` | Explicit post-code data in manageable chunks |
+| `src/data/unresolved_*.asm` | Post-code initialized ranges whose individual semantics remain unresolved |
+| `src/data/zero_initialized_*.asm` | Exact verified zero-initialized static-storage ranges |
+| Other named `src/data/*.asm` files | Extracted tables, strings, alignment, and other verified semantic ranges |
 
 The semantic directories express verified subsystem ownership. They are not
 claims about Trilobyte's original object modules.
+
+## Verified post-code data map
+
+The startup code establishes `DS = load segment + 0893h`, so repository load
+offset `08930h` is exactly `DS:0000h`. This makes the large post-code regions
+less mysterious than the old generic chunk filenames suggested:
+
+| Load-image range | Runtime address | Evidence-backed classification |
+|---:|---:|---|
+| `0892C–0892F` | before `DS:0000` | four-byte code/data alignment |
+| `08930–1584F` | `DS:0000–CF1F` | 53,024-byte zero-initialized static workspace |
+| `15850–15DBD` | `DS:CF20–D48D` | initialized runtime globals and tables; individual object boundaries remain under study |
+| `15DBE–15E7D` | `DS:D48E–D54D` | verified 192-byte VDX delta tile-map table |
+| `15E7E–169F7` | `DS:D54E–E0C7` | initialized tables, archive names, and templates still under study |
+| `169F8–16A89` | `DS:E0C8–E159` | verified Groovie configuration-string table |
+| `16A8A–1724B` | `DS:E15A–E91B` | initialized tables and lookup structures still under study |
+| `1724C–17C2D` | `DS:E91C–F2FD` | verified 2,530-byte zero-initialized static workspace |
+| `17C2E–17C2F` | `DS:F2FE–F2FF` | unresolved initialized word `C8C8h` |
+| `17C30–18151` | `DS:F300–F821` | verified 1,314-byte zero-initialized static workspace |
+| `18152–18CF7` | `DS:F822–103C7` | DOS runtime diagnostic and configuration strings |
+
+The zero-filled spans are not unidentified embedded assets: their file bytes,
+startup segment assignment, and runtime references verify them as static
+storage. Exact variable boundaries inside them still require xrefs or runtime
+captures. The table at `15DBEh` is independently verified by the DOS delta
+decoder reading `DS:D48Eh`; it is byte-for-byte identical to the Win32 table
+at VA `0041A088h`.
+
+Every complete verified range in this table is emitted by its own named source
+file. Address-free `unresolved_*.asm` files cover only initialized intervals
+that still lack exact semantic boundaries. As those intervals are proved, they
+are split out and the unresolved remainder shrinks; the intended end state has
+no unresolved data files. Exact ranges remain in source comments and size
+assertions. The zero-workspace filenames retain ranges because there are
+multiple verified zero regions and the boundaries distinguish them usefully.
+
+One still-unresolved initialized structure around `16E1Ah–1722Bh` contains
+repeated index lists bounded by `FFh` sentinels and is used near code operating
+on 7x7 (49-byte) raster blocks. A font/icon/cursor raster lookup is a plausible
+hypothesis, not a verified name, so the permanent source deliberately leaves
+it neutral. The DOS text `icon data file not found` belongs to this diagnostic
+corpus and refers to an external DOS-era data file; it is not the Win32 PE
+application icon.
 
 NASM emits an instruction only when it reproduces the historical encoding
 exactly. If NASM's preferred encoding differs, the source uses exact `db`
