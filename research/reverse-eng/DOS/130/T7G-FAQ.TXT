@@ -1,0 +1,757 @@
+
+\\\  Virgin Troubleshooting Guide
+
+Virgin Interactive Entertainment Technical Support
+18061 Fitch Ave
+Irvine, CA 92714
+Phone:  (714) 833-1999
+Fax:    (714) 833-2001
+BBS:    (714) 833-3305 [N,8,1  up to 14,400bps]
+
+
+
+		   ////////////////\\\\\\\\\\\\\\\\\
+
+		   Troubleshooting The Seventh Guest  
+
+		   \\\\\\\\\\\\\\\\/////////////////
+
+
+General Information
+"""""""""""""""""""
+System Requirements: MPC Level 1 Compatible Machine with: 386DX or 
+better, 2 megabytes RAM, 16-bit SVGA video card with 512K of memory, CD-
+ROM drive with minimum of 150K/sec. transfer rate, sound card with FM 
+and PCM sound, mouse, hard drive with 10 megabytes of free space, MSCDEX 
+2.2 or higher, DOS 5.0 or higher
+
+Supports: Roland MIDI cards, MT-32, LAPC-1, Sound Canvas, SCC-1, 
+SoundBlaster and compatibles, SoundBlaster Pro, ProAudio Spectrum (8- 
+and 16-bit), Thunderboard, AdLib Gold
+
+Recommended: 486SX-20 or faster processor, 4 megabytes RAM, fast 16-bit 
+SVGA video card with 1 megabyte of memory or local video bus, CD-ROM 
+drive with 300K/sec. transfer rate and <300 ms seek time, Roland LAPC-1, 
+MT-32, or Sound Canvas and 16-bit PCM sound
+
+Latest version: 1.30
+Free RAM required: 570K + 1 megabyte XMS (version 1.22 and 1.24)
+		   450K + 1 megabyte XMS (version 1.30)
+Hints available: Free hint sheet, Automated hint line - (900) 288-4744, 
+third party strategy guide
+
+Installation Instructions:
+''''''''''''''''''''''''''
+Insert disc two into your CD-ROM drive, then type the letter of your CD-
+ROM drive followed by a colon and press ENTER.  (For example, if you CD-
+ROM drive is letter D, go to the C:\> prompt and type "D:".)  Now type 
+"INSTALL" to run the installation program, which will set-up the program 
+and copy it to the hard drive.  To change the settings at any time, 
+change to your Seventh Guest directory and type "INSTALL".
+	Note: The game can only be installed and run from DOS.  If you use 
+Windows, you will need to completely exit out of Windows before 
+installing the program.
+
+Running the game:
+'''''''''''''''''
+If you have installed the game to the default directory, use the 
+following instructions to run the game:
+
+	Go to the C:\> prompt.
+	Make sure disc one is in the CD-ROM drive.
+	Type "CD\ID\T7G" and press ENTER.
+	Type "T7G" and press ENTER.
+
+Checking the version of the game:
+To check which version of the game you are running, first change to your 
+Seventh Guest directory.  If you used the defaults during installation, 
+this will be your ID\T7G directory.  (To get there, go to  C:\> prompt 
+and type "CD\ID\T7G".)  Now type "V ?" and press ENTER.  At the top 
+under GROOVIE Player will be the version of the game.  If you require an 
+update, you can either order it through our automated support system at 
+(714) 833-1999 or download it from our BBS at (714) 833-3305.  To order 
+it, simply start an automated session, go to the Seventh Guest menu, and 
+select option 4.  (Select 1, 1, 1, 1, and 4.)  On our BBS, version 1.24 
+is available as T7G_124.EXE (168,666 bytes); version 1.30 is T7G_130.EXE 
+(330,491 bytes).  From the main menu, select "F" for file, "D" for 
+download, and enter the filename of the update you need.
+
+Checking your video card:
+'''''''''''''''''''''''''
+To diagnose video problems with The Seventh Guest, you will need to know 
+what type of video card you have in your system.  To find out, first try 
+typing the command "MSD" at the DOS command line.  This will bring up 
+the "Microsoft System Diagnostics" utility which among other things will 
+give you some information about your video card.  Also, try checking in 
+all of the documentation that came with your computer for information 
+regarding your display system.
+	You may also want to check for the very first on-screen message 
+displayed when you perform a hard reset (via the reset button or power 
+switch).  Many video card's BIOS will display information about the 
+video card manufacturer and model during the initial boot sequence.
+	The retail outlet from which you purchased the computer or video 
+card should also be able to provide this information.
+
+Checking your mouse driver:
+'''''''''''''''''''''''''''
+Some mouse drivers can cause a problem with The Seventh Guest.  
+Specifically, versions 7.00 through 7.04 can often cause the game not to 
+run.  To check which version mouse driver you have installed on your 
+system, first try typing the command "MSD" at the DOS command line.  
+This will bring up the "Microsoft System Diagnostics" utility which 
+among other things will give you some information about your mouse.  
+(Note: If you are using a Logitech mouse driver version 6.30, MSD 
+reports this as 6.03.)  The mouse driver version number is also reported 
+when you boot the system.  If you have an incompatible mouse driver, you 
+will need to obtain another one, which can usually be done either 
+through your manufacturer or a computer retailer.
+
+Checking for Stealth (QEMM users only):
+'''''''''''''''''''''''''''''''''''''''
+If you use QEMM, a third-party memory manager made by Quarterdeck, you 
+will want to check to see if its Stealth option is enabled.  Stealth can 
+often cause problems in running The Seventh Guest.  Look at your 
+CONFIG.SYS file (at the C:\> prompt, type "EDIT CONFIG.SYS"), and check 
+for an "ST:M" or "ST:F" in the QEMM386.SYS line.  If present, then 
+Stealth is active, and you will need to re-run the QSETUP program to 
+disable Stealth.
+
+
+
+Installation Problems
+"""""""""""""""""""""
+Problem: I'm getting the red warning saying, "The sound hardware you 
+have selected is not responding..."
+Solution: This means that the program was unable to find your sound 
+card.  Make sure you are selecting the correct sound settings.  (See the 
+solutions for specific sound cards later in this section.)  If you have 
+a SoundBlaster or compatible sound card, change the music first to 
+"Adlib."  It will then ask for the digital audio; select "SoundBlaster" 
+("SoundBlaster and compatibles" in version 1.30) at Port 220 and IRQ 5.  
+(The Port and IRQ may be configured differently on your system.  Consult 
+your sound card diagnostic software for the correct port address and 
+IRQ.)  
+	If it still doesn't not recognize the sound card, you will need to 
+modify your configuration so that you do not boot into Windows.  Some 
+sound cards (including several of the Gateway sound cards) are not 
+restored to their default state when you exit Windows.  Go to the C:\> 
+prompt and type "EDIT AUTOEXEC.BAT".  One of the last lines in the file 
+should read "WIN".  You need to delete that line, save the file, then 
+reboot your computer.  Now you can re-run the INSTALL program and use 
+the above settings.
+
+Problem: The INSTALL.BAT is looping at the D:\T7G\INSTALL> prompt.
+Solution: Looping installs usually occur on the NEC triple speed drives.  
+You should try to obtain newer CD-ROM drive device drivers.  Otherwise, 
+there is a work around.  Make a temporary directory on the hard drive, 
+then copy over everything from the "T7G\INSTALL" directory on disc two.  
+To do this, use the following instructions:
+
+	Go to the C:\> prompt.
+	Type "MD TEMP".
+	Type "CD TEMP".
+	Make sure disc two is in your CD-ROM drive.
+	Type "COPY D:\T7G\INSTALL".  (If your CD-ROM drive is not D, 
+substitute the correct drive letter.)
+	Type "INSTALL".
+
+If you wish, you can delete the temporary directory after the program is 
+installed.  To do this, go to the C:\> prompt and type "DELTREE TEMP".
+
+Problem: The INSTALL program tells me that I don't have enough 
+conventional memory.
+Solution: The INSTALL program requires 540K of free conventional memory 
+to run.
+	If you are using MS-DOS 5.0, you will need to consult chapter 12 
+of your DOS manual for more information on freeing up memory.  It 
+includes many helpful hints that can take care of this problem.  If you 
+are unable to get above the required amount, try creating a boot disk
+	If you use MS-DOS 6.0 or higher, you can use the utility called 
+MEMMAKER to free up more memory.  To run it, type "MEMMAKER" at a C:\> 
+prompt.  When it asks if you have any programs that require expanded 
+memory, answer NO.  If MEMMAKER is unsuccessful or does not free up 
+enough memory, it may be necessary to create a boot disk.  (See the 
+Making a boot disk section.)
+
+Problem: The INSTALL program locks up after testing video card.
+Solution: This usually occurs with Trident video cards.  See the T7G 
+Manual Installation section for information on how to install the 
+program.
+
+Problem: After running INSTALL, nothing happens.  (It returns to File 
+Manager.)
+Solution: The program must be run from DOS.
+
+Problem: I'm told to insert disc two, but I have no disc two.
+Solution: Turn the CD case over.  It is a double-CD jewel case.
+
+Problem: I'm unable to get the Microsoft Windows Sound System to work 
+with T7G.
+Solution: Get the version 1.30 update, which includes a driver for the 
+Sound System.
+
+Problem: I'm using the Turtle Beach MultiSound or Roland RAP-10.
+Solution: There is no support for the digital audio on either of these 
+cards.  The game will require a second sound card to be present.
+
+Problem: I'm using a Gravis Ultrasound.
+Solution: In the INSTALL program, change music to General MIDI and 
+speech to Sound Blaster.  You will need to force these settings by 
+pressing "Y".  Then, edit the GROOVIE.INI file so that the XMI= under 
+the [General MIDI] section reads "GF1MIDI.ADV".  For the PCM=, use 
+"GF1DIGI.ADV".  (This file is not included with T7G, but does come with 
+Ultramid.)  Load Ultramid with the "/M80" parameter and without "-C", 
+then run the game.  If your GUS is on a 16-bit DMA, you may need to 
+increase the DMA buffers in EMM386.  For additional help, Gravis has 
+more information on getting their drivers to work with this game.
+
+Problem: I'm using an Ensoniq Soundscape.
+Solution: Try setting up the Ensoniq as follows: IRQ 5, SB I/O 220h, 
+Wave I/O 330h, MIDI IRQ 2.  These options are set by changing to the 
+SNDSCAPE directory and running the SSINIT program.  In the T7G Install 
+program, set music to General MIDI and speech to SoundBlaster, port 220 
+and IRQ 5.  If it doesn't work, set the emulation in the SSINIT program 
+to "FM."  Re-run the T7G INSTALL, and select AdLib for music and 
+SoundBlaster for speech, port 220 and IRQ 5.
+
+
+
+Video Problems
+""""""""""""""
+Problem: The music plays, or starts to play, but I'm getting getting 
+either a black screen or a dimmed DOS screen.  Or, the game reports, 
+"Unknown video card.  Please install VESA driver."
+Solution: The game requires that you have a VESA compatible SVGA card 
+with at least 512K of RAM or you will not get a picture.  You will need 
+to know what type of video card you have and whether or not VESA support 
+is installed.  If you are unsure what type of video card you have, see 
+"Checking your video card" in the General Information section.
+
+Here is the information for specific video cards:
+	Diamond Viper - You will need to load the VESA extensions for your 
+video card before running the game.  To do this, change to the VIPER 
+directory ("CD\VIPER") and type "VPRMODE VESA".  At this time, it will 
+report the version number, which needs to be greater than 1.02.  If you 
+have a version older than 1.02, you will need to contact Diamond to get 
+the updated driver.  The game also needs to be version 1.24 or later.  
+(See "Checking the version of the game" in the General Information 
+section.)
+	PS/1, Packard Bell, Tandy - The Paradise VESA driver may be 
+required to give you a picture.  To load it, put disc two into your CD-
+ROM drive and go to your CD-ROM drive prompt (for example, D:\>).  Type 
+"CD\VESA\PARADISE" and press ENTER, then type "VESA" and press ENTER.  
+This will load the VESA driver, and you can now go back to your C: drive 
+and run the game.
+	RealTek (MSD reports Quadtel video, VESA support - yes) - You will 
+need to load an updated VESA driver for your video card.  If you have 
+access to a modem, you can download the Universal VESA driver available 
+on the Virgin BBS, file UVESA41.EXE.
+	Diamond Speedstar Pro - Load the Paradise VESA driver on disc two 
+of T7G (see PS/1 above).  Or, get the update.
+	Matrox MGA - Load the MGAVESA driver before running the game.  It 
+must be the latest version (1.40+?), and you might have to run the game 
+in MCGA mode to get a picture.  (If you have an older version of MGAVESA 
+or cannot find it on your system, you will need to contact Matrox.)
+	Cirrus Logic - Make sure that you are using at least version 1.24 
+of T7G.  Version 1.22 did not fully support Cirrus Logic video cards.  
+(See "Checking the version of the game" in the General Information 
+section.)  If you use QEMM, make sure Stealth is not enabled.  Also 
+check the version of your mouse driver.  (See "Still not getting a 
+picture" below.)  Otherwise, try loading the Universal VESA driver or 
+the Paradise VESA driver.  (See PS/1 above.)
+	Trident - If you are not getting a picture, you will either need 
+to load the Trident VESA driver, available from Trident,  or the 
+Universal VESA driver, available on our BBS as UVESA41.EXE.
+	S3-based - Get the version 1.30 update.
+	XGA - XGA is not supported by The Seventh Guest.
+
+	If you need a VESA driver for your video card, we have the 
+Universal VESA driver available for download on our BBS.  The filename 
+is UVESA41.EXE, and it works with the following cards:
+	ATI Technologies 18800, 28800
+	Ahead A & B
+	Chips & Technologies 82c451/452/453
+	Everex
+	Genoa Systems GVGA
+	OAK Technologies OTI-037C, OTI-067, OTI-077, OTI-087
+	Paradise PVGA1A, WD90C00/10/11/20/21/30/31
+	NCR 77C20/21/22E
+	Trident 88/8900
+	Video7 V7VGA versions 1-5
+	Tseng Labs ET3000, ET4000, ET4000/W32
+	AcuMos AVGA2
+	S3 86c911/924/801/805/928
+	Advance Logic AL2101 SuperVGA
+	MXIC 86010 SuperVGA
+	Primus 2000 SuperVGA
+	RealTek 3106 SuperVGA
+	Cirrus Logic CL-GD 5420, 5422, 5424, 5426, 5428
+
+If you are still not getting a picture:
+'''''''''''''''''''''''''''''''''''''''
+If you use QEMM, make sure Stealth is not enabled.   (See "Checking for 
+Stealth" in the General Information section.)  You will also want to 
+check the version of your mouse driver.  (See "Checking your mouse 
+driver" in the General Information section.)  The game often will not 
+work if you are using a version 7.0x mouse driver.  If you are using a 
+version 7.0x mouse driver, you will need to get an updated mouse driver 
+to play the game.  If you use Windows for Workgroups on your system, try 
+disabling SMARTDRV.
+
+Problem: The skeletal hand corrupts the screen as it moves.  Or, I'm 
+getting distorted graphics.
+Solution: This is caused by an incompatible VESA driver, most common on 
+Trident cards.  Try a newer version of the Trident VESA driver or 
+download the Universal VESA driver from the Virgin BBS, file 
+UVESA41.EXE.
+	If you are running on a Packard Bell computer, disable HTVESA.COM.  
+(See next problem.)
+
+Problem: I'm getting horizontal bars across the screen.
+Solution: This occurs on Packard Bell computers and is caused by a 
+program called HTVESA, located in the AUTOEXEC.BAT file.  This driver 
+must be disabled.  To do this, go to the C:\> prompt and type "EDIT 
+AUTOEXEC.BAT".  Look for the line that reads "LH 
+C:\PBTOOLS\VGAUTIL\HTVESA.COM /2".  At the beginning of the line, type 
+"REM ".  Save the file and reboot your computer.
+
+Problem: Only the top part of screen appears when using the ATI mach64.
+Solution: You need the update to The Seventh Guest.
+
+
+Audio Problems
+""""""""""""""
+Problem: I'm getting static or a clicking noise during the dramas (video 
+sequences).
+Solution: This occurs on some systems using Cirrus Logic video on a VL-
+bus.  There are three solutions:
+	First, you can try running the game from the MS-DOS prompt under 
+Windows.  Start Windows, go into the "Main" group and double-click on 
+the "MS-DOS Prompt" icon.  This will take you to a C:\> prompt, where 
+you can run the game as normal.  Note: The game was not designed to run 
+from Windows and may not work.  You might also find it necessary to 
+disable your sound drivers under Windows to play the game.
+	Secondly, you can switch to MCGA, which is the lower resolution.  
+To do this, re-run the INSTALL program for The Seventh Guest, and change 
+the video to MCGA.  Press "Y" to ignore the warning.
+	Finally, you can try loading a different VESA driver for your 
+video card.  We have two drivers available on our BBS which might take 
+care of the problem, either UVESA41.EXE or CIRRUS.EXE.  If neither of 
+these work, there is also a VESA driver located in the VESA\PARADISE 
+directory on disc two of The Seventh Guest that may work.  Simply load 
+the VESA driver prior to running the game, and that should take care of 
+the popping noise.  (See "PS/1" in the Video Problems section for 
+information on loading the Paradise VESA driver.)
+
+Problem: I'm not getting any voices.
+Solution: This sometimes occurs when using a ProAudio Spectrum 16 on a 
+16-bit DMA.  Either use DMA 3, or rerun the Seventh Guest INSTALL 
+program, changing the music and speech to SoundBlaster.  (The default 
+SoundBlaster setting on the PAS16 is Port 220 and IRQ 5.  If you get the 
+warning "Sound hardware not responding..." you will need to run your 
+sound card installation software and verify that your SoundBlaster 
+emulation is enabled.)
+
+Problem: The voices are too quiet and I cannot hear them over the music.
+Solution: This occurs when using the  SoundBlaster 16 sound card and the 
+SoundBlasterPro2 drivers.  The two are not always compatible.  Go back 
+to the Seventh Guest INSTALL program and change the music to "AdLib."  
+For the digital audio speech, choose the regular "SoundBlaster" 
+("SoundBlaster and compatibles" in version 1.30).  Select Port 220 and 
+IRQ 5.  
+
+Problem: I'm getting choppy or chunky speech during the dramas.
+Solution: This is caused by one part of your system running too slowly:
+	Video - The video is often too slow when using Trident, Matrox, or 
+S3-based video cards.  The video performance rating in the install 
+program should be over 80% or you may experience choppy speech.  Try 
+switching to MCGA resolution.
+	CD-ROM - The CD-ROM drive must be able to transfer rate at a 
+sustained rate of 140K/sec.  (It needs to be MPC Level One compatible.)  
+The Sony CDU-535 and CDU-541 do not meet this requirement.  (For other 
+drives, see the section on "Locking up in video sequences" in the 
+Locking up section.)  The buffers for MSCDEX should be set to 20.  For 
+Mitsumi drives using the MTMCDAx driver, there needs to be a "/M:xx" 
+parameter, which should be set to at least 20; there should also be a 
+"/X" so that the buffers will be loaded into extended memory.
+	CPU - The minimum required is a 386DX-25 with 100% video card.
+
+Problem: I'm not getting music during the opening credits.
+Solution: This is all redbook audio, played directly off of the CD.  
+There needs to be a cable connecting the audio out on the CD-ROM drive 
+to the sound card.  This is the only portion of the game that uses CD-
+AUDIO.
+
+Problem: The sound cuts out.
+Solution: If you are trying to run the game under OS/2, see the OS/2 
+question in the Miscellaneous section.  Otherwise, go back to the 
+INSTALL program and try changing the music and speech to AdLib and 
+SoundBlaster, respectively.
+
+
+Abort Errors/Game doesn't start
+"""""""""""""""""""""""""""""""
+Problem: Game aborts to DOS with the message, "Error.  A memory error 
+has occurred."  Or, the computer reboots when the main screen appears.
+Solution: This means you do not have enough free conventional memory.  
+Versions prior to 1.30 require 570K.  Either free up more conventional 
+memory or get the 1.30 update.  (For information on freeing up memory, 
+see the memory problem in the Installation Problems section.)
+
+Problem: Game aborts to DOS with the message, "Error 00.  Sound Buffer 
+Failure."
+Solution: Check the version of the game.  (See the General Information 
+section above.)  If you have version 1.22, you will need the update.  
+Also, make sure you did not select "Tandy Sensation" in the INSTALL 
+program.  If that was the only sound card that was accepted, try 
+changing the music and speech to AdLib and SoundBlaster, respectively.  
+(See "Sound hardware not responding..." in the Installation Problems 
+section.)
+
+Problem: Game aborts to DOS with the message, "Error 2" or "Error 20.  
+Sound Buffer Failure."
+Solution: You will need the update to the game.
+
+Problem: Game aborts to DOS with the message, "Error.  File is not a VDX 
+file."
+Solution: If this occurs when you are entering a puzzle, this means 
+there is insufficient extended XMS memory.  The game requires one 
+megabyte of extended XMS memory.  To free up more XMS, reduce the amount 
+of EMS used and the amount of memory used by SMARTDRV.  (To do this, go 
+to the C:\> prompt and type "EDIT CONFIG.SYS".  Adjust your EMM386.EXE 
+line so that it contains "NOEMS" instead of "RAM".  To disable SMARTDRV, 
+go to the C:\> prompt and type "EDIT AUTOEXEC.BAT", then add an "REM " 
+at the beginning of the line containing SMARTDRV.  You will need to 
+reboot your computer for these changes to take effect.)  If you are 
+still unable to get enough XMS memory, you will want to obtain the 
+version 1.30 update to the game and disable your expanded memory manager 
+(i.e. EMM386.EXE).
+	If you are not entering a puzzle, then the game was unable to read 
+the CD.  Try disabling SMARTDRV and cleaning off the CD.
+
+Problem: Game immediately aborts back to DOS after typing "T7G" without 
+releasing the conventional memory it allocated.  (If you type "MEM", it 
+reports only a couple hundred K free, or rerunning the program gives the 
+message, "Program too big to fit in memory.")
+Solution: The game is not compatible with version 7.0x mouse drivers.  
+(See "Checking your mouse driver" in the General Information section.)  
+You will need to obtain a newer version mouse driver.
+
+Problem: Game aborts to DOS with the message, "Memory allocation error."
+Solution: Make sure you are not using a version 7.0x mouse driver.  (See 
+"Checking your mouse driver version" in the General Information 
+section.)  If you are, you will need to obtain a newer version mouse 
+driver.  If you are using QEMM, make sure you do not have the Stealth 
+option enabled.  (See "Checking for Stealth" in the General Information 
+section.)
+
+Problem: Game aborts to DOS with the message, "GJD file system error."
+Solution: If this occurs right after typing "T7G", either the game was 
+not installed correctly or the wrong disc is in the CD-ROM drive.  Make 
+sure there is enough space on the hard drive for a complete installation 
+and that disc one is in your CD-ROM drive.  (Type "DIR" at a C:\> prompt 
+to check the amount of free space on your hard drive.  You need 
+approximately 6 million bytes free to install the game.)
+	If this occurs anywhere else, this indicates the game was unable 
+to read the CD.  Try cleaning off the CD and disabling SMARTDRV.
+
+Problem: Game aborts to DOS with an exception error (EMM386 Error 12).
+Solution: If this occurs when switching discs, see the first problem 
+under Locking up.  If this occurs during a drama (video sequence), see 
+"Locking up in video sequences" in the Locking up section.  Otherwise, 
+remove all TSRs not needed to run the game.  It may be necessary to 
+create a boot disk for the game.  (See the Making a Boot Disk section.)  
+Make sure you are not utilizing the monochrome region.  (To check this, 
+go to the C:\> prompt, type "EDIT CONFIG.SYS", and check your EMM386.EXE 
+line.  If there is an "I=B000-B7FF" parameter, this means you are 
+including the monochrome region, and you need to take this parameter 
+out.)  Also make sure you are not using Stealth, and check the version 
+of your mouse driver.  (See "Checking for Stealth" and "Checking your 
+mouse driver" in the General Information section.)  The game is not 
+compatible with version 7.0x mouse drivers.
+
+Problem: Game aborts to DOS with the message, "Couldn't load sound 
+driver."
+Solution: Check the "progdir=" line in the GROOVIE.INI file and make 
+sure the drive letter and path are correct.  To do this, change to your 
+Seventh Guest directory and type "EDIT GROOVIE.INI".
+
+Problem: Game aborts to DOS with the message, "Sorry, a critical error 
+has occurred."
+Solution: Make sure you have disc number one in your CD-ROM drive and 
+that the busy light is not on.  If the disc is in, try waiting a few 
+seconds and try again.
+
+Problem: Game aborts to DOS with the message, "Error: PCM sound hardware 
+not responding at Port/IRQ in GROOVIE.INI..."
+Solution: See "Sound hardware not responding..." in the Installation 
+Problems section.
+
+
+Locking up
+""""""""""
+Problem: The game locks up or I'm getting an exception error when trying 
+to switch discs.
+Solution: You will need to wait for the busy light on the CD-ROM drive 
+to go out before clicking on the "Please insert disc..." picture.  In 
+other words, wait about ten seconds after inserting the disc before 
+continuing.
+
+Problem: The game locks up in the introduction.
+Solution: First, try bypassing the introduction to see if the game will 
+work.  (To do this, change to your Seventh Guest directory by typing 
+"CD\ID\T7G".  Type "v ?" and press ENTER, then type "RENAME SAVE.Z 
+SAVE.1".  Start the game and load saved game number one.)  Also, try 
+cleaning off the CD.  Otherwise, see next question.
+
+Problem: The game locks up in video sequences.
+Solution: The occurs when the CD-ROM drive is not able to transfer data 
+fast enough to keep up with the video.  If you are using a marginal 
+video card (rated below 80%), try switching to MCGA.  If you have a SCSI 
+controller, it might lock up if it is also running a SCSI hard drive.
+
+For specific CD-ROM drives:
+	Phillips - If you are using the DD260.SYS driver, add a "/F:5" to 
+the CD-ROM device driver line.  (This is the drive included in the Media 
+Vision Fusion LX kits.)  To do this, go to the C:\> prompt and type 
+"EDIT CONFIG.SYS".  Look for the line for CD-ROM device driver 
+("DD260.SYS"), and at the end of the line, type " /F:5".  Save the file 
+and reboot your computer for the change to take effect.
+	Sony CDU-31A - Add "/M:I /O:32" to the CD-ROM device driver.
+	Mitsumi - Make sure there is a "/M:32 /X" in the MTMCDAx driver.  
+Also try changing the driver being used.  (Mitsumi offers both a MTMCDAE 
+and MTMCDAS.  Sometimes one works better than the other on different 
+systems.)
+	NEC 3x - This occurs when the drive drops down to single-speed.  
+Skip the introduction so that the CD-AUDIO segment is not played, since 
+that forces this drive into the single-speed mode.
+
+Problem: The game locks up in the microscope puzzle.
+Solution: This somtimes happens with Trident video cards.  Try a 
+different VESA driver, such as the Universal VESA driver, available on 
+our BBS as UVESA41.EXE.  Otherwise, visit the library three times to 
+bypass the puzzle.
+
+Problem: The game locks up when pulling back from the book in the 
+introduction, or any time in the library.  Or, the program slows down to 
+a crawl and then locks up.
+Solution: This is almost always caused by a dirty CD.  Try cleaning off  
+the disc.  If it is still locking up, you may need to exchange your 
+disc.
+
+Problem: The game locks up on main screen.  The mouse pointer appears, 
+but it will not move.
+Solution: If you are using the Logitech mouse driver version 6.30, use 
+6.24 instead (available on the Logitech BBS at (510) 795-0408).  Also, 
+the game is not compatible with version 7.0x mouse drivers.  (See 
+"Checking your mouse driver" in the General Information section.)
+
+Problem: The game locks up in the bar scene in the introduction or at 
+the end of the introduction, when I'm facing the staircase.
+Solution: This sometimes occurs when using a ProAudio Spectrum 16 sound 
+card on a 16-bit DMA.  Either use DMA 3 or rerun the INSTALL program and 
+change the music and speech to SoundBlaster.  (See "No voices" in the 
+Audio Problems section.)
+
+
+Miscellaneous
+"""""""""""""
+Problem: The game asks for disc one even though it is already in the CD-
+ROM drive.
+Solution: Make sure that the CD-ROM drive is actually accessible before 
+starting the game (i.e. not using a boot disk w/o the CD-ROM drivers).  
+If so, check the "datadir=" line in the "GROOVIE.INI" file and make sure 
+the drive letter is correct.  If the GROOVIE.INI file is missing, check 
+to see if it exists in a "C:\ID\T7G\T7G" directory. If so, move it back 
+to the "C:\ID\T7G" directory.
+
+Problem: The mouse doesn't respond.
+Solution: The game is not compatible with version 7.0x mouse drivers.  
+If you are using the Logitech mouse driver version 6.30, use 6.24 
+instead.  (See "Checking your mouse driver" in the General Information 
+section.)
+
+Problem: The game doesn't save properly.
+Solution: Make sure you are typing in the name of the saved game and 
+pressing ENTER, not clicking on Farewell.  Also make sure you are not 
+loading any unnecessary TSRs, such as After Dark.
+
+Problem: The game says, "Mouse driver not installed," but I'm loading 
+the Logitech 6.30 mouse driver.
+Solution: The game will not always recognize this mouse driver.  Try 
+typing "MOUSE 1200".  If that doesn't work, use version 6.24 instead.
+
+Problem: I can't access the Open House.
+Solution: Load save game #0.  Return to the Sphinx board, and click on 
+any of the corners with the chattering teeth to access Open House.
+
+Problem: I'm trying to run the game under OS/2.
+Solution: The most common problem is sound cutting out.  Although we do 
+not officially support OS/2, the following OS/2 information was provided 
+by Rick Moen,  and more information can be obtained from his BBS at 
+(415) 572-0359.  Use version 1.30, and try the following DOS settings:
+	DOS_BACKGROUND_EXECUTION=OFF
+	DOS=HIGH
+	DOS_UMB=ON
+	HW_TIMER=ON
+	HW_ROM_TO_RAM=ON
+	IDLE_SECONDS=60
+	IDLE_SENSITIVITY=100
+	VIDEO_FASTPASTE=ON
+	VIDEO_RETRACE_EMULATION=OFF
+	VIDEO_ROM_EMULATION=OFF
+	XMS_MEMORY_LIMIT=2048
+
+Then, in the GROOVIE.INI file, add the following under the [Main] 
+section:
+	DMABufferSize=8192
+	TicksPerSecond=120
+
+Problem: Every puzzle is solved, but there's nothing left to do.
+Solution: Make sure you have solved the painting gallery.  (Click the 
+chattering teeth on the bottom of the staircase to enter the gallery.)  
+Also, make sure you completed the maze and solved the crypt puzzle at 
+the conclusion of the maze.  Also, the microscope puzzle must be solved, 
+even though the T7G Strategy Guide states otherwise.  (If it is too 
+difficult, simply visit the library three times to bypass the puzzle.)  
+If everything has been solved, the next puzzle is the attic door, 
+located next to the bathroom.
+
+
+Performing a Manual Installation of T7G
+"""""""""""""""""""""""""""""""""""""""
+The following instructions are for performing a manual installation of 
+The Seventh Guest.  This process should not be necessary unless the 
+install program locks up.
+
+	Go to the C:\> prompt.
+	Type "MD T7G"
+	Type "CD T7G"
+	Type "COPY D:\T7G\INSTALL"  (If your CD-ROM drive is not D:, 
+replace it with the correct drive letter.)
+	Type "EDIT GROOVIE.INI"
+	Type in the text file below.
+	Click on "File" then "Save..."
+	Click on "File" then "Exit"
+	Type "T7G" to start the game.
+
+Save the following text file as GROOVIE.INI:
+;
+;ini File for The Seventh Guest
+;
+;(C) Copyright 1992 Trilobyte, Inc. and Virgin Games
+;
+[main]
+VideoCard=VESA
+midi=SoundBlaster
+pcm=SoundBlaster
+svga=on
+ProgDir=C:\t7g\
+DataDir=D:\t7g\
+Recommended=SVGA
+CPU=486dx
+FreeMem=570
+CDbench=300
+
+[SoundBlaster]
+irq=5
+port=220
+xmi=sbfm.adv
+pcm=sbdig.adv
+dma=1
+
+
+Creating a boot disk for The Seventh Guest
+""""""""""""""""""""""""""""""""""""""""""
+TO MAKE A BOOT DISK:
+1. Insert a blank disk into drive A and type "FORMAT A: /S"  This 
+formats a system disk.  When it asks for the volume label, just press 
+ENTER.
+2. Now you need to copy the AUTOEXEC.BAT and CONFIG.SYS files from your 
+hard drive to the boot disk.  To do this, go to the A:\> prompt and type 
+"COPY C:\AUTOEXEC.BAT".  Do the same for the CONFIG.SYS file.
+3. Edit these files and delete any of the lines that do not appear 
+below.  (Go to the A:\> prompt and type "EDIT AUTOEXEC.BAT".)  Do not 
+delete any lines required for your sound card.
+4. If you have "/L:1,xxx" after the DEVICEHIGH or LH statements, delete 
+it so that these lines just read "DEVICEHIGH=C:\..." or "LH C:\..."  If 
+you have "DEVICE=C:\QEMM\LOADHI.SYS  C:\...", change it to 
+"DEVICEHIGH=C:\..."
+5. Save the file by clicking on "File" then "Save..."  After modifying 
+both files, reboot your system with the boot disk in your A: drive and 
+try the game.
+
+Sample configurations for the SoundBlaster 16 and ProAudio Spectrum 16 
+sound cards are provided.
+
+
+CONFIG.SYS
+''''''''''
+DEVICE=C:\DOS\HIMEM.SYS
+DEVICE=C:\DOS\EMM386.EXE NOEMS (Do not inlcude if using T7G 1.30.)
+DEVICEHIGH=YOUR CD-ROM DRIVER  (This is the line containing /D:MSCD001 
+DOS=HIGH,UMB                   or similar)
+BUFFERS=40,0
+FILES=40
+
+If you use DoubleSpace, you will need to add the following line: 
+DEVICEHIGH=C:\DOS\DBLSPACE.SYS /MOVE
+
+If you use any other disk compression software, you will need to consult
+your manual for what lines you need to include.
+
+AUTOEXEC.BAT
+''''''''''''
+PROMPT $P$G
+SET BLASTER=A220 I5 D1 T3
+SET PATH=C:\DOS;C:\
+LH C:\MOUSE\MOUSE.EXE     (This is your mouse driver.)
+LH C:\DOS\MSCDEX.EXE /D:MSCD001 /M:20 /V  (Make sure the /D: matches the 
+						      one in your CONFIG.SYS file.)
+
+
+
+Sample Configuration - SoundBlaster 16:
+'''''''''''''''''''''''''''''''''''''''
+
+CONFIG.SYS
+----------
+DEVICE=C:\DOS\HIMEM.SYS
+DEVICE=C:\DOS\EMM386.EXE NOEMS
+DOS=HIGH,UMB
+FILES=40
+BUFFERS=40,0
+DEVICEHIGH=C:\SB16\DRV\SBCD.SYS /D:MSCD001 /P:220
+
+AUTOEXEC.BAT
+------------
+PROMPT $P$G
+SET BLASTER=A220 I5 D1 H5 P330 T6
+C:\SB16\SB16SET /M:220 /VOC:220 /CD:220  /MIDI:220 /LINE:220 /TREBLE:0
+C:\SB16\SBCONFIG.EXE /S
+SET PATH=C:\DOS;C:\
+LH C:\MOUSE\MOUSE.EXE
+LH C:\SB16\DRV\MSCDEX.EXE /D:MSCD001 /V /M:20
+
+
+
+Sample Configuration - ProAudio Spectrum 16
+'''''''''''''''''''''''''''''''''''''''''''
+
+CONFIG.SYS
+----------
+DEVICE=C:\DOS\HIMEM.SYS
+DEVICE=C:\DOS\EMM386.EXE NOEMS
+DOS=HIGH,UMB
+FILES=40
+BUFFERS=40,0
+DEVICEHIGH=C:\FUSIONCD\TSLCD.SYS /D:MVCD001
+DEVICEHIGH=C:\FUSIONCD\MVSOUND.SYS Q:5 D:3 S:1,220,1,5 M:0 J:1
+
+AUTOEXEC.BAT
+------------
+PROMPT $P$G
+SET BLASTER=A220 D1 I5 T3
+SET PATH=C:\DOS;C:\
+LH C:\FUSIONCD\MSCDEX /D:MVCD001 /V /M:20
+LH C:\MOUSE\MOUSE.EXE
