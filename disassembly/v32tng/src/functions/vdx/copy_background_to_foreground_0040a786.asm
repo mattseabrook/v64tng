@@ -1,11 +1,13 @@
 ; PE virtual entry 0040A786
 ; Ghidra working symbol: FUN_0040a786
-; Role not yet verified; analyzer boundary is provisional.
+; Verified GRV 22h full background-to-foreground copy.
+; Copies 320 rows * 640 bytes from the indexed VDX background at [004212D0]
+; to foreground rows y=80..399 at [0042133C]+0C800h.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_0040a786_part_00 0
+%macro emit_copy_background_to_foreground_0040a786_part_00 0
     %%fragment_start:
-func_0040a786:
+copy_background_to_foreground_0040a786:
     %%insn_0040a786:
     push ebp ; 0040A786 55
     %if ($ - %%insn_0040a786) > 1

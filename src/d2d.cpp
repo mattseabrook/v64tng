@@ -721,7 +721,7 @@ void renderFrameD2D()
         WaitForSingleObjectEx(d2dCtx.frameLatencyWaitableObject, 100, TRUE);
     }
 
-    std::span<const uint8_t> pixels = *vdx->frameData[frameIdx];
+    std::span<const uint8_t> pixels = presentationPixels(vdx, frameIdx);
 
     // If the content source changed (e.g., intro -> foyer, or transient start/stop),
     // force a full refresh to avoid mixing rows from the previous clip.

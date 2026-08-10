@@ -20,7 +20,7 @@ bits 32
 %include "src/functions/unknown/004015e6_func_004015e6.asm"
 %include "src/functions/unknown/0040179b_func_0040179b.asm"
 %include "src/functions/unknown/004017ee_func_004017ee.asm"
-%include "src/functions/unknown/00401833_func_00401833.asm"
+%include "src/functions/grv/resolve_interpolated_grv_video_resource.asm"
 %include "src/functions/resource_io/open_first_drive_letter_path.asm"
 %include "src/functions/vdx/play_drive_scanned_loose_vdx.asm"
 %include "src/functions/vdx/play_optional_vielogo_video.asm"
@@ -28,8 +28,8 @@ bits 32
 %include "src/functions/vdx/play_optional_numbered_credit_video.asm"
 %include "src/functions/resource_io/select_grv_video_resource.asm"
 %include "src/functions/resource_io/select_grv_song_resource.asm"
-%include "src/functions/savegame/grv_load_game.asm"
-%include "src/functions/savegame/grv_save_game.asm"
+%include "src/functions/savegame/grv_save_game_00402067.asm"
+%include "src/functions/savegame/grv_load_game_004020e7.asm"
 %include "src/functions/resource_io/detect_t7g_archive_set.asm"
 %include "src/functions/grv/run_grv_vm.asm"
 %include "src/functions/runtime/init_game_subsystems.asm"
@@ -145,10 +145,10 @@ bits 32
 %include "src/functions/unknown/0040a29f_func_0040a29f.asm"
 %include "src/functions/unknown/0040a39f_func_0040a39f.asm"
 %include "src/functions/unknown/0040a3ee_func_0040a3ee.asm"
-%include "src/functions/unknown/0040a430_func_0040a430.asm"
+%include "src/functions/grv/draw_centered_grv_string_0040a430.asm"
 %include "src/functions/unknown/0040a73a_func_0040a73a.asm"
-%include "src/functions/unknown/0040a786_func_0040a786.asm"
-%include "src/functions/unknown/0040a7aa_func_0040a7aa.asm"
+%include "src/functions/vdx/copy_background_to_foreground_0040a786.asm"
+%include "src/functions/vdx/copy_background_rectangle_to_foreground_0040a7aa.asm"
 %include "src/functions/unknown/0040a84b_func_0040a84b.asm"
 %include "src/functions/unknown/0040aa45_func_0040aa45.asm"
 %include "src/functions/vdx/decode_vdx_bitmap_still.asm"
@@ -346,7 +346,7 @@ bits 32
 
 ; Data Segments
 %include "src/data/pe_headers_and_section_table.asm"
-%include "src/data/data_0001_0035e0.asm"
+%include "src/data/grv_opcode_jump_table.asm"
 %include "src/data/data_0002_004278.asm"
 %include "src/data/data_0003_005d93.asm"
 %include "src/data/data_0004_005eaf.asm"
@@ -695,7 +695,7 @@ emit_func_004017ee_part_00
 %if ($ - $$) != 0x000C33
     %error "layout drift at raw 000C33"
 %endif
-emit_func_00401833_part_00
+emit_resolve_interpolated_grv_video_resource_part_00
 
 ; raw 000FB3..000FFD (function)
 %if ($ - $$) != 0x000FB3
@@ -743,13 +743,13 @@ emit_select_grv_song_resource_part_00
 %if ($ - $$) != 0x001467
     %error "layout drift at raw 001467"
 %endif
-emit_grv_load_game_part_00
+emit_grv_save_game_00402067_part_00
 
 ; raw 0014E7..001572 (function)
 %if ($ - $$) != 0x0014E7
     %error "layout drift at raw 0014E7"
 %endif
-emit_grv_save_game_part_00
+emit_grv_load_game_004020e7_part_00
 
 ; raw 001572..0015D1 (function)
 %if ($ - $$) != 0x001572
@@ -767,7 +767,7 @@ emit_run_grv_vm_part_00
 %if ($ - $$) != 0x0035E0
     %error "layout drift at raw 0035E0"
 %endif
-emit_file_data_0001_0035e0
+emit_grv_opcode_jump_table
 
 ; raw 003750..00381D (function)
 %if ($ - $$) != 0x003750
@@ -1559,7 +1559,7 @@ emit_file_data_0016_009821
 %if ($ - $$) != 0x009830
     %error "layout drift at raw 009830"
 %endif
-emit_func_0040a430_part_00
+emit_draw_centered_grv_string_0040a430_part_00
 
 ; raw 009B3A..009B86 (function)
 %if ($ - $$) != 0x009B3A
@@ -1571,13 +1571,13 @@ emit_func_0040a73a_part_00
 %if ($ - $$) != 0x009B86
     %error "layout drift at raw 009B86"
 %endif
-emit_func_0040a786_part_00
+emit_copy_background_to_foreground_0040a786_part_00
 
 ; raw 009BAA..009C4B (function)
 %if ($ - $$) != 0x009BAA
     %error "layout drift at raw 009BAA"
 %endif
-emit_func_0040a7aa_part_00
+emit_copy_background_rectangle_to_foreground_0040a7aa_part_00
 
 ; raw 009C4B..009E45 (function)
 %if ($ - $$) != 0x009C4B

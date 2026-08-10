@@ -1,11 +1,13 @@
 ; Linear entry 0276D (1000:276d)
 ; Ghidra working symbol: FUN_1000_276d
-; Role not yet verified; boundary is provisional.
+; Verified palette-use scanner for GRV PALETTE_MERGE_ONCE. Clears the
+; 256-entry use map at SS:CB20 then marks every palette index present in the
+; current background. The next still-palette load preserves marked entries.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_0276d_part_00 0
+%macro emit_mark_used_background_palette_entries_part_00 0
     %%fragment_start:
-func_0276d:
+mark_used_background_palette_entries:
     %%insn_0276d:
     pusha ; 0276D 60
     %if ($ - %%insn_0276d) > 1

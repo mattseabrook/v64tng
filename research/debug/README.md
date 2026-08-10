@@ -33,6 +33,8 @@ The current kit instead:
 - captures exact bounded instruction bytes and diffs the 0x400-byte GRV
   variable bank without writing whole snapshots to the log;
 - records loaded script names, video refs, and song refs;
+- records the fully interpolated filename at every `VIDEO_NAME` opcode before
+  native resource lookup, so even a crashing lookup leaves its exact input;
 - records the verified LOADGAME, SAVEGAME, and CHECK_VALID_SAVES handler
   boundaries plus exact bounded `st7g.N` read/write payloads;
 - records VDX type/coding/size, stream state, LZSS parameters and decoded
@@ -40,8 +42,12 @@ The current kit instead:
 - records GETCD/vielogo boundaries and the native Miles Red Book selection,
   device-open, current-track, track-info, play, and stop calls;
 - records key and mouse-button messages (not noisy mouse-move traffic);
+- records application-owned `MessageBoxA/W` title and body text when present;
 - records agent errors, rejected probes, sequence gaps, and malformed lines
   instead of silently producing a trustworthy-looking digest.
+- groups byte-identical save-file reads/writes by semantic identity and prints
+  an `xN` count, so polling does not flood a scene report while every original
+  event remains available in the NDJSON evidence stream.
 
 ## Files
 
@@ -145,7 +151,7 @@ The process starts suspended, the agent validates and attaches its probes, and
 then the host resumes the game. The expected readiness line is approximately:
 
 ```text
-tracer ready: 20 semantic probes attached; 0 failures; input hooks ['GetMessageA', 'PeekMessageA']; save hooks ['CreateFileA', 'WriteFile', 'ReadFile', 'CloseHandle', 'DeleteFileA']
+tracer ready: 20 semantic probes attached; 0 failures; input hooks ['GetMessageA', 'PeekMessageA']; UI hooks ['MessageBoxA', 'MessageBoxW']; save hooks ['CreateFileA', 'WriteFile', 'ReadFile', 'CloseHandle', 'DeleteFileA']
 ```
 
 One input hook may be absent if that API is not available in the process. That
@@ -213,6 +219,28 @@ Do not add F9 cuts during the cinematic. The probes record every exact media
 boundary automatically, while a keyboard event during playback would make the
 evidence less clean. The two critical cuts are mark-2 before **Start New** and
 mark-3 after first control but before any foyer navigation.
+
+### Next capture: kitchen full clear through the beta crash
+
+Use the saved game in which Zaphod Beeblebrox has already been applied. Start
+a fresh full-mode trace, load that save, and navigate to the unopened kitchen
+door. Do not place a marker while loading or navigating.
+
+1. **F9 / mark-1:** standing at the kitchen door before clicking it;
+2. enter the kitchen and attempt the complete room/puzzle clear normally;
+3. do not place any further F9 markers;
+4. when the known soup-can failure appears, leave the popup open long enough
+   to photograph it and copy its exact window title and complete body text;
+5. dismiss the popup only after recording it, then wait for the capture console
+   to report process termination; use Ctrl+C in the capture console only if the
+   game process remains alive after the dialog is dismissed;
+6. return the entire timestamped trace directory plus the screenshot or exact
+   transcribed popup text.
+
+The agent now records the resolved string at every `VIDEO_NAME` dispatch before
+lookup and hooks application-owned `MessageBoxA/W` calls. A Windows Error
+Reporting dialog can belong to a different process, so the human screenshot is
+still required even if the trace contains popup evidence.
 
 By default, output is written below:
 

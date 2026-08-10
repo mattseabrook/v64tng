@@ -1,12 +1,10 @@
 #include "grv_runtime.h"
 
 #include <algorithm>
-#include <chrono>
 #include <cctype>
 #include <cstring>
 #include <fstream>
 #include <format>
-#include <thread>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -473,20 +471,50 @@ bool GrvRuntime::sequenceAnyLess(uint16_t variable, size_t encoded) const
 	return result;
 }
 
-std::filesystem::path GrvRuntime::savePath(uint8_t slot) const
+std::filesystem::path GrvRuntime::savePath(
+	uint8_t slot, GrvSaveConvention convention) const
 {
-	const std::string filename = saveConvention_ == GrvSaveConvention::Dos
+	const std::string filename = convention == GrvSaveConvention::Dos
 		? std::format("save.{}", slot)
 		: std::format("st7g.{}", slot);
 	return assetRoot_ / filename;
 }
 
-size_t GrvRuntime::savePayloadSize() const
+size_t GrvRuntime::savePayloadSize(GrvSaveConvention convention)
 {
 	// Static DOS evidence: both INT 21h read/write paths use CX=0523h.
 	// Runtime Win32 evidence (trace 20260809-195435): WriteFile requested and
 	// completed exactly 0400h bytes for st7g.1.
-	return saveConvention_ == GrvSaveConvention::Dos ? 0x523 : 0x400;
+	return convention == GrvSaveConvention::Dos ? 0x523 : 0x400;
+}
+
+std::optional<GrvSaveConvention> GrvRuntime::detectSaveConvention(uint8_t slot) const
+{
+	struct Candidate
+	{
+		GrvSaveConvention convention;
+		std::filesystem::file_time_type modified;
+	};
+	std::optional<Candidate> selected;
+	for (const auto convention : {GrvSaveConvention::Dos, GrvSaveConvention::Windows})
+	{
+		const auto expectedPath = savePath(slot, convention);
+		const auto actualPath = findCaseInsensitive(
+			assetRoot_, expectedPath.filename().string());
+		if (!actualPath)
+			continue;
+		std::error_code error;
+		const auto size = std::filesystem::file_size(*actualPath, error);
+		if (error || size != savePayloadSize(convention))
+			continue;
+		const auto modified = std::filesystem::last_write_time(*actualPath, error);
+		if (error)
+			continue;
+		if (!selected || modified > selected->modified ||
+			(modified == selected->modified && convention == GrvSaveConvention::Dos))
+			selected = Candidate{convention, modified};
+	}
+	return selected ? std::optional{selected->convention} : std::nullopt;
 }
 
 std::expected<void, std::string> GrvRuntime::checkValidSaves()
@@ -494,11 +522,23 @@ std::expected<void, std::string> GrvRuntime::checkValidSaves()
 	uint8_t count = 0;
 	for (uint8_t slot = 0; slot < 10; ++slot)
 	{
-		std::error_code error;
-		const bool valid = std::filesystem::exists(savePath(slot), error);
-		if (error)
-			return std::unexpected(
-				"Cannot inspect save slot " + std::to_string(slot) + ": " + error.message());
+		std::optional<GrvSaveConvention> convention;
+		if (saveConvention_ == GrvSaveConvention::Auto)
+			convention = detectSaveConvention(slot);
+		else
+		{
+			const auto candidate = findCaseInsensitive(
+				assetRoot_, savePath(slot, saveConvention_).filename().string());
+			if (candidate)
+			{
+				std::error_code error;
+				const auto size = std::filesystem::file_size(*candidate, error);
+				if (!error && size == savePayloadSize(saveConvention_))
+					convention = saveConvention_;
+			}
+		}
+		slotSaveConventions_[slot] = convention;
+		const bool valid = convention.has_value();
 		variables_[slot] = valid ? 1 : 0;
 		count += valid ? 1 : 0;
 	}
@@ -510,26 +550,51 @@ std::expected<void, std::string> GrvRuntime::loadGame(uint8_t slot)
 {
 	if (slot >= 10)
 		return std::unexpected(std::format("Invalid GRV save slot {}", slot));
-	std::ifstream file(savePath(slot), std::ios::binary);
+	auto convention = saveConvention_ == GrvSaveConvention::Auto
+		? slotSaveConventions_[slot] : std::optional{saveConvention_};
+	if (!convention)
+		convention = detectSaveConvention(slot);
+	if (!convention)
+		return std::unexpected(std::format("Cannot find GRV save slot {}", slot));
+	const auto expectedPath = savePath(slot, *convention);
+	const auto path = findCaseInsensitive(
+		assetRoot_, expectedPath.filename().string()).value_or(expectedPath);
+	std::ifstream file(path, std::ios::binary);
 	if (!file)
-		return std::unexpected("Cannot open " + savePath(slot).string());
+		return std::unexpected("Cannot open " + path.string());
+	if (*convention == GrvSaveConvention::Windows)
+		std::fill(variables_.begin() + 0x400, variables_.end(), 0);
 	if (!file.read(reinterpret_cast<char *>(variables_.data()),
-		static_cast<std::streamsize>(savePayloadSize())))
-		return std::unexpected("Truncated GRV save " + savePath(slot).string());
+		static_cast<std::streamsize>(savePayloadSize(*convention))))
+		return std::unexpected("Truncated GRV save " + path.string());
+	slotSaveConventions_[slot] = convention;
 	return {};
 }
 
-std::expected<void, std::string> GrvRuntime::saveGame(uint8_t slot) const
+std::expected<void, std::string> GrvRuntime::saveGame(uint8_t slot)
 {
 	if (slot >= 10)
 		return std::unexpected(std::format("Invalid GRV save slot {}", slot));
-	std::ofstream file(savePath(slot), std::ios::binary | std::ios::trunc);
+	// Existing slots retain their original native format. New v64tng slots use
+	// the retail DOS payload because it is the lossless superset of v32's 0400h.
+	const auto convention = saveConvention_ == GrvSaveConvention::Auto
+		? slotSaveConventions_[slot].value_or(
+			detectSaveConvention(slot).value_or(GrvSaveConvention::Dos))
+		: saveConvention_;
+	const auto expectedPath = savePath(slot, convention);
+	// Preserve the actual spelling of an existing native file. This matters on
+	// case-sensitive hosts where SAVE.1 and save.1 would otherwise become two
+	// different slots even though both original players treat them identically.
+	const auto path = findCaseInsensitive(
+		assetRoot_, expectedPath.filename().string()).value_or(expectedPath);
+	std::ofstream file(path, std::ios::binary | std::ios::trunc);
 	if (!file)
-		return std::unexpected("Cannot create " + savePath(slot).string());
+		return std::unexpected("Cannot create " + path.string());
 	file.write(reinterpret_cast<const char *>(variables_.data()),
-		static_cast<std::streamsize>(savePayloadSize()));
+		static_cast<std::streamsize>(savePayloadSize(convention)));
 	if (!file)
-		return std::unexpected("Cannot write " + savePath(slot).string());
+		return std::unexpected("Cannot write " + path.string());
+	slotSaveConventions_[slot] = convention;
 	return {};
 }
 
@@ -651,11 +716,11 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 		};
 		auto queueVideo = [&](uint16_t ref)
 		{
-			const uint16_t cursorRateFlag =
-				(lastCursor_ == 4 || lastCursor_ == 7) ? (1u << 15) : 0;
-			videoCommands_.push_back(
-				{ref, static_cast<uint16_t>(videoFlags_ | cursorRateFlag),
-				 videoRateOverride_});
+			const GrvVideoCommand command{
+				ref, videoFlags_,
+				videoRateOverride_};
+			videoCommands_.push_back(command);
+			presentationCommands_.push_back(command);
 			videoFlags_ = 0;
 			videoRateOverride_ = 0;
 		};
@@ -667,9 +732,13 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 			break;
 		case 0x02:
 			songRef_ = read16(bytes_, pc + 1);
+			presentationCommands_.emplace_back(
+				GrvPlaySongCommand{songRef_});
 			break;
 		case 0x08:
 			backgroundSongRef_ = read16(bytes_, pc + 1);
+			presentationCommands_.emplace_back(
+				GrvSetBackgroundSongCommand{backgroundSongRef_});
 			break;
 		case 0x03:
 			videoFlags_ |= 1u << 9;
@@ -755,8 +824,11 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 			break;
 		}
 		case 0x19:
-			std::this_thread::sleep_for(
-				std::chrono::milliseconds(read16(bytes_, pc + 1) * 3u));
+			// Keep the delay in the same presentation stream as VIDEOREF and
+			// PRINTSTRING. Sleeping here would delay the VM first and only reveal
+			// all queued visual changes after execution reached the input loop.
+			presentationCommands_.emplace_back(
+				GrvSleepCommand{read16(bytes_, pc + 1)});
 			break;
 		case 0x1b:
 		{
@@ -831,7 +903,8 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 			break;
 		}
 		case 0x22:
-			return std::unexpected(unimplementedOpcode(raw, static_cast<uint16_t>(pc)));
+			presentationCommands_.emplace_back(GrvCopyBackgroundCommand{});
+			break;
 		case 0x24:
 		case 0x25:
 		case 0x41:
@@ -957,7 +1030,10 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 			break;
 		}
 		case 0x37:
-			return std::unexpected(unimplementedOpcode(raw, static_cast<uint16_t>(pc)));
+			presentationCommands_.emplace_back(GrvCopyRectCommand{
+				read16(bytes_, pc + 1), read16(bytes_, pc + 3),
+				read16(bytes_, pc + 5), read16(bytes_, pc + 7)});
+			break;
 		case 0x38:
 			callDepth_ = parentScript_ ? parentScript_->stackCheckpoint : 0;
 			break;
@@ -983,7 +1059,26 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 			break;
 		}
 		case 0x3a:
-			return std::unexpected(unimplementedOpcode(raw, static_cast<uint16_t>(pc)));
+		{
+			std::string text;
+			size_t encoded = pc + 1;
+			uint8_t last = 0;
+			bool terminated = false;
+			do
+			{
+				const auto value = decodeChar(encoded, last, true, true, true);
+				if (!value)
+					return std::unexpected(std::format(
+						"Invalid PRINTSTRING operands at 0x{:04X}", pc));
+				const char ch = static_cast<char>(*value + 0x30);
+				if (ch == '$')
+					terminated = true;
+				else if (!terminated && text.size() < 14)
+					text.push_back(ch);
+			} while (!(last & 0x80));
+			presentationCommands_.emplace_back(GrvPrintCommand{std::move(text)});
+			break;
+		}
 		case 0x3c:
 		{
 			const auto result = checkValidSaves();
@@ -1072,6 +1167,12 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 		case 0x48:
 			videoRateOverride_ = bytes_[pc + 1];
 			break;
+		case 0x49:
+			// Retail V.EXE marks the palette indices used by the current indexed
+			// background and preserves them while loading the next still palette.
+			// v32tng's handler at 004041A6 is an intentional immediate return.
+			presentationCommands_.emplace_back(GrvPaletteMergeOnceCommand{});
+			break;
 		case 0x4c:
 		{
 			const bool hasB = findCaseInsensitive(assetRoot_, "B.GJD").has_value();
@@ -1091,6 +1192,7 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 std::expected<GrvBoot, std::string> GrvRuntime::boot()
 {
 	videoCommands_.clear();
+	presentationCommands_.clear();
 	videoFlags_ = 0;
 	videoRateOverride_ = 0;
 	ended_ = false;
@@ -1101,19 +1203,21 @@ std::expected<GrvBoot, std::string> GrvRuntime::boot()
 		return std::unexpected("SCRIPT.GRV ended before its first input loop");
 	return GrvBoot{
 		{songRef_, backgroundSongRef_},
-		{std::move(videoCommands_), ended_}};
+		{std::move(videoCommands_), std::move(presentationCommands_), ended_}};
 }
 
 std::expected<GrvTransition, std::string> GrvRuntime::follow(uint16_t target)
 {
 	videoCommands_.clear();
+	presentationCommands_.clear();
 	videoFlags_ = 0;
 	videoRateOverride_ = 0;
 	ended_ = false;
 	const auto result = executeUntilInputLoop(target);
 	if (!result)
 		return std::unexpected(result.error());
-	return GrvTransition{std::move(videoCommands_), ended_};
+	return GrvTransition{
+		std::move(videoCommands_), std::move(presentationCommands_), ended_};
 }
 
 std::expected<std::optional<GrvTransition>, std::string>
@@ -1189,9 +1293,8 @@ std::optional<GrvHotspotView> GrvRuntime::hotspotAtCanonical(uint16_t x, uint16_
 		if (hotspot)
 		{
 			GrvHotspotView view(bytes_.subspan(pc, next - pc), static_cast<uint16_t>(pc));
-			// v64tng renders only the original 640x320 video viewport. GRV
-			// rectangles confined to the discarded 80-row bars must never
-			// acquire a one-pixel hit at the cropped viewport boundary.
+			// v64tng intentionally discards the two native 80-row bars. Do not
+			// collapse a bar-only hotspot onto an edge of the visible band.
 			if (view.bottom() <= 80 || view.top() >= 400)
 			{
 				pc = next;

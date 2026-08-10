@@ -13,6 +13,9 @@
 nlohmann::json config;
 std::string windowTitle = "v64tng";
 const int MIN_CLIENT_WIDTH = 640;
+// v64tng deliberately presents only the native 640x320 cinematic band. The
+// original players' 640x480 foreground remains an internal GRV coordinate
+// space; its 80-row top and bottom bars never become host-window content.
 const int MIN_CLIENT_HEIGHT = 320;
 
 namespace

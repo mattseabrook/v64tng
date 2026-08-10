@@ -1,5 +1,14 @@
-; Explicit file bytes raw 0035E0..003750.
-%macro emit_file_data_0001_0035e0 0
+; GRV opcode dispatch table at VA 004041E0, followed by alignment padding.
+; The interpreter masks bit 7, subtracts one, bounds-checks against 58h, then
+; indexes these 59h little-endian handler pointers.  The table statically pins
+; such runtime-confirmed mappings as 22h -> 0040327E (COPY_BG_TO_FG),
+; 26h -> 004025D0 (VIDEO_NAME), 27h -> 004025FD (VIDEO_TRANSITION_NAME),
+; 2Eh -> 004034EF (LOADGAME), 2Fh -> 00403524 (SAVEGAME),
+; 37h -> 0040382A (COPY_RECT_TO_BG), 39h -> 0040389B (GRID_SWAP),
+; 3Ah -> 00403A46 (PRINTSTRING),
+; 3Fh -> 00403CD2 (LOADSCRIPT), 43h -> 00403DAB (RETURNSCRIPT), and
+; 49h -> 004041A6 (PALETTE_MERGE_ONCE).
+%macro emit_grv_opcode_jump_table 0
     %%chunk_start:
     db 0x94, 0x23, 0x40, 0x00, 0x99, 0x23, 0x40, 0x00, 0xD4, 0x23, 0x40, 0x00, 0xEA, 0x23, 0x40, 0x00 ; raw 0035E0 |.#@..#@..#@..#@.|
     db 0xF4, 0x23, 0x40, 0x00, 0x08, 0x24, 0x40, 0x00, 0x1E, 0x24, 0x40, 0x00, 0x34, 0x24, 0x40, 0x00 ; raw 0035F0 |.#@..$@..$@.4$@.|

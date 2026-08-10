@@ -89,6 +89,24 @@ function readCString(address, limit) {
   }
 }
 
+function readUtf16String(address, limit) {
+  try {
+    if (address.isNull())
+      return null;
+    const count = limit || 1024;
+    let result = '';
+    for (let i = 0; i < count; ++i) {
+      const value = address.add(i * 2).readU16();
+      if (value === 0)
+        return result;
+      result += String.fromCharCode(value);
+    }
+    return result;
+  } catch (_) {
+    return null;
+  }
+}
+
 function emit(probe, fields) {
   const event = fields || {};
   event.probe = probe;
@@ -197,6 +215,53 @@ function scriptIdentity(scriptBase) {
   return scriptNames[key] || (key === null ? '<unknown>' : `<script@${key}>`);
 }
 
+// Reproduce native VIDEO_NAME interpolation before resource lookup.  If a
+// malformed name causes the kitchen beta crash, the final dispatch event still
+// contains the exact name the VM constructed and attempted to resolve.
+function interpolateVideoName(instruction, variables) {
+  if (variables === null)
+    return null;
+  try {
+    let offset = 1;
+    let result = '';
+    function decodeCoordinate() {
+      let token = instruction.add(offset++).readU8();
+      if (token === 0x23) {
+        token = instruction.add(offset++).readU8();
+        const index = token - 0x61;
+        if (index < 0 || index >= variables.length)
+          throw new Error('invalid variable token');
+        return variables[index];
+      }
+      return (token - 0x30) & 0xff;
+    }
+    for (let count = 0; count < 260; ++count) {
+      let value = instruction.add(offset++).readU8();
+      if (value === 0)
+        return result;
+      if (value === 0x23) {
+        const token = instruction.add(offset++).readU8();
+        const index = token - 0x61;
+        if (index < 0 || index >= variables.length)
+          return null;
+        value = (variables[index] + 0x30) & 0xff;
+      } else if (value === 0x7c) {
+        const row = decodeCoordinate();
+        const column = decodeCoordinate();
+        const index = 0x19 + 10 * row + column;
+        if (index < 0 || index >= variables.length)
+          return null;
+        value = (variables[index] + 0x30) & 0xff;
+      }
+      if (value >= 0x41 && value <= 0x5a)
+        value += 0x20;
+      if (value !== 0)
+        result += String.fromCharCode(value);
+    }
+  } catch (_) {}
+  return null;
+}
+
 function emitGrvSaveBoundary(probe) {
   const scriptBase = readPointerGlobal('script_base');
   emit(probe, {
@@ -264,20 +329,25 @@ const handlers = {
         ? null
         : parseInt(window.slice(0, 2), 16);
 
-      emitVariableChanges(variableSnapshot());
-      emit('grv.dispatch', {
+      const variables = variableSnapshot();
+      emitVariableChanges(variables);
+      const opcode = rawOpcode === null ? null : rawOpcode & 0x7f;
+      const event = {
         script: scriptName,
         script_base: pointerHex(scriptBase),
         pc: pc,
         raw_opcode: rawOpcode,
-        opcode: rawOpcode === null ? null : rawOpcode & 0x7f,
+        opcode: opcode,
         bytes: window,
         state: {
           call_depth: readU32(globalAddress('call_depth')),
           call_stack: pointerHex(readPointerGlobal('call_stack')),
           video_flags: readU16(globalAddress('video_flags'))
         }
-      });
+      };
+      if (opcode === 0x26 || opcode === 0x27)
+        event.video_name = interpolateVideoName(instruction, variables);
+      emit('grv.dispatch', event);
       previousInstruction = {
         script: scriptName,
         script_base: pointerHex(scriptBase),
@@ -578,6 +648,49 @@ if (GROUPS.has('input')) {
   }
 }
 
+// Capture application-owned popup text.  A Windows Error Reporting dialog may
+// run in another process and still needs a screenshot, but MessageBoxA/W calls
+// made by v32tng itself are retained verbatim in the evidence stream.
+const uiHooks = [];
+const uiFailures = [];
+if (GROUPS.has('grv')) {
+  for (const api of ['MessageBoxA', 'MessageBoxW']) {
+    const address = globalExport(api);
+    if (address === null)
+      continue;
+    try {
+      Interceptor.attach(address, {
+        onEnter(args) {
+          this.api = api;
+          this.text = api.endsWith('W')
+            ? readUtf16String(args[1], 2048)
+            : readCString(args[1], 2048);
+          this.title = api.endsWith('W')
+            ? readUtf16String(args[2], 512)
+            : readCString(args[2], 512);
+          emit('ui.message_box.enter', {
+            api: api,
+            title: this.title,
+            text: this.text,
+            type: asHex(args[3].toUInt32())
+          });
+        },
+        onLeave(retval) {
+          emit('ui.message_box.leave', {
+            api: this.api,
+            title: this.title,
+            text: this.text,
+            result: retval.toInt32()
+          });
+        }
+      });
+      uiHooks.push(api);
+    } catch (error) {
+      uiFailures.push({ name: 'ui.' + api, reason: String(error) });
+    }
+  }
+}
+
 // Capture the exact st7g.N payloads used by the menu's load/save operations.
 // Other game/resource file traffic is deliberately ignored.
 const saveFileHooks = [];
@@ -807,6 +920,8 @@ emit('tracer.ready', {
   attached: attached,
   input_hooks: inputHooks,
   input_failures: inputFailures,
+  ui_hooks: uiHooks,
+  ui_failures: uiFailures,
   save_file_hooks: saveFileHooks,
   audio_api_hooks: audioApiHooks,
   audio_api_failures: audioApiFailures,

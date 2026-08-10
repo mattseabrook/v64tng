@@ -1,11 +1,13 @@
 ; PE virtual entry 0040A430
 ; Ghidra working symbol: FUN_0040a430
-; Role not yet verified; analyzer boundary is provisional.
+; Verified SPHINX.FNT GRV string renderer. Loads the 11112-byte font on first
+; use, clears foreground rows y=0..79, measures at most 14 characters, centers
+; the text horizontally, and draws the indexed glyph stream beginning at y=16.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_0040a430_part_00 0
+%macro emit_draw_centered_grv_string_0040a430_part_00 0
     %%fragment_start:
-func_0040a430:
+draw_centered_grv_string_0040a430:
     %%insn_0040a430:
     push ebp ; 0040A430 55
     %if ($ - %%insn_0040a430) > 1

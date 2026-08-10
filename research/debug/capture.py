@@ -417,7 +417,8 @@ def main() -> int:
                     print(
                         f"tracer ready: {len(attached)} semantic probes attached; "
                         f"{len(failures)} failures; input hooks "
-                        f"{payload.get('input_hooks', [])}; save hooks "
+                        f"{payload.get('input_hooks', [])}; UI hooks "
+                        f"{payload.get('ui_hooks', [])}; save hooks "
                         f"{payload.get('save_file_hooks', [])}; audio API hooks "
                         f"{payload.get('audio_api_hooks', [])}"
                     )
@@ -425,6 +426,12 @@ def main() -> int:
                         print(
                             f"!! optional audio API hooks unavailable: "
                             f"{payload['audio_api_failures']}",
+                            flush=True,
+                        )
+                    if payload.get("ui_failures"):
+                        print(
+                            f"!! optional UI hooks unavailable: "
+                            f"{payload['ui_failures']}",
                             flush=True,
                         )
                 elif probe == "tracer.attach_fail":

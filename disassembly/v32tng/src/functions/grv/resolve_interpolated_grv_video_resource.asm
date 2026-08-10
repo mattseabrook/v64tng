@@ -1,11 +1,15 @@
 ; PE virtual entry 00401833
 ; Ghidra working symbol: FUN_00401833
-; Role not yet verified; analyzer boundary is provisional.
+; Verified GRV VIDEO_NAME/VIDEO_TRANSITION_NAME resource resolver.
+; It consumes the inline zero-terminated name expression from the current GRV
+; PC, expands #variable and |row,column substitutions, folds ASCII uppercase,
+; appends '.', searches the loaded GJD/RL directory tables, and returns the
+; packed (archive << 10) | entry resource reference or -1 when absent.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_00401833_part_00 0
+%macro emit_resolve_interpolated_grv_video_resource_part_00 0
     %%fragment_start:
-func_00401833:
+resolve_interpolated_grv_video_resource:
     %%insn_00401833:
     push ebp ; 00401833 55
     %if ($ - %%insn_00401833) > 1

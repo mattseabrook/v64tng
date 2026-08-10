@@ -92,11 +92,55 @@ class DecoderTests(unittest.TestCase):
             {
                 "schema": "v64tng.trace/2",
                 "seq": 9,
-                "host_ms": 20,
+                "host_ms": 16,
+                "probe": "save.file_read",
+                "path": "C:\\T7G\\st7g.0",
+                "requested": 1024,
+                "actual": 1024,
+                "success": True,
+                "data": "00" * 1024,
+            },
+            {
+                "schema": "v64tng.trace/2",
+                "seq": 10,
+                "host_ms": 17,
+                "probe": "save.file_read",
+                "path": "C:\\T7G\\st7g.0",
+                "requested": 1024,
+                "actual": 1024,
+                "success": True,
+                "data": "00" * 1024,
+            },
+            {
+                "schema": "v64tng.trace/2",
+                "seq": 11,
+                "host_ms": 18,
                 "probe": "grv.dispatch",
                 "script": "SCRIPT.GRV",
                 "script_base": "0x1000",
                 "pc": 3,
+                "bytes": "26746573742e76647800" + "00" * 54,
+                "video_name": "test.vdx",
+                "state": {"video_flags": 0},
+            },
+            {
+                "schema": "v64tng.trace/2",
+                "seq": 12,
+                "host_ms": 19,
+                "probe": "ui.message_box.enter",
+                "api": "MessageBoxA",
+                "title": "VDX error",
+                "text": "Cannot open test.vdx",
+                "type": "0x00000010",
+            },
+            {
+                "schema": "v64tng.trace/2",
+                "seq": 13,
+                "host_ms": 20,
+                "probe": "grv.dispatch",
+                "script": "SCRIPT.GRV",
+                "script_base": "0x1000",
+                "pc": 13,
                 "bytes": "2a" + "00" * 255,
                 "state": {"video_flags": 0},
             },
@@ -120,6 +164,11 @@ class DecoderTests(unittest.TestCase):
             self.assertIn("VIDEOREF 0x2418=INTRO[24]", scene)
             self.assertIn("grv.save_game: x1", scene)
             self.assertIn("write C:\\T7G\\st7g.0 requested=1024 actual=1024", scene)
+            self.assertIn("read C:\\T7G\\st7g.0 requested=1024 actual=1024", scene)
+            self.assertIn("success=True x2", scene)
+            self.assertIn('VIDEO_NAME "test.vdx" => "test.vdx"', scene)
+            self.assertIn("Application popup evidence:", scene)
+            self.assertIn("Cannot open test.vdx", scene)
             self.assertTrue((trace / "digest" / "report.json").is_file())
 
 

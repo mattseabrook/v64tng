@@ -2,6 +2,7 @@
 #include "resource.h"
 
 IDB_SYSINFO_BG RCDATA "SystemInformation.png"
+IDR_DEFAULT_SF2 RCDATA "sc55.sf2"
 
 IDI_ICON1 ICON "icon.ico"
 

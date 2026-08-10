@@ -60,8 +60,27 @@ struct VDXFile
     // Frames are shared_ptr so duplicate frames can share the same pixel buffer
     // instead of copying the whole image (common VDX chunk type 0x00).
     std::vector<std::shared_ptr<std::vector<uint8_t>>> frameData;
+    // Native VDX decoding remains palette-indexed.  Preserve that parallel
+    // representation so GRV opcode 49h can identify exactly which palette
+    // entries the current background uses before decoding the next still.
+    std::vector<std::shared_ptr<std::vector<uint8_t>>> frameIndices;
+    // Palette active when each corresponding indexed frame is presented.
+    // This is required for FIRSTFRAME_NEXT_VIDEO: decoding may continue for
+    // caching, but the persistent room plate is frame zero with its palette.
+    std::vector<std::array<RGBColor, 256>> framePalettes;
+    std::array<RGBColor, 256> palette{};
+    bool paletteMergeConsumed = false;
     std::vector<uint8_t> audioData;
     bool parsed = false;
+};
+
+struct VDXDecodeContext
+{
+    std::span<const uint8_t> background;
+    std::span<const uint8_t> backgroundIndices;
+    std::span<const uint8_t> foregroundIndices;
+    std::span<const RGBColor> palette;
+    bool mergePaletteOnce = false;
 };
 
 [[nodiscard]] constexpr bool vdxChunkIsCompressed(const VDXChunk &chunk)
@@ -81,6 +100,10 @@ void parseVDXChunks(VDXFile &vdxFile);
 void parseVDXChunks(
     VDXFile &vdxFile,
     std::span<const uint8_t> background,
+    uint16_t grvVideoFlags);
+void parseVDXChunks(
+    VDXFile &vdxFile,
+    const VDXDecodeContext &context,
     uint16_t grvVideoFlags);
 [[nodiscard]] double vdxPlaybackRate(const VDXFile &vdxFile);
 void vdxPlay(const std::string &filename, VDXFile *preloadedVdx = nullptr);

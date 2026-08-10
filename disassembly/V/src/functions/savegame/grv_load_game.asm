@@ -2,6 +2,8 @@
 ; Ghidra working symbol: FUN_1000_3fc4
 ; Verified GRV LOADGAME (2Eh): opens save.N and reads 523h bytes beginning at
 ; the DOS GRV persistent-state base.  A missing file returns without mutation.
+; Win32 trace 20260809-212141 independently confirms the shared opcode number
+; and slot-variable convention (with that port's 400h-byte st7g.N format).
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
 %macro emit_grv_load_game_part_00 0

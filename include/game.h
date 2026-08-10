@@ -14,6 +14,7 @@
 #include <memory>
 #include <cmath>
 #include <mutex>
+#include <span>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -136,6 +137,17 @@ struct GameState
 	size_t transient_frame_index = 0;	  // Current frame of transient
 	std::unique_ptr<VDXFile> transientVDX; // Owning pointer to transient VDXFile (loaded independently of currentVDX)
 
+	// GRV logic retains the original 640x480 foreground coordinate space, but
+	// v64tng presents only its 640x320 y=80..399 cinematic band. The discarded
+	// bars must never dictate the host texture, window aspect, or pointer map.
+	std::vector<uint8_t> grvBackgroundFrame;
+	std::vector<uint8_t> grvBackgroundIndices;
+	std::array<RGBColor, 256> grvPalette{};
+	std::vector<uint8_t> grvForegroundIndices;
+	std::vector<uint8_t> grvForegroundFrame;
+	std::vector<uint8_t> composedPresentationFrame;
+	bool grvForegroundActive = false;
+
 	std::vector<std::string> animation_sequence; // Stores the sequence of animations
 	size_t animation_queue_index = 0;			 // Current position in the animation sequence
 	std::function<void()> pending_action;		 // Optional action after the current animation
@@ -246,6 +258,7 @@ private:
 // Function prototypes
 void viewHandler();
 void maybeRenderFrame(bool force = false);
+std::span<const uint8_t> presentationPixels(const VDXFile *vdx, size_t frameIndex);
 void startNewGame();
 void mainMenuKeyDown(char c);
 bool initializeGrvMainMenu();

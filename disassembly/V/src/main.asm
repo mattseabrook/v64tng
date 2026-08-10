@@ -28,7 +28,7 @@ bits 16
 %include "src/functions/vdx/copy_rect_to_background.asm"
 %include "src/functions/vdx/copy_background_to_foreground.asm"
 %include "src/functions/unknown/026e5_func_026e5.asm"
-%include "src/functions/unknown/0276d_func_0276d.asm"
+%include "src/functions/vdx/mark_used_background_palette_entries.asm"
 %include "src/functions/unknown/02822_func_02822.asm"
 %include "src/functions/unknown/0285d_func_0285d.asm"
 %include "src/functions/unknown/02896_func_02896.asm"
@@ -85,7 +85,7 @@ bits 16
 %include "src/functions/unknown/040df_func_040df.asm"
 %include "src/functions/unknown/040f7_func_040f7.asm"
 %include "src/functions/grv/grv_decrement_variable.asm"
-%include "src/functions/unknown/0410f_func_0410f.asm"
+%include "src/functions/grv/grv_grid_swap.asm"
 %include "src/functions/grv/grv_random.asm"
 %include "src/functions/unknown/041cb_func_041cb.asm"
 %include "src/functions/grv/grv_xor_obfuscate_variables.asm"
@@ -150,10 +150,10 @@ bits 16
 %include "src/functions/unknown/05226_func_05226.asm"
 %include "src/functions/unknown/05235_func_05235.asm"
 %include "src/functions/unknown/05379_func_05379.asm"
-%include "src/functions/unknown/05480_func_05480.asm"
+%include "src/functions/grv/decode_and_draw_grv_string.asm"
 %include "src/functions/unknown/054ad_func_054ad.asm"
 %include "src/functions/unknown/054f9_func_054f9.asm"
-%include "src/functions/unknown/05523_func_05523.asm"
+%include "src/functions/grv/draw_centered_sphinx_font_string.asm"
 %include "src/functions/unknown/055fc_func_055fc.asm"
 %include "src/functions/unknown/05719_func_05719.asm"
 %include "src/functions/unknown/05728_func_05728.asm"
@@ -568,7 +568,7 @@ load_image_start:
     ; 026E5..0276C function
     emit_func_026e5_part_00
     ; 0276D..02821 function
-    emit_func_0276d_part_00
+    emit_mark_used_background_palette_entries_part_00
     ; 02822..0285C function
     emit_func_02822_part_00
     ; 0285D..02895 function
@@ -730,7 +730,7 @@ load_image_start:
     ; 04103..0410E function
     emit_grv_decrement_variable_part_00
     ; 0410F..041A3 function
-    emit_func_0410f_part_00
+    emit_grv_grid_swap_part_00
     ; 041A4..041CA function
     emit_grv_random_part_00
     ; 041CB..041DE function
@@ -922,13 +922,13 @@ load_image_start:
     ; 05476..0547F function
     emit_func_05379_part_04
     ; 05480..054AC function
-    emit_func_05480_part_00
+    emit_decode_and_draw_grv_string_part_00
     ; 054AD..054F8 function
     emit_func_054ad_part_00
     ; 054F9..05522 function
     emit_func_054f9_part_00
     ; 05523..055FB function
-    emit_func_05523_part_00
+    emit_draw_centered_sphinx_font_string_part_00
     ; 055FC..05718 function
     emit_func_055fc_part_00
     ; 05719..05727 function

@@ -1218,6 +1218,9 @@ grv_opcode_dispatch:
         %error "LONG_004025CB"
     %endif
     times 5 - ($ - %%insn_004025cb) db 0
+; Opcode 26h VIDEO_NAME: resolve an interpolated inline VDX name and play it.
+; K.GRV uses this for the coordinate-derived soup-can animation resources.
+grv_opcode_play_interpolated_video_name:
     %%insn_004025d0:
     call 0x404ca2 ; 004025D0 E8CD260000
     %if ($ - %%insn_004025d0) > 5
@@ -1278,6 +1281,10 @@ grv_opcode_dispatch:
         %error "LONG_004025F8"
     %endif
     times 5 - ($ - %%insn_004025f8) db 0
+; Opcode 27h VIDEO_TRANSITION_NAME: stage transition flags, resolve an
+; interpolated inline VDX name, and play it. K.GRV uses this around each
+; selected-can and committed-swap animation.
+grv_opcode_play_interpolated_transition_name:
     %%insn_004025fd:
     mov ax,[0x41f2ac] ; 004025FD 66A1ACF24100
     %if ($ - %%insn_004025fd) > 6
@@ -5310,6 +5317,9 @@ grv_opcode_dispatch:
         %error "LONG_00403279"
     %endif
     times 5 - ($ - %%insn_00403279) db 0
+; Opcode 22h COPY_BG_TO_FG.  The jump table maps 22h here; dining trace
+; 20260809-212141 reached SCRIPT.GRV:3476 before the palette one-shot opcode.
+grv_opcode_copy_background_to_foreground:
     %%insn_0040327e:
     call 0x40a786 ; 0040327E E803750000
     %if ($ - %%insn_0040327e) > 5
@@ -6017,7 +6027,8 @@ grv_opcode_dispatch:
     %endif
     times 5 - ($ - %%insn_004034ea) db 0
 ; Opcode 2Eh: decode the slot-variable operand, fetch its byte value from the
-; GRV bank, and load that st7g.N file through grv_load_game.
+; GRV bank, and load that st7g.N file through grv_load_game.  Trace
+; 20260809-212141 reached this entry from SCRIPT.GRV PC 028D with v[019]=1.
 grv_opcode_load_game:
     %%insn_004034ef:
     mov dx,[ebp-0x124] ; 004034EF 668B95DCFEFFFF
@@ -6081,7 +6092,7 @@ grv_opcode_load_game:
     %endif
     times 1 - ($ - %%insn_00403516) db 0
     %%insn_00403517:
-    call grv_save_game ; 00403517 E8CBEBFFFF
+    call grv_load_game ; 00403517 E8CBEBFFFF
     %if ($ - %%insn_00403517) > 5
         %error "LONG_00403517"
     %endif
@@ -6099,8 +6110,9 @@ grv_opcode_load_game:
     %endif
     times 5 - ($ - %%insn_0040351f) db 0
 ; Opcode 2Fh: decode the slot-variable operand, fetch its byte value from the
-; GRV bank, and write that st7g.N file through grv_save_game.  Trace
-; 20260809-195435 reached this entry from SCRIPT.GRV PC 2156 with v[019]=1.
+; GRV bank, and write that st7g.N file through grv_save_game.  Traces
+; 20260809-195435 and 20260809-212141 reached this entry from SCRIPT.GRV PC
+; 2156 with v[019]=1.
 grv_opcode_save_game:
     %%insn_00403524:
     mov ax,[ebp-0x124] ; 00403524 668B85DCFEFFFF
@@ -6164,7 +6176,7 @@ grv_opcode_save_game:
     %endif
     times 1 - ($ - %%insn_0040354c) db 0
     %%insn_0040354d:
-    call grv_load_game ; 0040354D E815EBFFFF
+    call grv_save_game ; 0040354D E815EBFFFF
     %if ($ - %%insn_0040354d) > 5
         %error "LONG_0040354D"
     %endif
@@ -7058,6 +7070,10 @@ grv_opcode_save_game:
         %error "LONG_00403825"
     %endif
     times 5 - ($ - %%insn_00403825) db 0
+; Opcode 37h COPY_RECT_TO_BG.  Decodes four 16-bit rectangle coordinates and
+; copies that presentation region; the dining trace reached this handler at
+; SCRIPT.GRV:347A and DR.GRV-adjacent parent paths.
+grv_opcode_copy_rectangle_to_background:
     %%insn_0040382a:
     call 0x401473 ; 0040382A E844DCFFFF
     %if ($ - %%insn_0040382a) > 5
@@ -7215,6 +7231,10 @@ grv_opcode_save_game:
         %error "LONG_00403896"
     %endif
     times 5 - ($ - %%insn_00403896) db 0
+; Opcode 39h GRID_SWAP. Decodes two immediate-or-indirect row/column pairs,
+; maps each to v[019h + 10*row + column], and exchanges the bytes. Trace
+; 20260809-223655 reached this handler from K.GRV+0565 for the soup-can puzzle.
+grv_opcode_grid_swap:
     %%insn_0040389b:
     call 0x401449 ; 0040389B E8A9DBFFFF
     %if ($ - %%insn_0040389b) > 5
@@ -7828,6 +7848,10 @@ grv_opcode_save_game:
         %error "LONG_00403A41"
     %endif
     times 5 - ($ - %%insn_00403a41) db 0
+; Opcode 3Ah PRINTSTRING.  Decodes the terminated GRV character sequence into
+; the local buffer and renders it through the native text routine.  Trace
+; 20260809-212141 reached this on the save-name display and after SAVEGAME.
+grv_opcode_print_string:
     %%insn_00403a46:
     mov dword [ebp-0x134],0x0 ; 00403A46 C785CCFEFFFF00000000
     %if ($ - %%insn_00403a46) > 10
@@ -8655,6 +8679,10 @@ grv_check_valid_saves:
         %error "LONG_00403CCD"
     %endif
     times 5 - ($ - %%insn_00403ccd) db 0
+; Opcode 3Fh LOADSCRIPT: save the parent script/PC/call depth and the 180h-byte
+; parent-local range v[107]..v[286], then load the named child at PC zero.
+; Trace 20260809-212141 verified SCRIPT.GRV:40E9 -> DR.GRV:0000 here.
+grv_opcode_load_child_script:
     %%insn_00403cd2:
     mov dword [ebp-0x134],0x0 ; 00403CD2 C785CCFEFFFF00000000
     %if ($ - %%insn_00403cd2) > 10
@@ -8926,6 +8954,11 @@ grv_check_valid_saves:
         %error "LONG_00403DA6"
     %endif
     times 5 - ($ - %%insn_00403da6) db 0
+; Opcode 43h RETURNSCRIPT: publish the child result in v[102], restore the
+; parent script/PC/call depth and v[107]..v[286], and clear child mode.
+; The dining clear returned DR.GRV:1213 value 00 to SCRIPT.GRV:40F1 after
+; separately publishing puzzle result code 49 in the shared v[0FA].
+grv_opcode_return_from_child_script:
     %%insn_00403dab:
     call 0x401449 ; 00403DAB E899D6FFFF
     %if ($ - %%insn_00403dab) > 5
@@ -10229,6 +10262,10 @@ grv_check_valid_saves:
         %error "LONG_004041A4"
     %endif
     times 2 - ($ - %%insn_004041a4) db 0
+; Opcode 49h PALETTE_MERGE_ONCE.  The Win32 beta implementation is literally
+; an immediate dispatch return (no native state change); trace 20260809-212141
+; reached it after COPY_BG_TO_FG at SCRIPT.GRV:3477.
+grv_opcode_palette_merge_once_noop:
     %%insn_004041a6:
     jmp short 0x4041db ; 004041A6 EB33
     %if ($ - %%insn_004041a6) > 2

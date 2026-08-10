@@ -27,7 +27,11 @@ clang++ -std=c++23 -O2 -Iinclude \
 
 This offset/size/hash-checked round trip succeeds byte-for-byte for all 23
 supplied GRVs. See [`GRV_ROOM_CROSSCHECK.md`](GRV_ROOM_CROSSCHECK.md) for
-the `F.GRV`/`DR.GRV` puzzle findings and room-navigation comparison.
+the `F.GRV`/`DR.GRV` puzzle findings and room-navigation comparison. The
+runtime-confirmed dining-room full clear is recorded in
+[`DINING_ROOM_FULL_CLEAR_TRACE.md`](DINING_ROOM_FULL_CLEAR_TRACE.md).
+The normal-entry kitchen soup-can clear and its exact 33-byte solved grid are
+recorded in [`KITCHEN_FULL_CLEAR_TRACE.md`](KITCHEN_FULL_CLEAR_TRACE.md).
 
 The native retail decoder uses the one-byte `0x1E` operand required for
 coherent `MAZE.GRV` media flow and matching Windows/ScummVM behavior.

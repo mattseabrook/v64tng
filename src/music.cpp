@@ -16,6 +16,11 @@
 #include <limits>
 #include <stdexcept>
 #include <cmath>
+#include <atomic>
+#include <condition_variable>
+#include <memory>
+#include <mutex>
+#include <unordered_map>
 
 // Windows Multimedia
 #define WIN32_LEAN_AND_MEAN
@@ -24,6 +29,7 @@
 #include <mmdeviceapi.h>
 #include <mmsystem.h>
 #include <functiondiscoverykeys_devpkey.h>
+#include <avrt.h>
 
 #pragma comment(lib, "winmm.lib")
 
@@ -65,6 +71,8 @@
 #include "game.h"
 #include "music.h"
 #include "rl.h"
+#include "assets.h"
+#include "../resource.h"
 
 //==============================================================================
 // Internal Helpers
@@ -80,6 +88,65 @@ tsf* g_soundfont = nullptr;
 bool g_soundfontReady = false;
 HANDLE g_midiDoneEvent = nullptr;
 HANDLE g_musicStopEvent = nullptr;
+constexpr float kWavetableHeadroom = 0.89125094f; // -1.0 dBFS, fixed gain: dynamics unchanged.
+
+using CachedMidi = std::shared_ptr<const std::vector<uint8_t>>;
+std::unordered_map<std::string, CachedMidi> g_midiCache;
+
+void preloadMidiCache();
+
+tsf *loadEmbeddedDefaultSoundfont()
+{
+	const HMODULE module = GetModuleHandleW(nullptr);
+	const HRSRC resource = FindResourceW(
+		module, MAKEINTRESOURCEW(IDR_DEFAULT_SF2), RT_RCDATA);
+	if (!resource)
+	{
+		std::println(stderr, "ERROR: Embedded default SoundFont resource is missing.");
+		return nullptr;
+	}
+	const DWORD byteCount = SizeofResource(module, resource);
+	if (byteCount == 0 || byteCount > static_cast<DWORD>((std::numeric_limits<int>::max)()))
+	{
+		std::println(stderr, "ERROR: Embedded default SoundFont resource has an invalid size.");
+		return nullptr;
+	}
+	const HGLOBAL loaded = LoadResource(module, resource);
+	const void *bytes = loaded ? LockResource(loaded) : nullptr;
+	if (!bytes)
+	{
+		std::println(stderr, "ERROR: Embedded default SoundFont resource cannot be read.");
+		return nullptr;
+	}
+	return tsf_load_memory(bytes, static_cast<int>(byteCount));
+}
+
+tsf *loadConfiguredSoundfont(const std::string &configuredPath)
+{
+	if (!configuredPath.empty() && configuredPath != "default.sf2")
+	{
+		if (tsf *external = tsf_load_filename(configuredPath.c_str()))
+			return external;
+		std::println(stderr,
+			"WARNING: Cannot load configured SoundFont '{}'; using the embedded default.",
+			configuredPath);
+	}
+	return loadEmbeddedDefaultSoundfont();
+}
+
+tsf *loadPlaybackSoundfont(const std::string &configuredPath)
+{
+	if (g_soundfont)
+		if (tsf *copy = tsf_copy(g_soundfont))
+			return copy;
+	return loadConfiguredSoundfont(configuredPath);
+}
+
+CachedMidi cachedMidi(std::string_view songName)
+{
+	const auto found = g_midiCache.find(std::string(songName));
+	return found == g_midiCache.end() ? CachedMidi{} : found->second;
+}
 
 void ensureMusicStopEvent()
 {
@@ -189,7 +256,11 @@ struct WasapiSession {
 		if (comInit) CoUninitialize();
 	}
 
-	bool init(WORD formatTag, WORD bitsPerSample, int preferredRate = 44100)
+	bool init(
+		WORD formatTag,
+		WORD bitsPerSample,
+		int preferredRate = 44100,
+		bool startImmediately = true)
 	{
 		HRESULT hr = CoInitialize(nullptr);
 		if (FAILED(hr))
@@ -238,8 +309,17 @@ struct WasapiSession {
 			return false;
 		}
 
+		REFERENCE_TIME defaultPeriod = 0;
+		REFERENCE_TIME minimumPeriod = 0;
+		audioClient->GetDevicePeriod(&defaultPeriod, &minimumPeriod);
+		if (defaultPeriod <= 0)
+			defaultPeriod = 100000; // 10 ms fallback; the former 50 ms buffer was audible.
+
 		sampleRate = preferredRate;
-		hr = audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_EVENTCALLBACK, 500000, 0, &wfx, nullptr);
+		hr = audioClient->Initialize(
+			AUDCLNT_SHAREMODE_SHARED,
+			AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
+			defaultPeriod, 0, &wfx, nullptr);
 		if (FAILED(hr))
 		{
 			// Fallback to 48 kHz
@@ -247,7 +327,10 @@ struct WasapiSession {
 			wfx.nSamplesPerSec = 48000;
 			wfx.nBlockAlign = wfx.nChannels * wfx.wBitsPerSample / 8;
 			wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
-			hr = audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_EVENTCALLBACK, 500000, 0, &wfx, nullptr);
+			hr = audioClient->Initialize(
+				AUDCLNT_SHAREMODE_SHARED,
+				AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
+				defaultPeriod, 0, &wfx, nullptr);
 			if (FAILED(hr))
 			{
 				std::println(stderr, "ERROR: Audio client Initialize failed, hr={:#x}", static_cast<unsigned>(hr));
@@ -277,16 +360,479 @@ struct WasapiSession {
 			return false;
 		}
 
-		hr = audioClient->Start();
-		if (FAILED(hr))
+		if (startImmediately)
 		{
-			std::println(stderr, "ERROR: Audio client Start failed, hr={:#x}", static_cast<unsigned>(hr));
-			return false;
+			hr = audioClient->Start();
+			if (FAILED(hr))
+			{
+				std::println(stderr, "ERROR: Audio client Start failed, hr={:#x}", static_cast<unsigned>(hr));
+				return false;
+			}
 		}
 
 		return true;
 	}
 };
+
+//----------------------------------------------------------------------
+// Persistent low-latency wavetable engine
+//----------------------------------------------------------------------
+class MidiSynthCursor
+{
+public:
+	MidiSynthCursor(const std::vector<uint8_t> &midi, tsf *synth, int sampleRate)
+		: midi_(midi), synth_(synth), sampleRate_(sampleRate)
+	{
+		const auto track = parseMidiTrack(midi_);
+		if (!track || track->timeDivision == 0)
+			return;
+		division_ = track->timeDivision;
+		position_ = track->dataStart;
+		end_ = track->dataEnd;
+		valid_ = true;
+		updateTiming();
+	}
+
+	bool valid() const { return valid_; }
+
+	// Renders directly into the WASAPI float buffer. No intermediate PCM copy.
+	bool render(float *output, UINT32 frames)
+	{
+		UINT32 rendered = 0;
+		while (rendered < frames)
+		{
+			if (ended_)
+			{
+				std::fill_n(output + static_cast<size_t>(rendered) * 2u,
+					static_cast<size_t>(frames - rendered) * 2u, 0.0f);
+				return false;
+			}
+			if (!eventPending_)
+			{
+				if (position_ >= end_)
+				{
+					ended_ = true;
+					continue;
+				}
+				const uint32_t delta = readVarLen(midi_, position_, end_);
+				const double exactFrames =
+					static_cast<double>(delta) * framesPerTick_ + fractionalFrame_;
+				framesUntilEvent_ = static_cast<uint64_t>(exactFrames);
+				fractionalFrame_ = exactFrames - static_cast<double>(framesUntilEvent_);
+				eventPending_ = true;
+			}
+			if (framesUntilEvent_ != 0)
+			{
+				const UINT32 batch = static_cast<UINT32>((std::min<uint64_t>)(
+					framesUntilEvent_, frames - rendered));
+				tsf_render_float(synth_, output + static_cast<size_t>(rendered) * 2u,
+					static_cast<int>(batch), 0);
+				rendered += batch;
+				framesUntilEvent_ -= batch;
+				continue;
+			}
+			processEvent();
+			eventPending_ = false;
+		}
+		return !ended_;
+	}
+
+private:
+	void updateTiming()
+	{
+		framesPerTick_ = static_cast<double>(sampleRate_) *
+			static_cast<double>(tempo_) /
+			(static_cast<double>(division_) * 1000000.0);
+	}
+
+	void processEvent()
+	{
+		if (position_ >= end_)
+		{
+			ended_ = true;
+			return;
+		}
+		uint8_t status = midi_[position_];
+		if (status == 0xff)
+		{
+			++position_;
+			if (position_ >= end_)
+			{
+				ended_ = true;
+				return;
+			}
+			const uint8_t type = midi_[position_++];
+			const uint32_t length = readVarLen(midi_, position_, end_);
+			if (length > end_ - position_)
+			{
+				ended_ = true;
+				return;
+			}
+			if (type == 0x2f)
+			{
+				ended_ = true;
+				return;
+			}
+			if (type == 0x51 && length >= 3)
+			{
+				tempo_ = (static_cast<uint32_t>(midi_[position_]) << 16) |
+					(static_cast<uint32_t>(midi_[position_ + 1]) << 8) |
+					midi_[position_ + 2];
+				if (tempo_ != 0)
+					updateTiming();
+			}
+			position_ += length;
+			return;
+		}
+		if (status == 0xf0 || status == 0xf7)
+		{
+			++position_;
+			const uint32_t length = readVarLen(midi_, position_, end_);
+			position_ = (std::min)(end_, position_ + static_cast<size_t>(length));
+			return;
+		}
+		if ((status & 0x80u) != 0)
+		{
+			runningStatus_ = status;
+			++position_;
+		}
+		else
+		{
+			status = runningStatus_;
+		}
+		if ((status & 0x80u) == 0)
+		{
+			ended_ = true;
+			return;
+		}
+		const uint8_t command = status & 0xf0u;
+		const int channel = status & 0x0fu;
+		auto take = [&]() -> std::optional<uint8_t>
+		{
+			if (position_ >= end_)
+				return std::nullopt;
+			return midi_[position_++];
+		};
+		const auto first = take();
+		if (!first)
+		{
+			ended_ = true;
+			return;
+		}
+		if (command == 0xc0u)
+		{
+			tsf_channel_set_presetnumber(synth_, channel, *first, channel == 9);
+			return;
+		}
+		if (command == 0xd0u)
+			return;
+		const auto second = take();
+		if (!second)
+		{
+			ended_ = true;
+			return;
+		}
+		switch (command)
+		{
+		case 0x80u:
+			tsf_channel_note_off(synth_, channel, *first);
+			break;
+		case 0x90u:
+			if (*second == 0)
+				tsf_channel_note_off(synth_, channel, *first);
+			else
+				tsf_channel_note_on(synth_, channel, *first, *second / 127.0f);
+			break;
+		case 0xb0u:
+			tsf_channel_midi_control(synth_, channel, *first, *second);
+			break;
+		case 0xe0u:
+			tsf_channel_set_pitchwheel(synth_, channel,
+				(static_cast<int>(*second) << 7) | *first);
+			break;
+		default:
+			break;
+		}
+	}
+
+	const std::vector<uint8_t> &midi_;
+	tsf *synth_ = nullptr;
+	int sampleRate_ = 44100;
+	uint16_t division_ = 0;
+	size_t position_ = 0;
+	size_t end_ = 0;
+	uint8_t runningStatus_ = 0;
+	uint32_t tempo_ = 500000;
+	double framesPerTick_ = 0.0;
+	double fractionalFrame_ = 0.0;
+	uint64_t framesUntilEvent_ = 0;
+	bool eventPending_ = false;
+	bool valid_ = false;
+	bool ended_ = false;
+};
+
+struct WavetableRequest
+{
+	CachedMidi midi;
+	bool loop = false;
+	uint64_t generation = 0;
+};
+
+std::mutex g_wavetableMutex;
+std::condition_variable g_wavetableReady;
+std::thread g_wavetableThread;
+HANDLE g_wavetableCommandEvent = nullptr;
+HANDLE g_wavetableShutdownEvent = nullptr;
+WavetableRequest g_wavetableRequest;
+uint64_t g_wavetableNextGeneration = 0;
+uint64_t g_wavetableReadyGeneration = 0;
+bool g_wavetableStartupComplete = false;
+bool g_wavetableStartupSucceeded = false;
+
+void configureWavetableSynth(tsf *synth, int sampleRate)
+{
+	tsf_set_output(synth, TSF_STEREO_INTERLEAVED, sampleRate, 0.0f);
+	tsf_set_volume(synth, state.music_volume.load() * kWavetableHeadroom);
+	for (int channel = 0; channel < 16; ++channel)
+	{
+		tsf_channel_set_bank(synth, channel, channel == 9 ? 128 : 0);
+		tsf_channel_set_presetnumber(synth, channel, 0, channel == 9);
+		tsf_channel_set_pan(synth, channel, 0.5f);
+	}
+}
+
+void acknowledgeWavetable(uint64_t generation)
+{
+	{
+		std::lock_guard lock(g_wavetableMutex);
+		g_wavetableReadyGeneration = (std::max)(g_wavetableReadyGeneration, generation);
+	}
+	g_wavetableReady.notify_all();
+}
+
+void wavetableWorker()
+{
+	DWORD mmcssIndex = 0;
+	HANDLE mmcss = AvSetMmThreadCharacteristicsW(L"Pro Audio", &mmcssIndex);
+	if (!mmcss)
+		mmcss = AvSetMmThreadCharacteristicsW(L"Audio", &mmcssIndex);
+
+	WasapiSession session;
+	const bool initialized = session.init(WAVE_FORMAT_IEEE_FLOAT, 32, 44100, false);
+	{
+		std::lock_guard lock(g_wavetableMutex);
+		g_wavetableStartupSucceeded = initialized;
+		g_wavetableStartupComplete = true;
+	}
+	g_wavetableReady.notify_all();
+	if (!initialized)
+	{
+		if (mmcss)
+			AvRevertMmThreadCharacteristics(mmcss);
+		return;
+	}
+
+	HANDLE idleHandles[] = {g_wavetableShutdownEvent, g_wavetableCommandEvent};
+	bool shuttingDown = false;
+	while (!shuttingDown)
+	{
+		const DWORD idleWait = WaitForMultipleObjects(2, idleHandles, FALSE, INFINITE);
+		if (idleWait == WAIT_OBJECT_0)
+			break;
+
+		WavetableRequest request;
+		{
+			std::lock_guard lock(g_wavetableMutex);
+			request = g_wavetableRequest;
+			ResetEvent(g_wavetableCommandEvent);
+		}
+
+		session.audioClient->Stop();
+		session.audioClient->Reset();
+		if (!request.midi)
+		{
+			state.music_playing = false;
+			acknowledgeWavetable(request.generation);
+			continue;
+		}
+
+		bool firstStart = true;
+		do
+		{
+			tsf *synth = loadPlaybackSoundfont(state.soundfont_path);
+			if (!synth)
+			{
+				state.music_playing = false;
+				acknowledgeWavetable(request.generation);
+				break;
+			}
+			configureWavetableSynth(synth, session.sampleRate);
+			MidiSynthCursor cursor(*request.midi, synth, session.sampleRate);
+			if (!cursor.valid())
+			{
+				tsf_close(synth);
+				state.music_playing = false;
+				acknowledgeWavetable(request.generation);
+				break;
+			}
+
+			BYTE *buffer = nullptr;
+			HRESULT hr = session.renderClient->GetBuffer(session.bufferFrameCount, &buffer);
+			bool trackAlive = false;
+			if (SUCCEEDED(hr))
+			{
+				trackAlive = cursor.render(
+					reinterpret_cast<float *>(buffer), session.bufferFrameCount);
+				hr = session.renderClient->ReleaseBuffer(session.bufferFrameCount, 0);
+			}
+			if (FAILED(hr) || FAILED(session.audioClient->Start()))
+			{
+				tsf_close(synth);
+				state.music_playing = false;
+				acknowledgeWavetable(request.generation);
+				break;
+			}
+
+			state.music_playing = true;
+			if (firstStart)
+			{
+				// The first audio buffer is queued and the clock is running. VIDEOREF
+				// may now present frame zero without racing MIDI initialization.
+				acknowledgeWavetable(request.generation);
+				firstStart = false;
+			}
+
+			HANDLE playbackHandles[] = {
+				g_wavetableShutdownEvent,
+				g_wavetableCommandEvent,
+				session.bufferEvent};
+			bool replaceTrack = false;
+			while (trackAlive)
+			{
+				const DWORD wait = WaitForMultipleObjects(3, playbackHandles, FALSE, INFINITE);
+				if (wait == WAIT_OBJECT_0)
+				{
+					shuttingDown = true;
+					break;
+				}
+				if (wait == WAIT_OBJECT_0 + 1u)
+				{
+					replaceTrack = true;
+					break;
+				}
+				UINT32 padding = 0;
+				if (FAILED(session.audioClient->GetCurrentPadding(&padding)))
+					break;
+				const UINT32 available = session.bufferFrameCount - padding;
+				if (available == 0)
+					continue;
+				if (FAILED(session.renderClient->GetBuffer(available, &buffer)))
+					break;
+				tsf_set_volume(synth,
+					state.music_volume.load() * kWavetableHeadroom);
+				trackAlive = cursor.render(reinterpret_cast<float *>(buffer), available);
+				if (FAILED(session.renderClient->ReleaseBuffer(available, 0)))
+					break;
+			}
+			if (!trackAlive && !replaceTrack && !shuttingDown)
+			{
+				// Let the final submitted buffer drain before a natural stop/loop.
+				const DWORD drain = WaitForMultipleObjects(
+					3, playbackHandles, FALSE, 250);
+				if (drain == WAIT_OBJECT_0)
+					shuttingDown = true;
+				else if (drain == WAIT_OBJECT_0 + 1u)
+					replaceTrack = true;
+			}
+
+			session.audioClient->Stop();
+			session.audioClient->Reset();
+			tsf_close(synth);
+			if (replaceTrack || shuttingDown)
+				break;
+			if (!request.loop)
+			{
+				state.music_playing = false;
+				break;
+			}
+		} while (request.loop && !shuttingDown);
+	}
+	state.music_playing = false;
+	if (mmcss)
+		AvRevertMmThreadCharacteristics(mmcss);
+}
+
+bool ensureWavetableEngine()
+{
+	if (g_wavetableThread.joinable())
+		return g_wavetableStartupSucceeded;
+	if (!g_soundfont)
+	{
+		g_soundfont = loadConfiguredSoundfont(state.soundfont_path);
+		g_soundfontReady = g_soundfont != nullptr;
+	}
+	if (!g_soundfont)
+		return false;
+	g_wavetableCommandEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+	g_wavetableShutdownEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+	if (!g_wavetableCommandEvent || !g_wavetableShutdownEvent)
+	{
+		if (g_wavetableCommandEvent)
+			CloseHandle(g_wavetableCommandEvent);
+		if (g_wavetableShutdownEvent)
+			CloseHandle(g_wavetableShutdownEvent);
+		g_wavetableCommandEvent = nullptr;
+		g_wavetableShutdownEvent = nullptr;
+		return false;
+	}
+	g_wavetableStartupComplete = false;
+	g_wavetableStartupSucceeded = false;
+	g_wavetableThread = std::thread(wavetableWorker);
+	std::unique_lock lock(g_wavetableMutex);
+	g_wavetableReady.wait_for(lock, std::chrono::seconds(2), []
+	{
+		return g_wavetableStartupComplete;
+	});
+	return g_wavetableStartupSucceeded;
+}
+
+bool submitWavetable(CachedMidi midi, bool loop)
+{
+	if (!ensureWavetableEngine())
+		return false;
+	uint64_t generation = 0;
+	{
+		std::lock_guard lock(g_wavetableMutex);
+		generation = ++g_wavetableNextGeneration;
+		g_wavetableRequest = {std::move(midi), loop, generation};
+		SetEvent(g_wavetableCommandEvent);
+	}
+	std::unique_lock lock(g_wavetableMutex);
+	return g_wavetableReady.wait_for(lock, std::chrono::seconds(2), [generation]
+	{
+		return g_wavetableReadyGeneration >= generation;
+	});
+}
+
+void stopWavetablePlayback()
+{
+	if (g_wavetableThread.joinable())
+		submitWavetable({}, false);
+}
+
+void stopWavetableEngine()
+{
+	if (!g_wavetableThread.joinable())
+		return;
+	SetEvent(g_wavetableShutdownEvent);
+	g_wavetableThread.join();
+	CloseHandle(g_wavetableCommandEvent);
+	CloseHandle(g_wavetableShutdownEvent);
+	g_wavetableCommandEvent = nullptr;
+	g_wavetableShutdownEvent = nullptr;
+	g_wavetableStartupComplete = false;
+	g_wavetableStartupSucceeded = false;
+}
 
 } // namespace
 
@@ -296,11 +842,17 @@ struct WasapiSession {
 void musicInit()
 {
 #ifdef _WIN32
-	// Read config to determine which systems to pre-initialize
-	const std::string_view mode = config.value("midiMode", std::string{"opl3"});
+	state.music_mode = config.value("midiMode", std::string{"opl3"});
+	state.soundfont_path = config.value("soundFont", std::string{"default.sf2"});
+	state.music_volume.store(std::clamp(
+		config.value("midiVolume", 100) / 100.0f, 0.0f, 1.0f));
+
+	// Convert every tiny XMI resource once, before SCRIPT.GRV can start the
+	// main-menu choreography. Playback only shares immutable cached MIDI bytes.
+	preloadMidiCache();
 	
 	// Pre-initialize General MIDI stream for instant playback
-	if (mode == "general")
+	if (state.music_mode == "general")
 	{
 		UINT deviceId = static_cast<UINT>(MIDI_MAPPER);
 		if (!g_midiDoneEvent)
@@ -313,17 +865,18 @@ void musicInit()
 		}
 	}
 	
-	// Pre-load soundfont for wavetable mode
-	if (mode == "wavetable")
+	// Resolve the configured bank once, then create the WASAPI endpoint and
+	// audio-priority worker before frame zero of sphinx.vdx is allowed to render.
+	if (state.music_mode == "wavetable")
 	{
-		std::string sfPath = config.value("soundFont", std::string{"default.sf2"});
-		g_soundfont = tsf_load_filename(sfPath.c_str());
+		g_soundfont = loadConfiguredSoundfont(state.soundfont_path);
 		if (g_soundfont)
 		{
-			// Set up for stereo output at 44100Hz
 			tsf_set_output(g_soundfont, TSF_STEREO_INTERLEAVED, 44100, 0.0f);
-			tsf_channel_set_bank_preset(g_soundfont, 9, 128, 0); // Drums on channel 10
+			tsf_set_volume(g_soundfont,
+				state.music_volume.load() * kWavetableHeadroom);
 			g_soundfontReady = true;
+			ensureWavetableEngine();
 		}
 	}
 #endif
@@ -332,7 +885,13 @@ void musicInit()
 void musicShutdown()
 {
 #ifdef _WIN32
+	// Every backend can block its worker on a Windows audio/MIDI event. Signal
+	// that event before joining; joining first deadlocks General MIDI shutdown.
 	signalMusicStop();
+	state.music_playing = false;
+	if (state.music_thread.joinable())
+		state.music_thread.join();
+	stopWavetableEngine();
 
 	// Close General MIDI stream
 	if (g_midiStream)
@@ -361,6 +920,7 @@ void musicShutdown()
 		g_soundfont = nullptr;
 		g_soundfontReady = false;
 	}
+	g_midiCache.clear();
 #endif
 }
 
@@ -405,7 +965,7 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 	{ return a.delta < b.delta; };
 
 	// Read XMI data before constructing checked iterator helpers.
-	std::ifstream file("XMI.GJD", std::ios::binary);
+	std::ifstream file(assetPath("XMI.GJD"), std::ios::binary);
 	if (!file)
 		throw std::runtime_error("Failed to open XMI.GJD");
 	std::vector<uint8_t> xmi(song.length);
@@ -740,6 +1300,41 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 
 	return midiData;
 }
+
+namespace
+{
+void preloadMidiCache()
+{
+	if (!g_midiCache.empty())
+		return;
+	const auto entries = parseRLFile(assetPath("XMI.RL").string());
+	if (!entries)
+	{
+		std::println(stderr, "ERROR: Cannot preload XMI cache: {}", entries.error());
+		return;
+	}
+	for (const RLEntry &entry : *entries)
+	{
+		std::string stem = entry.filename;
+		if (const auto nul = stem.find('\0'); nul != std::string::npos)
+			stem.resize(nul);
+		if (const auto dot = stem.find('.'); dot != std::string::npos)
+			stem.resize(dot);
+		if (stem.empty())
+			continue;
+		try
+		{
+			auto converted = std::make_shared<const std::vector<uint8_t>>(
+				xmiConverter(entry));
+			g_midiCache.emplace(std::move(stem), std::move(converted));
+		}
+		catch (const std::exception &error)
+		{
+			std::println(stderr, "WARNING: Cannot cache XMI '{}': {}", stem, error.what());
+		}
+	}
+}
+} // namespace
 
 /*
 ===============================================================================
@@ -1177,11 +1772,12 @@ Parameters:
 void PlayMIDI_Wavetable(const std::vector<uint8_t> &midiData, bool isTransient)
 {
 #ifdef _WIN32
-	// Load soundfont
-	tsf *synth = tsf_load_filename(state.soundfont_path.c_str());
+	// The default bank is embedded in the executable. A configured external
+	// bank remains supported and falls back to the embedded bank if unavailable.
+	tsf *synth = loadPlaybackSoundfont(state.soundfont_path);
 	if (!synth)
 	{
-		std::println(stderr, "ERROR: Failed to load soundfont: {}", state.soundfont_path);
+		std::println(stderr, "ERROR: Failed to load the embedded default SoundFont.");
 		std::println(stderr, "Falling back to OPL3 synthesis.");
 		PlayMIDI_OPL(midiData, isTransient);
 		return;
@@ -1212,8 +1808,10 @@ void PlayMIDI_Wavetable(const std::vector<uint8_t> &midiData, bool isTransient)
 	// Configure TinySoundFont for General MIDI playback
 	tsf_set_output(synth, TSF_STEREO_INTERLEAVED, sampleRate, 0.0f);
 	
-	// Set global volume (attenuate to prevent clipping - SF2 samples can be hot)
-	tsf_set_volume(synth, state.music_volume.load() * 0.5f);
+	// Fixed -1 dBFS headroom raises the former -6.02 dB output without a
+	// compressor/limiter, so every authored velocity and controller ratio stays
+	// unchanged.
+	tsf_set_volume(synth, state.music_volume.load() * kWavetableHeadroom);
 	
 	// Initialize all 16 MIDI channels for General MIDI bank mode
 	// This ensures program changes work correctly and prevents crazy volume
@@ -1222,7 +1820,8 @@ void PlayMIDI_Wavetable(const std::vector<uint8_t> &midiData, bool isTransient)
 		tsf_channel_set_bank(synth, ch, (ch == 9) ? 128 : 0); // Bank 128 = drums for channel 10
 		tsf_channel_set_presetnumber(synth, ch, 0, (ch == 9)); // Default to piano, drums on ch10
 		tsf_channel_set_pan(synth, ch, 0.5f); // Center pan
-		tsf_channel_set_volume(synth, ch, 1.0f); // Full channel volume (master controls overall)
+		// Keep TinySoundFont's MIDI channel state intact. The XMI stream's CC7
+		// volume and CC11 expression events must remain authoritative.
 	}
 
 	// Playback state
@@ -1340,7 +1939,7 @@ void PlayMIDI_Wavetable(const std::vector<uint8_t> &midiData, bool isTransient)
 				break;
 			uint8_t note = midiData[pos++];
 			pos++; // velocity ignored for note off
-			tsf_note_off(synth, static_cast<int>(channel), static_cast<int>(note));
+			tsf_channel_note_off(synth, static_cast<int>(channel), static_cast<int>(note));
 		}
 		else if (cmd == 0x90)
 		{
@@ -1351,11 +1950,11 @@ void PlayMIDI_Wavetable(const std::vector<uint8_t> &midiData, bool isTransient)
 			uint8_t velocity = midiData[pos++];
 			if (velocity == 0)
 			{
-				tsf_note_off(synth, static_cast<int>(channel), static_cast<int>(note));
+				tsf_channel_note_off(synth, static_cast<int>(channel), static_cast<int>(note));
 			}
 			else
 			{
-				tsf_note_on(synth, static_cast<int>(channel), static_cast<int>(note), velocity / 127.0f);
+				tsf_channel_note_on(synth, static_cast<int>(channel), static_cast<int>(note), velocity / 127.0f);
 			}
 		}
 		else if (cmd == 0xA0)
@@ -1457,94 +2056,92 @@ Parameters:
 */
 void xmiPlay(const std::string &songName, bool isTransient, bool loop)
 {
-	bool midi_enabled = config.value("midiEnabled", true);
-	int midi_volume = config.value("midiVolume", 100);
+	const bool midi_enabled = config.value("midiEnabled", true);
+	const int midi_volume = config.value("midiVolume", 100);
 	state.music_volume.store(std::clamp(midi_volume / 100.0f, 0.0f, 1.0f));
 	state.music_mode = config.value("midiMode", std::string{"opl3"});
 	state.midi_bank = config.value("midiBank", 0);
 	state.soundfont_path = config.value("soundFont", std::string{"default.sf2"});
 
-	if (midi_enabled)
-	{
-		// Stop any currently playing music
-		signalMusicStop();
-		state.music_playing = false;
-		if (state.music_thread.joinable())
-		{
-			state.music_thread.join();
-		}
-		resetMusicStop();
+	// Stop/reap a legacy OPL or WinMM worker. Wavetable owns a separate
+	// persistent audio-priority worker and never tears its endpoint down between
+	// songs.
+	signalMusicStop();
+	state.music_playing = false;
+	if (state.music_thread.joinable())
+		state.music_thread.join();
+	resetMusicStop();
 
-		// Set song names and position
-		if (isTransient)
+	if (!midi_enabled)
+	{
+		stopWavetablePlayback();
+		return;
+	}
+
+	if (isTransient)
+	{
+		state.transient_song = songName;
+	}
+	else if (songName != state.current_song)
+	{
+		state.current_song = songName;
+		state.main_song_position.store(0.0);
+	}
+
+	if (g_midiCache.empty())
+		preloadMidiCache();
+	const CachedMidi midi = cachedMidi(songName);
+	if (!midi)
+	{
+		std::println(stderr, "ERROR: XMI file '{}' not found in the startup cache.", songName);
+		return;
+	}
+
+	if (state.music_mode == "wavetable")
+	{
+		// submitWavetable returns only after the first synthesized buffer is queued
+		// and the WASAPI clock is running. This is the frame-zero synchronization
+		// barrier used by the main-menu GRV PLAYSONG -> sphinx.vdx sequence.
+		if (!submitWavetable(midi, loop))
 		{
-			state.transient_song = songName;
+			std::println(stderr,
+				"ERROR: Persistent wavetable engine failed; falling back to OPL3.");
+			state.music_mode = "opl3";
 		}
 		else
 		{
-			if (songName != state.current_song)
-			{
-				state.current_song = songName;
-				state.main_song_position.store(0.0); // Reset position only for new main songs
-			}
-			// Else, resuming the same song, so keep state.main_song_position as is
+			return;
 		}
-
-		// Start new music thread
-		auto play_music = [songName, isTransient, loop]()
-		{
-			try
-			{
-				auto xmiResult = parseRLFile("XMI.RL");
-				if (!xmiResult)
-				{
-					std::println(stderr, "ERROR: {}", xmiResult.error());
-					return;
-				}
-				auto xmiFiles = std::move(*xmiResult);
-				for (auto &entry : xmiFiles)
-				{
-					entry.filename.erase(entry.filename.find_last_of('.'));
-				}
-
-				auto song = std::find_if(xmiFiles.begin(), xmiFiles.end(),
-										 [&songName](const RLEntry &entry)
-										 { return entry.filename == songName; });
-
-				if (song != xmiFiles.end())
-				{
-					auto midiData = xmiConverter(*song);
-					do
-					{
-						PlayMIDI(midiData, isTransient);
-						if (!loop)
-							break;
-
-						// A natural end-of-track repeats a GRV background
-						// song. A signalled stop means another song or engine
-						// shutdown owns the music device now.
-						ensureMusicStopEvent();
-						if (WaitForSingleObject(g_musicStopEvent, 50) == WAIT_OBJECT_0)
-							break;
-						state.main_song_position.store(0.0);
-					} while (true);
-				}
-				else
-				{
-					std::println(stderr, "ERROR: XMI file '{}' not found.", songName);
-				}
-			}
-			catch (const std::exception &error)
-			{
-				std::println(stderr, "ERROR: XMI playback '{}': {}", songName, error.what());
-			}
-			catch (...)
-			{
-				std::println(stderr, "ERROR: Unknown XMI playback failure '{}'.", songName);
-			}
-		};
-		state.music_thread = std::thread(play_music);
 	}
+	else
+	{
+		stopWavetablePlayback();
+	}
+
+	state.music_thread = std::thread([midi, isTransient, loop, songName]
+	{
+		try
+		{
+			do
+			{
+				PlayMIDI(*midi, isTransient);
+				if (!loop)
+					break;
+				ensureMusicStopEvent();
+				if (WaitForSingleObject(g_musicStopEvent, 50) == WAIT_OBJECT_0)
+					break;
+				state.main_song_position.store(0.0);
+			} while (true);
+		}
+		catch (const std::exception &error)
+		{
+			std::println(stderr, "ERROR: XMI playback '{}': {}", songName, error.what());
+		}
+		catch (...)
+		{
+			std::println(stderr, "ERROR: Unknown XMI playback failure '{}'.", songName);
+		}
+	});
 }
 
 /*
@@ -1607,9 +2204,6 @@ void applyMusicRuntimeSettings()
 		midiOutSetVolume(reinterpret_cast<HMIDIOUT>(g_midiStream), packedVolume);
 	}
 #endif
-	if (g_soundfont)
-		tsf_set_volume(g_soundfont, state.music_volume.load() * 0.5f);
-
 	if (previousMode != state.music_mode &&
 		state.music_playing && !state.current_song.empty())
 	{

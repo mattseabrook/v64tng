@@ -22,6 +22,10 @@ int main()
 	assert(boot->transition.videos[3].ref == 0x50a9 ||
 		boot->transition.videos[3].ref == 0x50aa);
 	assert(boot->transition.videos[3].flags == (1u << 7));
+	assert(std::holds_alternative<GrvPlaySongCommand>(
+		boot->transition.commands.front()));
+	assert(std::get<GrvPlaySongCommand>(
+		boot->transition.commands.front()).ref == 0x4c39);
 	assert(runtime->activeLoop() == 0x0059);
 
 	// New-game and quit rows, in the engine's 640x320 content coordinates.
@@ -63,16 +67,19 @@ int main()
 	assert(hiddenTarget && *hiddenTarget == 0x1aa0);
 	const auto houseMap = runtime->follow(*hiddenTarget);
 	assert(houseMap && !houseMap->videos.empty());
-	assert((houseMap->videos.front().flags & (1u << 15)) != 0);
+	// v32tng does not inject ScummVM's cursor-derived bit-15 pacing hint.
+	assert((houseMap->videos.front().flags & (1u << 15)) == 0);
 
-	// The retail new-game branch itself reaches the first foyer loop.
-	auto game = GrvRuntime::load(root / "SCRIPT.GRV", root);
-	assert(game && game->boot());
-	const auto foyer = game->follow(0x03e8);
-	assert(foyer && game->activeLoop() == 0x04fd);
-	assert(!game->hotspotAt(500, 0, 640, 320));
-	const auto foyerLeftDoor = game->hotspotAt(20, 220, 640, 320);
-	assert(foyerLeftDoor && foyerLeftDoor->target() == 0x0551);
-	const auto turnLeft = game->hotspotAt(575, 160, 640, 320);
-	assert(turnLeft && turnLeft->target() == 0x0695);
+	// The grandfather-clock easter egg emits both song changes in exact
+	// presentation order around its three synchronous videos.
+	auto clockRuntime = GrvRuntime::load(root / "SCRIPT.GRV", root);
+	assert(clockRuntime && clockRuntime->boot());
+	const auto clock = clockRuntime->follow(0x0799);
+	assert(clock && clock->commands.size() == 5);
+	assert(std::get<GrvPlaySongCommand>(clock->commands[0]).ref == 0x4c25);
+	assert(std::get<GrvVideoCommand>(clock->commands[1]).ref == 0x1411);
+	assert(std::get<GrvVideoCommand>(clock->commands[2]).ref == 0x140f);
+	assert(std::get<GrvVideoCommand>(clock->commands[2]).flags == (1u << 5));
+	assert(std::get<GrvVideoCommand>(clock->commands[3]).ref == 0x1410);
+	assert(std::get<GrvPlaySongCommand>(clock->commands[4]).ref == 0x4c0c);
 }

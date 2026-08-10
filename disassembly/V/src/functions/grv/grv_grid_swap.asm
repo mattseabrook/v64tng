@@ -1,11 +1,15 @@
 ; Linear entry 0410F (1000:410f)
 ; Ghidra working symbol: FUN_1000_410f
-; Role not yet verified; boundary is provisional.
+; Verified GRV opcode 39h GRID_SWAP handler. Decodes two row/column pairs,
+; accepting either immediate digits or #variable operands, computes each
+; v[019h + 10*row + column] address, and exchanges the two bytes. K.GRV+0565
+; invokes this exact operation for every committed soup-can move; Win32 trace
+; 20260809-223655 independently verified the same operand and state semantics.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_0410f_part_00 0
+%macro emit_grv_grid_swap_part_00 0
     %%fragment_start:
-func_0410f:
+grv_grid_swap:
     %%insn_0410f:
     push di ; 0410F 57
     %if ($ - %%insn_0410f) > 1

@@ -1,11 +1,13 @@
 ; Linear entry 05523 (1000:5523)
 ; Ghidra working symbol: FUN_1000_5523
-; Role not yet verified; boundary is provisional.
+; Verified centered SPHINX.FNT indexed-glyph renderer. Loads 2EE0h bytes on
+; demand, clears the 80-row text band at foreground offset 2800h, measures the
+; glyph widths, and draws the string horizontally centered.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_05523_part_00 0
+%macro emit_draw_centered_sphinx_font_string_part_00 0
     %%fragment_start:
-func_05523:
+draw_centered_sphinx_font_string:
     %%insn_05523:
     cmp word [bp-0x30de],0x0 ; 05523 83BE22CF00
     %if ($ - %%insn_05523) > 5

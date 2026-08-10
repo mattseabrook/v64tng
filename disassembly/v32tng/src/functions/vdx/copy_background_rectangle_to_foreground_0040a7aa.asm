@@ -1,11 +1,16 @@
 ; PE virtual entry 0040A7AA
 ; Ghidra working symbol: FUN_0040a7aa
-; Role not yet verified; analyzer boundary is provisional.
+; Verified GRV 37h rectangle background-to-foreground copy.
+; Despite the historical COPY_RECT_TO_BG opcode name, source is [004212D0]
+; and destination is the 640x480 foreground [0042133C]. Native bounds copy
+; (right-left) bytes for every row top..bottom inclusive.
+; This is a verified beta-port divergence from retail V.EXE, whose 023A5
+; implementation copies foreground-to-background with a half-open bottom.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_0040a7aa_part_00 0
+%macro emit_copy_background_rectangle_to_foreground_0040a7aa_part_00 0
     %%fragment_start:
-func_0040a7aa:
+copy_background_rectangle_to_foreground_0040a7aa:
     %%insn_0040a7aa:
     push ebp ; 0040A7AA 55
     %if ($ - %%insn_0040a7aa) > 1

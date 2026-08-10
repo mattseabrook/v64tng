@@ -1,7 +1,23 @@
 ; T7G/DR.GRV
 ; size=5546 sha256=9e3bb8735c30275b40ee6b3451b9abd472aa72fb50ab86ed3b9aeff165df2898
 ; instructions=1515 input_loops=1
+;
+; VERIFIED CAKE-PUZZLE STATE (v32 trace 20260809-212141 + static flow):
+;   v[000..002]  current-piece category counts; [2,2,1] is a valid piece
+;   v[004]       number of committed five-cell pieces; 6 completes the board
+;   v[017..018]  board column and row used by the cell-mapping subroutines
+;   v[019..036]  parallel 30-cell availability/identity table
+;   v[037..054]  6x5 cell state at 037h + 5*column + row:
+;                 0=unselected, 1=selected in current piece, 9=committed
+;   v[0FA]       parent-visible result/progression code; 49 on completion
+;   v[102]       native LOADSCRIPT return byte; this child returns 0 on win
+;
+; The runtime capture selected every cell exactly once in six groups of five.
+; Each group satisfied [2,2,1], was changed from state 1 to sentinel 9, and
+; incremented v[004].  Completion played gen_e_2.vdx, stored v[0FA]=49, then
+; returned to SCRIPT.GRV.
 
+; SEMANTIC ENTRY: dining_room_cake_puzzle_entry
 0000  96 92 30 B3                            LOADSTRING                    dst=v[0x092], values=[0, 3]
 0004  46                                     RESOURCE_CONTEXT_SAVE
 0005  9A FA B4 10 00                         STRCMP_NE_JMP                 start=v[0x0FA], values=[4], target=0x0010
@@ -25,6 +41,7 @@
 005F  2D 75 03 06                            SET_HOTSPOT_BOTTOM            target=0x0375, cursor=0x06
 0063  44 84 03                               SET_HOTSPOT_RIGHT             target=0x0384
 0066  45 84 03                               SET_HOTSPOT_LEFT              target=0x0384
+; SEMANTIC BLOCK: cake_selection_feedback_and_validation
 0069  36 03 01 B8 A6 00                      CHAR_LESS_JMP                 start=v[0x103], values=[8], target=0x00A6
 006F  1A 07 01 B0 81 00                      STRCMP_NE_JMP                 start=v[0x107], values=[0], target=0x0081
 0075  46                                     RESOURCE_CONTEXT_SAVE
@@ -47,12 +64,16 @@
 009E  1F 07 01                               INC                           var=v[0x107]
 00A1  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 00A5  47                                     RESOURCE_CONTEXT_RESTORE
+; A five-cell selection is accepted only when its three category totals are
+; exactly [2,2,1].  The 20260809-212141 run exercised this branch six times.
+; SEMANTIC BLOCK: validate_cake_piece_category_counts
 00A6  9A 00 32 32 B1 B0 00                   STRCMP_NE_JMP                 start=v[0x000], values=[2, 2, 1], target=0x00B0
 00AD  15 5B 10                               JMP                           target=0x105B
 00B0  9A 00 30 30 B0 DA 00                   STRCMP_NE_JMP                 start=v[0x000], values=[0, 0, 0], target=0x00DA
 00B7  96 19 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 B0 LOADSTRING                    dst=v[0x019], values=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 00D7  15 DD 00                               JMP                           target=0x00DD
 00DA  18 18 12                               CALL                          target=0x1218
+; SEMANTIC BLOCK: cake_board_cell_input_loop
 00DD  0B                                     INPUTLOOPSTART
 00DE  A3 19 B9 F4 00                         STRCMP_EQ_JMP                 start=v[0x019], values=[9], target=0x00F4
 00E3  A3 37 B9 F4 00                         STRCMP_EQ_JMP                 start=v[0x037], values=[9], target=0x00F4
@@ -1177,6 +1198,10 @@
 1055  18 5C 09                               CALL                          target=0x095C
 1058  07                                     VIDEOFLAG7_ON
 1059  17 00                                  RET                           value=0x00
+; Commit sweep: every currently selected cell (state 1) plays its cf visual
+; and becomes state 9.  It then clears the category counts and increments
+; v[004].  Trace 20260809-212141 reached this sweep after each of six pieces.
+; SEMANTIC SUBROUTINE: commit_valid_cake_piece
 105B  9A 37 B1 69 10                         STRCMP_NE_JMP                 start=v[0x037], values=[1], target=0x1069
 1060  96 37 B9                               LOADSTRING                    dst=v[0x037], values=[9]
 1063  18 DA 09                               CALL                          target=0x09DA
@@ -1302,6 +1327,9 @@
 1207  9A 04 B6 15 12                         STRCMP_NE_JMP                 start=v[0x004], values=[6], target=0x1215
 120C  07                                     VIDEOFLAG7_ON
 120D  09 88 50                               VIDEOREF                      ref=0x5088 (GAMWAV[136]=gen_e_2.vdx)
+; Six committed pieces publish decimal 49 to the shared parent state and
+; return child result 0; SCRIPT.GRV:095A consumes 49 as puzzle completion.
+; SEMANTIC BLOCK: complete_cake_puzzle_and_return_success
 1210  96 FA E1                               LOADSTRING                    dst=v[0x0FA], values=[49]
 1213  43 00                                  RETURNSCRIPT                  value=0x00
 1215  15 69 00                               JMP                           target=0x0069
@@ -1356,6 +1384,9 @@
 12D3  9A 16 B1 DA 12                         STRCMP_NE_JMP                 start=v[0x016], values=[1], target=0x12DA
 12D8  9F 14                                  INC                           var=v[0x014]
 12DA  17 00                                  RET                           value=0x00
+; Map the coordinate pair v[017]=column, v[018]=row to the parallel board
+; tables.  The state-table mapping is v[037 + 5*column + row].
+; SEMANTIC SUBROUTINE: map_cake_cell_coordinates_to_state
 12DC  96 16 B0                               LOADSTRING                    dst=v[0x016], values=[0]
 12DF  96 0F F8                               LOADSTRING                    dst=v[0x00F], values=[72]
 12E2  9A 17 30 B0 EF 12                      STRCMP_NE_JMP                 start=v[0x017], values=[0, 0], target=0x12EF

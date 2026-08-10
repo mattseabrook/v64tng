@@ -1,6 +1,8 @@
 ; Linear entry 023A5 (1000:23a5)
 ; Ghidra working symbol: FUN_1000_23a5
-; Verified GRV background rectangle-copy implementation.
+; Verified retail GRV foreground-to-background rectangle-copy implementation.
+; It uses right/bottom-exclusive extents. Win32 beta 1.02b1 diverges here: its
+; 0040A7AA helper copies background-to-foreground and includes the bottom row.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
 %macro emit_copy_rect_to_background_part_00 0

@@ -24,7 +24,12 @@ Return:
 	- void (fills palette and outputFrame in place)
 ===============================================================================
 */
-bool getBitmapDataChecked(std::span<const uint8_t> chunkData, std::span<RGBColor> palette, std::span<uint8_t> outputFrame)
+bool getBitmapDataChecked(
+	std::span<const uint8_t> chunkData,
+	std::span<RGBColor> palette,
+	std::span<uint8_t> outputFrame,
+	std::span<uint8_t> outputIndices,
+	std::span<const uint8_t> preservedPaletteEntries)
 {
 	if (chunkData.size() < 6 || palette.size() < 256)
 		return false;
@@ -41,11 +46,17 @@ bool getBitmapDataChecked(std::span<const uint8_t> chunkData, std::span<RGBColor
 	const size_t frameBytes = static_cast<size_t>(width) * static_cast<size_t>(height) * 3;
 	if (frameBytes != outputFrame.size() || chunkData.size() < 6 + paletteBytes)
 		return false;
+	if (!outputIndices.empty() && outputIndices.size() != frameBytes / 3)
+		return false;
+	if (!preservedPaletteEntries.empty() && preservedPaletteEntries.size() < 256)
+		return false;
 
 	auto paletteData = chunkData.subspan(6);
-	for (size_t i = 0; i < 256 && i * 3 + 2 < paletteData.size(); ++i)
+	const size_t paletteColours = size_t{1} << colourDepth;
+	for (size_t i = 0; i < palette.size() && i < paletteColours; ++i)
 	{
-		palette[i] = {paletteData[i * 3], paletteData[i * 3 + 1], paletteData[i * 3 + 2]};
+		if (preservedPaletteEntries.empty() || !preservedPaletteEntries[i])
+			palette[i] = {paletteData[i * 3], paletteData[i * 3 + 1], paletteData[i * 3 + 2]};
 	}
 
 	auto imageData = paletteData.subspan(paletteBytes);
@@ -67,10 +78,14 @@ bool getBitmapDataChecked(std::span<const uint8_t> chunkData, std::span<RGBColor
 				const int x = tileX * 4 + (i % 4);
 				const int y = tileY * 4 + (i / 4);
 				const size_t pixelIndex = (y * width + x) * 3;
-				const auto &pixelColor = palette[(colourMap & (0x8000 >> i)) ? colour1 : colour0];
+				const uint8_t paletteIndex =
+					(colourMap & (0x8000 >> i)) ? colour1 : colour0;
+				const auto &pixelColor = palette[paletteIndex];
 				outputFrame[pixelIndex] = pixelColor.r;
 				outputFrame[pixelIndex + 1] = pixelColor.g;
 				outputFrame[pixelIndex + 2] = pixelColor.b;
+				if (!outputIndices.empty())
+					outputIndices[pixelIndex / 3] = paletteIndex;
 			}
 		}
 	}
@@ -79,7 +94,7 @@ bool getBitmapDataChecked(std::span<const uint8_t> chunkData, std::span<RGBColor
 
 void getBitmapData(std::span<const uint8_t> chunkData, std::span<RGBColor> palette, std::span<uint8_t> outputFrame)
 {
-	(void)getBitmapDataChecked(chunkData, palette, outputFrame);
+	(void)getBitmapDataChecked(chunkData, palette, outputFrame, {}, {});
 }
 
 /*

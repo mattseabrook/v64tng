@@ -56,10 +56,10 @@ and script semantics but are not byte-for-byte interchangeable formats.
 
 ## Disassembly consequences
 
-- Win32 `00402067` is the GRV load helper: format `st7g.%d`, mode `rb`, one
-  `0x400`-byte read into `0041F2B8`, close.
-- Win32 `004020E7` is the GRV save helper: format `st7g.%d`, mode `wb`, one
+- Win32 `00402067` is the GRV save helper: format `st7g.%d`, mode `wb`, one
   `0x400`-byte write from `0041F2B8`, post-write callback, close.
+- Win32 `004020E7` is the GRV load helper: format `st7g.%d`, mode `rb`, one
+  `0x400`-byte read into `0041F2B8`, close.
 - DOS `03FC4` is the GRV load helper for the `0x523`-byte `save.N` block.
 - Win32 `00408F30` has the exact four-argument, callee-cleaned Windows-procedure
   contract. Its key-down arm treats Escape and F12 alike and posts `WM_CLOSE`.

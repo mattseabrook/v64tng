@@ -134,6 +134,29 @@ This is behavior that the comments in `dr.h` correctly recognized as cake
 puzzle media, but it belongs in a future GRV VM or puzzle-specific layer, not
 in the static dining-room navigation table.
 
+### Runtime-confirmed full clear
+
+Trace `20260809-212141` entered `DR.GRV` from `SCRIPT.GRV+0x40E9`, selected
+all 30 cells exactly once, and returned normally. It confirms that the board
+index is `0x37 + 5 * column + row`, that each legal piece contains five cells
+with category totals `[2,2,1]`, and that accepted cells change from `1` to the
+committed sentinel `9`.
+
+| Piece | Cell coordinates `(column,row)` in selection order |
+| --- | --- |
+| 1 | `(0,0) (1,0) (0,1) (1,1) (2,1)` |
+| 2 | `(2,0) (3,0) (3,1) (3,2) (2,2)` |
+| 3 | `(4,0) (5,0) (4,1) (5,1) (5,2)` |
+| 4 | `(0,2) (1,2) (0,3) (1,3) (2,3)` |
+| 5 | `(3,3) (4,3) (4,2) (5,3) (5,4)` |
+| 6 | `(4,4) (3,4) (2,4) (1,4) (0,4)` |
+
+After piece six, `DR.GRV` plays `GAMWAV[2]=gen_e_2.vdx`, stores decimal 49
+in shared variable `0xFA`, and executes `RETURNSCRIPT 0`. Back in
+`SCRIPT.GRV`, the `0xFA == 49` gate sets persistent variable `0xD6` to 1.
+The trace separately proves variable `0xD7` is the one-time first dining-room
+visit latch.
+
 ## `F.GRV`: foyer floor puzzle structure
 
 `F.GRV` is 1,349 bytes and contains 354 decoded instructions. It represents an

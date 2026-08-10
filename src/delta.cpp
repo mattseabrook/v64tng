@@ -32,10 +32,17 @@ bool getDeltaBitmapDataChecked(
 	std::span<const uint8_t> buffer,
 	std::span<RGBColor> palette,
 	std::span<uint8_t> frameBuffer,
-	int width)
+	int width,
+	std::span<uint8_t> indexBuffer,
+	std::span<const uint8_t> foregroundMask)
 {
 	if (buffer.size() < 2 || palette.size() < 256 || width <= 0 ||
 		frameBuffer.size() % (static_cast<size_t>(width) * 3) != 0)
+		return false;
+	if (!indexBuffer.empty() && indexBuffer.size() != frameBuffer.size() / 3)
+		return false;
+	if (!foregroundMask.empty() &&
+		foregroundMask.size() != frameBuffer.size() / 3)
 		return false;
 	std::span<uint8_t> deltaFrame = frameBuffer;
 
@@ -62,16 +69,30 @@ bool getDeltaBitmapDataChecked(
 	}
 
 	int xPos = 0, yPos = 0;
-	auto updatePixel = [&](int x, int y, const RGBColor &color)
+	auto updatePixel = [&](int x, int y, uint8_t paletteIndex)
 	{
 		if (x < 0 || y < 0)
 			return;
 		const size_t pixelIndex = (y * width + x) * 3;
 		if (pixelIndex + 2 < deltaFrame.size())
 		{
+			const size_t pixel = pixelIndex / 3;
+			// GRV video flag 7 composites delta writes through the foreground
+			// matte. FF in the matte protects the background; FF in the delta
+			// selects the matte pixel instead of writing FF to the background.
+			if (!foregroundMask.empty())
+			{
+				if (foregroundMask[pixel] == 0xff)
+					return;
+				if (paletteIndex == 0xff)
+					paletteIndex = foregroundMask[pixel];
+			}
+			const auto &color = palette[paletteIndex];
 			deltaFrame[pixelIndex] = color.r;
 			deltaFrame[pixelIndex + 1] = color.g;
 			deltaFrame[pixelIndex + 2] = color.b;
+			if (!indexBuffer.empty())
+				indexBuffer[pixel] = paletteIndex;
 		}
 	};
 
@@ -89,7 +110,8 @@ bool getDeltaBitmapDataChecked(
 			const uint8_t color1 = buffer[bufferIndex++], color0 = buffer[bufferIndex++];
 			for (int i = 0; i < 16; ++i)
 			{
-				updatePixel(xPos + (i % 4), yPos + (i / 4), palette[(mapValue & (0x8000 >> i)) ? color1 : color0]);
+				updatePixel(xPos + (i % 4), yPos + (i / 4),
+					(mapValue & (0x8000 >> i)) ? color1 : color0);
 			}
 			xPos += 4;
 			break;
@@ -100,7 +122,7 @@ bool getDeltaBitmapDataChecked(
 				return false;
 			for (int i = 0; i < 16; ++i)
 			{
-				updatePixel(xPos + (i % 4), yPos + (i / 4), palette[buffer[bufferIndex++]]);
+				updatePixel(xPos + (i % 4), yPos + (i / 4), buffer[bufferIndex++]);
 			}
 			xPos += 4;
 			break;
@@ -121,7 +143,7 @@ bool getDeltaBitmapDataChecked(
 			if (bufferIndex >= buffer.size())
 				return false;
 			const int repeatCount = opcode - 0x6B;
-			const auto &color = palette[buffer[bufferIndex++]];
+			const uint8_t color = buffer[bufferIndex++];
 			for (int r = 0; r < repeatCount; ++r)
 			{
 				for (int i = 0; i < 16; ++i)
@@ -139,7 +161,7 @@ bool getDeltaBitmapDataChecked(
 				return false;
 			for (int i = 0; i < colorCount; ++i)
 			{
-				const auto &color = palette[buffer[bufferIndex++]];
+				const uint8_t color = buffer[bufferIndex++];
 				for (int j = 0; j < 16; ++j)
 				{
 					updatePixel(xPos + (j % 4), yPos + (j / 4), color);
@@ -153,8 +175,8 @@ bool getDeltaBitmapDataChecked(
 			if (buffer.size() - (bufferIndex - 1) < 4)
 				return false;
 			const uint16_t mapValue = readLittleEndian16(buffer.subspan(bufferIndex - 1));
-			const auto &color1 = palette[buffer[bufferIndex + 1]];
-			const auto &color0 = palette[buffer[bufferIndex + 2]];
+			const uint8_t color1 = buffer[bufferIndex + 1];
+			const uint8_t color0 = buffer[bufferIndex + 2];
 			for (int i = 0; i < 16; ++i)
 			{
 				updatePixel(xPos + (i % 4), yPos + (i / 4), (mapValue & (0x8000 >> i)) ? color1 : color0);
@@ -174,5 +196,5 @@ void getDeltaBitmapData(
 	std::span<uint8_t> frameBuffer,
 	int width)
 {
-	(void)getDeltaBitmapDataChecked(buffer, palette, frameBuffer, width);
+	(void)getDeltaBitmapDataChecked(buffer, palette, frameBuffer, width, {}, {});
 }

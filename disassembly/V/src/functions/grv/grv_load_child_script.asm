@@ -1,6 +1,9 @@
 ; Linear entry 03E85 (1000:3e85)
 ; Ghidra working symbol: FUN_1000_3e85
 ; Verified GRV LOADSCRIPT (3Fh): saves the parent VM context and loads one child GRV.
+; The preserved child-local window is exactly 180h bytes, corresponding to
+; v[107]..v[286] in the shared GRV bank.  Win32 trace 20260809-212141 reached
+; the equivalent path for SCRIPT.GRV:40E9 -> DR.GRV:0000.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
 %macro emit_grv_load_child_script_part_00 0

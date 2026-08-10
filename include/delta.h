@@ -45,7 +45,9 @@ bool getDeltaBitmapDataChecked(
     std::span<const uint8_t> buffer,
     std::span<RGBColor> palette,
     std::span<uint8_t> frameBuffer,
-    int width);
+    int width,
+    std::span<uint8_t> indexBuffer = {},
+    std::span<const uint8_t> foregroundMask = {});
 void getDeltaBitmapData(
     std::span<const uint8_t> buffer,
     std::span<RGBColor> palette,

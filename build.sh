@@ -323,8 +323,31 @@ banner "${EMOJI_PACKAGE} Compiling Resources"
 
 RESOURCE_RES="$BUILD_DIR/resource.res"
 RESOURCE_RC="resource.rc"
+RESOURCE_INPUTS=(
+    "$RESOURCE_RC"
+    "resource.h"
+    "SystemInformation.png"
+    "icon.ico"
+    "sc55.sf2"
+)
 
-if [[ -f "$RESOURCE_RC" ]] && ([[ ! -f "$RESOURCE_RES" ]] || [[ "$RESOURCE_RC" -nt "$RESOURCE_RES" ]]); then
+resource_needs_compile=false
+if [[ ! -f "$RESOURCE_RES" ]]; then
+    resource_needs_compile=true
+else
+    for resource_input in "${RESOURCE_INPUTS[@]}"; do
+        if [[ ! -f "$resource_input" ]]; then
+            echo -e "${COLOR_RED}${EMOJI_FAILED} ERROR: Resource input missing: $resource_input${COLOR_RESET}"
+            exit 1
+        fi
+        if [[ "$resource_input" -nt "$RESOURCE_RES" ]]; then
+            resource_needs_compile=true
+            break
+        fi
+    done
+fi
+
+if [[ "$resource_needs_compile" == true ]]; then
     echo "Compiling resource file..."
     res_log="$BUILD_DIR/resource.log"
     if x86_64-w64-mingw32-windres \

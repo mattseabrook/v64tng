@@ -2,6 +2,8 @@
 ; Ghidra working symbol: FUN_1000_3f23
 ; Verified GRV SAVEGAME (2Fh): writes the 523h-byte DOS persistent-state block
 ; beginning at the GRV variable base to save.N.
+; Win32 trace 20260809-212141 independently confirms the shared opcode number
+; and slot-variable convention (with that port's 400h-byte st7g.N format).
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
 %macro emit_grv_save_game_part_00 0

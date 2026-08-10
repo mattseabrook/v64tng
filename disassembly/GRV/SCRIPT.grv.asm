@@ -700,6 +700,10 @@
 094D  96 8C 30 B1                            LOADSTRING                    dst=v[0x08C], values=[0, 1]
 0951  02 39 4C                               PLAYSONG                      ref=0x4C39 (XMI[57]=gu61.xmi)
 0954  15 EC 06                               JMP                           target=0x06EC
+; Dining-room puzzle return gate, verified by trace 20260809-212141:
+; DR.GRV sets shared v[0FA]=49 after all six cake pieces are committed and
+; returns byte 0.  v[0D6] is the persistent cake-completed latch; v[0D7] is
+; the one-time first-visit dining close-up latch.
 0957  09 5F 10                               VIDEOREF                      ref=0x105F (DR[95]=dr_mi.vdx)
 095A  9A FA E1 71 09                         STRCMP_NE_JMP                 start=v[0x0FA], values=[49], target=0x0971
 095F  9A D6 B0 71 09                         STRCMP_NE_JMP                 start=v[0x0D6], values=[0], target=0x0971
@@ -2331,6 +2335,8 @@
 2153  15 B6 1E                               JMP                           target=0x1EB6
 ; Runtime verified at 580.800 s in trace 20260809-195435: v[019]=1 selects
 ; st7g.1; v32tng creates/truncates it and writes the 400h-byte bank exactly.
+; Trace 20260809-223655 reached the same save after K.GRV returned 0 from a
+; completed soup-can puzzle; the resulting 400h-byte file records v[0F9]=49.
 2156  2F 19 00                               SAVEGAME                      var=v[0x019]
 2159  96 00 24 A4                            LOADSTRING                    dst=v[0x000], values=[244, 244]
 215D  3A 23 E1                               PRINTSTRING                   values=[v[0x000]]
@@ -4538,6 +4544,9 @@
 3F3C  15 48 3F                               JMP                           target=0x3F48
 3F3F  1A 02 01 B1 48 3F                      STRCMP_NE_JMP                 start=v[0x102], values=[1], target=0x3F48
 3F45  15 AB 17                               JMP                           target=0x17AB
+; Runtime verified by trace 20260809-223655: normal kitchen entry loads the
+; 1873-byte K.GRV soup-can child. Its successful return is 0 and dispatches
+; through the branch below; v[0F9]=49 is the durable completion value.
 3F48  3F 6B 2E 67 72 76 00                   LOADSCRIPT                    filename="k.grv"
 3F4F  2C AB 17 08                            SET_HOTSPOT_TOP               target=0x17AB, cursor=0x08
 3F53  2D 00 00 00                            SET_HOTSPOT_BOTTOM            target=0x0000, cursor=0x00
@@ -4638,6 +4647,8 @@
 40DD  15 E9 40                               JMP                           target=0x40E9
 40E0  1A 02 01 B1 E9 40                      STRCMP_NE_JMP                 start=v[0x102], values=[1], target=0x40E9
 40E6  15 AB 17                               JMP                           target=0x17AB
+; Native child-script handoff.  Trace 20260809-212141 entered DR.GRV+0000
+; here, completed the entire cake puzzle, and resumed at 40F1 with v[102]=0.
 40E9  3F 64 72 2E 67 72 76 00                LOADSCRIPT                    filename="dr.grv"
 40F1  2C AB 17 08                            SET_HOTSPOT_TOP               target=0x17AB, cursor=0x08
 40F5  2D 00 00 00                            SET_HOTSPOT_BOTTOM            target=0x0000, cursor=0x00

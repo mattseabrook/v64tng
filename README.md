@@ -10,8 +10,8 @@
 | Project | Build status | Semantic disassembly | Lossless source-byte coverage |
 |---|---|---:|---:|
 | [`v64tng.exe`](build.sh) | C++23 Windows build | N/A | N/A |
-| [`V.EXE` 1.30](disassembly/V) | NASM byte-for-byte rebuild passing | 48 / 261 verified roles (18.4%) | 101,624 / 101,624 bytes (100%) |
-| [`v32tng.exe` 1.02b1](disassembly/v32tng) | NASM byte-for-byte rebuild passing | 30 / 336 verified roles (8.9%) | 144,896 / 144,896 bytes (100%) |
+| [`V.EXE` 1.30](disassembly/V) | NASM byte-for-byte rebuild passing | 51 / 261 verified roles (19.5%) | 101,624 / 101,624 bytes (100%) |
+| [`v32tng.exe` 1.02b1](disassembly/v32tng) | NASM byte-for-byte rebuild passing | 44 / 336 verified roles (13.1%) | 144,896 / 144,896 bytes (100%) |
 
 The NASM builds reject executable-byte `incbin` directives and verify the rebuilt artifact against its canonical SHA-256:
 
@@ -477,6 +477,24 @@ intentional `SCRIPT.GRV` end-of-file sentinel.
 | `P.GRV` | 1,125 | 327 | 42 | 1 | 13 |
 | `SCRIPT.GRV` | 16,659 | 4,599 | 772 | 124 | 640 |
 
+The two traced puzzle controllers are now labeled in the byte-accurate GRV
+sources themselves:
+
+| Controller | Verified semantic entries |
+|---|---|
+| `DR.GRV` dining-room cake | `dining_room_cake_puzzle_entry` at `0000h`; `cake_selection_feedback_and_validation` at `0069h`; `[2,2,1]` piece validation at `00A6h`; `cake_board_cell_input_loop` at `00DDh`; `commit_valid_cake_piece` at `105Bh`; completion/result publication at `1210h`; coordinate-to-state mapping at `12DCh` |
+| `K.GRV` kitchen soup cans | `kitchen_soup_can_puzzle_entry` at `0000h`; grid initialization at `003Fh`; exact solved-order comparison at `0062h`; first/second selection loops at `0093h`/`0256h`; dynamic swap animation at `04F7h`–`0559h`; `GRID_SWAP` commit at `0565h`; success exit at `04D7h` |
+
+There is no separate native cake solver in either executable: `DR.GRV` owns
+that state machine and the players execute it through generic GRV handlers.
+The soup puzzle additionally exercises opcode `39h`; its formerly unknown DOS
+helper is now `grv_grid_swap` at `0410Fh`, and the corresponding Win32 handler
+is `grv_opcode_grid_swap` at `0040389Bh`. Both implement
+`v[019h + 10*row + column]` exchange semantics. Its coordinate-derived can
+animations use `VIDEO_NAME`/`VIDEO_TRANSITION_NAME`; Win32 resolves those
+inline expressions through `resolve_interpolated_grv_video_resource` at
+`00401833h`, with the opcode handlers labeled at `004025D0h` and `004025FDh`.
+
 Generated research artifacts are:
 
 - [`include/grv.h`](include/grv.h) and [`src/grv.cpp`](src/grv.cpp): native
@@ -859,11 +877,12 @@ target, and cursor fields on demand. It does not allocate a parallel
 `ClickArea`/`Hotspot` object per instruction. `currentVideoRef` remains useful
 VM state, but it is not a field read from VDX.
 
-The original coordinate system is 640×480, with the actual T7G picture at
-`y=80..399`. v64tng's presentation is a 640×320 content canvas. Pointer
-mapping therefore removes the window letterbox, maps content y back to GRV
-`y+80`, and rejects both the discarded black bars and GRV rectangles confined
-to `y<80` or `y>=400`. Rectangle tests are half-open:
+The original GRV coordinate system is 640×480, with the T7G VDX background at
+`y=80..399`. v64tng retains that complete foreground only as internal VM state.
+Its presentation surface remains the project's intentional 640×320 cinematic
+band: the native 80-row bars are cropped, never used to impose a 4:3 host
+window, and bar-only hotspots are not exposed. Pointer input maps the visible
+client area back to GRV `y=80..399`. Rectangle tests are half-open:
 `left <= x < right`, `top <= y < bottom`.
 
 #### Video Staging Flags
@@ -881,14 +900,14 @@ decoder control state; they are not stored in the VDX header.
 | 4 | Win `0x57`, `0x58` | Mask/wipe video path |
 | 5 | `0x0A` | Suppresses the VDX `20h` still pixels so following `25h` deltas modify the already-held screen |
 | 6 | `0x06` | Stages special still/update state; the flag is verified but its complete visual effect remains unresolved |
-| 7 | `0x07`, cleared by `0x35`, also used by `0x40` | Mask/origin compositing state; participates in overlay setup without replacing the persistent backdrop |
+| 7 | `0x07`, cleared by `0x35`, also used by `0x40` | Foreground-matte compositing: suppresses the still and applies following delta writes only where the matte is not `FFh` |
 | 8 | `0x05` | Show only the first video frame |
 | 9 | `0x03` | Start video with a palette fade-in |
-| 15 | Injected by the T7G interpreter for cursor 4 or 7 in `SCRIPT.GRV` | Do not apply the 26 FPS fast-navigation override; obey the VDX header rate |
+| 15 | Compatibility-player extension; not emitted by the traced Win32 interpreter | Disables the 26 FPS fast-navigation override when supplied externally |
 
-Bit 5 is the verified still-suppression control. Bit 7 participates in the
-separate origin/mask compositing path and must not independently suppress a
-`20h` still. For the main menu, `sphinx.vdx` establishes the persistent image;
+Bit 5 is the direct still-suppression control. Bit 7 selects the separate
+foreground-matte compositing path and also suppresses that VDX's `20h` still.
+For the main menu, `sphinx.vdx` establishes the persistent image;
 `sphmen1i.vdx` and `sphprm1i.vdx` are preceded by opcode `0Ah`, so their still
 chunks are suppressed and their delta tiles alter that held image. Unchanged
 tiles are not black or transparent pixels—they are pixels deliberately
@@ -908,8 +927,10 @@ Opcode `09h` is a blocking state-machine operation:
    unsigned 22,050 Hz mono.
 7. Do not advance the GRV program counter past the operation until the visual
    stream and queued PCM have completed (unless playback is skipped).
-8. Preserve the final composed frame as the next operation's background and
-   clear transient video flags.
+8. Preserve the frame actually displayed as the next operation's background
+   (`FIRSTFRAME_NEXT_VIDEO` therefore persists frame zero and its frame-local
+   palette, not the last frame decoded into the cache), then clear transient
+   video flags.
 
 This ordering is observable. Collapsing consecutive `VIDEOREF` instructions
 to the last reference loses the Ouija-board layers, prompt lettering, and
@@ -921,8 +942,8 @@ The header rate is not the only timing input:
 
 - ordinary silent movement VDXes run at the original player's fast navigation
   rate of **26 FPS**;
-- bit 15 disables that override for `SCRIPT.GRV` theater-mask and
-  chattering-teeth actions;
+- an externally supplied bit 15 disables that override, but v32tng's traced
+  GRV path does not synthesize it from cursor style;
 - encountering an interleaved `80h` sound chunk also cancels the override, so
   an audio-bearing FMV obeys its VDX header rate and stays synchronized;
 - opcode `48h` can override the header rate in DOS when its operand is
@@ -1026,10 +1047,10 @@ include the opcode byte; `V` sizes are shown as short/long where useful.
 | `34` | `CHAR_GREATER_JMP` | `V start, C...END, A16 target` | variable | Jumps if any compared variable byte is greater than its encoded value. |
 | `35` | `VIDEOFLAG7_OFF` | — | 1 | Clears video/compositing flag 7. |
 | `36` | `CHAR_LESS_JMP` | `V start, C...END, A16 target` | variable | Jumps if any compared variable byte is less than its encoded value. |
-| `37` | `COPY_RECT_TO_BG` | `U16 left, top, right, bottom` | 9 | Copies the rectangle from the foreground/screen image into the background and marks it dirty. |
+| `37` | `COPY_RECT_TO_BG` | `U16 left, top, right, bottom` | 9 | Retail V copies the foreground rectangle into the persistent VDX background using half-open right/bottom bounds. Win32 beta 1.02b1 reverses the direction and includes the bottom row; v64tng deliberately follows retail V. |
 | `38` | `RESTORESTACK` | — | 1 | Restores the call-stack depth checkpoint saved on entry to the current GRV. DOS main-script behavior is an explicit clear to depth zero. |
 | `39` | `GRID_SWAP` | `C row1, C col1, C row2, C col2` | variable | Swaps `variables[0x19+10×row1+col1]` and `variables[0x19+10×row2+col2]`; each component may be immediate or `#` indirect. |
-| `3A` | `PRINTSTRING` | `C...END` | variable | Converts values back with `+0x30`, sanitizes unsupported characters to spaces, and centers up to 14 characters in the top bar. |
+| `3A` | `PRINTSTRING` | `C...END` | variable | Converts values back with `+0x30`, treats `$` as the native string terminator, and draws at most 14 `SPHINX.FNT` characters centered in the top bar. |
 | `3B` | `HOTSPOT_SAVE_SLOT` | `U8 slot, U16 left, top, right, bottom, A16 target, U8 cursor` | 13 | Save/load-menu hotspot; displays the slot description while hovered and branches on click. |
 | `3C` | `CHECK_VALID_SAVES` | — | 1 | Scans slots 0–9, writes validity flags to variables `0x00`–`0x09`, and count to `0x104`. |
 | `3D` | `RESETVARS` | — | 1 | Clears variables `0x000`–`0x0FF`; higher engine/status variables are retained. |
@@ -1189,28 +1210,36 @@ surface rather than silently advancing over unknown behavior:
 | Byte operations | `RANDOM`, `XOR_OBFUSCATE`, `SWAP`, `INC`, `DEC`, `MOV`, `ADD`, `SUB`, `MOD`, and `GRID_SWAP`, with byte wraparound |
 | Branches | Direct string equality/inequality, indirect grid comparison, indirect `JNE`, and greater/less sequence branches |
 | Media selection | Reference and interpolated-name video operations, including `1Ch`/`27h` transition, transparency, and flag-7 clearing rules |
-| Persistence | Native-size load/save (`0x523`-byte DOS `save.N`, `0x400`-byte Windows `st7g.N`) rooted only at the configured asset directory |
+| Persistence | Automatic native load/save: exact `0x523`-byte DOS `save.N` and `0x400`-byte Windows `st7g.N` files are detected per slot; existing slots retain their format and new slots use the lossless DOS superset |
 | Input | Local hotspot declaration order precedes the four persistent edge declarations; the no-hit cursor candidate is style 5 and `v[0x91] == 1` preserves the `0x8000` style bit |
 
-Rendering operations that require a foreground/background surface transaction
-are not faked inside the byte-only VM. `COPY_BG_TO_FG` (`22h`),
-`COPY_RECT_TO_BG` (`37h`), and `PRINTSTRING` (`3Ah`) currently stop execution
-with a diagnostic. On Windows the diagnostic is also displayed in a message
-box containing the normalized opcode, raw opcode byte, script filename, and
-PC. Every other unimplemented opcode uses the same failure path; there is no
+Presentation commands remain ordered alongside VIDEOREF operations.
+`COPY_BG_TO_FG` (`22h`) restores the full 640×320 background band,
+`COPY_RECT_TO_BG` (`37h`) performs retail V's indexed
+foreground-to-background rectangle copy, `PRINTSTRING` (`3Ah`) draws the real
+`SPHINX.FNT` indexed glyphs in the top band, and retail
+`PALETTE_MERGE_ONCE` (`49h`) preserves precisely the palette indices used by
+the current indexed background for the next still. `SLEEP` remains in that
+ordered stream so preceding text, copies, and video frames are presented
+before the native `ticks × 3 ms` delay. The New Game branch now presents the
+complete `SCRIPT.GRV` transition through its first foyer input loop instead of
+advancing and discarding that transition after two hard-coded logos. Every unimplemented opcode
+uses the same failure path; there is no
 default silent no-op. Operations proven externally inert for this native
 target remain explicit cases. `PALFADEOUT` (`04h`) is consumed as a known
 renderer-owned presentation command so it cannot prevent a following
 `VIDEOREF` or `ENDSCRIPT`; timed RGB interpolation is still a renderer gap.
+
+The kitchen full-clear semantics and exact 33-cell solved comparison are
+recorded at `K.GRV:0062` in the source listing; the verified swap commit is
+`K.GRV:0565`, backed by the native `39h` handlers named above.
 
 The known non-inert gaps are intentionally visible:
 
 | Opcode(s) | Missing native subsystem |
 |---|---|
 | `04h` | Timed palette fade-out over the current RGB presentation (VM flow is implemented; interpolation is not) |
-| `22h`, `37h` | Ordered foreground/background surface-copy commands |
-| `3Ah` | Original-font top-bar text rendering |
-| `40h`, `49h` | Video-origin and one-shot palette-merge presentation state |
+| `40h` | Video-origin presentation state |
 | `42h` | Hard-coded microscope/cell puzzle solver |
 | `4Dh`, `4Eh` | CD-audio selection and background-music delay |
 | `4Fh`–`59h` except hotspot `53h` | Later/reserved Windows and Groovie-v2 extension state |

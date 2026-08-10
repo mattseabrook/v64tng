@@ -1,14 +1,14 @@
 ; PE virtual entry 00402067
 ; Ghidra working symbol: FUN_00402067
-; Verified GRV LOADGAME (2Eh) helper.
-; Formats st7g.%d, opens it as rb, reads exactly 400h bytes into the GRV
-; variable bank at 0041F2B8, then closes the stream.  The Win32 trace and
-; matching opcode dispatch distinguish this from the adjacent save helper.
+; Verified GRV SAVEGAME (2Fh) helper.
+; Formats st7g.%d, opens it as wb, writes exactly 400h bytes from the GRV
+; variable bank at 0041F2B8, then closes the stream.  Static mode-string and
+; stdio-call evidence distinguish this from the adjacent load helper.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_grv_load_game_part_00 0
+%macro emit_grv_save_game_00402067_part_00 0
     %%fragment_start:
-grv_load_game:
+grv_save_game:
     %%insn_00402067:
     push ebp ; 00402067 55
     %if ($ - %%insn_00402067) > 1
@@ -35,7 +35,7 @@ grv_load_game:
     %endif
     times 1 - ($ - %%insn_00402073) db 0
     %%insn_00402074:
-    push dword 0x41b16c ; 00402074 686CB14100
+    push dword v32_grv_save_filename_format ; 00402074 686CB14100
     %if ($ - %%insn_00402074) > 5
         %error "LONG_00402074"
     %endif
@@ -65,7 +65,7 @@ grv_load_game:
     %endif
     times 3 - ($ - %%insn_00402085) db 0
     %%insn_00402088:
-    push dword 0x41b174 ; 00402088 6874B14100
+    push dword v32_grv_save_mode ; 00402088 6874B14100
     %if ($ - %%insn_00402088) > 5
         %error "LONG_00402088"
     %endif

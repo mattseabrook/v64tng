@@ -227,6 +227,20 @@ rebuilds the untouched 1.02b1 executable.
    selection timing/stop semantics and expose an explicit pacing state for
    Red Book-timed VDX files, with Red Book playback retained as an optional
    compatibility backend.
+3. **Investigate and fix the reported kitchen soup-can crash.** The beta is externally
+   reported to terminate during the `SHY GYPSY SLYLY SPRYLY TWYST ON MY
+   CRYPT` can puzzle after selecting one particular can; the displayed or
+   generated VDX filename reportedly becomes jumbled before the error. Do not
+   patch or assign a native cause from that report alone. The next dedicated
+   kitchen trace and exact popup text must correlate the reached child-script
+   PC, `VIDEO_NAME` interpolation bytes, resolved filename, resource lookup,
+   and failing native boundary. Apply the eventual fix only in a separate
+   patched build and keep this canonical 1.02b1 reconstruction byte-identical.
+   Trace `20260809-223655` completed the normal-entry puzzle without a crash:
+   all 253 generated-name hits resolved validly and no popup occurred. That is
+   positive evidence against a universally bad can/filename, but it does not
+   close the historical report; a failing trace is still required before a
+   native cause or patch can be claimed.
 
 ## Naming and evidence policy
 
@@ -316,7 +330,7 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `004015E6` | unidentified | `func_004015e6` | `FUN_004015e6` | `004015E6–0040179A` | [`src/functions/unknown/004015e6_func_004015e6.asm`](src/functions/unknown/004015e6_func_004015e6.asm) |
 | `0040179B` | unidentified | `func_0040179b` | `FUN_0040179b` | `0040179B–004017ED` | [`src/functions/unknown/0040179b_func_0040179b.asm`](src/functions/unknown/0040179b_func_0040179b.asm) |
 | `004017EE` | unidentified | `func_004017ee` | `FUN_004017ee` | `004017EE–00401832` | [`src/functions/unknown/004017ee_func_004017ee.asm`](src/functions/unknown/004017ee_func_004017ee.asm) |
-| `00401833` | unidentified | `func_00401833` | `FUN_00401833` | `00401833–00401BB2` | [`src/functions/unknown/00401833_func_00401833.asm`](src/functions/unknown/00401833_func_00401833.asm) |
+| `00401833` | verified-role | `resolve_interpolated_grv_video_resource` | `FUN_00401833` | `00401833–00401BB2` | [`src/functions/grv/resolve_interpolated_grv_video_resource.asm`](src/functions/grv/resolve_interpolated_grv_video_resource.asm) |
 | `00401BB3` | verified-role | `open_first_drive_letter_path` | `FUN_00401bb3` | `00401BB3–00401BFC` | [`src/functions/resource_io/open_first_drive_letter_path.asm`](src/functions/resource_io/open_first_drive_letter_path.asm) |
 | `00401BFD` | verified-role | `play_drive_scanned_loose_vdx` | `FUN_00401bfd` | `00401BFD–00401C54` | [`src/functions/vdx/play_drive_scanned_loose_vdx.asm`](src/functions/vdx/play_drive_scanned_loose_vdx.asm) |
 | `00401C55` | verified-role | `play_optional_vielogo_video` | `FUN_00401c55` | `00401C55–00401C98` | [`src/functions/vdx/play_optional_vielogo_video.asm`](src/functions/vdx/play_optional_vielogo_video.asm) |
@@ -324,8 +338,8 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `00401CDD` | verified-role | `play_optional_numbered_credit_video` | `FUN_00401cdd` | `00401CDD–00401D39` | [`src/functions/vdx/play_optional_numbered_credit_video.asm`](src/functions/vdx/play_optional_numbered_credit_video.asm) |
 | `00401D3A` | verified-role | `select_grv_video_resource` | `FUN_00401d3a` | `00401D3A–00401F5E` | [`src/functions/resource_io/select_grv_video_resource.asm`](src/functions/resource_io/select_grv_video_resource.asm) |
 | `00401F5F` | verified-role | `select_grv_song_resource` | `FUN_00401f5f` | `00401F5F–00402066` | [`src/functions/resource_io/select_grv_song_resource.asm`](src/functions/resource_io/select_grv_song_resource.asm) |
-| `00402067` | verified-role | `grv_load_game` | `FUN_00402067` | `00402067–004020E6` | [`src/functions/savegame/grv_load_game.asm`](src/functions/savegame/grv_load_game.asm) |
-| `004020E7` | verified-role | `grv_save_game` | `FUN_004020e7` | `004020E7–00402171` | [`src/functions/savegame/grv_save_game.asm`](src/functions/savegame/grv_save_game.asm) |
+| `00402067` | verified GRV save helper | `grv_save_game_00402067` | `FUN_00402067` | `00402067–004020E6` | [`src/functions/savegame/grv_save_game_00402067.asm`](src/functions/savegame/grv_save_game_00402067.asm) |
+| `004020E7` | verified GRV load helper | `grv_load_game_004020e7` | `FUN_004020e7` | `004020E7–00402171` | [`src/functions/savegame/grv_load_game_004020e7.asm`](src/functions/savegame/grv_load_game_004020e7.asm) |
 | `00402172` | verified-role | `detect_t7g_archive_set` | `FUN_00402172` | `00402172–004021D0` | [`src/functions/resource_io/detect_t7g_archive_set.asm`](src/functions/resource_io/detect_t7g_archive_set.asm) |
 | `004021D1` | verified-role | `run_grv_vm` | `FUN_004021d1` | `004021D1–004041DF` | [`src/functions/grv/run_grv_vm.asm`](src/functions/grv/run_grv_vm.asm) |
 | `00404350` | verified-role | `init_game_subsystems` | `FUN_00404350` | `00404350–0040441C` | [`src/functions/runtime/init_game_subsystems.asm`](src/functions/runtime/init_game_subsystems.asm) |
@@ -441,10 +455,10 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `0040A29F` | unidentified | `func_0040a29f` | `FUN_0040a29f` | `0040A29F–0040A39E` | [`src/functions/unknown/0040a29f_func_0040a29f.asm`](src/functions/unknown/0040a29f_func_0040a29f.asm) |
 | `0040A39F` | unidentified | `func_0040a39f` | `FUN_0040a39f` | `0040A39F–0040A3ED` | [`src/functions/unknown/0040a39f_func_0040a39f.asm`](src/functions/unknown/0040a39f_func_0040a39f.asm) |
 | `0040A3EE` | unidentified | `func_0040a3ee` | `FUN_0040a3ee` | `0040A3EE–0040A420` | [`src/functions/unknown/0040a3ee_func_0040a3ee.asm`](src/functions/unknown/0040a3ee_func_0040a3ee.asm) |
-| `0040A430` | unidentified | `func_0040a430` | `FUN_0040a430` | `0040A430–0040A739` | [`src/functions/unknown/0040a430_func_0040a430.asm`](src/functions/unknown/0040a430_func_0040a430.asm) |
+| `0040A430` | centered SPHINX.FNT GRV string renderer | `draw_centered_grv_string_0040a430` | `FUN_0040a430` | `0040A430–0040A739` | [`src/functions/grv/draw_centered_grv_string_0040a430.asm`](src/functions/grv/draw_centered_grv_string_0040a430.asm) |
 | `0040A73A` | unidentified | `func_0040a73a` | `FUN_0040a73a` | `0040A73A–0040A785` | [`src/functions/unknown/0040a73a_func_0040a73a.asm`](src/functions/unknown/0040a73a_func_0040a73a.asm) |
-| `0040A786` | unidentified | `func_0040a786` | `FUN_0040a786` | `0040A786–0040A7A9` | [`src/functions/unknown/0040a786_func_0040a786.asm`](src/functions/unknown/0040a786_func_0040a786.asm) |
-| `0040A7AA` | unidentified | `func_0040a7aa` | `FUN_0040a7aa` | `0040A7AA–0040A84A` | [`src/functions/unknown/0040a7aa_func_0040a7aa.asm`](src/functions/unknown/0040a7aa_func_0040a7aa.asm) |
+| `0040A786` | full VDX background-to-foreground copy | `copy_background_to_foreground_0040a786` | `FUN_0040a786` | `0040A786–0040A7A9` | [`src/functions/vdx/copy_background_to_foreground_0040a786.asm`](src/functions/vdx/copy_background_to_foreground_0040a786.asm) |
+| `0040A7AA` | rectangle VDX background-to-foreground copy | `copy_background_rectangle_to_foreground_0040a7aa` | `FUN_0040a7aa` | `0040A7AA–0040A84A` | [`src/functions/vdx/copy_background_rectangle_to_foreground_0040a7aa.asm`](src/functions/vdx/copy_background_rectangle_to_foreground_0040a7aa.asm) |
 | `0040A84B` | unidentified | `func_0040a84b` | `FUN_0040a84b` | `0040A84B–0040AA44` | [`src/functions/unknown/0040a84b_func_0040a84b.asm`](src/functions/unknown/0040a84b_func_0040a84b.asm) |
 | `0040AA45` | unidentified | `func_0040aa45` | `FUN_0040aa45` | `0040AA45–0040AB83` | [`src/functions/unknown/0040aa45_func_0040aa45.asm`](src/functions/unknown/0040aa45_func_0040aa45.asm) |
 | `0040AB84` | verified-role | `decode_vdx_bitmap_still` | `FUN_0040ab84` | `0040AB84–0040B197` | [`src/functions/vdx/decode_vdx_bitmap_still.asm`](src/functions/vdx/decode_vdx_bitmap_still.asm) |

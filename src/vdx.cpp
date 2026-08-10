@@ -41,7 +41,8 @@ constexpr uint32_t readLE32(const uint8_t *p)
 
 bool readStillPalette(
 	std::span<const uint8_t> data,
-	std::span<RGBColor> palette)
+	std::span<RGBColor> palette,
+	std::span<const uint8_t> preservedEntries = {})
 {
 	if (data.size() < 6 || palette.size() < 256)
 		return false;
@@ -51,9 +52,28 @@ bool readStillPalette(
 	const size_t colours = size_t{1} << colourDepth;
 	if (data.size() < 6 + colours * 3)
 		return false;
+	if (!preservedEntries.empty() && preservedEntries.size() < 256)
+		return false;
 	for (size_t i = 0; i < colours; ++i)
-		palette[i] = {data[6 + i * 3], data[7 + i * 3], data[8 + i * 3]};
+		if (preservedEntries.empty() || !preservedEntries[i])
+			palette[i] = {data[6 + i * 3], data[7 + i * 3], data[8 + i * 3]};
 	return true;
+}
+
+void materializeIndexedFrame(
+	std::span<const uint8_t> indices,
+	std::span<const RGBColor> palette,
+	std::span<uint8_t> frame)
+{
+	if (palette.size() < 256 || frame.size() != indices.size() * 3)
+		return;
+	for (size_t pixel = 0; pixel < indices.size(); ++pixel)
+	{
+		const RGBColor colour = palette[indices[pixel]];
+		frame[pixel * 3] = colour.r;
+		frame[pixel * 3 + 1] = colour.g;
+		frame[pixel * 3 + 2] = colour.b;
+	}
 }
 
 void parseVDXChunksFromSpan(VDXFile &vdxFile, std::span<const uint8_t> rawSpan)
@@ -220,6 +240,7 @@ struct StreamingVDXDecoder
 	size_t chunkIndex = 0;
 	size_t totalFrames = 0;
 	std::array<RGBColor, 256> palette{};
+	std::vector<uint8_t> indices;
 	std::vector<uint8_t> decompressed;
 
 	explicit StreamingVDXDecoder(VDXFile &file) : vdx(file)
@@ -281,16 +302,21 @@ struct StreamingVDXDecoder
 				vdx.width = width;
 				vdx.height = height;
 				frame->assign(static_cast<size_t>(width) * static_cast<size_t>(height) * 3, 0);
-				if (!getBitmapDataChecked(bytes, palette, *frame))
+				indices.assign(static_cast<size_t>(width) * static_cast<size_t>(height), 0);
+				if (!getBitmapDataChecked(bytes, palette, *frame, indices))
 					throw std::runtime_error("Invalid VDX bitmap payload in " + vdx.filename);
 			}
 			else
 			{
 				if (frame->empty() || vdx.width <= 0)
 					throw std::runtime_error("VDX delta frame has no reference frame in " + vdx.filename);
-				if (!getDeltaBitmapDataChecked(bytes, palette, *frame, vdx.width))
+				if (!getDeltaBitmapDataChecked(bytes, palette, *frame, vdx.width, indices))
 					throw std::runtime_error("Invalid VDX delta payload in " + vdx.filename);
 			}
+			// The native surface remains indexed. A local palette update therefore
+			// recolours untouched pixels too, not only pixels written by this delta.
+			materializeIndexedFrame(indices, palette, *frame);
+			vdx.palette = palette;
 			return true;
 		}
 		return false;
@@ -371,8 +397,31 @@ void parseVDXChunks(
 	std::span<const uint8_t> background,
 	uint16_t grvVideoFlags)
 {
-	// Palette state is shared by consecutive chunks in a VDX stream.
-	static thread_local std::vector<RGBColor> palette(256);
+	parseVDXChunks(vdxFile, VDXDecodeContext{.background = background}, grvVideoFlags);
+}
+
+void parseVDXChunks(
+	VDXFile &vdxFile,
+	const VDXDecodeContext &context,
+	uint16_t grvVideoFlags)
+{
+	const bool foregroundStill = (grvVideoFlags & (1u << 1)) != 0;
+	const bool transparentOverlay = (grvVideoFlags & (1u << 7)) != 0;
+	const bool skipStill = vdxSkipStill(grvVideoFlags) || transparentOverlay;
+	std::array<RGBColor, 256> palette{};
+	if (context.palette.size() >= palette.size())
+		std::ranges::copy_n(context.palette.begin(), palette.size(), palette.begin());
+	// The VDX palette buffer and the palette currently driving the indexed
+	// display are distinct native states. Flag-5 stills load the former without
+	// applying it; flag-7 deltas may update it while retaining the latter.
+	auto workingPalette = palette;
+	std::array<uint8_t, 256> preservedEntries{};
+	if (context.mergePaletteOnce)
+	{
+		for (const uint8_t index : context.backgroundIndices)
+			preservedEntries[index] = 1;
+	}
+	bool mergePending = context.mergePaletteOnce;
 
 	// Pre-count frame-producing chunks to reserve frameData (less reallocs)
 	size_t frameCount = 0;
@@ -384,13 +433,10 @@ void parseVDXChunks(
 		}
 	}
 	vdxFile.frameData.reserve(frameCount);
+	vdxFile.frameIndices.reserve(frameCount);
+	vdxFile.framePalettes.reserve(frameCount);
 
-	// Reuse palette
-	palette.clear();
-	palette.resize(256);
 	vdxFile.playbackFlags = grvVideoFlags;
-	const bool skipStill = vdxSkipStill(grvVideoFlags);
-
 	// Process chunks
 	for (auto &chunk : vdxFile.chunks)
 	{
@@ -419,9 +465,12 @@ void parseVDXChunks(
 		{
 			// Get prev frame span (empty for first)
 			std::span<const uint8_t> prevFrame;
+			std::span<const uint8_t> prevIndices;
 			if (!vdxFile.frameData.empty())
 			{
 				prevFrame = std::span<const uint8_t>(*vdxFile.frameData.back());
+				if (!vdxFile.frameIndices.empty())
+					prevIndices = std::span<const uint8_t>(*vdxFile.frameIndices.back());
 			}
 
 			// Set dimensions from first static frame
@@ -440,21 +489,68 @@ void parseVDXChunks(
 			// Preallocate new frame buffer with exact size
 			const size_t frameSize = static_cast<size_t>(vdxFile.width) * vdxFile.height * 3;
 			auto newFrame = std::make_shared<std::vector<uint8_t>>(frameSize);
+			auto newIndices = std::make_shared<std::vector<uint8_t>>(frameSize / 3);
+			bool haveIndices = false;
 
 			if (chunk.chunkType == 0x20)
 			{
-				if (skipStill)
+				if (foregroundStill)
+				{
+					// VIDEO_TRANSITION_REF decodes the still into the persistent
+					// foreground matte, not into the visible background. Source FF
+					// leaves the previous matte untouched; opcode-high-bit form turns
+					// every written source pixel into an FF protection mask.
+					auto decodedIndices = std::vector<uint8_t>(newIndices->size());
+					if (!getBitmapDataChecked(dataToProcess, workingPalette,
+						std::span{*newFrame}, std::span{decodedIndices}))
+						throw std::runtime_error("Invalid VDX foreground still in " + vdxFile.filename);
+					if (context.foregroundIndices.size() == newIndices->size())
+						std::memcpy(newIndices->data(), context.foregroundIndices.data(), newIndices->size());
+					const bool makeProtectionMask =
+						(grvVideoFlags & (1u << 2)) != 0;
+					for (size_t pixel = 0; pixel < decodedIndices.size(); ++pixel)
+					{
+						if (decodedIndices[pixel] != 0xff)
+							(*newIndices)[pixel] = makeProtectionMask
+								? uint8_t{0xff} : decodedIndices[pixel];
+					}
+					haveIndices = true;
+				}
+				else if (skipStill)
 				{
 					// BF5 deliberately discards the VDX's still pixels.
-					// Its following deltas are applied to the persistent screen.
-					if (!readStillPalette(dataToProcess, palette))
+					// Its palette is staged but is not applied until a delta carries
+					// a local palette update. BF7 also discards this still.
+					if (!readStillPalette(dataToProcess, workingPalette,
+						mergePending
+							? std::span<const uint8_t>{preservedEntries}
+							: std::span<const uint8_t>{}))
 						throw std::runtime_error("Invalid VDX bitmap palette in " + vdxFile.filename);
-					if (background.size() == newFrame->size())
-						std::memcpy(newFrame->data(), background.data(), newFrame->size());
+					if (context.background.size() == newFrame->size())
+						std::memcpy(newFrame->data(), context.background.data(), newFrame->size());
+					if (context.backgroundIndices.size() == newIndices->size())
+					{
+						std::memcpy(newIndices->data(), context.backgroundIndices.data(), newIndices->size());
+						haveIndices = true;
+					}
 				}
-				else if (!getBitmapDataChecked(dataToProcess, palette, std::span{*newFrame}))
+				else if (!getBitmapDataChecked(dataToProcess, workingPalette,
+					std::span{*newFrame}, std::span{*newIndices},
+					mergePending
+						? std::span<const uint8_t>{preservedEntries}
+						: std::span<const uint8_t>{}))
 				{
 					throw std::runtime_error("Invalid VDX bitmap payload in " + vdxFile.filename);
+				}
+				else
+				{
+					haveIndices = true;
+					palette = workingPalette;
+				}
+				if (mergePending)
+				{
+					mergePending = false;
+					vdxFile.paletteMergeConsumed = true;
 				}
 			}
 			else
@@ -465,18 +561,41 @@ void parseVDXChunks(
 					if (prevFrame.size() != newFrame->size())
 						throw std::runtime_error("VDX delta frame dimensions changed in " + vdxFile.filename);
 					std::memcpy(newFrame->data(), prevFrame.data(), newFrame->size());
+					if (prevIndices.size() == newIndices->size())
+					{
+						std::memcpy(newIndices->data(), prevIndices.data(), newIndices->size());
+						haveIndices = true;
+					}
 				}
-				else if (background.size() == newFrame->size())
+				else if (context.background.size() == newFrame->size())
 				{
-					std::memcpy(newFrame->data(), background.data(), newFrame->size());
+					std::memcpy(newFrame->data(), context.background.data(), newFrame->size());
+					if (context.backgroundIndices.size() == newIndices->size())
+					{
+						std::memcpy(newIndices->data(), context.backgroundIndices.data(), newIndices->size());
+						haveIndices = true;
+					}
 				}
 				std::span<uint8_t> mutableFrame{*newFrame};
-				if (!getDeltaBitmapDataChecked(dataToProcess, palette, mutableFrame, vdxFile.width))
+				const bool appliesPalette = dataToProcess.size() >= 2 &&
+					readLittleEndian16(dataToProcess) != 0 && !transparentOverlay;
+				if (!getDeltaBitmapDataChecked(dataToProcess, workingPalette, mutableFrame,
+					vdxFile.width,
+					haveIndices ? std::span<uint8_t>{*newIndices} : std::span<uint8_t>{},
+					transparentOverlay ? context.foregroundIndices : std::span<const uint8_t>{}))
 					throw std::runtime_error("Invalid VDX delta payload in " + vdxFile.filename);
+				if (appliesPalette)
+					palette = workingPalette;
 			}
+			if (haveIndices)
+				materializeIndexedFrame(*newIndices, palette, *newFrame);
+			else
+				newIndices->clear();
 
 			// Add frame: Move the new frame
 			vdxFile.frameData.push_back(std::move(newFrame));
+			vdxFile.frameIndices.push_back(std::move(newIndices));
+			vdxFile.framePalettes.push_back(palette);
 			break;
 		}
 		case 0x80:
@@ -488,10 +607,13 @@ void parseVDXChunks(
 			if (!vdxFile.frameData.empty())
 			{
 				vdxFile.frameData.push_back(vdxFile.frameData.back());
+				vdxFile.frameIndices.push_back(vdxFile.frameIndices.back());
+				vdxFile.framePalettes.push_back(vdxFile.framePalettes.back());
 			}
 			break;
 		}
 	}
+	vdxFile.palette = palette;
 
 	// Clear chunks after processing (free memory)
 	vdxFile.chunks.clear();
@@ -503,7 +625,7 @@ void parseVDXChunks(
 
 void parseVDXChunks(VDXFile &vdxFile)
 {
-	parseVDXChunks(vdxFile, {}, 0);
+	parseVDXChunks(vdxFile, std::span<const uint8_t>{}, 0);
 }
 
 double vdxPlaybackRate(const VDXFile &vdxFile)

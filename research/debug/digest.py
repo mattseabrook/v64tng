@@ -361,6 +361,7 @@ def instruction_from_event(event, legacy_confident):
             "script_base": event.get("script_base"),
             "host_ms": event.get("host_ms", 0),
             "state": event.get("state", {}),
+            "video_name": event.get("video_name"),
             "trusted": True,
         }
     if "_legacy_pc" in event and "_legacy_bytes" in event:
@@ -396,6 +397,8 @@ def decode_instruction(item):
         }
     raw = buf[:end].hex()
     text = decode(buf, 0) if item["trusted"] else raw
+    if opcode in (0x26, 0x27) and isinstance(item.get("video_name"), str):
+        text += f' => "{item["video_name"]}"'
     return {
         **item, "text": text, "length": end, "raw": raw, "opcode": opcode, "anomaly": None,
     }
@@ -549,10 +552,28 @@ def append_save_section(lines, events):
     lines.append("Save-system evidence:")
     for probe, count in boundaries.items():
         lines.append(f"  {probe}: x{count}")
-    # The menu polls candidate slots every VM pass.  Preserve ordering while
-    # collapsing only adjacent identical open attempts, so a successful
-    # write/read later in the scene can never be hidden by the old 100-line cap.
+    # The menu can perform hundreds of identical open/read/close polls in one
+    # scene.  Summarize identical evidence records by their full semantic
+    # identity (including the captured-payload hash for reads/writes).  A later
+    # write or a read of changed contents therefore remains a separate line,
+    # while polling noise cannot bury it.
+    def payload_summary(event):
+        payload = event.get("data")
+        raw = b""
+        digest = "unavailable"
+        if isinstance(payload, str):
+            try:
+                raw = bytes.fromhex(payload)
+                actual = event.get("actual")
+                if isinstance(actual, int) and 0 <= actual <= len(raw):
+                    raw = raw[:actual]
+                digest = hashlib.sha256(raw).hexdigest()
+            except ValueError:
+                digest = "malformed-hex"
+        return raw, digest
+
     rendered_events = []
+    identity_to_index = {}
     for event in file_events:
         probe = str(event.get("probe"))
         if probe == "save.file_open":
@@ -563,42 +584,45 @@ def append_save_section(lines, events):
                 event.get("creation_disposition"),
                 event.get("success"),
             )
-            if rendered_events and rendered_events[-1][0] == identity:
-                rendered_events[-1] = (identity, rendered_events[-1][1], rendered_events[-1][2] + 1)
-                continue
+        elif probe in ("save.file_read", "save.file_write"):
+            _, digest = payload_summary(event)
+            identity = (
+                probe,
+                event.get("path"),
+                event.get("requested"),
+                event.get("actual"),
+                event.get("success"),
+                digest,
+            )
+        else:
+            identity = (probe, event.get("path"), event.get("success"))
+
+        existing = identity_to_index.get(identity)
+        if existing is None:
+            identity_to_index[identity] = len(rendered_events)
             rendered_events.append((identity, event, 1))
         else:
-            rendered_events.append((None, event, 1))
+            prior_identity, prior_event, repeats = rendered_events[existing]
+            rendered_events[existing] = (prior_identity, prior_event, repeats + 1)
 
     for _, event, repeats in rendered_events:
         probe = str(event.get("probe"))
         path = event.get("path", "?")
+        suffix = f" x{repeats}" if repeats > 1 else ""
         if probe == "save.file_open":
-            suffix = f" x{repeats}" if repeats > 1 else ""
             lines.append(
                 f"  open {path} access={event.get('access')} "
                 f"disposition={event.get('creation_disposition')} "
                 f"success={event.get('success')}{suffix}"
             )
         elif probe in ("save.file_read", "save.file_write"):
-            payload = event.get("data")
-            digest = "unavailable"
-            captured = 0
-            if isinstance(payload, str):
-                try:
-                    raw = bytes.fromhex(payload)
-                    actual = event.get("actual")
-                    if isinstance(actual, int) and 0 <= actual <= len(raw):
-                        raw = raw[:actual]
-                    captured = len(raw)
-                    digest = hashlib.sha256(raw).hexdigest()
-                except ValueError:
-                    digest = "malformed-hex"
+            raw, digest = payload_summary(event)
+            captured = len(raw)
             operation = "read" if probe.endswith("read") else "write"
             lines.append(
                 f"  {operation} {path} requested={event.get('requested')} "
                 f"actual={event.get('actual')} captured={captured} "
-                f"sha256={digest} success={event.get('success')}"
+                f"sha256={digest} success={event.get('success')}{suffix}"
             )
             if operation == "write" and captured in (0x400, 0x523):
                 native = "Win32 st7g.N" if captured == 0x400 else "DOS save.N"
@@ -613,9 +637,25 @@ def append_save_section(lines, events):
                     f"{used.hex(' ')}; GRV-plus-0x30-text={printable!r}"
                 )
         elif probe == "save.file_close":
-            lines.append(f"  close {path} success={event.get('success')}")
+            lines.append(f"  close {path} success={event.get('success')}{suffix}")
         elif probe == "save.file_delete":
-            lines.append(f"  delete {path} success={event.get('success')}")
+            lines.append(f"  delete {path} success={event.get('success')}{suffix}")
+    lines.append("")
+
+
+def append_ui_section(lines, events):
+    popups = [
+        event for event in events
+        if event.get("probe") == "ui.message_box.enter"
+    ]
+    if not popups:
+        return
+    lines.append("Application popup evidence:")
+    for event in popups:
+        lines.append(
+            f"  {event.get('api', '?')} title={event.get('title')!r} "
+            f"type={event.get('type')} text={event.get('text')!r}"
+        )
     lines.append("")
 
 
@@ -779,6 +819,7 @@ def main():
             f"probe health: {attached_count} attached, "
             f"{ready_failure_count} rejected, "
             f"input hooks={ready.get('input_hooks', [])}, "
+            f"UI hooks={ready.get('ui_hooks', [])}, "
             f"save hooks={ready.get('save_file_hooks', [])}"
         ),
         "",
@@ -836,6 +877,7 @@ def main():
         append_vdx_section(lines, scene_events)
         append_variable_section(lines, scene_events)
         append_save_section(lines, scene_events)
+        append_ui_section(lines, scene_events)
 
         inputs = Counter(
             event.get("message")

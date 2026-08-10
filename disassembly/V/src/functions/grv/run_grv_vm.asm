@@ -764,6 +764,8 @@ run_grv_vm:
         %error "LONG_03C14"
     %endif
     times 2 - ($ - %%insn_03c14) db 0
+    ; Opcode 39h GRID_SWAP. K.GRV+0565 uses this verified handler to exchange
+    ; two soup-can grid cells at v[019h + 10*row + column].
     %%insn_03c16:
     call 0x410f ; 03C16 E8F604
     %if ($ - %%insn_03c16) > 3

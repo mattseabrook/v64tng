@@ -1038,7 +1038,7 @@ void renderFrameVk()
 	if (frameIdx >= vdx->frameData.size())
 		frameIdx = vdx->frameData.size() - 1;
 
-	std::span<const uint8_t> pixels = *vdx->frameData[frameIdx];
+	std::span<const uint8_t> pixels = presentationPixels(vdx, frameIdx);
 
 	uint8_t *dst = static_cast<uint8_t *>(vkCtx.mappedStagingData);
 	size_t pitch = static_cast<size_t>(vkCtx.stagingRowPitch);

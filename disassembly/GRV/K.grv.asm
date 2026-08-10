@@ -1,7 +1,14 @@
 ; T7G/K.GRV
 ; size=1873 sha256=27bfa59eac1adfe06f1e3c809451ede9f2700d3772d20b2f1d3f8c4103b73d61
 ; instructions=318 input_loops=2
+; Runtime-verified by trace 20260809-223655: kitchen soup-can permutation
+; puzzle. v[0x019..0x039] is the 33-can row-major grid (10+10+10+3);
+; v[0x000..0x003] hold the first/second selected row/column. Dynamic VDX names
+; at 04F7..0559 animate the selected cans, and GRID_SWAP at 0565 commits the
+; exchange. The exact solved grid is tested at 0062; success plays
+; gen_e_13.vdx, stores decimal 49 in v[0x0F9], and returns 0 at 04DD.
 
+; SEMANTIC ENTRY: kitchen_soup_can_puzzle_entry
 0000  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 0004  16 07 01 B0                            LOADSTRING                    dst=v[0x107], values=[0]
 0008  96 92 30 B4                            LOADSTRING                    dst=v[0x092], values=[0, 4]
@@ -22,7 +29,9 @@
 0038  02 0E 4C                               PLAYSONG                      ref=0x4C0E (XMI[14]=gu17.xmi)
 003B  28 00 00                               RESERVED_28                   value=0x0000
 003E  22                                     COPY_BG_TO_FG
+; SEMANTIC BLOCK: initialize_soup_can_grid
 003F  96 19 79 79 79 63 62 79 79 79 79 79 79 79 79 72 72 70 70 70 6D 6C 6C 6C 68 67 74 74 74 73 73 73 73 73 F2 LOADSTRING                    dst=v[0x019], values=[73, 73, 73, 51, 50, 73, 73, 73, 73, 73, 73, 73, 73, 66, 66, 64, 64, 64, 61, 60, 60, 60, 56, 55, 68, 68, 68, 67, 67, 67, 67, 67, 66]
+; SEMANTIC BLOCK: check_soup_can_solved_order
 0062  9A 19 79 68 73 79 6C 79 6C 73 79 73 70 79 67 74 73 79 72 74 79 6C 79 72 70 73 74 70 79 72 63 79 6D 79 E2 93 00 STRCMP_NE_JMP                 start=v[0x019], values=[73, 56, 67, 73, 60, 73, 60, 67, 73, 67, 64, 73, 55, 68, 67, 73, 66, 68, 73, 60, 73, 66, 64, 67, 68, 64, 73, 66, 51, 73, 61, 73, 50], target=0x0093
 0087  46                                     RESOURCE_CONTEXT_SAVE
 0088  07                                     VIDEOFLAG7_ON
@@ -30,6 +39,7 @@
 008C  47                                     RESOURCE_CONTEXT_RESTORE
 008D  96 F9 E1                               LOADSTRING                    dst=v[0x0F9], values=[49]
 0090  15 D7 04                               JMP                           target=0x04D7
+; SEMANTIC BLOCK: soup_can_first_selection_input_loop
 0093  22                                     COPY_BG_TO_FG
 0094  36 03 01 FA AE 00                      CHAR_LESS_JMP                 start=v[0x103], values=[74], target=0x00AE
 009A  1A 07 01 B1 AE 00                      STRCMP_NE_JMP                 start=v[0x107], values=[1], target=0x00AE
@@ -82,6 +92,7 @@
 023D  0D 8B 00 22 01 AD 00 58 01 23 07 0A    HOTSPOT_RECT                  left=0x008B, top=0x0122, right=0x00AD, bottom=0x0158, target=0x0723, cursor=0x0A
 0249  0D 61 00 22 01 87 00 58 01 31 07 09    HOTSPOT_RECT                  left=0x0061, top=0x0122, right=0x0087, bottom=0x0158, target=0x0731, cursor=0x09
 0255  13                                     INPUTLOOPEND
+; SEMANTIC BLOCK: soup_can_second_selection_input_loop
 0256  96 02 7C 23 61 23 E2                   LOADSTRING                    dst=v[0x002], values=[grid[v[0x000],v[0x001]]]
 025D  0B                                     INPUTLOOPSTART
 025E  A3 02 7C 30 B0 71 02                   STRCMP_EQ_JMP                 start=v[0x002], values=[grid[0,0]], target=0x0271
@@ -152,6 +163,7 @@
 04C3  A3 02 7C 33 B2 D6 04                   STRCMP_EQ_JMP                 start=v[0x002], values=[grid[3,2]], target=0x04D6
 04CA  0D 61 00 22 01 87 00 58 01 38 07 0A    HOTSPOT_RECT                  left=0x0061, top=0x0122, right=0x0087, bottom=0x0158, target=0x0738, cursor=0x0A
 04D6  13                                     INPUTLOOPEND
+; SEMANTIC BLOCK: soup_can_success_exit
 04D7  1C 19 2C                               VIDEO_TRANSITION_REF          ref=0x2C19 (K[25]=shelf.vdx)
 04DA  18 3F 07                               CALL                          target=0x073F
 04DD  43 00                                  RETURNSCRIPT                  value=0x00
@@ -166,13 +178,16 @@
 04F0  05                                     FIRSTFRAME_NEXT_VIDEO
 04F1  09 19 2C                               VIDEOREF                      ref=0x2C19 (K[25]=shelf.vdx)
 04F4  15 3F 00                               JMP                           target=0x003F
+; SEMANTIC BLOCK: animate_first_selected_soup_can
 04F7  27 7A 23 61 23 62 00                   VIDEO_TRANSITION_NAME         name="z{v000}{v001}"
 04FE  26 7C 23 61 23 62 23 61 23 62 66 00    VIDEO_NAME                    name="{grid:v[0x000],v[0x001]}{v000}{v001}f"
 050A  A7 7A 7C 23 61 23 62 00                VIDEO_TRANSITION_NAME         name="z{grid:v[0x000],v[0x001]}"
 0512  15 56 02                               JMP                           target=0x0256
+; SEMANTIC BLOCK: animate_second_selected_soup_can
 0515  27 7A 23 63 23 64 00                   VIDEO_TRANSITION_NAME         name="z{v002}{v003}"
 051C  26 7C 23 63 23 64 23 63 23 64 66 00    VIDEO_NAME                    name="{grid:v[0x002],v[0x003]}{v002}{v003}f"
 0528  A7 7A 7C 23 63 23 64 00                VIDEO_TRANSITION_NAME         name="z{grid:v[0x002],v[0x003]}"
+; SEMANTIC BLOCK: animate_and_commit_soup_can_swap
 0530  27 79 7C 23 61 23 62 00                VIDEO_TRANSITION_NAME         name="y{grid:v[0x000],v[0x001]}"
 0538  07                                     VIDEOFLAG7_ON
 0539  26 7C 23 61 23 62 23 63 23 64 62 00    VIDEO_NAME                    name="{grid:v[0x000],v[0x001]}{v002}{v003}b"
@@ -181,6 +196,7 @@
 0559  26 7C 23 63 23 64 23 61 23 62 62 00    VIDEO_NAME                    name="{grid:v[0x002],v[0x003]}{v000}{v001}b"
 0565  39 23 63 23 E4 23 61 23 E2             GRID_SWAP                     row1=v[0x002], col1=v[0x003], row2=v[0x000], col2=v[0x001]
 056E  15 62 00                               JMP                           target=0x0062
+; SEMANTIC BLOCK: soup_can_hotspot_coordinate_targets
 0571  96 00 30 B0                            LOADSTRING                    dst=v[0x000], values=[0, 0]
 0575  15 F7 04                               JMP                           target=0x04F7
 0578  96 02 30 B0                            LOADSTRING                    dst=v[0x002], values=[0, 0]
@@ -313,6 +329,7 @@
 0735  15 F7 04                               JMP                           target=0x04F7
 0738  96 02 33 B2                            LOADSTRING                    dst=v[0x002], values=[3, 2]
 073C  15 15 05                               JMP                           target=0x0515
+; SEMANTIC SUBROUTINE: merge_shelf_transition_into_background
 073F  0A                                     VIDEOFLAG5_ON
 0740  07                                     VIDEOFLAG7_ON
 0741  46                                     RESOURCE_CONTEXT_SAVE

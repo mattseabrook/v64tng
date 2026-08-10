@@ -1,6 +1,9 @@
 ; Linear entry 03EB8 (1000:3eb8)
 ; Ghidra working symbol: FUN_1000_3eb8
 ; Verified GRV RETURNSCRIPT (43h): restores the parent context and returns a byte result.
+; It restores the same 180h-byte v[107]..v[286] parent-local window saved by
+; LOADSCRIPT.  The shared dining script independently returns its completion
+; code through v[0FA] before RETURNSCRIPT publishes its own byte in v[102].
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
 %macro emit_grv_return_from_child_script_part_00 0

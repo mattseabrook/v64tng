@@ -1,11 +1,12 @@
 ; Linear entry 05480 (1000:5480)
 ; Ghidra working symbol: FUN_1000_5480
-; Role not yet verified; boundary is provisional.
+; Verified GRV 3Ah PRINTSTRING handler. Decodes the VM sequence, adds 30h to
+; each character, converts '$' to NUL, and invokes the SPHINX.FNT renderer.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_05480_part_00 0
+%macro emit_decode_and_draw_grv_string_part_00 0
     %%fragment_start:
-func_05480:
+decode_and_draw_grv_string:
     %%insn_05480:
     mov es,word [bp-0x2aae] ; 05480 8E8652D5
     %if ($ - %%insn_05480) > 4
