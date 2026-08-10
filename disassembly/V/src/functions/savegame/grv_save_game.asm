@@ -1,6 +1,7 @@
 ; Linear entry 03F23 (1000:3f23)
 ; Ghidra working symbol: FUN_1000_3f23
-; Verified GRV SAVEGAME (2Fh): writes the 400h-byte variable bank to save.N.
+; Verified GRV SAVEGAME (2Fh): writes the 523h-byte DOS persistent-state block
+; beginning at the GRV variable base to save.N.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
 %macro emit_grv_save_game_part_00 0

@@ -88,6 +88,8 @@
 0164  13                                     INPUTLOOPEND
 0165  1F 07 01                               INC                           var=v[0x107]
 0168  15 59 00                               JMP                           target=0x0059
+; Runtime verified by v32tng trace 20260809-164423: the final x writes 240,
+; stages video flags 5 and 7, sets rate 15, and selects groovie.vdx.
 ; Cheat accepted: expose the hidden whole-house teleport map.
 016B  16 07 01 A0                            LOADSTRING                    dst=v[0x107], values=[240]
 016F  0A                                     VIDEOFLAG5_ON
@@ -156,6 +158,8 @@
 02A2  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
 02A6  08 35 4C                               SETBACKGROUNDSONG             ref=0x4C35 (XMI[53]=gu56.xmi)
 02A9  15 55 1C                               JMP                           target=0x1C55
+; Runtime verified quit path (v32tng trace 20260809-164423): ordered refs
+; INTRO[32], INTRO[38], INTRO[39], then YES -> INTRO[40], GAMWAV[163], end.
 02AC  0A                                     VIDEOFLAG5_ON
 02AD  09 20 24                               VIDEOREF                      ref=0x2420 (INTRO[32]=sphmen1o.vdx)
 02B0  0A                                     VIDEOFLAG5_ON
@@ -266,6 +270,9 @@
 03F8  31 00 00 E8 03                         MIDI_CONTROL                  value=0x0000, time=0x03E8
 03FD  04                                     PALFADEOUT
 03FE  19 01 00                               SLEEP                         ticks=0x0001
+; Runtime verified by v32tng trace 20260809-180432. PLAYCD 02 reached Miles
+; with a nonzero CD-device handle, but data-only media yielded track-2 bounds
+; 0..0 and no active track; execution continued normally.
 0401  4D 02                                  PLAYCD                        value=0x02
 0403  19 BC 02                               SLEEP                         ticks=0x02BC
 0406  03                                     FADEIN_NEXT_VIDEO
@@ -277,12 +284,17 @@
 0412  19 EE 02                               SLEEP                         ticks=0x02EE
 0415  04                                     PALFADEOUT
 0416  03                                     FADEIN_NEXT_VIDEO
+; Standalone house/lightning/title/credits resource. The trace captured 75
+; delta frames and no embedded VDX audio; with no active Red Book track its
+; native pacing selected 40 ms rather than the 100 ms Red Book interval.
 0417  09 02 1C                               VIDEOREF                      ref=0x1C02 (HDISK[2]=title.vdx)
 041A  19 5E 01                               SLEEP                         ticks=0x015E
 041D  4D 62                                  PLAYCD                        value=0x62
 041F  31 00 00 00 00                         MIDI_CONTROL                  value=0x0000, time=0x0000
 0424  02 42 4C                               PLAYSONG                      ref=0x4C42 (XMI[66]=gu74.xmi)
 0427  31 63 00 2C 01                         MIDI_CONTROL                  value=0x0063, time=0x012C
+; First book resources are separate from title.vdx. o1pa.vdx and o1tu.vdx
+; each carried 30 delta frames and no embedded audio in the same trace.
 042C  09 02 24                               VIDEOREF                      ref=0x2402 (INTRO[2]=o1pa.vdx)
 042F  06                                     VIDEOFLAG6_ON
 0430  29                                     STOP_OR_WAIT_MIDI
@@ -541,6 +553,10 @@
 0789  0F D6 07                               HOTSPOT_RIGHT                 target=0x07D6
 078C  0D EE 00 55 00 39 01 7C 01 99 07 07    HOTSPOT_RECT                  left=0x00EE, top=0x0055, right=0x0139, bottom=0x017C, target=0x0799, cursor=0x07
 0798  13                                     INPUTLOOPEND
+; Runtime verified by trace 20260809-195435: clicking the grandfather clock
+; takes this hotspot.  It switches to gu40.xmi, plays the three clock-specific
+; layers f3_cmf/f3_clt/f3_cmb (the middle with video flag 5), restores gu16.xmi,
+; and returns to the same foyer input loop.
 0799  02 25 4C                               PLAYSONG                      ref=0x4C25 (XMI[37]=gu40.xmi)
 079C  09 11 14                               VIDEOREF                      ref=0x1411 (FH[17]=f3_cmf.vdx)
 079F  0A                                     VIDEOFLAG5_ON
@@ -1041,6 +1057,8 @@
 0E94  0E 89 0F                               HOTSPOT_LEFT                  target=0x0F89
 0E97  0F 9C 0F                               HOTSPOT_RIGHT                 target=0x0F9C
 0E9A  13                                     INPUTLOOPEND
+; Runtime verified by trace 20260809-195435: the upstairs hands-painting
+; easter-egg hotspot enables flag 5, switches to gu18.xmi, and plays h_morph.
 0E9B  0A                                     VIDEOFLAG5_ON
 0E9C  02 0F 4C                               PLAYSONG                      ref=0x4C0F (XMI[15]=gu18.xmi)
 0E9F  09 AB 14                               VIDEOREF                      ref=0x14AB (FH[171]=h_morph.vdx)
@@ -1770,7 +1788,9 @@
 17ED  0D FB 00 24 01 8E 01 3D 01 55 1C 08    HOTSPOT_RECT                  left=0x00FB, top=0x0124, right=0x018E, bottom=0x013D, target=0x1C55, cursor=0x08
 17F9  0D F4 00 40 01 95 01 5D 01 15 00 08    HOTSPOT_RECT                  left=0x00F4, top=0x0140, right=0x0195, bottom=0x015D, target=0x0015, cursor=0x08
 1805  0D D5 00 61 01 AA 01 76 01 7B 1D 08    HOTSPOT_RECT                  left=0x00D5, top=0x0161, right=0x01AA, bottom=0x0176, target=0x1D7B, cursor=0x08
-; v[0x107] == 240 enables four hidden menu hotspots for the house teleport map.
+; Runtime verified by v32tng trace 20260809-164423: v[0x107] == 240 executes
+; all four hidden menu hotspot opcodes. They draw no ordinary menu entries and
+; all enter this whole-house teleport map at 0x1AA0.
 1811  1A 07 01 A0 47 18                      STRCMP_NE_JMP                 start=v[0x107], values=[240], target=0x1847
 1817  0D 64 00 9B 00 B8 00 CC 00 A0 1A 07    HOTSPOT_RECT                  left=0x0064, top=0x009B, right=0x00B8, bottom=0x00CC, target=0x1AA0, cursor=0x07
 1823  0D C2 01 9D 00 1E 02 C9 00 A0 1A 07    HOTSPOT_RECT                  left=0x01C2, top=0x009D, right=0x021E, bottom=0x00C9, target=0x1AA0, cursor=0x07
@@ -2135,6 +2155,8 @@
 1DB8  09 28 24                               VIDEOREF                      ref=0x2428 (INTRO[40]=sphprm2o.vdx)
 1DBB  15 CC 17                               JMP                           target=0x17CC
 1DBE  0A                                     VIDEOFLAG5_ON
+; Save-menu path.  Ten HOTSPOT_SAVE_SLOT records store the chosen slot in
+; v[019].  Trace 20260809-195435 chose slot 1 and later wrote st7g.1.
 1DBF  09 22 24                               VIDEOREF                      ref=0x2422 (INTRO[34]=sphmen2o.vdx)
 1DC2  0A                                     VIDEOFLAG5_ON
 1DC3  09 26 24                               VIDEOREF                      ref=0x2426 (INTRO[38]=sphprm1o.vdx)
@@ -2299,10 +2321,16 @@
 213F  15 48 21                               JMP                           target=0x2148
 2142  96 18 FA                               LOADSTRING                    dst=v[0x018], values=[74]
 2145  15 48 21                               JMP                           target=0x2148
+; Name-entry encoding is the GRV display alphabet, not ASCII: key 'a' loads
+; 49, 'b' loads 50, and so on into v[018], then this indirect store appends it
+; at v[v[017]-49].  The captured name ABC therefore appears on disk as
+; 31 32 33 followed by the untouched F4 fill bytes.
 2148  B3 17 23 F9                            LOADSTRING_INDIRECT           dst=v[0x017], values=[v[0x018]]
 214C  9F 17                                  INC                           var=v[0x017]
 214E  A3 17 EE 56 21                         STRCMP_EQ_JMP                 start=v[0x017], values=[62], target=0x2156
 2153  15 B6 1E                               JMP                           target=0x1EB6
+; Runtime verified at 580.800 s in trace 20260809-195435: v[019]=1 selects
+; st7g.1; v32tng creates/truncates it and writes the 400h-byte bank exactly.
 2156  2F 19 00                               SAVEGAME                      var=v[0x019]
 2159  96 00 24 A4                            LOADSTRING                    dst=v[0x000], values=[244, 244]
 215D  3A 23 E1                               PRINTSTRING                   values=[v[0x000]]
@@ -3642,6 +3670,9 @@
 34A3  09 05 08                               VIDEOREF                      ref=0x0805 (CH[5]=ch3_0.vdx)
 34A6  18 7A 34                               CALL                          target=0x347A
 34A9  17 00                                  RET                           value=0x00
+; Runtime verified by trace 20260809-195435: first-floor hall event seen as
+; the magician chasing Tad.  It composites h1_8 with hb_ through the common
+; foreground/background helper pair at 3471/347A.
 34AB  05                                     FIRSTFRAME_NEXT_VIDEO
 34AC  09 5A 14                               VIDEOREF                      ref=0x145A (FH[90]=h1_8.vdx)
 34AF  18 71 34                               CALL                          target=0x3471
@@ -3661,6 +3692,9 @@
 34D3  09 5B 14                               VIDEOREF                      ref=0x145B (FH[91]=h2_.vdx)
 34D6  18 7A 34                               CALL                          target=0x347A
 34D9  17 00                                  RET                           value=0x00
+; Runtime verified by trace 20260809-195435: first ghost-girl summons event.
+; It composites the h1_2 hall plate with h_ghost1; the following sibling
+; routines use h_ghost2 through h_ghost4 for later variants.
 34DB  05                                     FIRSTFRAME_NEXT_VIDEO
 34DC  09 59 14                               VIDEOREF                      ref=0x1459 (FH[89]=h1_2.vdx)
 34DF  18 71 34                               CALL                          target=0x3471
@@ -4176,6 +4210,9 @@
 3A9D  96 8E 30 B0                            LOADSTRING                    dst=v[0x08E], values=[0, 0]
 3AA1  15 60 0D                               JMP                           target=0x0D60
 3AA4  9A 8E 30 B2 C0 3A                      STRCMP_NE_JMP                 start=v[0x08E], values=[0, 2], target=0x3AC0
+; Runtime verified by trace 20260809-195435: the foyer theatre-mask hotspot
+; enters here, plays f_1bb/f_1ba, calls the full f1_ replay sequence at 36BF,
+; then returns through f_1fa/f_1fb to the foyer loop.
 3AAA  09 22 14                               VIDEOREF                      ref=0x1422 (FH[34]=f_1bb.vdx)
 3AAD  09 21 14                               VIDEOREF                      ref=0x1421 (FH[33]=f_1ba.vdx)
 3AB0  18 BF 36                               CALL                          target=0x36BF

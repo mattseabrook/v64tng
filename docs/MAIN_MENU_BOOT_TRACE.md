@@ -36,6 +36,48 @@ The quit target `02AC` likewise applies three ordered bit-5 delta overlays:
 the visible YES/NO prompt while loop `02B8` supplies the matching bytecode
 rectangles.
 
+## Win32 runtime confirmation: 20260809-164423
+
+The hash-locked v32tng 1.02b1 capture in
+`research/20260809-164423` executed this path with 232,212 ordered events,
+zero malformed records, zero sequence gaps, and zero rejected probes. It
+runtime-confirms the following script semantics:
+
+- the no-save boot selected `INTRO[24]`, `INTRO[31]`, `INTRO[37]`, and
+  `GAMWAV[169]`, in that order, plus `XMI[57]`;
+- the exact 17 key actions in `Zaphod Beeblebrox` advanced `v[107h]` and the
+  final `x` wrote 240, staged video bits 5 and 7, set rate override 15, and
+  selected `INTRO[49]=groovie.vdx`;
+- value 240 caused all four otherwise skipped rectangles at `010A`–`0139` to
+  execute. They share target `1AA0`, whose first video is
+  `INTRO[0]=house.vdx`; no new text or ordinary menu row is drawn;
+- the normal quit path selected `INTRO[32]`, `[38]`, `[39]`, then the YES
+  branch selected `INTRO[40]` and `GAMWAV[163]` before `PALFADEOUT` and
+  `ENDSCRIPT`;
+- the only changed VM variables were the engine timer `v[103h]`, CD/data
+  result `v[106h]`, and Zaphod state `v[107h]`.
+
+This capture did not enter the hidden rectangles, load a save, save a game,
+or start a new game. Those paths remain separate evidence rounds.
+
+## Win32 Start New confirmation: 20260809-180432
+
+The successful data-only-ISO capture completed Start New and the intro with
+279,634 ordered events, zero malformed records, zero sequence gaps, and zero
+rejected probes. It proves that mounting the image made Miles return a nonzero
+CD-device handle even though track 2 had bounds `0..0` and no Red Book audio
+played. GETCD still returned archive set 1; it was not a disc-identity check.
+
+The early video speed is also native behavior: v32tng uses 100 ms VDX pacing
+steps when `_AIL_redbook_track` is nonzero and 40 ms steps when it is zero.
+`title.vdx`, `o1pa.vdx`, and `o1tu.vdx` contain no embedded audio, so all three
+used the fast fallback. `o3pa.vdx` is the first following resource with
+embedded VDX audio and normal sample-buffer pacing. `title.vdx` is a standalone
+house/lightning/title/credits file; the first book sequence begins afterward
+in the separate `o1pa.vdx` and `o1tu.vdx` files. Exact calls, times, and chunk
+counts are recorded in
+[`../research/20260809-180432/ANALYSIS.md`](../research/20260809-180432/ANALYSIS.md).
+
 ## Cursor style mapping
 
 Hotspot cursor operands are retail *style* numbers, not ROB.GJD image indices.

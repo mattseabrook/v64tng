@@ -365,7 +365,7 @@ setup_window_and_runtime:
     %endif
     times 7 - ($ - %%insn_00409928) db 0
     %%insn_0040992f:
-    mov dword [ebp-0x30],0x408f30 ; 0040992F C745D0308F4000
+    mov dword [ebp-0x30],v32_window_procedure ; 0040992F C745D0308F4000
     %if ($ - %%insn_0040992f) > 7
         %error "LONG_0040992F"
     %endif
@@ -846,7 +846,7 @@ setup_window_and_runtime:
     %endif
     times 6 - ($ - %%insn_00409a75) db 0
     %%insn_00409a7b:
-    call 0x407302 ; 00409A7B E882D8FFFF
+    call initialize_miles_audio_system ; 00409A7B E882D8FFFF
     %if ($ - %%insn_00409a7b) > 5
         %error "LONG_00409A7B"
     %endif

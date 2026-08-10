@@ -5,6 +5,7 @@
 ; LOADSTRING_INDIRECT (33h) dereferences pointerVar and subtracts 31h before decoding into the destination.
 ; VIDEOREF is synchronous: 03h/05h/06h/07h/0Ah stage bits 9/8/6/7/5, 09h resolves and plays one VDX, then transient flags clear.
 ; SCRIPT.GRV uses bit 5 to discard an overlay still and composite its deltas over the held background; an 80h sound chunk remains inside that same blocking playback.
+; Shared SCRIPT.GRV PCs/operands for boot, Zaphod, and quit are runtime-confirmed by Win32 trace 20260809-164423; this is script-level correspondence, not a DOS runtime capture.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
 %macro emit_run_grv_vm_part_00 0
@@ -1323,7 +1324,7 @@ run_grv_vm:
     %endif
     times 2 - ($ - %%insn_03cfe) db 0
     %%insn_03d00:
-    call 0x3f23 ; 03D00 E82002
+    call grv_save_game ; 03D00 E82002
     %if ($ - %%insn_03d00) > 3
         %error "LONG_03D00"
     %endif
@@ -1347,7 +1348,7 @@ run_grv_vm:
     %endif
     times 2 - ($ - %%insn_03d08) db 0
     %%insn_03d0a:
-    call 0x3fc4 ; 03D0A E8B702
+    call grv_load_game ; 03D0A E8B702
     %if ($ - %%insn_03d0a) > 3
         %error "LONG_03D0A"
     %endif

@@ -481,6 +481,14 @@ std::filesystem::path GrvRuntime::savePath(uint8_t slot) const
 	return assetRoot_ / filename;
 }
 
+size_t GrvRuntime::savePayloadSize() const
+{
+	// Static DOS evidence: both INT 21h read/write paths use CX=0523h.
+	// Runtime Win32 evidence (trace 20260809-195435): WriteFile requested and
+	// completed exactly 0400h bytes for st7g.1.
+	return saveConvention_ == GrvSaveConvention::Dos ? 0x523 : 0x400;
+}
+
 std::expected<void, std::string> GrvRuntime::checkValidSaves()
 {
 	uint8_t count = 0;
@@ -505,7 +513,8 @@ std::expected<void, std::string> GrvRuntime::loadGame(uint8_t slot)
 	std::ifstream file(savePath(slot), std::ios::binary);
 	if (!file)
 		return std::unexpected("Cannot open " + savePath(slot).string());
-	if (!file.read(reinterpret_cast<char *>(variables_.data()), variables_.size()))
+	if (!file.read(reinterpret_cast<char *>(variables_.data()),
+		static_cast<std::streamsize>(savePayloadSize())))
 		return std::unexpected("Truncated GRV save " + savePath(slot).string());
 	return {};
 }
@@ -517,7 +526,8 @@ std::expected<void, std::string> GrvRuntime::saveGame(uint8_t slot) const
 	std::ofstream file(savePath(slot), std::ios::binary | std::ios::trunc);
 	if (!file)
 		return std::unexpected("Cannot create " + savePath(slot).string());
-	file.write(reinterpret_cast<const char *>(variables_.data()), variables_.size());
+	file.write(reinterpret_cast<const char *>(variables_.data()),
+		static_cast<std::streamsize>(savePayloadSize()));
 	if (!file)
 		return std::unexpected("Cannot write " + savePath(slot).string());
 	return {};
@@ -663,6 +673,11 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 			break;
 		case 0x03:
 			videoFlags_ |= 1u << 9;
+			break;
+		case 0x04:
+			// Palette interpolation belongs to the native renderer. Consume the
+			// presentation opcode here so execution reaches a following VIDEOREF
+			// or ENDSCRIPT; it has no mutable GRV-bank effect.
 			break;
 		case 0x05:
 			videoFlags_ |= 1u << 8;

@@ -402,7 +402,7 @@ native implementation and the two original-player disassemblies.
 | Input | Local declaration order, persistent edge regions, cursor 5 fallback, and variable `0x91` high-bit behavior | Preserved and checked against the original interpreters |
 | VDX | `00h`, `20h`, `25h`, and `80h` chunk roles, palette/tile grammar, persistent foreground/background model | Original disassemblies are authoritative |
 | Compression | LSB-first flags, zero token terminator, parameterized distance/length split, overlap copying | ScummVM's parameter-byte compression heuristic was explicitly rejected; original coding markers `67h`/`77h` select raw/compressed payloads |
-| Resources and saves | Packed RL/GJD references, name lookup, ten slots, and a `0x400`-byte native variable bank | DOS `save.N` and Win32 `st7g.N` remain separate native formats; ScummVM wrapper metadata is not treated as an original format |
+| Resources and saves | Packed RL/GJD references, name lookup, ten slots, and native persistent-state blocks | DOS `save.N` is `0x523` bytes; Win32 `st7g.N` is `0x400` bytes; ScummVM wrapper metadata is not treated as an original format |
 | Cursors and music | ROB offsets/style mapping, cursor compression/palettes, XMI background state, and delay semantics | Format facts are preserved in this README and native code; host-framework abstractions were not imported |
 | Puzzle logic | Opcode `42h` consumes one operation byte, operates on `variables+0x19`, and returns move coordinates in variables `0`–`3` | Third-party GPL puzzle-AI source was not transplanted; remaining internals must be recovered from the original executable disassemblies |
 
@@ -552,7 +552,7 @@ The reconstructed T7G virtual machine contains the following state:
 | ----- | --------------- | ------- |
 | Code | Up to 64 KiB | Current raw GRV file |
 | Program counter | `uint16_t` | Byte offset of the next instruction |
-| Variables | `uint8_t variables[0x400]` | Persistent game and puzzle state |
+| Variables/persistent state | At least `uint8_t variables[0x523]` | DOS persists `0x523` bytes from the bank base; Win32 persists the first `0x400` |
 | Call stack | 32 × `uint16_t` | Return offsets for opcode `0x18`/`0x17` |
 | Stack depth | `uint8_t`/word | Current call-stack entry count |
 | Video flags | At least 16 bits | Staged behavior for the next VDX operation |
@@ -1017,8 +1017,8 @@ include the opcode byte; `V` sizes are shown as short/long where useful.
 | `2B` | `NOP_2B` | — | 1 | No operation/default dispatch. |
 | `2C` | `SET_HOTSPOT_TOP` | `A16 target, U8 cursor` | 4 | Installs a persistent top-bar action and cursor used by `INPUTLOOPEND`. |
 | `2D` | `SET_HOTSPOT_BOTTOM` | `A16 target, U8 cursor` | 4 | Installs a persistent bottom-bar action and cursor. |
-| `2E` | `LOADGAME` | `V slotVar` | 2/3 | Loads the 0x400-byte game state from the slot stored in `variables[slotVar]`. |
-| `2F` | `SAVEGAME` | `V slotVar` | 2/3 | Saves the 0x400-byte variable state to the selected slot. The first 15 variables encode the T7G save description. |
+| `2E` | `LOADGAME` | `V slotVar` | 2/3 | Loads the native state block from the selected slot: DOS `save.N` is `0x523` bytes and Win32 `st7g.N` is `0x400`. |
+| `2F` | `SAVEGAME` | `V slotVar` | 2/3 | Saves that native-size state block. The first 15 variables encode the T7G save description. |
 | `30` | `HOTSPOT_BOTTOM_4` | `A16 target` | 3 | Declares the bottom 80-pixel region with cursor style 4. |
 | `31` | `MIDI_CONTROL` | `U16 value, U16 time` | 5 | If `value==0`, Windows stops MIDI; otherwise applies Miles sequence volume/ramp parameters. |
 | `32` | `JNE_INDIRECT` | `V selector, U16 rhs, A16 target` | 6/7 | Jumps if `variables[variables[selector]-0x31] != variables[rhs]`. |
@@ -1095,8 +1095,10 @@ large ranges. These locations have stable engine-level roles:
 | `0x107` | Main-script `Zaphod Beeblebrox` input state; value `240` exposes the hidden whole-house teleport map |
 | `0x107`–`0x286` | Subscript-local region saved on `LOADSCRIPT` and restored on `RETURNSCRIPT` |
 
-The save-game payload is the raw 0x400-byte variable bank. It is therefore
-both VM memory and the original persistent game-state format.
+The save-game payload begins at the raw GRV variable-bank base. The two native
+players persist different extents: DOS `V.EXE` reads and writes `0x523` bytes,
+while `v32tng.exe` reads and writes `0x400` bytes. The Win32 size is confirmed
+by trace `20260809-195435`; the DOS size is explicit in both `INT 21h` paths.
 
 #### `Zaphod Beeblebrox` hidden house map
 
@@ -1155,7 +1157,8 @@ struct GrvVmState
     std::span<const std::uint8_t> code;
     std::uint16_t pc{};
 
-    std::array<std::uint8_t, 0x400> variables{};
+    // Large enough for the DOS persistent block; Win32 saves only 0x400.
+    std::array<std::uint8_t, 0x523> variables{};
     std::array<std::uint16_t, 0x20> callStack{};
     std::uint8_t stackDepth{};
     std::uint8_t stackCheckpoint{};
@@ -1186,7 +1189,7 @@ surface rather than silently advancing over unknown behavior:
 | Byte operations | `RANDOM`, `XOR_OBFUSCATE`, `SWAP`, `INC`, `DEC`, `MOV`, `ADD`, `SUB`, `MOD`, and `GRID_SWAP`, with byte wraparound |
 | Branches | Direct string equality/inequality, indirect grid comparison, indirect `JNE`, and greater/less sequence branches |
 | Media selection | Reference and interpolated-name video operations, including `1Ch`/`27h` transition, transparency, and flag-7 clearing rules |
-| Persistence | Raw `0x400`-byte load/save plus an explicit DOS `save.N` or Windows `st7g.N` convention rooted only at the configured asset directory |
+| Persistence | Native-size load/save (`0x523`-byte DOS `save.N`, `0x400`-byte Windows `st7g.N`) rooted only at the configured asset directory |
 | Input | Local hotspot declaration order precedes the four persistent edge declarations; the no-hit cursor candidate is style 5 and `v[0x91] == 1` preserves the `0x8000` style bit |
 
 Rendering operations that require a foreground/background surface transaction
@@ -1196,26 +1199,21 @@ with a diagnostic. On Windows the diagnostic is also displayed in a message
 box containing the normalized opcode, raw opcode byte, script filename, and
 PC. Every other unimplemented opcode uses the same failure path; there is no
 default silent no-op. Operations proven externally inert for this native
-target remain explicit cases.
+target remain explicit cases. `PALFADEOUT` (`04h`) is consumed as a known
+renderer-owned presentation command so it cannot prevent a following
+`VIDEOREF` or `ENDSCRIPT`; timed RGB interpolation is still a renderer gap.
 
 The known non-inert gaps are intentionally visible:
 
 | Opcode(s) | Missing native subsystem |
 |---|---|
-| `04h` | Timed palette fade-out over the current RGB presentation |
+| `04h` | Timed palette fade-out over the current RGB presentation (VM flow is implemented; interpolation is not) |
 | `22h`, `37h` | Ordered foreground/background surface-copy commands |
 | `3Ah` | Original-font top-bar text rendering |
 | `40h`, `49h` | Video-origin and one-shot palette-merge presentation state |
 | `42h` | Hard-coded microscope/cell puzzle solver |
 | `4Dh`, `4Eh` | CD-audio selection and background-music delay |
 | `4Fh`–`59h` except hotspot `53h` | Later/reserved Windows and Groovie-v2 extension state |
-
-The focused regression program in
-[`tests/grv_runtime_tests.cpp`](tests/grv_runtime_tests.cpp) covers return
-values, indirect destinations, two-dimensional references, transition flags,
-hotspot priority, save dialect isolation, child-script restoration, explicit
-unimplemented-opcode reporting, and the canonical retail `SCRIPT.GRV` boot
-path.
 
 A safe reader rejects any operand crossing EOF, malformed encoded values,
 unterminated strings, call-stack overflow/underflow, indirect-index underflow,

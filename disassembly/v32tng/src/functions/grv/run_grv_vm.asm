@@ -5,6 +5,9 @@
 ; LOADSTRING_INDIRECT (33h) dereferences pointerVar and subtracts 31h before decoding into the destination.
 ; VIDEOREF is synchronous: 03h/05h/06h/07h/0Ah stage bits 9/8/6/7/5, 09h resolves and plays one VDX, then transient flags clear.
 ; SCRIPT.GRV uses bit 5 to discard an overlay still and composite its deltas over the held background; interleaved sound remains part of that playback.
+; Trace 20260809-164423 runtime-verified the no-save boot, exact Zaphod state machine/rate-15 groovie.vdx response, hidden-map hotspot installation, and normal YES-to-quit path.
+; Trace 20260809-170739 runtime-verified GETCD=1, the Start-New PLAYCD 02 path, synchronous vielogo.vdx prelude, and re-executed Red Book request.
+; Trace 20260809-180432 runtime-verified a nonzero data-disc device handle with zero track-2 bounds, continued execution, and the complete intro resource sequence.
 ; Generated losslessly; preserve byte identity after edits.
 
 %macro emit_run_grv_vm_part_00 0
@@ -307,7 +310,7 @@ run_grv_vm:
     %endif
     times 1 - ($ - %%insn_004022af) db 0
     %%insn_004022b0:
-    call 0x401cdd ; 004022B0 E828FAFFFF
+    call play_optional_numbered_credit_video ; 004022B0 E828FAFFFF
     %if ($ - %%insn_004022b0) > 5
         %error "LONG_004022B0"
     %endif
@@ -928,7 +931,7 @@ grv_opcode_dispatch:
     %endif
     times 2 - ($ - %%insn_004024d0) db 0
     %%insn_004024d2:
-    call 0x401c99 ; 004024D2 E8C2F7FFFF
+    call play_optional_trilogo_video ; 004024D2 E8C2F7FFFF
     %if ($ - %%insn_004024d2) > 5
         %error "LONG_004024D2"
     %endif
@@ -5738,7 +5741,7 @@ grv_opcode_dispatch:
     %endif
     times 5 - ($ - %%insn_004033d8) db 0
     %%insn_004033dd:
-    call 0x40712c ; 004033DD E84A3D0000
+    call end_active_midi_sequence ; 004033DD E84A3D0000
     %if ($ - %%insn_004033dd) > 5
         %error "LONG_004033DD"
     %endif
@@ -6013,6 +6016,9 @@ grv_opcode_dispatch:
         %error "LONG_004034EA"
     %endif
     times 5 - ($ - %%insn_004034ea) db 0
+; Opcode 2Eh: decode the slot-variable operand, fetch its byte value from the
+; GRV bank, and load that st7g.N file through grv_load_game.
+grv_opcode_load_game:
     %%insn_004034ef:
     mov dx,[ebp-0x124] ; 004034EF 668B95DCFEFFFF
     %if ($ - %%insn_004034ef) > 7
@@ -6075,7 +6081,7 @@ grv_opcode_dispatch:
     %endif
     times 1 - ($ - %%insn_00403516) db 0
     %%insn_00403517:
-    call 0x4020e7 ; 00403517 E8CBEBFFFF
+    call grv_save_game ; 00403517 E8CBEBFFFF
     %if ($ - %%insn_00403517) > 5
         %error "LONG_00403517"
     %endif
@@ -6092,6 +6098,10 @@ grv_opcode_dispatch:
         %error "LONG_0040351F"
     %endif
     times 5 - ($ - %%insn_0040351f) db 0
+; Opcode 2Fh: decode the slot-variable operand, fetch its byte value from the
+; GRV bank, and write that st7g.N file through grv_save_game.  Trace
+; 20260809-195435 reached this entry from SCRIPT.GRV PC 2156 with v[019]=1.
+grv_opcode_save_game:
     %%insn_00403524:
     mov ax,[ebp-0x124] ; 00403524 668B85DCFEFFFF
     %if ($ - %%insn_00403524) > 7
@@ -6154,7 +6164,7 @@ grv_opcode_dispatch:
     %endif
     times 1 - ($ - %%insn_0040354c) db 0
     %%insn_0040354d:
-    call 0x402067 ; 0040354D E815EBFFFF
+    call grv_load_game ; 0040354D E815EBFFFF
     %if ($ - %%insn_0040354d) > 5
         %error "LONG_0040354D"
     %endif
@@ -6262,7 +6272,7 @@ grv_opcode_dispatch:
     %endif
     times 2 - ($ - %%insn_0040358a) db 0
     %%insn_0040358c:
-    call 0x40712c ; 0040358C E89B3B0000
+    call end_active_midi_sequence ; 0040358C E89B3B0000
     %if ($ - %%insn_0040358c) > 5
         %error "LONG_0040358C"
     %endif
@@ -9938,7 +9948,7 @@ grv_check_valid_saves:
     %endif
     times 5 - ($ - %%insn_004040c0) db 0
     %%insn_004040c5:
-    call 0x402172 ; 004040C5 E8A8E0FFFF
+    call detect_t7g_archive_set ; 004040C5 E8A8E0FFFF | GRV GETCD -> v[106]
     %if ($ - %%insn_004040c5) > 5
         %error "LONG_004040C5"
     %endif
@@ -10040,7 +10050,7 @@ grv_check_valid_saves:
     %endif
     times 2 - ($ - %%insn_0040410f) db 0
     %%insn_00404111:
-    call 0x401c55 ; 00404111 E83FDBFFFF
+    call play_optional_vielogo_video ; 00404111 E83FDBFFFF | PLAYCD 02 one-shot loose-video prelude
     %if ($ - %%insn_00404111) > 5
         %error "LONG_00404111"
     %endif
@@ -10136,7 +10146,7 @@ grv_check_valid_saves:
     %endif
     times 9 - ($ - %%insn_0040416c) db 0
     %%insn_00404175:
-    call 0x40712c ; 00404175 E8B22F0000
+    call end_active_midi_sequence ; 00404175 E8B22F0000
     %if ($ - %%insn_00404175) > 5
         %error "LONG_00404175"
     %endif
@@ -10154,7 +10164,7 @@ grv_check_valid_saves:
     %endif
     times 1 - ($ - %%insn_0040417d) db 0
     %%insn_0040417e:
-    call 0x4071f2 ; 0040417E E86F300000
+    call play_redbook_selection ; 0040417E E86F300000
     %if ($ - %%insn_0040417e) > 5
         %error "LONG_0040417E"
     %endif

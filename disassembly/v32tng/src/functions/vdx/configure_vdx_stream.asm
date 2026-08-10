@@ -189,13 +189,13 @@ configure_vdx_stream:
     %endif
     times 7 - ($ - %%insn_0040c237) db 0
     %%insn_0040c23e:
-    call 0x4071d4 ; 0040C23E E891AFFFFF
+    call get_active_redbook_track ; 0040C23E E891AFFFFF
     %if ($ - %%insn_0040c23e) > 5
         %error "LONG_0040C23E"
     %endif
     times 5 - ($ - %%insn_0040c23e) db 0
     %%insn_0040c243:
-    mov [0x420e4c],ax ; 0040C243 66A34C0E4200
+    mov [v32_vdx_redbook_track_snapshot],ax ; 0040C243 66A34C0E4200
     %if ($ - %%insn_0040c243) > 6
         %error "LONG_0040C243"
     %endif

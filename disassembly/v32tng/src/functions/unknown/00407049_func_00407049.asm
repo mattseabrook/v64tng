@@ -14,7 +14,7 @@ func_00407049:
     times 1 - ($ - %%insn_00407049) db 0
     db 0x8B, 0xEC ; 0040704A 8BEC | mov ebp,esp | encoding preserved
     %%insn_0040704c:
-    call 0x4071d4 ; 0040704C E883010000
+    call get_active_redbook_track ; 0040704C E883010000
     %if ($ - %%insn_0040704c) > 5
         %error "LONG_0040704C"
     %endif
@@ -62,7 +62,7 @@ func_00407049:
     %endif
     times 2 - ($ - %%insn_00407066) db 0
     %%insn_00407068:
-    call 0x40712c ; 00407068 E8BF000000
+    call end_active_midi_sequence ; 00407068 E8BF000000
     %if ($ - %%insn_00407068) > 5
         %error "LONG_00407068"
     %endif

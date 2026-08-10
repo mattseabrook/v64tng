@@ -309,7 +309,7 @@ select_grv_video_resource:
     %endif
     times 1 - ($ - %%insn_00401e01) db 0
     %%insn_00401e02:
-    call 0x401bb3 ; 00401E02 E8ACFDFFFF
+    call open_first_drive_letter_path ; 00401E02 E8ACFDFFFF
     %if ($ - %%insn_00401e02) > 5
         %error "LONG_00401E02"
     %endif

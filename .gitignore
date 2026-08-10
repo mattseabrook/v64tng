@@ -10,6 +10,8 @@ build.log
 # Ignore the program
 v64tng.exe
 config.json
+research/2026*
+
 
 # Ignore 7th Guest commercial assets
 /T7G/

@@ -73,7 +73,7 @@ bits 16
 %include "src/functions/savegame/grv_check_valid_saves.asm"
 %include "src/functions/savegame/grv_save_game.asm"
 %include "src/functions/unknown/03f77_func_03f77.asm"
-%include "src/functions/unknown/03fc4_func_03fc4.asm"
+%include "src/functions/savegame/grv_load_game.asm"
 %include "src/functions/unknown/04001_func_04001.asm"
 %include "src/functions/unknown/04004_func_04004.asm"
 %include "src/functions/unknown/0400a_func_0400a.asm"
@@ -706,7 +706,7 @@ load_image_start:
     ; 03F77..03FC3 function
     emit_func_03f77_part_00
     ; 03FC4..04000 function
-    emit_func_03fc4_part_00
+    emit_grv_load_game_part_00
     ; 04001..04003 function
     emit_func_04001_part_00
     ; 04004..04009 function

@@ -33,8 +33,8 @@ The project has complete mechanical source coverage:
 This is not yet complete semantic recovery. Ghidra's function ownership is
 provisional and does not reveal the original Visual C++ object-module layout.
 Some explicit data may later prove to be code, jump tables, inline constants,
-or alignment. Thirty entries currently have verified semantic roles; the
-other 306 retain neutral address-based names.
+or alignment. Forty-two entries currently have verified semantic roles; the
+other 294 retain neutral address-based names.
 
 Exact coverage and the complete function address map are maintained later in
 this README. This file is the public, monolithic research record for the
@@ -109,6 +109,7 @@ and is unrelated to the repository-root v64tng icon.
 | Named `src/data/*.asm` files | Address-free semantic names for extracted GRV globals, PE imports/resources/relocations, padding, and other verified ranges |
 | `resources/` | Verified PE resource inventory and reconstructed historical icon |
 | `tools/extract_icon.py` | Hash-checked PE resource parser and ICO reconstructor |
+| `tools/Enable-V32TngLegacyMedia.ps1` | Reproduce GETCD and separately report an open CD-device proxy versus actual Red Book track 2 |
 
 The semantic directories express verified subsystem ownership. They are not
 claims about the original Visual C++ object modules.
@@ -145,11 +146,87 @@ Verified roles include:
 - VDX stream configuration and playback;
 - parameterized VDX LZSS decompression;
 - `20h` still-frame and `25h` palette/tile-delta decoding;
+- the GETCD archive-path search and PLAYCD/Miles Red Book audio chain;
+- Red Book-dependent VDX pacing and embedded-audio buffer servicing;
 - global player shutdown;
 - the PE entry point and recognized `strcmp` runtime.
 
 The cross-version `SCRIPT.GRV` startup/save/audio correlation is recorded in
-[`../GRV/MAIN_MENU_BOOT_TRACE.md`](../GRV/MAIN_MENU_BOOT_TRACE.md).
+[`../../docs/MAIN_MENU_BOOT_TRACE.md`](../../docs/MAIN_MENU_BOOT_TRACE.md).
+The verified theatre-mask replay, Win32 save transaction, foyer/hall easter
+eggs, and Escape-to-`WM_CLOSE` path are recorded in
+[`../../docs/FOYER_SAVE_EASTER_EGGS_TRACE.md`](../../docs/FOYER_SAVE_EASTER_EGGS_TRACE.md).
+
+## Verified legacy-media behavior
+
+Traces `20260809-170739` and `20260809-180432` plus the exact native call
+chain distinguish two independent mechanisms that were previously both
+described as a “CD check”:
+
+1. GRV `GETCD` (`SCRIPT.GRV` PC `0367h`) calls
+   `detect_t7g_archive_set` at `00402172`. It tries `C:\T7G\B.GJD` through
+   `Z:\T7G\B.GJD`; if none opens, it repeats the search for `AT.GJD`. It
+   returns `1`, `2`, or `FFh`. There is no volume-label, disc-signature, hash,
+   registry, or persistent one-time authorization check in this path. The
+   capture returned `1`, proving that this predicate already passed.
+2. Start New reaches GRV `PLAYCD 02` at PC `0401h`. Its first execution opens
+   and synchronously plays the optional loose `vielogo.vdx`, rewinds the GRV
+   PC by two bytes, and returns. Its second execution ends active MIDI and
+   calls the Miles Sound System Red Book API for selection/track 2.
+
+The successful data-only-ISO trace resolves the second mechanism. Startup's
+`_AIL_redbook_open(0)` returned nonzero handle `0086C4A0h`, while
+`_AIL_redbook_track_info(handle, 2)` returned bounds `0..0` and
+`_AIL_redbook_play(handle, 0, 0)` returned immediately. The VM nevertheless
+continued through the complete intro. Therefore an audio track is **not** the
+entry requirement. With the mounted image, an open CD-device handle was
+sufficient to keep the unguarded Miles call path valid. The earlier no-medium
+run ended in this path, but predates the import-level open probe, so its exact
+Miles return value—and thus the failed half of that differential—is not
+recorded.
+
+The absent track also explains the fast early video without speculation.
+`configure_vdx_stream` snapshots `_AIL_redbook_track`; the pacing code uses a
+100 ms deadline step when that snapshot is nonzero and 40 ms when it is zero.
+`title.vdx`, `o1pa.vdx`, and `o1tu.vdx` have no embedded `80h` audio chunks,
+so the zero-track run paces them at 40% of their Red Book-timed duration. The
+later `o3pa.vdx` is the first narrative clip with embedded VDX audio (237
+captured `80h` chunks), after which Miles sample-buffer availability supplies
+the observed normal pacing. The full event/resource correlation is in
+[`../../research/20260809-180432/ANALYSIS.md`](../../research/20260809-180432/ANALYSIS.md).
+
+To reproduce the archive predicate and inspect the separate CD-device/audio
+states on Windows:
+
+```powershell
+. .\tools\Enable-V32TngLegacyMedia.ps1
+Enable-V32TngLegacyMedia -GameRoot C:\T7G
+```
+
+The function uses `SUBST` only when no existing `C:`–`Z:` path already
+satisfies GETCD. If it creates one, the returned object includes the exact
+`subst X: /d` undo command. It never replaces an occupied drive letter.
+`Ready` means the archive predicate and the open-CD-device proxy both pass;
+`RedBookAudioReady` separately reports whether track 2 is actual audio.
+
+## Future Mods
+
+These are documented patch directions only; the canonical disassembly still
+rebuilds the untouched 1.02b1 executable.
+
+1. **Remove legacy CD dependence.** In a separate patched build, bypass the
+   GETCD archive-media failure branch, remove the requirement for a nonzero
+   Miles Red Book device handle, and guard or skip `track_info`, `play`,
+   `track`, and `stop` when no legacy backend is open. Installed GOG and Steam
+   assets should be authoritative without a retail disc or mounted image. Give
+   no-track videos an explicit pacing source instead of inheriting the current
+   40 ms fallback. Keep the canonical lossless target unchanged.
+2. **Use installed Ogg Vorbis music.** Add an alternate backend that maps the
+   GRV `PLAYCD` selections currently handled by `play_redbook_selection` to
+   the Ogg Vorbis music files supplied by GOG and Steam. Preserve the original
+   selection timing/stop semantics and expose an explicit pacing state for
+   Red Book-timed VDX files, with Red Book playback retained as an optional
+   compatibility backend.
 
 ## Naming and evidence policy
 
@@ -204,8 +281,8 @@ understanding.
 | Function-body instructions decoded | 25,181 |
 | Instructions requiring exact `db` encoding fallback | 1,992 |
 | Bytes in encoding fallbacks | 4,159 |
-| Verified semantic function roles | 30 |
-| Unidentified/provisionally bounded functions | 306 |
+| Verified semantic function roles | 42 |
+| Unidentified/provisionally bounded functions | 294 |
 | Non-function PE file bytes | 63,737 |
 
 All headers, section padding, code gaps, `.rdata`, `.data`, imports, resources,
@@ -240,16 +317,16 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `0040179B` | unidentified | `func_0040179b` | `FUN_0040179b` | `0040179B–004017ED` | [`src/functions/unknown/0040179b_func_0040179b.asm`](src/functions/unknown/0040179b_func_0040179b.asm) |
 | `004017EE` | unidentified | `func_004017ee` | `FUN_004017ee` | `004017EE–00401832` | [`src/functions/unknown/004017ee_func_004017ee.asm`](src/functions/unknown/004017ee_func_004017ee.asm) |
 | `00401833` | unidentified | `func_00401833` | `FUN_00401833` | `00401833–00401BB2` | [`src/functions/unknown/00401833_func_00401833.asm`](src/functions/unknown/00401833_func_00401833.asm) |
-| `00401BB3` | unidentified | `func_00401bb3` | `FUN_00401bb3` | `00401BB3–00401BFC` | [`src/functions/unknown/00401bb3_func_00401bb3.asm`](src/functions/unknown/00401bb3_func_00401bb3.asm) |
-| `00401BFD` | unidentified | `func_00401bfd` | `FUN_00401bfd` | `00401BFD–00401C54` | [`src/functions/unknown/00401bfd_func_00401bfd.asm`](src/functions/unknown/00401bfd_func_00401bfd.asm) |
-| `00401C55` | unidentified | `func_00401c55` | `FUN_00401c55` | `00401C55–00401C98` | [`src/functions/unknown/00401c55_func_00401c55.asm`](src/functions/unknown/00401c55_func_00401c55.asm) |
-| `00401C99` | unidentified | `func_00401c99` | `FUN_00401c99` | `00401C99–00401CDC` | [`src/functions/unknown/00401c99_func_00401c99.asm`](src/functions/unknown/00401c99_func_00401c99.asm) |
-| `00401CDD` | unidentified | `func_00401cdd` | `FUN_00401cdd` | `00401CDD–00401D39` | [`src/functions/unknown/00401cdd_func_00401cdd.asm`](src/functions/unknown/00401cdd_func_00401cdd.asm) |
+| `00401BB3` | verified-role | `open_first_drive_letter_path` | `FUN_00401bb3` | `00401BB3–00401BFC` | [`src/functions/resource_io/open_first_drive_letter_path.asm`](src/functions/resource_io/open_first_drive_letter_path.asm) |
+| `00401BFD` | verified-role | `play_drive_scanned_loose_vdx` | `FUN_00401bfd` | `00401BFD–00401C54` | [`src/functions/vdx/play_drive_scanned_loose_vdx.asm`](src/functions/vdx/play_drive_scanned_loose_vdx.asm) |
+| `00401C55` | verified-role | `play_optional_vielogo_video` | `FUN_00401c55` | `00401C55–00401C98` | [`src/functions/vdx/play_optional_vielogo_video.asm`](src/functions/vdx/play_optional_vielogo_video.asm) |
+| `00401C99` | verified-role | `play_optional_trilogo_video` | `FUN_00401c99` | `00401C99–00401CDC` | [`src/functions/vdx/play_optional_trilogo_video.asm`](src/functions/vdx/play_optional_trilogo_video.asm) |
+| `00401CDD` | verified-role | `play_optional_numbered_credit_video` | `FUN_00401cdd` | `00401CDD–00401D39` | [`src/functions/vdx/play_optional_numbered_credit_video.asm`](src/functions/vdx/play_optional_numbered_credit_video.asm) |
 | `00401D3A` | verified-role | `select_grv_video_resource` | `FUN_00401d3a` | `00401D3A–00401F5E` | [`src/functions/resource_io/select_grv_video_resource.asm`](src/functions/resource_io/select_grv_video_resource.asm) |
 | `00401F5F` | verified-role | `select_grv_song_resource` | `FUN_00401f5f` | `00401F5F–00402066` | [`src/functions/resource_io/select_grv_song_resource.asm`](src/functions/resource_io/select_grv_song_resource.asm) |
-| `00402067` | unidentified | `func_00402067` | `FUN_00402067` | `00402067–004020E6` | [`src/functions/unknown/00402067_func_00402067.asm`](src/functions/unknown/00402067_func_00402067.asm) |
-| `004020E7` | unidentified | `func_004020e7` | `FUN_004020e7` | `004020E7–00402171` | [`src/functions/unknown/004020e7_func_004020e7.asm`](src/functions/unknown/004020e7_func_004020e7.asm) |
-| `00402172` | unidentified | `func_00402172` | `FUN_00402172` | `00402172–004021D0` | [`src/functions/unknown/00402172_func_00402172.asm`](src/functions/unknown/00402172_func_00402172.asm) |
+| `00402067` | verified-role | `grv_load_game` | `FUN_00402067` | `00402067–004020E6` | [`src/functions/savegame/grv_load_game.asm`](src/functions/savegame/grv_load_game.asm) |
+| `004020E7` | verified-role | `grv_save_game` | `FUN_004020e7` | `004020E7–00402171` | [`src/functions/savegame/grv_save_game.asm`](src/functions/savegame/grv_save_game.asm) |
+| `00402172` | verified-role | `detect_t7g_archive_set` | `FUN_00402172` | `00402172–004021D0` | [`src/functions/resource_io/detect_t7g_archive_set.asm`](src/functions/resource_io/detect_t7g_archive_set.asm) |
 | `004021D1` | verified-role | `run_grv_vm` | `FUN_004021d1` | `004021D1–004041DF` | [`src/functions/grv/run_grv_vm.asm`](src/functions/grv/run_grv_vm.asm) |
 | `00404350` | verified-role | `init_game_subsystems` | `FUN_00404350` | `00404350–0040441C` | [`src/functions/runtime/init_game_subsystems.asm`](src/functions/runtime/init_game_subsystems.asm) |
 | `0040441D` | unidentified | `func_0040441d` | `FUN_0040441d` | `0040441D–00404468` | [`src/functions/unknown/0040441d_func_0040441d.asm`](src/functions/unknown/0040441d_func_0040441d.asm) |
@@ -292,21 +369,21 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `00406AE9` | unidentified | `func_00406ae9` | `FUN_00406ae9` | `00406AE9–00406B13` | [`src/functions/unknown/00406ae9_func_00406ae9.asm`](src/functions/unknown/00406ae9_func_00406ae9.asm) |
 | `00406B14` | unidentified | `func_00406b14` | `FUN_00406b14` | `00406B14–00406D15` | [`src/functions/unknown/00406b14_func_00406b14.asm`](src/functions/unknown/00406b14_func_00406b14.asm) |
 | `00406D16` | unidentified | `func_00406d16` | `FUN_00406d16` | `00406D16–00406D39` | [`src/functions/unknown/00406d16_func_00406d16.asm`](src/functions/unknown/00406d16_func_00406d16.asm) |
-| `00406D40` | unidentified | `func_00406d40` | `FUN_00406d40` | `00406D40–00406D8D` | [`src/functions/unknown/00406d40_func_00406d40.asm`](src/functions/unknown/00406d40_func_00406d40.asm) |
+| `00406D40` | verified-role | `initialize_vdx_pacing_deadline` | `FUN_00406d40` | `00406D40–00406D8D` | [`src/functions/vdx/initialize_vdx_pacing_deadline.asm`](src/functions/vdx/initialize_vdx_pacing_deadline.asm) |
 | `00406D8E` | unidentified | `func_00406d8e` | `FUN_00406d8e` | `00406D8E–00406E27` | [`src/functions/unknown/00406d8e_func_00406d8e.asm`](src/functions/unknown/00406d8e_func_00406d8e.asm) |
-| `00406E28` | unidentified | `func_00406e28` | `FUN_00406e28` | `00406E28–00406FAD` | [`src/functions/unknown/00406e28_func_00406e28.asm`](src/functions/unknown/00406e28_func_00406e28.asm) |
+| `00406E28` | verified-role | `service_vdx_audio_and_wait_for_pacing` | `FUN_00406e28` | `00406E28–00406FAD` | [`src/functions/vdx/service_vdx_audio_and_wait_for_pacing.asm`](src/functions/vdx/service_vdx_audio_and_wait_for_pacing.asm) |
 | `00406FAE` | unidentified | `func_00406fae` | `FUN_00406fae` | `00406FAE–00407048` | [`src/functions/unknown/00406fae_func_00406fae.asm`](src/functions/unknown/00406fae_func_00406fae.asm) |
 | `00407049` | unidentified | `func_00407049` | `FUN_00407049` | `00407049–0040709E` | [`src/functions/unknown/00407049_func_00407049.asm`](src/functions/unknown/00407049_func_00407049.asm) |
 | `0040709F` | unidentified | `func_0040709f` | `FUN_0040709f` | `0040709F–0040712B` | [`src/functions/unknown/0040709f_func_0040709f.asm`](src/functions/unknown/0040709f_func_0040709f.asm) |
-| `0040712C` | unidentified | `func_0040712c` | `FUN_0040712c` | `0040712C–00407145` | [`src/functions/unknown/0040712c_func_0040712c.asm`](src/functions/unknown/0040712c_func_0040712c.asm) |
+| `0040712C` | verified-role | `end_active_midi_sequence` | `FUN_0040712c` | `0040712C–00407145` | [`src/functions/audio/end_active_midi_sequence.asm`](src/functions/audio/end_active_midi_sequence.asm) |
 | `00407146` | verified-role | `is_midi_sequence_playing` | `FUN_00407146` | `00407146–0040716D` | [`src/functions/audio/is_midi_sequence_playing.asm`](src/functions/audio/is_midi_sequence_playing.asm) |
 | `0040716E` | unidentified | `func_0040716e` | `FUN_0040716e` | `0040716E–00407187` | [`src/functions/unknown/0040716e_func_0040716e.asm`](src/functions/unknown/0040716e_func_0040716e.asm) |
 | `00407188` | unidentified | `func_00407188` | `FUN_00407188` | `00407188–004071D3` | [`src/functions/unknown/00407188_func_00407188.asm`](src/functions/unknown/00407188_func_00407188.asm) |
-| `004071D4` | unidentified | `func_004071d4` | `FUN_004071d4` | `004071D4–004071F1` | [`src/functions/unknown/004071d4_func_004071d4.asm`](src/functions/unknown/004071d4_func_004071d4.asm) |
-| `004071F2` | unidentified | `func_004071f2` | `FUN_004071f2` | `004071F2–0040728F` | [`src/functions/unknown/004071f2_func_004071f2.asm`](src/functions/unknown/004071f2_func_004071f2.asm) |
+| `004071D4` | verified-role | `get_active_redbook_track` | `FUN_004071d4` | `004071D4–004071F1` | [`src/functions/audio/get_active_redbook_track.asm`](src/functions/audio/get_active_redbook_track.asm) |
+| `004071F2` | verified-role | `play_redbook_selection` | `FUN_004071f2` | `004071F2–0040728F` | [`src/functions/audio/play_redbook_selection.asm`](src/functions/audio/play_redbook_selection.asm) |
 | `00407290` | unidentified | `func_00407290` | `FUN_00407290` | `00407290–004072A0` | [`src/functions/unknown/00407290_func_00407290.asm`](src/functions/unknown/00407290_func_00407290.asm) |
 | `004072A1` | unidentified | `func_004072a1` | `FUN_004072a1` | `004072A1–00407301` | [`src/functions/unknown/004072a1_func_004072a1.asm`](src/functions/unknown/004072a1_func_004072a1.asm) |
-| `00407302` | unidentified | `func_00407302` | `FUN_00407302` | `00407302–004074C0` | [`src/functions/unknown/00407302_func_00407302.asm`](src/functions/unknown/00407302_func_00407302.asm) |
+| `00407302` | verified-role | `initialize_miles_audio_system` | `FUN_00407302` | `00407302–004074C0` | [`src/functions/audio/initialize_miles_audio_system.asm`](src/functions/audio/initialize_miles_audio_system.asm) |
 | `004074C1` | unidentified | `func_004074c1` | `FUN_004074c1` | `004074C1–00407506` | [`src/functions/unknown/004074c1_func_004074c1.asm`](src/functions/unknown/004074c1_func_004074c1.asm) |
 | `00407507` | unidentified | `func_00407507` | `FUN_00407507` | `00407507–004075AC` | [`src/functions/unknown/00407507_func_00407507.asm`](src/functions/unknown/00407507_func_00407507.asm) |
 | `004075AD` | unidentified | `func_004075ad` | `FUN_004075ad` | `004075AD–00407637` | [`src/functions/unknown/004075ad_func_004075ad.asm`](src/functions/unknown/004075ad_func_004075ad.asm) |
@@ -341,7 +418,7 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `00408E75` | verified-role | `dispatch_game_or_loose_vdx` | `FUN_00408e75` | `00408E75–00408EB6` | [`src/functions/runtime/dispatch_game_or_loose_vdx.asm`](src/functions/runtime/dispatch_game_or_loose_vdx.asm) |
 | `00408EB7` | verified-role | `pump_media_and_game` | `FUN_00408eb7` | `00408EB7–00408F0F` | [`src/functions/runtime/pump_media_and_game.asm`](src/functions/runtime/pump_media_and_game.asm) |
 | `00408F10` | unidentified | `func_00408f10` | `FUN_00408f10` | `00408F10–00408F2D` | [`src/functions/unknown/00408f10_func_00408f10.asm`](src/functions/unknown/00408f10_func_00408f10.asm) |
-| `00408F30` | unidentified | `func_00408f30` | `FUN_00408f30` | `00408F30–0040927A` | [`src/functions/unknown/00408f30_func_00408f30.asm`](src/functions/unknown/00408f30_func_00408f30.asm) |
+| `00408F30` | verified-role | `v32_window_procedure` | `FUN_00408f30` | `00408F30–0040927A` | [`src/functions/runtime/v32_window_procedure.asm`](src/functions/runtime/v32_window_procedure.asm) |
 | `00409396` | unidentified | `func_00409396` | `FUN_00409396` | `00409396–00409502` | [`src/functions/unknown/00409396_func_00409396.asm`](src/functions/unknown/00409396_func_00409396.asm) |
 | `00409503` | unidentified | `func_00409503` | `FUN_00409503` | `00409503–00409511` | [`src/functions/unknown/00409503_func_00409503.asm`](src/functions/unknown/00409503_func_00409503.asm) |
 | `00409512` | unidentified | `func_00409512` | `FUN_00409512` | `00409512–004095D6` | [`src/functions/unknown/00409512_func_00409512.asm`](src/functions/unknown/00409512_func_00409512.asm) |

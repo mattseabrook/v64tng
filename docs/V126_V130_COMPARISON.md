@@ -107,9 +107,9 @@ Consequences:
 - 1.30 adds no GRV opcode.
 - No opcode is removed.
 - Operand sizes are unchanged.
-- The 1,024-byte variable bank, call mechanism, subscript mechanism, input
-  loops, hotspots, media references, and save-game representation are
-  unchanged.
+- The `0x523`-byte DOS persistent-state block, call mechanism, subscript
+  mechanism, input loops, hotspots, media references, and save-game
+  representation are unchanged.
 - The 1.30 patch itself introduced no new script grammar; scripts authored for
   the same DOS dialect did not require recompilation for the memory patch.
 

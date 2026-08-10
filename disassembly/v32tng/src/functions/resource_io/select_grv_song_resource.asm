@@ -87,7 +87,7 @@ select_grv_song_resource:
     %endif
     times 6 - ($ - %%insn_00401f9b) db 0
     %%insn_00401fa1:
-    call 0x40712c ; 00401FA1 E886510000
+    call end_active_midi_sequence ; 00401FA1 E886510000
     %if ($ - %%insn_00401fa1) > 5
         %error "LONG_00401FA1"
     %endif

@@ -56,7 +56,7 @@ func_00407638:
     %endif
     times 2 - ($ - %%insn_00407657) db 0
     %%insn_00407659:
-    call 0x40712c ; 00407659 E8CEFAFFFF
+    call end_active_midi_sequence ; 00407659 E8CEFAFFFF
     %if ($ - %%insn_00407659) > 5
         %error "LONG_00407659"
     %endif

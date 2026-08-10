@@ -125,6 +125,7 @@ private:
 	std::expected<void, std::string> loadGame(uint8_t slot);
 	std::expected<void, std::string> saveGame(uint8_t slot) const;
 	[[nodiscard]] std::filesystem::path savePath(uint8_t slot) const;
+	[[nodiscard]] size_t savePayloadSize() const;
 	[[nodiscard]] std::string unimplementedOpcode(
 		uint8_t raw, uint16_t pc) const;
 
@@ -134,7 +135,10 @@ private:
 	std::filesystem::path assetRoot_;
 	GrvSaveConvention saveConvention_ = GrvSaveConvention::Dos;
 	std::optional<ParentScript> parentScript_;
-	std::array<uint8_t, 0x400> variables_{};
+	// V.EXE persists 0x523 bytes from its GRV state base; v32tng.exe persists
+	// only the first 0x400.  Keep the larger native DOS block in memory and
+	// select the on-disk extent from saveConvention_.
+	std::array<uint8_t, 0x523> variables_{};
 	std::array<uint16_t, 32> callStack_{};
 	size_t callDepth_ = 0;
 	uint16_t activeLoop_ = 0;

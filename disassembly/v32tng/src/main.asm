@@ -21,16 +21,16 @@ bits 32
 %include "src/functions/unknown/0040179b_func_0040179b.asm"
 %include "src/functions/unknown/004017ee_func_004017ee.asm"
 %include "src/functions/unknown/00401833_func_00401833.asm"
-%include "src/functions/unknown/00401bb3_func_00401bb3.asm"
-%include "src/functions/unknown/00401bfd_func_00401bfd.asm"
-%include "src/functions/unknown/00401c55_func_00401c55.asm"
-%include "src/functions/unknown/00401c99_func_00401c99.asm"
-%include "src/functions/unknown/00401cdd_func_00401cdd.asm"
+%include "src/functions/resource_io/open_first_drive_letter_path.asm"
+%include "src/functions/vdx/play_drive_scanned_loose_vdx.asm"
+%include "src/functions/vdx/play_optional_vielogo_video.asm"
+%include "src/functions/vdx/play_optional_trilogo_video.asm"
+%include "src/functions/vdx/play_optional_numbered_credit_video.asm"
 %include "src/functions/resource_io/select_grv_video_resource.asm"
 %include "src/functions/resource_io/select_grv_song_resource.asm"
-%include "src/functions/unknown/00402067_func_00402067.asm"
-%include "src/functions/unknown/004020e7_func_004020e7.asm"
-%include "src/functions/unknown/00402172_func_00402172.asm"
+%include "src/functions/savegame/grv_load_game.asm"
+%include "src/functions/savegame/grv_save_game.asm"
+%include "src/functions/resource_io/detect_t7g_archive_set.asm"
 %include "src/functions/grv/run_grv_vm.asm"
 %include "src/functions/runtime/init_game_subsystems.asm"
 %include "src/functions/unknown/0040441d_func_0040441d.asm"
@@ -73,21 +73,21 @@ bits 32
 %include "src/functions/unknown/00406ae9_func_00406ae9.asm"
 %include "src/functions/unknown/00406b14_func_00406b14.asm"
 %include "src/functions/unknown/00406d16_func_00406d16.asm"
-%include "src/functions/unknown/00406d40_func_00406d40.asm"
+%include "src/functions/vdx/initialize_vdx_pacing_deadline.asm"
 %include "src/functions/unknown/00406d8e_func_00406d8e.asm"
-%include "src/functions/unknown/00406e28_func_00406e28.asm"
+%include "src/functions/vdx/service_vdx_audio_and_wait_for_pacing.asm"
 %include "src/functions/unknown/00406fae_func_00406fae.asm"
 %include "src/functions/unknown/00407049_func_00407049.asm"
 %include "src/functions/unknown/0040709f_func_0040709f.asm"
-%include "src/functions/unknown/0040712c_func_0040712c.asm"
+%include "src/functions/audio/end_active_midi_sequence.asm"
 %include "src/functions/audio/is_midi_sequence_playing.asm"
 %include "src/functions/unknown/0040716e_func_0040716e.asm"
 %include "src/functions/unknown/00407188_func_00407188.asm"
-%include "src/functions/unknown/004071d4_func_004071d4.asm"
-%include "src/functions/unknown/004071f2_func_004071f2.asm"
+%include "src/functions/audio/get_active_redbook_track.asm"
+%include "src/functions/audio/play_redbook_selection.asm"
 %include "src/functions/unknown/00407290_func_00407290.asm"
 %include "src/functions/unknown/004072a1_func_004072a1.asm"
-%include "src/functions/unknown/00407302_func_00407302.asm"
+%include "src/functions/audio/initialize_miles_audio_system.asm"
 %include "src/functions/unknown/004074c1_func_004074c1.asm"
 %include "src/functions/unknown/00407507_func_00407507.asm"
 %include "src/functions/unknown/004075ad_func_004075ad.asm"
@@ -122,7 +122,7 @@ bits 32
 %include "src/functions/runtime/dispatch_game_or_loose_vdx.asm"
 %include "src/functions/runtime/pump_media_and_game.asm"
 %include "src/functions/unknown/00408f10_func_00408f10.asm"
-%include "src/functions/unknown/00408f30_func_00408f30.asm"
+%include "src/functions/runtime/v32_window_procedure.asm"
 %include "src/functions/unknown/00409396_func_00409396.asm"
 %include "src/functions/unknown/00409503_func_00409503.asm"
 %include "src/functions/unknown/00409512_func_00409512.asm"
@@ -701,31 +701,31 @@ emit_func_00401833_part_00
 %if ($ - $$) != 0x000FB3
     %error "layout drift at raw 000FB3"
 %endif
-emit_func_00401bb3_part_00
+emit_open_first_drive_letter_path_part_00
 
 ; raw 000FFD..001055 (function)
 %if ($ - $$) != 0x000FFD
     %error "layout drift at raw 000FFD"
 %endif
-emit_func_00401bfd_part_00
+emit_play_drive_scanned_loose_vdx_part_00
 
 ; raw 001055..001099 (function)
 %if ($ - $$) != 0x001055
     %error "layout drift at raw 001055"
 %endif
-emit_func_00401c55_part_00
+emit_play_optional_vielogo_video_part_00
 
 ; raw 001099..0010DD (function)
 %if ($ - $$) != 0x001099
     %error "layout drift at raw 001099"
 %endif
-emit_func_00401c99_part_00
+emit_play_optional_trilogo_video_part_00
 
 ; raw 0010DD..00113A (function)
 %if ($ - $$) != 0x0010DD
     %error "layout drift at raw 0010DD"
 %endif
-emit_func_00401cdd_part_00
+emit_play_optional_numbered_credit_video_part_00
 
 ; raw 00113A..00135F (function)
 %if ($ - $$) != 0x00113A
@@ -743,19 +743,19 @@ emit_select_grv_song_resource_part_00
 %if ($ - $$) != 0x001467
     %error "layout drift at raw 001467"
 %endif
-emit_func_00402067_part_00
+emit_grv_load_game_part_00
 
 ; raw 0014E7..001572 (function)
 %if ($ - $$) != 0x0014E7
     %error "layout drift at raw 0014E7"
 %endif
-emit_func_004020e7_part_00
+emit_grv_save_game_part_00
 
 ; raw 001572..0015D1 (function)
 %if ($ - $$) != 0x001572
     %error "layout drift at raw 001572"
 %endif
-emit_func_00402172_part_00
+emit_detect_t7g_archive_set_part_00
 
 ; raw 0015D1..0035E0 (function)
 %if ($ - $$) != 0x0015D1
@@ -1043,7 +1043,7 @@ emit_file_data_0005_00613a
 %if ($ - $$) != 0x006140
     %error "layout drift at raw 006140"
 %endif
-emit_func_00406d40_part_00
+emit_initialize_vdx_pacing_deadline_part_00
 
 ; raw 00618E..006228 (function)
 %if ($ - $$) != 0x00618E
@@ -1055,7 +1055,7 @@ emit_func_00406d8e_part_00
 %if ($ - $$) != 0x006228
     %error "layout drift at raw 006228"
 %endif
-emit_func_00406e28_part_00
+emit_service_vdx_audio_and_wait_for_pacing_part_00
 
 ; raw 0063AE..006449 (function)
 %if ($ - $$) != 0x0063AE
@@ -1079,7 +1079,7 @@ emit_func_0040709f_part_00
 %if ($ - $$) != 0x00652C
     %error "layout drift at raw 00652C"
 %endif
-emit_func_0040712c_part_00
+emit_end_active_midi_sequence_part_00
 
 ; raw 006546..00656E (function)
 %if ($ - $$) != 0x006546
@@ -1103,13 +1103,13 @@ emit_func_00407188_part_00
 %if ($ - $$) != 0x0065D4
     %error "layout drift at raw 0065D4"
 %endif
-emit_func_004071d4_part_00
+emit_get_active_redbook_track_part_00
 
 ; raw 0065F2..006690 (function)
 %if ($ - $$) != 0x0065F2
     %error "layout drift at raw 0065F2"
 %endif
-emit_func_004071f2_part_00
+emit_play_redbook_selection_part_00
 
 ; raw 006690..0066A1 (function)
 %if ($ - $$) != 0x006690
@@ -1127,7 +1127,7 @@ emit_func_004072a1_part_00
 %if ($ - $$) != 0x006702
     %error "layout drift at raw 006702"
 %endif
-emit_func_00407302_part_00
+emit_initialize_miles_audio_system_part_00
 
 ; raw 0068C1..006907 (function)
 %if ($ - $$) != 0x0068C1
@@ -1367,7 +1367,7 @@ emit_file_data_0010_00832e
 %if ($ - $$) != 0x008330
     %error "layout drift at raw 008330"
 %endif
-emit_func_00408f30_part_00
+emit_v32_window_procedure_part_00
 
 ; raw 00867B..008796 (explicit-data)
 %if ($ - $$) != 0x00867B

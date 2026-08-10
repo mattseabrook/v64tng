@@ -1078,7 +1078,7 @@ vdx_chunk_dispatch:
     %endif
     times 1 - ($ - %%insn_0040c4fb) db 0
     %%insn_0040c4fc:
-    call 0x406d40 ; 0040C4FC E83FA8FFFF
+    call initialize_vdx_pacing_deadline ; 0040C4FC E83FA8FFFF
     %if ($ - %%insn_0040c4fc) > 5
         %error "LONG_0040C4FC"
     %endif
@@ -1289,7 +1289,7 @@ vdx_chunk_dispatch:
     %endif
     times 1 - ($ - %%insn_0040c57a) db 0
     %%insn_0040c57b:
-    call 0x406e28 ; 0040C57B E8A8A8FFFF
+    call service_vdx_audio_and_wait_for_pacing ; 0040C57B E8A8A8FFFF
     %if ($ - %%insn_0040c57b) > 5
         %error "LONG_0040C57B"
     %endif
@@ -1373,7 +1373,7 @@ vdx_chunk_dispatch:
     %endif
     times 1 - ($ - %%insn_0040c5a0) db 0
     %%insn_0040c5a1:
-    call 0x406e28 ; 0040C5A1 E882A8FFFF
+    call service_vdx_audio_and_wait_for_pacing ; 0040C5A1 E882A8FFFF
     %if ($ - %%insn_0040c5a1) > 5
         %error "LONG_0040C5A1"
     %endif
