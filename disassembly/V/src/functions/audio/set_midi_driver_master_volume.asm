@@ -1,11 +1,12 @@
 ; Linear entry 05A8B (1000:5a8b)
 ; Ghidra working symbol: FUN_1000_5a8b
-; Role not yet verified; boundary is provisional.
+; Verified GRV opcode 4Ah implementation. Forwards a changed master-volume
+; value to the loaded Miles MIDI driver; disabled driver state is a no-op.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_05a8b_part_00 0
+%macro emit_set_midi_driver_master_volume_part_00 0
     %%fragment_start:
-func_05a8b:
+set_midi_driver_master_volume:
     %%insn_05a8b:
     push si ; 05A8B 56
     %if ($ - %%insn_05a8b) > 1

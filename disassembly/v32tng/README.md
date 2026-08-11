@@ -33,8 +33,8 @@ The project has complete mechanical source coverage:
 This is not yet complete semantic recovery. Ghidra's function ownership is
 provisional and does not reveal the original Visual C++ object-module layout.
 Some explicit data may later prove to be code, jump tables, inline constants,
-or alignment. Forty-two entries currently have verified semantic roles; the
-other 294 retain neutral address-based names.
+or alignment. Forty-nine entries currently have verified semantic roles; the
+other 287 retain neutral address-based names.
 
 Exact coverage and the complete function address map are maintained later in
 this README. This file is the public, monolithic research record for the
@@ -295,8 +295,8 @@ understanding.
 | Function-body instructions decoded | 25,181 |
 | Instructions requiring exact `db` encoding fallback | 1,992 |
 | Bytes in encoding fallbacks | 4,159 |
-| Verified semantic function roles | 42 |
-| Unidentified/provisionally bounded functions | 294 |
+| Verified semantic function roles | 49 |
+| Unidentified/provisionally bounded functions | 287 |
 | Non-function PE file bytes | 63,737 |
 
 All headers, section padding, code gaps, `.rdata`, `.data`, imports, resources,

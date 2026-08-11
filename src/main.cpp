@@ -219,12 +219,6 @@ int process_args(const std::vector<std::string> &args)
 									   { return arg == "raw"; });
 		bool video = std::ranges::any_of(args | std::ranges::views::drop(3), [](const auto &arg)
 										 { return arg == "video"; });
-		if (std::ranges::any_of(args | std::ranges::views::drop(3), [](const auto &arg)
-								{ return arg == "alpha"; }))
-		{
-			config["devMode"] = true;
-		}
-
 		std::filesystem::path filePath(args[2]);
 		std::string basePath = filePath.parent_path().string();
 		std::string baseName = filePath.stem().string();
@@ -439,23 +433,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
 
 		DetectCPUFeatures();
 		SetBestSIMDLevel();
-
-		// Configure render mode from config.json (auto|cpu|gpu). Default remains 'gpu' in default_config.
-		if (config.contains("renderMode") && config["renderMode"].is_string())
-		{
-			std::string mode = config["renderMode"];
-			for (auto &c : mode) c = static_cast<char>(::toupper(static_cast<unsigned char>(c)));
-			if (mode == "CPU")
-				state.renderMode = GameState::RenderMode::CPU;
-			else if (mode == "GPU")
-				state.renderMode = GameState::RenderMode::GPU;
-			else
-				state.renderMode = GameState::RenderMode::Auto;
-		}
-		else
-		{
-			state.renderMode = GameState::RenderMode::Auto;
-		}
 
 		std::vector<std::string> args = get_args_windows();
 

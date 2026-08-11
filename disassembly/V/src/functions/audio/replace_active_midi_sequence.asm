@@ -1,11 +1,13 @@
 ; Linear entry 05C06 (1000:5c06)
 ; Ghidra working symbol: FUN_1000_5c06
-; Role not yet verified; boundary is provisional.
+; Verified active-XMI replacement path. Prepares required timbres, captures and
+; ends the prior sequence, allocates/initializes the replacement sequence, and
+; applies the requested Miles volume ramp before playback.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_05c06_part_00 0
+%macro emit_replace_active_midi_sequence_part_00 0
     %%fragment_start:
-func_05c06:
+replace_active_midi_sequence:
     %%insn_05c06:
     cmp word [bp-0x1b8a],0x80 ; 05C06 81BE76E48000
     %if ($ - %%insn_05c06) > 6
@@ -37,7 +39,7 @@ func_05c06:
     %endif
     times 4 - ($ - %%insn_05c18) db 0
     %%insn_05c1c:
-    call 0x5aac ; 05C1C E88DFE
+    call load_xmidi_timbre_patches ; 05C1C E88DFE
     %if ($ - %%insn_05c1c) > 3
         %error "LONG_05C1C"
     %endif

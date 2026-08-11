@@ -44,8 +44,8 @@ The project has complete mechanical source coverage:
 This is not yet complete semantic recovery. Ghidra's 261 function boundaries
 are analyzer findings, not original object-module boundaries. Some bytes now
 classified as data may prove to be code, and some functions may later be
-split, joined, or grouped. Of the 261 entries, 48 currently have verified
-semantic roles and 213 retain neutral address-based names.
+split, joined, or grouped. Of the 261 entries, 58 currently have verified
+semantic roles and 203 retain neutral address-based names.
 
 Exact coverage and the complete function address map are maintained later in
 this README. This file is the public, monolithic research record for the DOS
@@ -192,6 +192,10 @@ artifact.
 
 The cross-version `SCRIPT.GRV` startup/save/audio correlation is recorded in
 [`../GRV/MAIN_MENU_BOOT_TRACE.md`](../GRV/MAIN_MENU_BOOT_TRACE.md). The
+DOS MIDI preparation sequence, recovered Miles call chain, and shipped
+ADV/BNK/FAT artifact classification are recorded in
+[`../../docs/DOS_MIDI_SOUND_DRIVER_MAP.md`](../../docs/DOS_MIDI_SOUND_DRIVER_MAP.md).
+The
 complete event schema, scenario protocol, DOSBox-X fork architecture, IPC
 surface, and original-versus-v64tng alignment method are documented in the
 root
@@ -256,8 +260,8 @@ understanding.
 | Function-body instructions decoded | 12,484 |
 | Instructions requiring exact `db` encoding fallback | 1,620 |
 | Bytes in encoding fallbacks | 3,477 |
-| Verified semantic function roles | 48 |
-| Unidentified/provisionally bounded functions | 213 |
+| Verified semantic function roles | 58 |
+| Unidentified/provisionally bounded functions | 203 |
 | Analyzed function/gap span end | `0892Ch` |
 | Non-function bytes in the load image | 69,332 |
 
@@ -436,12 +440,12 @@ Owned ranges are inclusive linear offsets into the unpacked load image.
 | `05754` | `1000:5754` | unidentified | `func_05754` | `FUN_1000_5754` | `05754–0575D` | [`src/functions/unknown/05754_func_05754.asm`](src/functions/unknown/05754_func_05754.asm) |
 | `0575E` | `1000:575e` | unidentified | `func_0575e` | `FUN_1000_575e` | `0575E–0576D` | [`src/functions/unknown/0575e_func_0575e.asm`](src/functions/unknown/0575e_func_0575e.asm) |
 | `0576E` | `1000:576e` | verified-role | `initialize_subsystems_xms` | `FUN_1000_576e` | `0576E–05A36` | [`src/functions/platform/initialize_subsystems_xms.asm`](src/functions/platform/initialize_subsystems_xms.asm) |
-| `05A37` | `1000:5a37` | unidentified | `func_05a37` | `FUN_1000_5a37` | `05A37–05A4E` | [`src/functions/unknown/05a37_func_05a37.asm`](src/functions/unknown/05a37_func_05a37.asm) |
-| `05A6C` | `1000:5a6c` | unidentified | `func_05a6c` | `FUN_1000_5a6c` | `05A6C–05A8A` | [`src/functions/unknown/05a6c_func_05a6c.asm`](src/functions/unknown/05a6c_func_05a6c.asm) |
-| `05A8B` | `1000:5a8b` | unidentified | `func_05a8b` | `FUN_1000_5a8b` | `05A8B–05AAB` | [`src/functions/unknown/05a8b_func_05a8b.asm`](src/functions/unknown/05a8b_func_05a8b.asm) |
-| `05AAC` | `1000:5aac` | unidentified | `func_05aac` | `FUN_1000_5aac` | `05AAC–05BD0` | [`src/functions/unknown/05aac_func_05aac.asm`](src/functions/unknown/05aac_func_05aac.asm) |
+| `05A37` | `1000:5a37` | verified-role | `wait_for_midi_sequence_completion` | `FUN_1000_5a37` | `05A37–05A4E` | [`src/functions/audio/wait_for_midi_sequence_completion.asm`](src/functions/audio/wait_for_midi_sequence_completion.asm) |
+| `05A6C` | `1000:5a6c` | verified-role | `set_midi_sequence_volume_ramp` | `FUN_1000_5a6c` | `05A6C–05A8A` | [`src/functions/audio/set_midi_sequence_volume_ramp.asm`](src/functions/audio/set_midi_sequence_volume_ramp.asm) |
+| `05A8B` | `1000:5a8b` | verified-role | `set_midi_driver_master_volume` | `FUN_1000_5a8b` | `05A8B–05AAB` | [`src/functions/audio/set_midi_driver_master_volume.asm`](src/functions/audio/set_midi_driver_master_volume.asm) |
+| `05AAC` | `1000:5aac` | verified-role | `load_xmidi_timbre_patches` | `FUN_1000_5aac` | `05AAC–05BD0` | [`src/functions/audio/load_xmidi_timbre_patches.asm`](src/functions/audio/load_xmidi_timbre_patches.asm) |
 | `05BD1` | `1000:5bd1` | verified-role | `load_and_play_selected_xmi` | `FUN_1000_5bd1` | `05BD1–05C05` | [`src/functions/audio/load_and_play_selected_xmi.asm`](src/functions/audio/load_and_play_selected_xmi.asm) |
-| `05C06` | `1000:5c06` | unidentified | `func_05c06` | `FUN_1000_5c06` | `05C06–05CDD` | [`src/functions/unknown/05c06_func_05c06.asm`](src/functions/unknown/05c06_func_05c06.asm) |
+| `05C06` | `1000:5c06` | verified-role | `replace_active_midi_sequence` | `FUN_1000_5c06` | `05C06–05CDD` | [`src/functions/audio/replace_active_midi_sequence.asm`](src/functions/audio/replace_active_midi_sequence.asm) |
 | `05CED` | `1000:5ced` | verified-role | `shutdown_player` | `FUN_1000_5ced` | `05CED–05E8B` | [`src/functions/runtime/shutdown_player.asm`](src/functions/runtime/shutdown_player.asm) |
 | `05E8D` | `1000:5e8d` | unidentified | `func_05e8d` | `FUN_1000_5e8d` | `05E8D–05EA8` | [`src/functions/unknown/05e8d_func_05e8d.asm`](src/functions/unknown/05e8d_func_05e8d.asm) |
 | `05EA9` | `1000:5ea9` | unidentified | `func_05ea9` | `FUN_1000_5ea9` | `05EA9–05EC7` | [`src/functions/unknown/05ea9_func_05ea9.asm`](src/functions/unknown/05ea9_func_05ea9.asm) |

@@ -1,17 +1,36 @@
 # v64tng
 
+Current release: **1.0.20260811.1**
+
 [![v64tng build](https://img.shields.io/badge/v64tng%20build-passing-2ea44f?logo=github)](build.sh)
 [![V.EXE NASM rebuild](https://img.shields.io/badge/V.EXE%20NASM%20rebuild-passing-2ea44f?logo=nasm)](disassembly/V)
 [![v32tng.exe NASM rebuild](https://img.shields.io/badge/v32tng.exe%20NASM%20rebuild-passing-2ea44f?logo=nasm)](disassembly/v32tng)
+[![semantic disassembly](https://img.shields.io/badge/semantic%20disassembly-17.9%25-7c3aed)](#semantic-disassembly-progress)
+[![source byte coverage](https://img.shields.io/badge/source%20byte%20coverage-100%25-2ea44f)](#semantic-disassembly-progress)
 [![License](https://img.shields.io/badge/license-see%20LICENSE-64748b?logo=github)](LICENSE)
 
-## Build and Disassembly Status
+## Semantic Disassembly Progress
 
-| Project | Build status | Semantic disassembly | Lossless source-byte coverage |
-|---|---|---:|---:|
-| [`v64tng.exe`](build.sh) | C++23 Windows build | N/A | N/A |
-| [`V.EXE` 1.30](disassembly/V) | NASM byte-for-byte rebuild passing | 51 / 261 verified roles (19.5%) | 101,624 / 101,624 bytes (100%) |
-| [`v32tng.exe` 1.02b1](disassembly/v32tng) | NASM byte-for-byte rebuild passing | 44 / 336 verified roles (13.1%) | 144,896 / 144,896 bytes (100%) |
+| Original executable | Verified semantic roles | Provisional roles remaining | Semantic completeness | Lossless source-byte coverage |
+|---|---:|---:|---:|---:|
+| [`V.EXE` 1.30`](disassembly/V) | 58 / 261 | 203 | **22.2%** | 101,624 / 101,624 bytes (**100%**) |
+| [`v32tng.exe` 1.02b1](disassembly/v32tng) | 49 / 336 | 287 | **14.6%** | 144,896 / 144,896 bytes (**100%**) |
+| **Combined** | **107 / 597** | **490** | **17.9%** | **246,520 / 246,520 bytes (100%)** |
+
+Across both permanent disassemblies, **37,665 machine instructions** are
+decoded and **107 analyzer-discovered function entries have evidence-backed
+semantic roles**. Semantic completeness is calculated as verified roles divided
+by provisional analyzer function entries. It is intentionally distinct from
+mechanical source coverage: every executable byte is already represented in
+NASM source, while behavioral identification continues.
+
+## Build and Reproducibility Status
+
+| Project | Build status |
+|---|---|
+| [`v64tng.exe`](build.sh) | C++23 Windows build passing |
+| [`V.EXE` 1.30](disassembly/V) | NASM byte-for-byte rebuild passing |
+| [`v32tng.exe` 1.02b1](disassembly/v32tng) | NASM byte-for-byte rebuild passing |
 
 The NASM builds reject executable-byte `incbin` directives and verify the rebuilt artifact against its canonical SHA-256:
 
@@ -19,8 +38,6 @@ The NASM builds reject executable-byte `incbin` directives and verify the rebuil
 |---|---|---|---|
 | [`V.EXE` 1.30 unpacked MZ](disassembly/V) | `f2f7febb70b5008ee94e535b0224e918eeec4c71404c899c0d6b50f10c0816c4` | `f2f7febb70b5008ee94e535b0224e918eeec4c71404c899c0d6b50f10c0816c4` | Match |
 | [`v32tng.exe` 1.02b1 PE](disassembly/v32tng) | `3c8c3fd3edc27717ae2a08b1f98c7a58f72bd91860a080a29e40d1da8854c36c` | `3c8c3fd3edc27717ae2a08b1f98c7a58f72bd91860a080a29e40d1da8854c36c` | Match |
-
-Semantic-disassembly completeness is the share of provisional analyzer function entries with verified roles. It is intentionally distinct from lossless source-byte coverage: all executable bytes are represented in NASM source, while semantic recovery continues.
 
 `v64tng.exe` is a Windows x86_64 executable that is an attempt at re-creating the complete 7th Guest game engine from scratch. It is written in C++ 23 and uses `VULKAN` or `DirectX` for graphics, `TBD` for audio, and `TBD` for input. The game engine is designed to work placed into the original game directory (*regardless of where you purchased it/what version you have*), and it is required to be used with the original game data files.
 

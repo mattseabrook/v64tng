@@ -18,8 +18,7 @@ extern const int MIN_CLIENT_HEIGHT;
 constexpr const char *default_config = R"({
     "fullscreen": false,
     "width": 640,
-    "renderer": "DirectX",
-    "renderMode": "gpu",
+    "renderer": "Vulkan",
     "display": 1,
     "x": 100,
     "y": 100,
@@ -33,8 +32,7 @@ constexpr const char *default_config = R"({
     "mlookSensitivity": 50,
     "raycastFov": 90,
     "raycastSupersample": 4,
-    "raycastMegatextureResidentHeight": 256,
-    "devMode": false
+    "raycastMegatextureResidentHeight": 256
 })";
 
 //=============================================================================

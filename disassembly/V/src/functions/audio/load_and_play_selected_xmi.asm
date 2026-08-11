@@ -74,7 +74,7 @@ load_and_play_selected_xmi:
     %endif
     times 4 - ($ - %%insn_05bef) db 0
     %%insn_05bf3:
-    call 0x5c06 ; 05BF3 E81000
+    call replace_active_midi_sequence ; 05BF3 E81000
     %if ($ - %%insn_05bf3) > 3
         %error "LONG_05BF3"
     %endif

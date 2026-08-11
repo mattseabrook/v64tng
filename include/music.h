@@ -20,6 +20,7 @@
 // Music system lifecycle
 void musicInit();
 void musicShutdown();
+void musicStartPrepared();
 
 // Function prototypes
 std::vector<uint8_t> xmiConverter(const RLEntry &song);
@@ -28,6 +29,11 @@ void xmiPlay(
 	const std::string &songName,
 	bool isTransient = false,
 	bool loop = false);
+void xmiPrepare(
+	const std::string &songName,
+	bool isTransient = false,
+	bool loop = false,
+	bool synchronizeAtStart = true);
 void pushMainSong(const std::string &songName);
 void popMainSong();
 void applyMusicRuntimeSettings();

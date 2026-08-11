@@ -1,11 +1,15 @@
 ; Linear entry 05AAC (1000:5aac)
 ; Ghidra working symbol: FUN_1000_5aac
-; Role not yet verified; boundary is provisional.
+; Verified Miles XMIDI timbre preparation path. Allocates a 600h-paragraph
+; staging block, asks the active MIDI driver which timbres are required, scans
+; the selected archive's six-byte resource records, reads 100h-byte timbre
+; payloads, installs them through the driver interface, and frees the staging
+; block on every success/error exit.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_05aac_part_00 0
+%macro emit_load_xmidi_timbre_patches_part_00 0
     %%fragment_start:
-func_05aac:
+load_xmidi_timbre_patches:
     db 0x8B, 0xD0 ; 05AAC 8BD0 | mov dx,ax | encoding preserved
     %%insn_05aae:
     push es ; 05AAE 06

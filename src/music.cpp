@@ -86,9 +86,33 @@ HMIDISTRM g_midiStream = nullptr;
 bool g_midiStreamReady = false;
 tsf* g_soundfont = nullptr;
 bool g_soundfontReady = false;
+bool g_musicEnabled = true;
 HANDLE g_midiDoneEvent = nullptr;
 HANDLE g_musicStopEvent = nullptr;
-constexpr float kWavetableHeadroom = 0.89125094f; // -1.0 dBFS, fixed gain: dynamics unchanged.
+HANDLE g_generalPreparedEvent = nullptr;
+HANDLE g_generalStartEvent = nullptr;
+HANDLE g_generalStartedEvent = nullptr;
+std::atomic_bool g_generalPrepareSucceeded{false};
+std::atomic_bool g_generalStartSucceeded{false};
+// The user-facing MIDI volume is the only final-stage gain. At 100%, every
+// backend therefore submits its native full-scale output unchanged: no hidden
+// attenuation, normalization, compression, or attack-destroying boost/clamp.
+constexpr float kFullScaleOutputGain = 1.0f;
+// libADLMIDI's 16-bit output is intentionally conservative.  The previous
+// release compensated at the final PCM stage; restore that backend calibration
+// without touching the authored MIDI events or wavetable output.
+constexpr float kOplOutputGain = 6.0f;
+// WinMM exposes no gain above the device's 100% master volume.  A small,
+// proportional velocity calibration brings the General MIDI mapper alongside
+// the PCM backends while leaving timing, controllers and track balance intact.
+constexpr float kGeneralMidiVelocityGain = 1.10f;
+// Microsoft's software MIDI synth renders behind the WinMM stream clock. Hold
+// the synchronized VDX at frame zero for that device latency after Restart().
+constexpr DWORD kGeneralMidiVisualLeadMs = 300;
+// Some Windows audio drivers ramp a newly started shared-mode endpoint for much
+// longer than one engine period. Keep the endpoint alive on silence while the
+// boot screen remains black; neither software synth advances during this time.
+constexpr DWORD kSynthEndpointWarmupMs = 2000;
 
 using CachedMidi = std::shared_ptr<const std::vector<uint8_t>>;
 std::unordered_map<std::string, CachedMidi> g_midiCache;
@@ -168,6 +192,17 @@ void resetMusicStop()
 		ResetEvent(g_musicStopEvent);
 }
 
+bool ensureGeneralSyncEvents()
+{
+	if (!g_generalPreparedEvent)
+		g_generalPreparedEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+	if (!g_generalStartEvent)
+		g_generalStartEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+	if (!g_generalStartedEvent)
+		g_generalStartedEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+	return g_generalPreparedEvent && g_generalStartEvent && g_generalStartedEvent;
+}
+
 //----------------------------------------------------------------------
 // MIDI Track Parser — shared by GeneralMIDI and Wavetable backends
 //----------------------------------------------------------------------
@@ -226,6 +261,79 @@ uint32_t readVarLen(const std::vector<uint8_t>& data, size_t& pos, size_t end)
 		v = (v << 7) | (b & 0x7F);
 	} while (b & 0x80);
 	return v;
+}
+
+// Legacy General-MIDI and OPL playback can repeat a whole SMF but cannot jump
+// within one. Detect the exact Miles pattern used by gu17 and the other tracks
+// whose infinite XMIDI loop spans the complete sequence. The wavetable cursor
+// below handles arbitrary/nested loop ranges directly.
+bool hasWholeTrackInfiniteXmidiLoop(const std::vector<uint8_t> &midiData)
+{
+	const auto track = parseMidiTrack(midiData);
+	if (!track)
+		return false;
+
+	size_t position = track->dataStart;
+	uint64_t tick = 0;
+	uint8_t runningStatus = 0;
+	std::optional<uint64_t> loopStart;
+	std::optional<uint64_t> loopEnd;
+	while (position < track->dataEnd)
+	{
+		tick += readVarLen(midiData, position, track->dataEnd);
+		if (position >= track->dataEnd)
+			break;
+		uint8_t status = midiData[position];
+		if (status == 0xffu)
+		{
+			++position;
+			if (position >= track->dataEnd)
+				break;
+			const uint8_t type = midiData[position++];
+			const uint32_t length = readVarLen(midiData, position, track->dataEnd);
+			if (length > track->dataEnd - position)
+				return false;
+			position += length;
+			if (type == 0x2fu)
+				return loopStart && *loopStart == 0u && loopEnd && *loopEnd == tick;
+			continue;
+		}
+		if (status == 0xf0u || status == 0xf7u)
+		{
+			++position;
+			const uint32_t length = readVarLen(midiData, position, track->dataEnd);
+			if (length > track->dataEnd - position)
+				return false;
+			position += length;
+			continue;
+		}
+		if ((status & 0x80u) != 0)
+		{
+			runningStatus = status;
+			++position;
+		}
+		else
+		{
+			status = runningStatus;
+		}
+		if ((status & 0x80u) == 0 || position >= track->dataEnd)
+			return false;
+		const uint8_t command = status & 0xf0u;
+		const uint8_t first = midiData[position++];
+		if (command == 0xc0u || command == 0xd0u)
+			continue;
+		if (position >= track->dataEnd)
+			return false;
+		const uint8_t second = midiData[position++];
+		if (command == 0xb0u)
+		{
+			if (first == 0x74u && second == 0u && !loopStart)
+				loopStart = tick;
+			else if (first == 0x75u && second >= 64u && loopStart)
+				loopEnd = tick;
+		}
+	}
+	return false;
 }
 
 //----------------------------------------------------------------------
@@ -438,6 +546,41 @@ public:
 	}
 
 private:
+	void applyControl(int channel, uint8_t controller, uint8_t value)
+	{
+		// TinySoundFont applies a cubic taper to CC7/CC11. Miles-authored XMI
+		// expects the General MIDI/DLS square-law response; the cubic taper made
+		// the kitchen track's two CC7=70 parts sound effectively absent.
+		if (controller == 7u)
+			channelVolume_[channel] = static_cast<uint16_t>(
+				(channelVolume_[channel] & 0x7fu) | (value << 7u));
+		else if (controller == 39u)
+			channelVolume_[channel] = static_cast<uint16_t>(
+				(channelVolume_[channel] & 0x3f80u) | value);
+		else if (controller == 11u)
+			channelExpression_[channel] = static_cast<uint16_t>(
+				(channelExpression_[channel] & 0x7fu) | (value << 7u));
+		else if (controller == 43u)
+			channelExpression_[channel] = static_cast<uint16_t>(
+				(channelExpression_[channel] & 0x3f80u) | value);
+		else if (controller == 121u)
+		{
+			channelVolume_[channel] = 16383;
+			channelExpression_[channel] = 16383;
+			tsf_channel_midi_control(synth_, channel, controller, value);
+			return;
+		}
+		else
+		{
+			tsf_channel_midi_control(synth_, channel, controller, value);
+			return;
+		}
+		const float level =
+			(static_cast<float>(channelVolume_[channel]) / 16383.0f) *
+			(static_cast<float>(channelExpression_[channel]) / 16383.0f);
+		tsf_channel_set_volume(synth_, channel, level * level);
+	}
+
 	void updateTiming()
 	{
 		framesPerTick_ = static_cast<double>(sampleRate_) *
@@ -544,7 +687,44 @@ private:
 				tsf_channel_note_on(synth_, channel, *first, *second / 127.0f);
 			break;
 		case 0xb0u:
-			tsf_channel_midi_control(synth_, channel, *first, *second);
+			if (*first == 0x74u) // XMIDI controller 116: FOR loop
+			{
+				// Miles stores the address immediately after the FOR event. A
+				// repeat count of zero means forever; non-zero counts include the
+				// first pass. Native XMIDI supports four nested loop levels.
+				if (loops_.size() < 4)
+					loops_.push_back({position_, *second});
+			}
+			else if (*first == 0x75u) // XMIDI controller 117: NEXT/BREAK
+			{
+				if (!loops_.empty())
+				{
+					if (*second < 64u)
+					{
+						loops_.pop_back();
+					}
+					else
+					{
+						auto &loop = loops_.back();
+						if (loop.repeat == 0u)
+						{
+							position_ = loop.position;
+						}
+						else if (--loop.repeat == 0u)
+						{
+							loops_.pop_back();
+						}
+						else
+						{
+							position_ = loop.position;
+						}
+					}
+				}
+			}
+			else
+			{
+				applyControl(channel, *first, *second);
+			}
 			break;
 		case 0xe0u:
 			tsf_channel_set_pitchwheel(synth_, channel,
@@ -556,6 +736,24 @@ private:
 	}
 
 	const std::vector<uint8_t> &midi_;
+	struct XmidiLoop
+	{
+		size_t position = 0;
+		uint8_t repeat = 0;
+	};
+	std::vector<XmidiLoop> loops_;
+	std::array<uint16_t, 16> channelVolume_ = []
+	{
+		std::array<uint16_t, 16> values{};
+		values.fill(16383);
+		return values;
+	}();
+	std::array<uint16_t, 16> channelExpression_ = []
+	{
+		std::array<uint16_t, 16> values{};
+		values.fill(16383);
+		return values;
+	}();
 	tsf *synth_ = nullptr;
 	int sampleRate_ = 44100;
 	uint16_t division_ = 0;
@@ -575,6 +773,7 @@ struct WavetableRequest
 {
 	CachedMidi midi;
 	bool loop = false;
+	bool deferStart = false;
 	uint64_t generation = 0;
 };
 
@@ -583,16 +782,18 @@ std::condition_variable g_wavetableReady;
 std::thread g_wavetableThread;
 HANDLE g_wavetableCommandEvent = nullptr;
 HANDLE g_wavetableShutdownEvent = nullptr;
+HANDLE g_wavetableStartEvent = nullptr;
 WavetableRequest g_wavetableRequest;
 uint64_t g_wavetableNextGeneration = 0;
 uint64_t g_wavetableReadyGeneration = 0;
+uint64_t g_wavetableStartedGeneration = 0;
 bool g_wavetableStartupComplete = false;
 bool g_wavetableStartupSucceeded = false;
 
 void configureWavetableSynth(tsf *synth, int sampleRate)
 {
 	tsf_set_output(synth, TSF_STEREO_INTERLEAVED, sampleRate, 0.0f);
-	tsf_set_volume(synth, state.music_volume.load() * kWavetableHeadroom);
+	tsf_set_volume(synth, state.music_volume.load() * kFullScaleOutputGain);
 	for (int channel = 0; channel < 16; ++channel)
 	{
 		tsf_channel_set_bank(synth, channel, channel == 9 ? 128 : 0);
@@ -606,6 +807,16 @@ void acknowledgeWavetable(uint64_t generation)
 	{
 		std::lock_guard lock(g_wavetableMutex);
 		g_wavetableReadyGeneration = (std::max)(g_wavetableReadyGeneration, generation);
+	}
+	g_wavetableReady.notify_all();
+}
+
+void acknowledgeWavetableStarted(uint64_t generation)
+{
+	{
+		std::lock_guard lock(g_wavetableMutex);
+		g_wavetableStartedGeneration =
+			(std::max)(g_wavetableStartedGeneration, generation);
 	}
 	g_wavetableReady.notify_all();
 }
@@ -653,6 +864,7 @@ void wavetableWorker()
 		{
 			state.music_playing = false;
 			acknowledgeWavetable(request.generation);
+			acknowledgeWavetableStarted(request.generation);
 			continue;
 		}
 
@@ -664,6 +876,7 @@ void wavetableWorker()
 			{
 				state.music_playing = false;
 				acknowledgeWavetable(request.generation);
+				acknowledgeWavetableStarted(request.generation);
 				break;
 			}
 			configureWavetableSynth(synth, session.sampleRate);
@@ -673,6 +886,7 @@ void wavetableWorker()
 				tsf_close(synth);
 				state.music_playing = false;
 				acknowledgeWavetable(request.generation);
+				acknowledgeWavetableStarted(request.generation);
 				break;
 			}
 
@@ -681,32 +895,133 @@ void wavetableWorker()
 			bool trackAlive = false;
 			if (SUCCEEDED(hr))
 			{
-				trackAlive = cursor.render(
-					reinterpret_cast<float *>(buffer), session.bufferFrameCount);
-				hr = session.renderClient->ReleaseBuffer(session.bufferFrameCount, 0);
+				if (firstStart && request.deferStart)
+				{
+					// Prime a cold shared-mode endpoint with silence. The music cursor is
+					// deliberately untouched until this buffer has drained, so Windows'
+					// endpoint start/ramp cannot consume any part of the first note.
+					hr = session.renderClient->ReleaseBuffer(
+						session.bufferFrameCount, AUDCLNT_BUFFERFLAGS_SILENT);
+				}
+				else
+				{
+					trackAlive = cursor.render(
+						reinterpret_cast<float *>(buffer), session.bufferFrameCount);
+					hr = session.renderClient->ReleaseBuffer(session.bufferFrameCount, 0);
+				}
 			}
-			if (FAILED(hr) || FAILED(session.audioClient->Start()))
+			if (FAILED(hr))
 			{
 				tsf_close(synth);
 				state.music_playing = false;
 				acknowledgeWavetable(request.generation);
+				acknowledgeWavetableStarted(request.generation);
 				break;
 			}
 
-			state.music_playing = true;
-			if (firstStart)
+			bool replaceTrack = false;
+			if (request.deferStart && firstStart)
 			{
-				// The first audio buffer is queued and the clock is running. VIDEOREF
-				// may now present frame zero without racing MIDI initialization.
+				// The silent warm-up buffer is ready but its clock is stopped. VIDEOREF
+				// releases this gate only after its VDX has finished loading/decoding;
+				// the synth cursor still points at the exact beginning of the song.
 				acknowledgeWavetable(request.generation);
-				firstStart = false;
+				HANDLE preparedHandles[] = {
+					g_wavetableShutdownEvent,
+					g_wavetableCommandEvent,
+					g_wavetableStartEvent};
+				const DWORD preparedWait = WaitForMultipleObjects(
+					3, preparedHandles, FALSE, INFINITE);
+				if (preparedWait == WAIT_OBJECT_0)
+				{
+					shuttingDown = true;
+				}
+				else if (preparedWait == WAIT_OBJECT_0 + 1u)
+					replaceTrack = true;
+			}
+			if (replaceTrack || shuttingDown)
+			{
+				acknowledgeWavetableStarted(request.generation);
+				session.audioClient->Reset();
+				tsf_close(synth);
+				break;
+			}
+			if (FAILED(session.audioClient->Start()))
+			{
+				tsf_close(synth);
+				state.music_playing = false;
+				acknowledgeWavetableStarted(request.generation);
+				break;
 			}
 
 			HANDLE playbackHandles[] = {
 				g_wavetableShutdownEvent,
 				g_wavetableCommandEvent,
 				session.bufferEvent};
-			bool replaceTrack = false;
+			if (firstStart && request.deferStart)
+			{
+				const auto warmupEnd = std::chrono::steady_clock::now() +
+					std::chrono::milliseconds(kSynthEndpointWarmupMs);
+				bool firstMusicQueued = false;
+				while (!firstMusicQueued)
+				{
+					const DWORD wait = WaitForMultipleObjects(
+						3, playbackHandles, FALSE, INFINITE);
+					if (wait == WAIT_OBJECT_0)
+					{
+						shuttingDown = true;
+						break;
+					}
+					if (wait == WAIT_OBJECT_0 + 1u)
+					{
+						replaceTrack = true;
+						break;
+					}
+					UINT32 padding = 0;
+					if (FAILED(session.audioClient->GetCurrentPadding(&padding)))
+						break;
+					const UINT32 available = session.bufferFrameCount - padding;
+					if (available == 0)
+						continue;
+					if (FAILED(session.renderClient->GetBuffer(
+							available, &buffer)))
+						break;
+					if (std::chrono::steady_clock::now() < warmupEnd)
+					{
+						// Refill with silence so the endpoint stays continuously active.
+						// Do not call cursor.render(): sample zero remains untouched.
+						if (FAILED(session.renderClient->ReleaseBuffer(
+								available, AUDCLNT_BUFFERFLAGS_SILENT)))
+							break;
+						continue;
+					}
+					trackAlive = cursor.render(
+						reinterpret_cast<float *>(buffer), available);
+					if (FAILED(session.renderClient->ReleaseBuffer(
+							available, 0)))
+						break;
+					firstMusicQueued = true;
+				}
+				if (!firstMusicQueued || replaceTrack || shuttingDown)
+				{
+					acknowledgeWavetableStarted(request.generation);
+					tsf_reset(synth);
+					session.audioClient->Stop();
+					session.audioClient->Reset();
+					tsf_close(synth);
+					break;
+				}
+			}
+
+			state.music_playing = true;
+			if (firstStart)
+			{
+				acknowledgeWavetable(request.generation);
+				// The first audio buffer is queued and the clock is running.
+				acknowledgeWavetableStarted(request.generation);
+				firstStart = false;
+			}
+
 			while (trackAlive)
 			{
 				const DWORD wait = WaitForMultipleObjects(3, playbackHandles, FALSE, INFINITE);
@@ -729,7 +1044,7 @@ void wavetableWorker()
 				if (FAILED(session.renderClient->GetBuffer(available, &buffer)))
 					break;
 				tsf_set_volume(synth,
-					state.music_volume.load() * kWavetableHeadroom);
+					state.music_volume.load() * kFullScaleOutputGain);
 				trackAlive = cursor.render(reinterpret_cast<float *>(buffer), available);
 				if (FAILED(session.renderClient->ReleaseBuffer(available, 0)))
 					break;
@@ -745,6 +1060,10 @@ void wavetableWorker()
 					replaceTrack = true;
 			}
 
+			// Kill sustain/release state before discarding this synth. Resetting the
+			// WASAPI endpoint then guarantees that no queued sample from the old room
+			// can leak into the replacement track.
+			tsf_reset(synth);
 			session.audioClient->Stop();
 			session.audioClient->Reset();
 			tsf_close(synth);
@@ -775,14 +1094,18 @@ bool ensureWavetableEngine()
 		return false;
 	g_wavetableCommandEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
 	g_wavetableShutdownEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-	if (!g_wavetableCommandEvent || !g_wavetableShutdownEvent)
+	g_wavetableStartEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+	if (!g_wavetableCommandEvent || !g_wavetableShutdownEvent || !g_wavetableStartEvent)
 	{
 		if (g_wavetableCommandEvent)
 			CloseHandle(g_wavetableCommandEvent);
 		if (g_wavetableShutdownEvent)
 			CloseHandle(g_wavetableShutdownEvent);
+		if (g_wavetableStartEvent)
+			CloseHandle(g_wavetableStartEvent);
 		g_wavetableCommandEvent = nullptr;
 		g_wavetableShutdownEvent = nullptr;
+		g_wavetableStartEvent = nullptr;
 		return false;
 	}
 	g_wavetableStartupComplete = false;
@@ -796,17 +1119,24 @@ bool ensureWavetableEngine()
 	return g_wavetableStartupSucceeded;
 }
 
-bool submitWavetable(CachedMidi midi, bool loop)
+bool submitWavetable(CachedMidi midi, bool loop, bool deferStart = false)
 {
 	if (!ensureWavetableEngine())
 		return false;
+	const bool hasSong = static_cast<bool>(midi);
 	uint64_t generation = 0;
 	{
 		std::lock_guard lock(g_wavetableMutex);
 		generation = ++g_wavetableNextGeneration;
-		g_wavetableRequest = {std::move(midi), loop, generation};
+		ResetEvent(g_wavetableStartEvent);
+		g_wavetableRequest = {std::move(midi), loop, deferStart, generation};
 		SetEvent(g_wavetableCommandEvent);
 	}
+	// Ordinary gameplay never waits on synthesis setup. Every XMI has already
+	// been converted and cached, and the persistent worker replaces the song on
+	// its audio-priority thread. Only boot VIDEOREF needs the preparation barrier.
+	if (!deferStart && hasSong)
+		return true;
 	std::unique_lock lock(g_wavetableMutex);
 	return g_wavetableReady.wait_for(lock, std::chrono::seconds(2), [generation]
 	{
@@ -828,10 +1158,439 @@ void stopWavetableEngine()
 	g_wavetableThread.join();
 	CloseHandle(g_wavetableCommandEvent);
 	CloseHandle(g_wavetableShutdownEvent);
+	CloseHandle(g_wavetableStartEvent);
 	g_wavetableCommandEvent = nullptr;
 	g_wavetableShutdownEvent = nullptr;
+	g_wavetableStartEvent = nullptr;
 	g_wavetableStartupComplete = false;
 	g_wavetableStartupSucceeded = false;
+}
+
+//----------------------------------------------------------------------
+// Persistent low-latency OPL engine
+//----------------------------------------------------------------------
+struct OplRequest
+{
+	CachedMidi midi;
+	bool isTransient = false;
+	bool loop = false;
+	bool deferStart = false;
+	uint64_t generation = 0;
+};
+
+std::mutex g_oplMutex;
+std::condition_variable g_oplReady;
+std::thread g_oplThread;
+HANDLE g_oplCommandEvent = nullptr;
+HANDLE g_oplShutdownEvent = nullptr;
+HANDLE g_oplStartEvent = nullptr;
+OplRequest g_oplRequest;
+uint64_t g_oplNextGeneration = 0;
+uint64_t g_oplReadyGeneration = 0;
+uint64_t g_oplStartedGeneration = 0;
+bool g_oplStartupComplete = false;
+bool g_oplStartupSucceeded = false;
+
+void acknowledgeOpl(uint64_t generation)
+{
+	{
+		std::lock_guard lock(g_oplMutex);
+		g_oplReadyGeneration = (std::max)(g_oplReadyGeneration, generation);
+	}
+	g_oplReady.notify_all();
+}
+
+void acknowledgeOplStarted(uint64_t generation)
+{
+	{
+		std::lock_guard lock(g_oplMutex);
+		g_oplStartedGeneration =
+			(std::max)(g_oplStartedGeneration, generation);
+	}
+	g_oplReady.notify_all();
+}
+
+void configureOplPlayer(ADL_MIDIPlayer *player)
+{
+	int fourOperatorChannels = 0;
+	if (state.music_mode == "opl2" || state.music_mode == "opl")
+	{
+		adl_switchEmulator(player, V64TNG_EMU_OPL2);
+		adl_setNumChips(player, 1);
+	}
+	else if (state.music_mode == "dual_opl2")
+	{
+		adl_switchEmulator(player, V64TNG_EMU_OPL2);
+		adl_setNumChips(player, 2);
+	}
+	else
+	{
+		adl_switchEmulator(player, V64TNG_EMU_OPL3);
+		adl_setNumChips(player, 2);
+		fourOperatorChannels = 6;
+	}
+	adl_setBank(player, state.midi_bank);
+	// The retail DOS score was authored against Miles/A.I.L. controller scaling.
+	// This selects libADLMIDI's matching curve without applying a final gain or
+	// rewriting any event values.
+	adl_setVolumeRangeModel(player, ADLMIDI_VolumeModel_AIL);
+	// Bank selection auto-calculates this value, so preserve v64tng's explicit
+	// topology by applying it afterwards.
+	adl_setNumFourOpsChn(player, fourOperatorChannels);
+	adl_reset(player);
+}
+
+int renderOplBuffer(
+	ADL_MIDIPlayer *player,
+	short *buffer,
+	UINT32 frames)
+{
+	const int requestedSamples = static_cast<int>(frames * 2u);
+	const int renderedSamples = adl_play(player, requestedSamples, buffer);
+	if (renderedSamples <= 0)
+	{
+		std::fill_n(buffer, requestedSamples, short{0});
+		return renderedSamples;
+	}
+	std::fill(buffer + renderedSamples, buffer + requestedSamples, short{0});
+	const float gain = kOplOutputGain * state.music_volume.load();
+	for (int index = 0; index < renderedSamples; ++index)
+	{
+		float sample = static_cast<float>(buffer[index]) * gain;
+		buffer[index] = static_cast<short>(
+			std::clamp(sample, -32768.0f, 32767.0f));
+	}
+	return renderedSamples;
+}
+
+void oplWorker()
+{
+	DWORD mmcssIndex = 0;
+	HANDLE mmcss = AvSetMmThreadCharacteristicsW(L"Pro Audio", &mmcssIndex);
+	if (!mmcss)
+		mmcss = AvSetMmThreadCharacteristicsW(L"Audio", &mmcssIndex);
+
+	WasapiSession session;
+	const bool sessionReady = session.init(WAVE_FORMAT_PCM, 16, 44100, false);
+	ADL_MIDIPlayer *player = sessionReady ? adl_init(session.sampleRate) : nullptr;
+	if (player)
+		configureOplPlayer(player);
+	{
+		std::lock_guard lock(g_oplMutex);
+		g_oplStartupSucceeded = player != nullptr;
+		g_oplStartupComplete = true;
+	}
+	g_oplReady.notify_all();
+	if (!player)
+	{
+		if (mmcss)
+			AvRevertMmThreadCharacteristics(mmcss);
+		return;
+	}
+
+	HANDLE idleHandles[] = {g_oplShutdownEvent, g_oplCommandEvent};
+	bool shuttingDown = false;
+	while (!shuttingDown)
+	{
+		const DWORD idleWait = WaitForMultipleObjects(2, idleHandles, FALSE, INFINITE);
+		if (idleWait == WAIT_OBJECT_0)
+			break;
+
+		OplRequest request;
+		{
+			std::lock_guard lock(g_oplMutex);
+			request = g_oplRequest;
+			ResetEvent(g_oplCommandEvent);
+		}
+		session.audioClient->Stop();
+		session.audioClient->Reset();
+		if (!request.midi)
+		{
+			state.music_playing = false;
+			acknowledgeOpl(request.generation);
+			acknowledgeOplStarted(request.generation);
+			continue;
+		}
+
+		bool firstStart = true;
+		do
+		{
+			configureOplPlayer(player);
+			if (adl_openData(player, request.midi->data(),
+				static_cast<unsigned long>(request.midi->size())) < 0)
+			{
+				std::println(stderr, "ERROR: Failed to prepare MIDI data in libADLMIDI.");
+				state.music_playing = false;
+				acknowledgeOpl(request.generation);
+				acknowledgeOplStarted(request.generation);
+				break;
+			}
+			if (request.isTransient)
+				adl_positionRewind(player);
+			else
+				adl_positionSeek(player, state.main_song_position.load());
+
+			BYTE *rawBuffer = nullptr;
+			HRESULT hr = session.renderClient->GetBuffer(
+				session.bufferFrameCount, &rawBuffer);
+			int samples = 0;
+			if (SUCCEEDED(hr))
+			{
+				if (firstStart && request.deferStart)
+				{
+					// Warm the shared-mode endpoint without advancing libADLMIDI.
+					// Its very first rendered sample is submitted only after Windows'
+					// cold-start ramp has finished consuming this silent buffer.
+					hr = session.renderClient->ReleaseBuffer(
+						session.bufferFrameCount, AUDCLNT_BUFFERFLAGS_SILENT);
+				}
+				else
+				{
+					samples = renderOplBuffer(player,
+						reinterpret_cast<short *>(rawBuffer),
+						session.bufferFrameCount);
+					hr = session.renderClient->ReleaseBuffer(
+						session.bufferFrameCount, 0);
+				}
+			}
+			if (FAILED(hr))
+			{
+				state.music_playing = false;
+				acknowledgeOpl(request.generation);
+				acknowledgeOplStarted(request.generation);
+				break;
+			}
+
+			bool replaceTrack = false;
+			if (request.deferStart && firstStart)
+			{
+				acknowledgeOpl(request.generation);
+				HANDLE preparedHandles[] = {
+					g_oplShutdownEvent, g_oplCommandEvent, g_oplStartEvent};
+				const DWORD wait = WaitForMultipleObjects(
+					3, preparedHandles, FALSE, INFINITE);
+				if (wait == WAIT_OBJECT_0)
+					shuttingDown = true;
+				else if (wait == WAIT_OBJECT_0 + 1u)
+					replaceTrack = true;
+			}
+			if (replaceTrack || shuttingDown)
+			{
+				acknowledgeOplStarted(request.generation);
+				session.audioClient->Reset();
+				break;
+			}
+			if (FAILED(session.audioClient->Start()))
+			{
+				state.music_playing = false;
+				acknowledgeOplStarted(request.generation);
+				break;
+			}
+
+			HANDLE playbackHandles[] = {
+				g_oplShutdownEvent, g_oplCommandEvent, session.bufferEvent};
+			if (firstStart && request.deferStart)
+			{
+				const auto warmupEnd = std::chrono::steady_clock::now() +
+					std::chrono::milliseconds(kSynthEndpointWarmupMs);
+				bool firstMusicQueued = false;
+				while (!firstMusicQueued)
+				{
+					const DWORD wait = WaitForMultipleObjects(
+						3, playbackHandles, FALSE, INFINITE);
+					if (wait == WAIT_OBJECT_0)
+					{
+						shuttingDown = true;
+						break;
+					}
+					if (wait == WAIT_OBJECT_0 + 1u)
+					{
+						replaceTrack = true;
+						break;
+					}
+					UINT32 padding = 0;
+					if (FAILED(session.audioClient->GetCurrentPadding(&padding)))
+						break;
+					const UINT32 available = session.bufferFrameCount - padding;
+					if (available == 0)
+						continue;
+					if (FAILED(session.renderClient->GetBuffer(
+							available, &rawBuffer)))
+						break;
+					if (std::chrono::steady_clock::now() < warmupEnd)
+					{
+						// Keep the endpoint hot without asking libADLMIDI for a sample.
+						if (FAILED(session.renderClient->ReleaseBuffer(
+								available, AUDCLNT_BUFFERFLAGS_SILENT)))
+							break;
+						continue;
+					}
+					samples = renderOplBuffer(player,
+						reinterpret_cast<short *>(rawBuffer),
+						available);
+					if (FAILED(session.renderClient->ReleaseBuffer(
+							available, 0)))
+						break;
+					firstMusicQueued = true;
+				}
+				if (!firstMusicQueued || replaceTrack || shuttingDown)
+				{
+					acknowledgeOplStarted(request.generation);
+					adl_panic(player);
+					session.audioClient->Stop();
+					session.audioClient->Reset();
+					break;
+				}
+			}
+
+			state.music_playing = true;
+			if (firstStart)
+			{
+				acknowledgeOpl(request.generation);
+				acknowledgeOplStarted(request.generation);
+				firstStart = false;
+			}
+
+			while (samples > 0)
+			{
+				const DWORD wait = WaitForMultipleObjects(
+					3, playbackHandles, FALSE, INFINITE);
+				if (wait == WAIT_OBJECT_0)
+				{
+					shuttingDown = true;
+					break;
+				}
+				if (wait == WAIT_OBJECT_0 + 1u)
+				{
+					replaceTrack = true;
+					break;
+				}
+				UINT32 padding = 0;
+				if (FAILED(session.audioClient->GetCurrentPadding(&padding)))
+					break;
+				const UINT32 available = session.bufferFrameCount - padding;
+				if (available == 0)
+					continue;
+				if (FAILED(session.renderClient->GetBuffer(available, &rawBuffer)))
+					break;
+				samples = renderOplBuffer(player,
+					reinterpret_cast<short *>(rawBuffer), available);
+				if (FAILED(session.renderClient->ReleaseBuffer(available, 0)))
+					break;
+			}
+
+			if (!request.isTransient)
+			{
+				state.main_song_position.store(adl_positionTell(player));
+				state.hasPlayedFirstSong.store(true);
+			}
+			// libADLMIDI can retain held/sustained voices internally. Panic before
+			// flushing the endpoint so replacement songs always begin from silence.
+			adl_panic(player);
+			session.audioClient->Stop();
+			session.audioClient->Reset();
+			if (replaceTrack || shuttingDown)
+				break;
+			if (!request.loop)
+			{
+				state.music_playing = false;
+				break;
+			}
+			state.main_song_position.store(0.0);
+		} while (request.loop && !shuttingDown);
+	}
+	state.music_playing = false;
+	adl_close(player);
+	if (mmcss)
+		AvRevertMmThreadCharacteristics(mmcss);
+}
+
+bool ensureOplEngine()
+{
+	if (g_oplThread.joinable())
+		return g_oplStartupSucceeded;
+	g_oplCommandEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+	g_oplShutdownEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+	g_oplStartEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+	if (!g_oplCommandEvent || !g_oplShutdownEvent || !g_oplStartEvent)
+	{
+		if (g_oplCommandEvent) CloseHandle(g_oplCommandEvent);
+		if (g_oplShutdownEvent) CloseHandle(g_oplShutdownEvent);
+		if (g_oplStartEvent) CloseHandle(g_oplStartEvent);
+		g_oplCommandEvent = g_oplShutdownEvent = g_oplStartEvent = nullptr;
+		return false;
+	}
+	g_oplStartupComplete = false;
+	g_oplStartupSucceeded = false;
+	g_oplThread = std::thread(oplWorker);
+	std::unique_lock lock(g_oplMutex);
+	g_oplReady.wait_for(lock, std::chrono::seconds(2), []
+	{
+		return g_oplStartupComplete;
+	});
+	return g_oplStartupSucceeded;
+}
+
+bool submitOpl(CachedMidi midi, bool isTransient, bool loop, bool deferStart)
+{
+	if (!ensureOplEngine())
+		return false;
+	const bool hasSong = static_cast<bool>(midi);
+	uint64_t generation = 0;
+	{
+		std::lock_guard lock(g_oplMutex);
+		generation = ++g_oplNextGeneration;
+		ResetEvent(g_oplStartEvent);
+		g_oplRequest = {
+			std::move(midi), isTransient, loop, deferStart, generation};
+		SetEvent(g_oplCommandEvent);
+	}
+	if (!deferStart && hasSong)
+		return true;
+	std::unique_lock lock(g_oplMutex);
+	return g_oplReady.wait_for(lock, std::chrono::seconds(2), [generation]
+	{
+		return g_oplReadyGeneration >= generation;
+	});
+}
+
+void stopOplPlayback()
+{
+	if (g_oplThread.joinable())
+		submitOpl({}, false, false, false);
+}
+
+void stopOplEngine()
+{
+	if (!g_oplThread.joinable())
+		return;
+	SetEvent(g_oplShutdownEvent);
+	g_oplThread.join();
+	CloseHandle(g_oplCommandEvent);
+	CloseHandle(g_oplShutdownEvent);
+	CloseHandle(g_oplStartEvent);
+	g_oplCommandEvent = g_oplShutdownEvent = g_oplStartEvent = nullptr;
+	g_oplStartupComplete = false;
+	g_oplStartupSucceeded = false;
+}
+
+void stopActiveMusicPlayback()
+{
+	// The legacy General MIDI path owns music_thread; the two PCM renderers own
+	// persistent workers. Stop all three explicitly because a live backend switch
+	// changes state.music_mode before the old backend has necessarily gone idle.
+	signalMusicStop();
+	state.music_playing = false;
+	if (state.music_thread.joinable())
+		state.music_thread.join();
+	resetMusicStop();
+	stopWavetablePlayback();
+	stopOplPlayback();
+	if (g_midiStream)
+	{
+		midiStreamStop(g_midiStream);
+		midiOutReset(reinterpret_cast<HMIDIOUT>(g_midiStream));
+	}
 }
 
 } // namespace
@@ -843,41 +1602,27 @@ void musicInit()
 {
 #ifdef _WIN32
 	state.music_mode = config.value("midiMode", std::string{"opl3"});
+	g_musicEnabled = config.value("midiEnabled", true);
+	state.midi_bank = config.value("midiBank", 0);
 	state.soundfont_path = config.value("soundFont", std::string{"default.sf2"});
 	state.music_volume.store(std::clamp(
 		config.value("midiVolume", 100) / 100.0f, 0.0f, 1.0f));
 
-	// Convert every tiny XMI resource once, before SCRIPT.GRV can start the
-	// main-menu choreography. Playback only shares immutable cached MIDI bytes.
-	preloadMidiCache();
-	
-	// Pre-initialize General MIDI stream for instant playback
-	if (state.music_mode == "general")
-	{
-		UINT deviceId = static_cast<UINT>(MIDI_MAPPER);
-		if (!g_midiDoneEvent)
-			g_midiDoneEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-		MMRESULT r = midiStreamOpen(&g_midiStream, &deviceId, 1,
-			reinterpret_cast<DWORD_PTR>(g_midiDoneEvent), 0, CALLBACK_EVENT);
-		if (r == MMSYSERR_NOERROR && g_midiStream)
-		{
-			g_midiStreamReady = true;
-		}
-	}
-	
-	// Resolve the configured bank once, then create the WASAPI endpoint and
-	// audio-priority worker before frame zero of sphinx.vdx is allowed to render.
+	if (!g_musicEnabled)
+		return;
+
+	// General MIDI is an event-stream backend: do not load a SoundFont, start a
+	// PCM endpoint, or bulk-convert XMI at application startup.  Only software
+	// synthesis modes perform the original game's prepare-MIDI phase.
 	if (state.music_mode == "wavetable")
 	{
-		g_soundfont = loadConfiguredSoundfont(state.soundfont_path);
-		if (g_soundfont)
-		{
-			tsf_set_output(g_soundfont, TSF_STEREO_INTERLEAVED, 44100, 0.0f);
-			tsf_set_volume(g_soundfont,
-				state.music_volume.load() * kWavetableHeadroom);
-			g_soundfontReady = true;
-			ensureWavetableEngine();
-		}
+		preloadMidiCache();
+		ensureWavetableEngine();
+	}
+	else if (state.music_mode != "general")
+	{
+		preloadMidiCache();
+		ensureOplEngine();
 	}
 #endif
 }
@@ -892,6 +1637,7 @@ void musicShutdown()
 	if (state.music_thread.joinable())
 		state.music_thread.join();
 	stopWavetableEngine();
+	stopOplEngine();
 
 	// Close General MIDI stream
 	if (g_midiStream)
@@ -911,6 +1657,21 @@ void musicShutdown()
 	{
 		CloseHandle(g_musicStopEvent);
 		g_musicStopEvent = nullptr;
+	}
+	if (g_generalPreparedEvent)
+	{
+		CloseHandle(g_generalPreparedEvent);
+		g_generalPreparedEvent = nullptr;
+	}
+	if (g_generalStartEvent)
+	{
+		CloseHandle(g_generalStartEvent);
+		g_generalStartEvent = nullptr;
+	}
+	if (g_generalStartedEvent)
+	{
+		CloseHandle(g_generalStartedEvent);
+		g_generalStartedEvent = nullptr;
 	}
 
 	// Close soundfont
@@ -1303,6 +2064,47 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 
 namespace
 {
+std::string xmiStem(const RLEntry &entry)
+{
+	std::string stem = entry.filename;
+	if (const auto nul = stem.find('\0'); nul != std::string::npos)
+		stem.resize(nul);
+	if (const auto dot = stem.find('.'); dot != std::string::npos)
+		stem.resize(dot);
+	return stem;
+}
+
+CachedMidi cacheMidiSong(std::string_view songName)
+{
+	if (const CachedMidi alreadyCached = cachedMidi(songName))
+		return alreadyCached;
+	const auto entries = parseRLFile(assetPath("XMI.RL").string());
+	if (!entries)
+	{
+		std::println(stderr, "ERROR: Cannot read XMI index: {}", entries.error());
+		return {};
+	}
+	for (const RLEntry &entry : *entries)
+	{
+		std::string stem = xmiStem(entry);
+		if (stem != songName)
+			continue;
+		try
+		{
+			auto converted = std::make_shared<const std::vector<uint8_t>>(
+				xmiConverter(entry));
+			g_midiCache.emplace(stem, converted);
+			return converted;
+		}
+		catch (const std::exception &error)
+		{
+			std::println(stderr, "ERROR: Cannot convert XMI '{}': {}", stem, error.what());
+			return {};
+		}
+	}
+	return {};
+}
+
 void preloadMidiCache()
 {
 	if (!g_midiCache.empty())
@@ -1315,11 +2117,7 @@ void preloadMidiCache()
 	}
 	for (const RLEntry &entry : *entries)
 	{
-		std::string stem = entry.filename;
-		if (const auto nul = stem.find('\0'); nul != std::string::npos)
-			stem.resize(nul);
-		if (const auto dot = stem.find('.'); dot != std::string::npos)
-			stem.resize(dot);
+		std::string stem = xmiStem(entry);
 		if (stem.empty())
 			continue;
 		try
@@ -1349,7 +2147,10 @@ Parameters:
 	- bool isTransient: Indicates whether the song is transient or not.
 ===============================================================================
 */
-void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient)
+void PlayMIDI_GeneralMIDI(
+	const std::vector<uint8_t> &midiData,
+	bool isTransient,
+	bool deferStart = false)
 {
 #ifdef _WIN32
 	// Parse MIDI file header
@@ -1419,7 +2220,6 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 
 	// Use persistent stream or open new one
 	HMIDISTRM hStream = g_midiStream;
-	bool ownStream = false;
 	
 	if (!hStream || !g_midiStreamReady)
 	{
@@ -1434,7 +2234,10 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 			std::println(stderr, "ERROR: midiStreamOpen failed.");
 			return;
 		}
-		ownStream = true;
+		// Open lazily on the first requested General MIDI song, then retain the
+		// stream so live volume changes and subsequent tracks are instantaneous.
+		g_midiStream = hStream;
+		g_midiStreamReady = true;
 	}
 	else
 	{
@@ -1472,7 +2275,6 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 		stream.push_back(evt);
 	};
 
-	state.music_playing = true;
 	uint8_t runningStatus = 0;
 
 	// Inject the initial tempo at delta 0
@@ -1531,7 +2333,13 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 			if (pos + 2 > dataEnd)
 				break;
 			msg |= (static_cast<DWORD>(midiData[pos]) << 8);
-			msg |= (static_cast<DWORD>(midiData[pos + 1]) << 16);
+			uint8_t second = midiData[pos + 1];
+			if (cmd == 0x90 && second != 0)
+			{
+				second = static_cast<uint8_t>((std::min)(127L,
+					std::lround(second * kGeneralMidiVelocityGain)));
+			}
+			msg |= (static_cast<DWORD>(second) << 16);
 			pos += 2;
 			appendEvent(delta, MEVT_SHORTMSG | msg);
 		}
@@ -1557,8 +2365,6 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 	if (midiOutPrepareHeader(reinterpret_cast<HMIDIOUT>(hStream), &hdr, sizeof(MIDIHDR)) != MMSYSERR_NOERROR)
 	{
 		std::println(stderr, "ERROR: midiOutPrepareHeader failed.");
-		if (ownStream)
-			midiStreamClose(hStream);
 		state.music_playing = false;
 		return;
 	}
@@ -1567,13 +2373,51 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 	{
 		std::println(stderr, "ERROR: midiStreamOut failed.");
 		midiOutUnprepareHeader(reinterpret_cast<HMIDIOUT>(hStream), &hdr, sizeof(MIDIHDR));
-		if (ownStream)
-			midiStreamClose(hStream);
 		state.music_playing = false;
 		return;
 	}
 
-	midiStreamRestart(hStream);
+	if (deferStart)
+	{
+		g_generalPrepareSucceeded.store(true);
+		SetEvent(g_generalPreparedEvent);
+		HANDLE startHandles[] = {g_musicStopEvent, g_generalStartEvent};
+		if (WaitForMultipleObjects(2, startHandles, FALSE, INFINITE) !=
+			WAIT_OBJECT_0 + 1u)
+		{
+			g_generalStartSucceeded.store(false);
+			SetEvent(g_generalStartedEvent);
+			midiOutReset(reinterpret_cast<HMIDIOUT>(hStream));
+			midiOutUnprepareHeader(
+				reinterpret_cast<HMIDIOUT>(hStream), &hdr, sizeof(MIDIHDR));
+			state.music_playing = false;
+			return;
+		}
+	}
+
+	const MMRESULT restartResult = midiStreamRestart(hStream);
+	if (restartResult != MMSYSERR_NOERROR)
+	{
+		std::println(stderr, "ERROR: midiStreamRestart failed.");
+		g_generalStartSucceeded.store(false);
+		if (deferStart)
+			SetEvent(g_generalStartedEvent);
+		midiOutReset(reinterpret_cast<HMIDIOUT>(hStream));
+		midiOutUnprepareHeader(
+			reinterpret_cast<HMIDIOUT>(hStream), &hdr, sizeof(MIDIHDR));
+		state.music_playing = false;
+		return;
+	}
+	state.music_playing = true;
+	if (deferStart)
+	{
+		// midiStreamRestart confirms that the event stream is running, not that the
+		// Microsoft synth's delayed audio has reached the speakers. Give it its
+		// measured render lead before releasing sphinx.vdx frame zero.
+		WaitForSingleObject(g_musicStopEvent, kGeneralMidiVisualLeadMs);
+		g_generalStartSucceeded.store(true);
+		SetEvent(g_generalStartedEvent);
+	}
 
 	while ((hdr.dwFlags & MHDR_DONE) == 0 && state.music_playing)
 	{
@@ -1591,13 +2435,6 @@ void PlayMIDI_GeneralMIDI(const std::vector<uint8_t> &midiData, bool isTransient
 	}
 
 	midiOutUnprepareHeader(reinterpret_cast<HMIDIOUT>(hStream), &hdr, sizeof(MIDIHDR));
-
-	// Only close if we own this stream (not persistent)
-	if (ownStream)
-	{
-		midiOutReset(reinterpret_cast<HMIDIOUT>(hStream));
-		midiStreamClose(hStream);
-	}
 
 	state.music_playing = false;
 #endif
@@ -1657,6 +2494,7 @@ void PlayMIDI_OPL(const std::vector<uint8_t> &midiData, bool isTransient)
 
 	// Apply bank selection and configure 4-op channels after bank change
 	adl_setBank(player, state.midi_bank);
+	adl_setVolumeRangeModel(player, ADLMIDI_VolumeModel_AIL);
 
 	if (state.music_mode == "opl3")
 	{
@@ -1691,10 +2529,7 @@ void PlayMIDI_OPL(const std::vector<uint8_t> &midiData, bool isTransient)
 	// Playback loop
 	//
 	state.music_playing = true;
-	const float gain = 6.0f;
-	const int fadeSamples = static_cast<int>(0.5 * session.sampleRate); // 500ms fade-in
-	int fadeCounter = 0;
-	bool fadingIn = !isTransient && state.hasPlayedFirstSong.load(); // Fade-in only for main songs after first play
+	const float gain = kOplOutputGain;
 
 	while (state.music_playing)
 	{
@@ -1722,17 +2557,12 @@ void PlayMIDI_OPL(const std::vector<uint8_t> &midiData, bool isTransient)
 		if (samples <= 0)
 			break; // End of song
 
-		// Apply gain, volume, and fade-in if applicable
+		// Apply gain and volume. Preserve the authored attack: an artificial
+		// 500 ms fade here made each resumed song sound as though it began late.
 		short *samplesPtr = reinterpret_cast<short *>(static_cast<void *>(pData));
 		for (int i = 0; i < samples; i++)
 		{
 			float sample = static_cast<float>(samplesPtr[i]) * gain * state.music_volume.load();
-			if (fadingIn && fadeCounter < fadeSamples)
-			{
-				float fadeFactor = static_cast<float>(fadeCounter) / fadeSamples;
-				sample *= fadeFactor;
-				fadeCounter++;
-			}
 			samplesPtr[i] = static_cast<short>(std::clamp(sample, -32768.0f, 32767.0f));
 		}
 
@@ -1808,10 +2638,9 @@ void PlayMIDI_Wavetable(const std::vector<uint8_t> &midiData, bool isTransient)
 	// Configure TinySoundFont for General MIDI playback
 	tsf_set_output(synth, TSF_STEREO_INTERLEAVED, sampleRate, 0.0f);
 	
-	// Fixed -1 dBFS headroom raises the former -6.02 dB output without a
-	// compressor/limiter, so every authored velocity and controller ratio stays
-	// unchanged.
-	tsf_set_volume(synth, state.music_volume.load() * kWavetableHeadroom);
+	// Unity at MIDI volume 100: authored velocity/controller relationships pass
+	// through unchanged and TinySoundFont is neither attenuated nor boosted.
+	tsf_set_volume(synth, state.music_volume.load() * kFullScaleOutputGain);
 	
 	// Initialize all 16 MIDI channels for General MIDI bank mode
 	// This ensures program changes work correctly and prevents crazy volume
@@ -2042,30 +2871,33 @@ void PlayMIDI(const std::vector<uint8_t> &midiData, bool isTransient)
 
 /*
 ===============================================================================
-Function Name: xmiPlay
+Function Name: xmiPrepare
 
 Description:
-	- Sets up the music thread to play the specified XMI song. It initializes the
-	  MIDI system, stops any currently playing music, and starts a new thread
-	  to play the specified song.
+	- Fully initializes a song and queues its first audio buffer without starting
+	  the WASAPI clock. musicStartPrepared releases it at the video boundary.
 
 Parameters:
 	- const std::string &songName: The name of the song to be played.
 	- bool isTransient: Indicates whether the song is transient or not.
 ===============================================================================
 */
-void xmiPlay(const std::string &songName, bool isTransient, bool loop)
+void xmiPrepare(
+	const std::string &songName,
+	bool isTransient,
+	bool loop,
+	bool synchronizeAtStart)
 {
 	const bool midi_enabled = config.value("midiEnabled", true);
+	g_musicEnabled = midi_enabled;
 	const int midi_volume = config.value("midiVolume", 100);
 	state.music_volume.store(std::clamp(midi_volume / 100.0f, 0.0f, 1.0f));
 	state.music_mode = config.value("midiMode", std::string{"opl3"});
 	state.midi_bank = config.value("midiBank", 0);
 	state.soundfont_path = config.value("soundFont", std::string{"default.sf2"});
 
-	// Stop/reap a legacy OPL or WinMM worker. Wavetable owns a separate
-	// persistent audio-priority worker and never tears its endpoint down between
-	// songs.
+	// Stop/reap a legacy WinMM worker. Wavetable and OPL own persistent
+	// audio-priority workers and never tear their endpoints down between songs.
 	signalMusicStop();
 	state.music_playing = false;
 	if (state.music_thread.joinable())
@@ -2075,6 +2907,7 @@ void xmiPlay(const std::string &songName, bool isTransient, bool loop)
 	if (!midi_enabled)
 	{
 		stopWavetablePlayback();
+		stopOplPlayback();
 		return;
 	}
 
@@ -2088,21 +2921,109 @@ void xmiPlay(const std::string &songName, bool isTransient, bool loop)
 		state.main_song_position.store(0.0);
 	}
 
-	if (g_midiCache.empty())
-		preloadMidiCache();
-	const CachedMidi midi = cachedMidi(songName);
-	if (!midi)
+	if (state.music_mode == "general")
 	{
-		std::println(stderr, "ERROR: XMI file '{}' not found in the startup cache.", songName);
+		stopWavetablePlayback();
+		stopOplPlayback();
+		if (!ensureGeneralSyncEvents())
+		{
+			std::println(stderr, "ERROR: Cannot create General MIDI synchronization events.");
+			return;
+		}
+		ResetEvent(g_generalPreparedEvent);
+		ResetEvent(g_generalStartEvent);
+		ResetEvent(g_generalStartedEvent);
+		g_generalPrepareSucceeded.store(false);
+		g_generalStartSucceeded.store(false);
+		// Conversion and WinMM preparation stay off the UI thread, but xmiPrepare
+		// does not return until the requested event buffer is actually queued on a
+		// paused stream. VIDEOREF therefore cannot outrun General MIDI startup.
+		state.music_thread = std::thread(
+			[songName, isTransient, loop, synchronizeAtStart]
+		{
+			auto releaseFailedPreparation = []
+			{
+				g_generalPrepareSucceeded.store(false);
+				g_generalStartSucceeded.store(false);
+				SetEvent(g_generalPreparedEvent);
+				SetEvent(g_generalStartedEvent);
+			};
+			const CachedMidi midi = cacheMidiSong(songName);
+			if (!midi)
+			{
+				std::println(stderr, "ERROR: XMI file '{}' not found.", songName);
+				releaseFailedPreparation();
+				return;
+			}
+			ensureMusicStopEvent();
+			if (WaitForSingleObject(g_musicStopEvent, 0) == WAIT_OBJECT_0)
+			{
+				releaseFailedPreparation();
+				return;
+			}
+			const bool effectiveLoop =
+				loop || hasWholeTrackInfiniteXmidiLoop(*midi);
+			try
+			{
+				bool firstPass = true;
+				do
+				{
+					PlayMIDI_GeneralMIDI(
+						*midi, isTransient, synchronizeAtStart && firstPass);
+					if (firstPass)
+					{
+						// Unblock xmiPrepare/musicStartPrepared on every error path.
+						if (WaitForSingleObject(g_generalPreparedEvent, 0) != WAIT_OBJECT_0)
+							SetEvent(g_generalPreparedEvent);
+						if (WaitForSingleObject(g_generalStartedEvent, 0) != WAIT_OBJECT_0)
+							SetEvent(g_generalStartedEvent);
+						firstPass = false;
+					}
+					if (!effectiveLoop)
+						break;
+					ensureMusicStopEvent();
+					if (WaitForSingleObject(g_musicStopEvent, 50) == WAIT_OBJECT_0)
+						break;
+					state.main_song_position.store(0.0);
+				} while (true);
+			}
+			catch (const std::exception &error)
+			{
+				std::println(stderr, "ERROR: General MIDI playback '{}': {}",
+					songName, error.what());
+			}
+			if (WaitForSingleObject(g_generalPreparedEvent, 0) != WAIT_OBJECT_0)
+				SetEvent(g_generalPreparedEvent);
+			if (WaitForSingleObject(g_generalStartedEvent, 0) != WAIT_OBJECT_0)
+				SetEvent(g_generalStartedEvent);
+		});
+		if (synchronizeAtStart)
+			WaitForSingleObject(g_generalPreparedEvent, INFINITE);
 		return;
 	}
 
+	CachedMidi midi = cachedMidi(songName);
+	if (!midi)
+	{
+		if (state.music_mode == "general")
+			midi = cacheMidiSong(songName);
+		else
+		{
+			preloadMidiCache();
+			midi = cachedMidi(songName);
+		}
+	}
+	if (!midi)
+	{
+		std::println(stderr, "ERROR: XMI file '{}' not found.", songName);
+		return;
+	}
+	const bool effectiveLoop = loop || hasWholeTrackInfiniteXmidiLoop(*midi);
+
 	if (state.music_mode == "wavetable")
 	{
-		// submitWavetable returns only after the first synthesized buffer is queued
-		// and the WASAPI clock is running. This is the frame-zero synchronization
-		// barrier used by the main-menu GRV PLAYSONG -> sphinx.vdx sequence.
-		if (!submitWavetable(midi, loop))
+		stopOplPlayback();
+		if (!submitWavetable(midi, effectiveLoop, synchronizeAtStart))
 		{
 			std::println(stderr,
 				"ERROR: Persistent wavetable engine failed; falling back to OPL3.");
@@ -2117,15 +3038,27 @@ void xmiPlay(const std::string &songName, bool isTransient, bool loop)
 	{
 		stopWavetablePlayback();
 	}
+	if (state.music_mode == "opl3" || state.music_mode == "opl2" ||
+		state.music_mode == "opl" || state.music_mode == "dual_opl2")
+	{
+		if (submitOpl(midi, isTransient, effectiveLoop, synchronizeAtStart))
+			return;
+		std::println(stderr,
+			"ERROR: Persistent OPL engine failed; using the legacy playback path.");
+	}
+	else
+	{
+		stopOplPlayback();
+	}
 
-	state.music_thread = std::thread([midi, isTransient, loop, songName]
+	state.music_thread = std::thread([midi, isTransient, effectiveLoop, songName]
 	{
 		try
 		{
 			do
 			{
 				PlayMIDI(*midi, isTransient);
-				if (!loop)
+				if (!effectiveLoop)
 					break;
 				ensureMusicStopEvent();
 				if (WaitForSingleObject(g_musicStopEvent, 50) == WAIT_OBJECT_0)
@@ -2142,6 +3075,63 @@ void xmiPlay(const std::string &songName, bool isTransient, bool loop)
 			std::println(stderr, "ERROR: Unknown XMI playback failure '{}'.", songName);
 		}
 	});
+}
+
+void musicStartPrepared()
+{
+	if (state.music_mode == "general")
+	{
+		if (g_generalPreparedEvent && g_generalPrepareSucceeded.load())
+		{
+			SetEvent(g_generalStartEvent);
+			WaitForSingleObject(g_generalStartedEvent, INFINITE);
+		}
+		return;
+	}
+	if (state.music_mode == "wavetable" && g_wavetableStartEvent)
+	{
+		uint64_t generation = 0;
+		{
+			std::lock_guard lock(g_wavetableMutex);
+			generation = g_wavetableRequest.generation;
+		}
+		SetEvent(g_wavetableStartEvent);
+		if (generation != 0)
+		{
+			std::unique_lock lock(g_wavetableMutex);
+			g_wavetableReady.wait(lock, [generation]
+			{
+				return g_wavetableStartedGeneration >= generation;
+			});
+		}
+	}
+	else if ((state.music_mode == "opl3" || state.music_mode == "opl2" ||
+		state.music_mode == "opl" || state.music_mode == "dual_opl2") &&
+		g_oplStartEvent)
+	{
+		uint64_t generation = 0;
+		{
+			std::lock_guard lock(g_oplMutex);
+			generation = g_oplRequest.generation;
+		}
+		SetEvent(g_oplStartEvent);
+		if (generation != 0)
+		{
+			std::unique_lock lock(g_oplMutex);
+			g_oplReady.wait(lock, [generation]
+			{
+				return g_oplStartedGeneration >= generation;
+			});
+		}
+	}
+}
+
+void xmiPlay(const std::string &songName, bool isTransient, bool loop)
+{
+	// Normal gameplay is deliberately fire-and-forget. The boot transition is
+	// the sole caller of xmiPrepare's synchronized mode and releases it from the
+	// sphinx.vdx frame-zero boundary.
+	xmiPrepare(songName, isTransient, loop, false);
 }
 
 /*
@@ -2190,9 +3180,24 @@ void popMainSong()
 void applyMusicRuntimeSettings()
 {
 	const std::string previousMode = state.music_mode;
+	const int previousBank = state.midi_bank;
+	const std::string previousSoundfont = state.soundfont_path;
+	const bool previousEnabled = g_musicEnabled;
+	const bool wasPlaying =
+		state.music_playing.load() || state.music_thread.joinable();
 	state.music_mode = config.value("midiMode", std::string{"opl3"});
+	state.midi_bank = config.value("midiBank", 0);
+	state.soundfont_path = config.value("soundFont", std::string{"default.sf2"});
 	state.music_volume.store(std::clamp(
 		config.value("midiVolume", 100) / 100.0f, 0.0f, 1.0f));
+	const bool enabled = config.value("midiEnabled", true);
+	g_musicEnabled = enabled;
+
+	if (!enabled)
+	{
+		stopActiveMusicPlayback();
+		return;
+	}
 
 #ifdef _WIN32
 	if (g_midiStream)
@@ -2203,9 +3208,34 @@ void applyMusicRuntimeSettings()
 			(static_cast<DWORD>(channelVolume) << 16u) | channelVolume;
 		midiOutSetVolume(reinterpret_cast<HMIDIOUT>(g_midiStream), packedVolume);
 	}
+
+	if (previousSoundfont != state.soundfont_path)
+	{
+		const bool wavetableWasActive = previousMode == "wavetable" && wasPlaying;
+		if (wavetableWasActive)
+			stopActiveMusicPlayback();
+		stopWavetableEngine();
+		if (g_soundfont)
+			tsf_close(g_soundfont);
+		g_soundfont = loadConfiguredSoundfont(state.soundfont_path);
+		g_soundfontReady = g_soundfont != nullptr;
+		if (g_soundfont)
+			ensureWavetableEngine();
+	}
+	else if (state.music_mode == "wavetable")
+	{
+		ensureWavetableEngine();
+	}
+	if (state.music_mode == "opl3" || state.music_mode == "opl2" ||
+		state.music_mode == "opl" || state.music_mode == "dual_opl2")
+		ensureOplEngine();
 #endif
-	if (previousMode != state.music_mode &&
-		state.music_playing && !state.current_song.empty())
+
+	const bool synthesisChanged = previousMode != state.music_mode ||
+		previousBank != state.midi_bank ||
+		previousSoundfont != state.soundfont_path;
+	if (((synthesisChanged && wasPlaying) || !previousEnabled) &&
+		!state.current_song.empty())
 	{
 		xmiPlay(state.current_song, false);
 	}

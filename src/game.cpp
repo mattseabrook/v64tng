@@ -37,7 +37,9 @@ static std::string pendingGrvBackgroundSong;
 static std::string activeGrvBackgroundSong;
 static bool pendingGrvPaletteMerge = false;
 static bool grvVideoPlayback = false;
-static void applyGrvTransition(const GrvTransition &transition);
+static void applyGrvTransition(
+	const GrvTransition &transition,
+	bool synchronizeMusicWithFirstVideo = false);
 
 namespace
 {
@@ -676,7 +678,9 @@ void startNewGame()
 	enterFoyer();
 }
 
-static bool playGrvVideo(const GrvVideoCommand &command)
+static bool playGrvVideo(
+	const GrvVideoCommand &command,
+	bool startPreparedMusicAtFrameZero = false)
 {
 	if (!grvRuntime || !command.ref)
 		return false;
@@ -736,7 +740,8 @@ static bool playGrvVideo(const GrvVideoCommand &command)
 		// for BF5 delta overlays.
 		state.grvForegroundActive = true;
 		grvVideoPlayback = true;
-		vdxPlay(std::string(resource->name()), &*loaded);
+		vdxPlay(std::string(resource->name()), &*loaded,
+			startPreparedMusicAtFrameZero);
 		grvVideoPlayback = false;
 
 		if (!loaded->frameData.empty())
@@ -774,17 +779,26 @@ static bool playGrvVideo(const GrvVideoCommand &command)
 	}
 }
 
-static void applyGrvTransition(const GrvTransition &transition)
+static void applyGrvTransition(
+	const GrvTransition &transition,
+	bool synchronizeMusicWithFirstVideo)
 {
+	bool preparedMusicReleased = false;
 	auto apply = [&](const GrvPresentationCommand &command)
 	{
 		if (g_quitRequested)
 			return;
-		std::visit([](const auto &value)
+		std::visit([synchronizeMusicWithFirstVideo, &preparedMusicReleased](const auto &value)
 		{
 			using T = std::decay_t<decltype(value)>;
 			if constexpr (std::is_same_v<T, GrvVideoCommand>)
-				playGrvVideo(value);
+			{
+				const bool blockingVideo = (value.flags & (1u << 1)) == 0;
+				const bool releaseMusic = synchronizeMusicWithFirstVideo &&
+					!preparedMusicReleased && blockingVideo;
+				if (playGrvVideo(value, releaseMusic) && releaseMusic)
+					preparedMusicReleased = true;
+			}
 			else if constexpr (std::is_same_v<T, GrvCopyBackgroundCommand>)
 				composeGrvForegroundFromBackground();
 			else if constexpr (std::is_same_v<T, GrvCopyRectCommand>)
@@ -803,7 +817,10 @@ static void applyGrvTransition(const GrvTransition &transition)
 					if (const auto song = grvRuntime->resolve(value.ref))
 					{
 						activeGrvBackgroundSong.clear();
-						xmiPlay(song->stem(), false, false);
+						if (synchronizeMusicWithFirstVideo)
+							xmiPrepare(song->stem(), false, false);
+						else
+							xmiPlay(song->stem(), false, false);
 					}
 			}
 			else if constexpr (std::is_same_v<T, GrvSetBackgroundSongCommand>)
@@ -825,6 +842,12 @@ static void applyGrvTransition(const GrvTransition &transition)
 	{
 		for (const auto &video : transition.videos)
 			apply(GrvPresentationCommand{video});
+	}
+	if (synchronizeMusicWithFirstVideo && !preparedMusicReleased)
+	{
+		// A malformed boot transition might omit VIDEOREF. Never leave its prepared
+		// song parked indefinitely if that happens.
+		musicStartPrepared();
 	}
 	if (transition.ended)
 	{
@@ -860,7 +883,7 @@ bool initializeGrvMainMenu()
 		return false;
 	}
 	state.mainMenu.active = true;
-	applyGrvTransition(boot->transition);
+	applyGrvTransition(boot->transition, true);
 	return true;
 }
 
@@ -897,6 +920,24 @@ bool grvPointerClick(int x, int y)
 	if (!transition)
 	{
 		std::println(stderr, "WARNING: GRV target 0x{:04X}: {}", *target, transition.error());
+		return true;
+	}
+	applyGrvTransition(*transition);
+	return true;
+}
+
+bool grvEscapeAction()
+{
+	if (!grvRuntime)
+		return false;
+	const auto target = grvRuntime->topBarTarget();
+	if (!target)
+		return false;
+	const auto transition = grvRuntime->follow(*target);
+	if (!transition)
+	{
+		std::println(stderr, "WARNING: GRV top-bar target 0x{:04X}: {}",
+			*target, transition.error());
 		return true;
 	}
 	applyGrvTransition(*transition);

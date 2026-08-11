@@ -3,15 +3,17 @@
 #include "config.h"
 #include "window.h"
 #include "game.h"
+#include "version.h"
 
 #include <fstream>
 #include <filesystem>
 #include <iomanip>
+#include <cctype>
 #include <system_error>
 #include <windows.h>
 
 nlohmann::json config;
-std::string windowTitle = "v64tng";
+std::string windowTitle = "v64tng " V64TNG_VERSION_STRING;
 const int MIN_CLIENT_WIDTH = 640;
 // v64tng deliberately presents only the native 640x320 cinematic band. The
 // original players' 640x480 foreground remains an internal GRV coordinate
@@ -93,6 +95,15 @@ void load_config(const std::string &filename)
 		config = defaults;
 	else
 		mergeMissingDefaults(config, defaults);
+
+	// These were temporary developer-facing switches.  Rendering is GPU-backed
+	// through either Vulkan or DirectX; stale keys must not survive migrations.
+	config.erase("renderMode");
+	config.erase("devMode");
+	std::string rendererName = config.value("renderer", std::string{"Vulkan"});
+	for (char& ch : rendererName)
+		ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
+	config["renderer"] = rendererName == "DIRECTX" ? "DirectX" : "Vulkan";
 }
 
 //

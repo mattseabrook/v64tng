@@ -30,19 +30,20 @@ HCURSOR currentCursor = nullptr;
 bool g_userIsResizing = false;
 static bool g_rawMouseInput = false;
 static bool g_rendererInitialized = false;
+static int g_startupFullscreenDisplay = 0;
 
 static RendererType configuredRenderer()
 {
 	std::string configured =
-		config.value("renderer", std::string("DirectX"));
+		config.value("renderer", std::string("Vulkan"));
 	std::transform(
 		configured.begin(), configured.end(), configured.begin(),
 		[](unsigned char ch) {
 			return static_cast<char>(std::toupper(ch));
 		});
-	return configured == "VULKAN"
-		? RendererType::VULKAN
-		: RendererType::DIRECTX;
+	return configured == "DIRECTX"
+		? RendererType::DIRECTX
+		: RendererType::VULKAN;
 }
 RendererType renderer;
 float scaleFactor = 1.0f;
@@ -313,6 +314,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_LBUTTONDOWN:
 		return HandleLButtonDown(lParam);
 	case WM_KEYDOWN:
+		if (wParam == VK_ESCAPE && grvEscapeAction())
+			return 0;
 		if (state.raycast.enabled)
 		{
 			if (wParam == 'M' || wParam == 'm')
@@ -405,12 +408,22 @@ void toggleFullscreen()
 		g_windowedPlacement.length = sizeof(WINDOWPLACEMENT);
 		GetWindowPlacement(g_hwnd, &g_windowedPlacement);
 
-		// Use the monitor the window is currently on, not the config display setting
+		const DisplayInfo *sel = nullptr;
+		if (g_startupFullscreenDisplay != 0)
+		{
+			for (const auto &disp : state.ui.displays)
+				if (disp.number == g_startupFullscreenDisplay)
+				{
+					sel = &disp;
+					break;
+				}
+			g_startupFullscreenDisplay = 0;
+		}
+
+		// Normal Alt+Enter follows the monitor containing the window.
 		HMONITOR currentMonitor = MonitorFromWindow(g_hwnd, MONITOR_DEFAULTTONEAREST);
 		MONITORINFOEX monitorInfo = {sizeof(MONITORINFOEX)};
-		const DisplayInfo *sel = nullptr;
-
-		if (GetMonitorInfo(currentMonitor, &monitorInfo))
+		if (!sel && GetMonitorInfo(currentMonitor, &monitorInfo))
 		{
 			// Find the matching display info
 			for (const auto &disp : state.ui.displays)
@@ -457,6 +470,7 @@ void initWindow()
 {
 	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2); // DPI opt
 	initHandlers();
+	const bool startFullscreen = config.value("fullscreen", false);
 	state.ui.displays.clear();
 	EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
 	int tgtDisp = config["display"];
@@ -466,29 +480,29 @@ void initWindow()
 		if (disp.number == tgtDisp || (!sel && disp.isPrimary))
 			sel = &disp;
 	}
-	if (config["fullscreen"])
-	{
-		state.ui.width = GetSystemMetrics(SM_CXSCREEN);
-		state.ui.height = GetSystemMetrics(SM_CYSCREEN);
-	}
-	else
-	{
-		if (config["width"].get<int>() & 1)
-			config["width"] = config["width"].get<int>() + 1;
-		state.ui.width = config["width"];
-		state.ui.height = state.ui.width / 2;
-	}
+	if (config["width"].get<int>() & 1)
+		config["width"] = config["width"].get<int>() + 1;
+	state.ui.width = config["width"];
+	state.ui.height = state.ui.width / 2;
 	state.ui.x = config["x"];
 	state.ui.y = config["y"];
 	POINT pos = sel ? POINT{sel->bounds.left + state.ui.x, sel->bounds.top + state.ui.y} : POINT{CW_USEDEFAULT, CW_USEDEFAULT};
+	if (startFullscreen && sel)
+	{
+		// Ensure MonitorFromWindow resolves to the remembered display before the
+		// regular Alt+Enter path expands the window to that monitor.
+		const int monitorWidth = sel->bounds.right - sel->bounds.left;
+		const int monitorHeight = sel->bounds.bottom - sel->bounds.top;
+		pos.x = sel->bounds.left + std::clamp(state.ui.x, 0, (std::max)(0, monitorWidth - 100));
+		pos.y = sel->bounds.top + std::clamp(state.ui.y, 0, (std::max)(0, monitorHeight - 100));
+	}
 	HICON icon = static_cast<HICON>(LoadImage(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR));
 	WNDCLASSEX wc = {sizeof(WNDCLASSEX), 0, WindowProc, 0, 0, GetModuleHandle(nullptr), icon, nullptr, reinterpret_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)), nullptr, L"v64tngClass", icon};
 	if (!RegisterClassEx(&wc))
 		throw std::runtime_error("Failed register class");
 	RECT rect = {0, 0, state.ui.width, state.ui.height};
-	DWORD style = config["fullscreen"].get<bool>() ? WS_POPUP : WS_OVERLAPPEDWINDOW;
-	if (!config["fullscreen"].get<bool>())
-		AdjustWindowRect(&rect, style, TRUE);
+	DWORD style = WS_OVERLAPPEDWINDOW;
+	AdjustWindowRect(&rect, style, TRUE);
 	g_hwnd = CreateWindowEx(0, wc.lpszClassName, std::wstring(windowTitle.begin(), windowTitle.end()).c_str(), style, pos.x, pos.y, rect.right - rect.left, rect.bottom - rect.top, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
 	if (!g_hwnd)
 		throw std::runtime_error("Failed create window");
@@ -497,12 +511,20 @@ void initWindow()
 		SendMessage(g_hwnd, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(icon));
 		SendMessage(g_hwnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(icon));
 	}
-	if (!config["fullscreen"])
-		initMenu(g_hwnd);
+	initMenu(g_hwnd);
 	renderer = configuredRenderer();
 	initializeRendererFuncs[static_cast<int>(renderer)]();
 	g_rendererInitialized = true;
 	ShowWindow(g_hwnd, SW_SHOW);
+	if (startFullscreen)
+	{
+		// A persisted fullscreen launch must use the exact same tested transition
+		// as Alt+Enter, including placement capture, monitor sizing and menu removal.
+		config["display"] = tgtDisp;
+		g_startupFullscreenDisplay = tgtDisp;
+		config["fullscreen"] = false;
+		toggleFullscreen();
+	}
 	g_mouseHook = SetWindowsHookEx(WH_MOUSE, MouseHookProc, NULL, GetCurrentThreadId());
 	SetTimer(g_hwnd, CURSOR_TIMER_ID, CURSOR_TIMER_INTERVAL, NULL);
 	RAWINPUTDEVICE rid = {0x01, 0x02, 0, g_hwnd};

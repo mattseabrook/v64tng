@@ -1133,7 +1133,7 @@ run_grv_vm:
     %endif
     times 2 - ($ - %%insn_03cb0) db 0
     %%insn_03cb2:
-    call 0x5a37 ; 03CB2 E8821D
+    call wait_for_midi_sequence_completion ; 03CB2 E8821D
     %if ($ - %%insn_03cb2) > 3
         %error "LONG_03CB2"
     %endif
@@ -1387,7 +1387,7 @@ run_grv_vm:
     %endif
     times 1 - ($ - %%insn_03d17) db 0
     %%insn_03d18:
-    call 0x5a6c ; 03D18 E8511D
+    call set_midi_sequence_volume_ramp ; 03D18 E8511D
     %if ($ - %%insn_03d18) > 3
         %error "LONG_03D18"
     %endif
@@ -1417,7 +1417,7 @@ run_grv_vm:
     %endif
     times 1 - ($ - %%insn_03d22) db 0
     %%insn_03d23:
-    call 0x5a8b ; 03D23 E8651D
+    call set_midi_driver_master_volume ; 03D23 E8651D
     %if ($ - %%insn_03d23) > 3
         %error "LONG_03D23"
     %endif

@@ -106,7 +106,10 @@ void parseVDXChunks(
     const VDXDecodeContext &context,
     uint16_t grvVideoFlags);
 [[nodiscard]] double vdxPlaybackRate(const VDXFile &vdxFile);
-void vdxPlay(const std::string &filename, VDXFile *preloadedVdx = nullptr);
+void vdxPlay(
+    const std::string &filename,
+    VDXFile *preloadedVdx = nullptr,
+    bool startPreparedMusicAtFrameZero = false);
 std::expected<VDXFile, std::string> loadSingleVDX(const std::string &room, const std::string &vdxName);
 VDXFile &getOrLoadVDX(const std::string &name);
 void unloadVDX(const std::string &name);

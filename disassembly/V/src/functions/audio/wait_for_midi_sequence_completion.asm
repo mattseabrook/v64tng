@@ -1,11 +1,12 @@
 ; Linear entry 05A37 (1000:5a37)
 ; Ghidra working symbol: FUN_1000_5a37
-; Role not yet verified; boundary is provisional.
+; Verified GRV opcode 29h implementation. Polls the active Miles sequence
+; status entry point until it no longer reports the playing state.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_05a37_part_00 0
+%macro emit_wait_for_midi_sequence_completion_part_00 0
     %%fragment_start:
-func_05a37:
+wait_for_midi_sequence_completion:
     %%insn_05a37:
     push si ; 05A37 56
     %if ($ - %%insn_05a37) > 1

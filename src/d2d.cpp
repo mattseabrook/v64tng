@@ -737,17 +737,9 @@ void renderFrameD2D()
     auto changed = getChangedRowsAndUpdatePrevious(pixels, d2dCtx.previousFrameData, d2dCtx.textureWidth, d2dCtx.textureHeight, d2dCtx.forceFullUpdate);
     d2dCtx.forceFullUpdate = false;
     
-    // Determine render path based on config: Auto heuristic or forced CPU/GPU.
-    const float changedRatio = d2dCtx.textureHeight ? (static_cast<float>(changed.size()) / static_cast<float>(d2dCtx.textureHeight)) : 1.0f;
-    bool preferGPU = (state.renderMode == GameState::RenderMode::GPU);
-    if (state.renderMode == GameState::RenderMode::Auto)
-    {
-        preferGPU = (changedRatio >= 0.4f) || (static_cast<int>(d2dCtx.textureHeight) >= 1080);
-    }
-
-    if (!changed.empty())
-    {
-        if (preferGPU && d2dCtx.computeShader)
+	if (!changed.empty())
+	{
+		if (d2dCtx.computeShader)
         {
             // GPU compute path: upload changed RGB row ranges into a WRITE_DISCARD-mapped buffer.
             const UINT rowBytes = d2dCtx.textureWidth * 3;
@@ -1138,13 +1130,9 @@ void renderFrameRaycastGPU()
         WaitForSingleObjectEx(d2dCtx.frameLatencyWaitableObject, 100, TRUE);
     }
 
-    // Check render mode preference
-    bool useGPU = (state.renderMode == GameState::RenderMode::GPU || 
-                   state.renderMode == GameState::RenderMode::Auto);
-    
-    if (!useGPU || !d2dCtx.raycastComputeShader)
-    {
-        // Fall back to CPU rendering if mode is CPU or GPU pipeline not available
+	if (!d2dCtx.raycastComputeShader)
+	{
+		// Emergency compatibility fallback when GPU pipeline creation failed.
         renderFrameRaycast();
         return;
     }

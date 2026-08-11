@@ -17,6 +17,7 @@
 #include "config.h"
 #include "game.h"
 #include "audio.h"
+#include "music.h"
 #include "window.h"
 #include "assets.h"
 
@@ -660,7 +661,10 @@ Parameters:
 	- preloadedVdx: Optional pointer to pre-loaded VDXFile object
 ===============================================================================
 */
-void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
+void vdxPlay(
+	const std::string &filename,
+	VDXFile *preloadedVdx,
+	bool startPreparedMusicAtFrameZero)
 {
 	VDXFile vdx;
 	VDXFile *vdxToUse = preloadedVdx;
@@ -736,6 +740,14 @@ void vdxPlay(const std::string &filename, VDXFile *preloadedVdx)
 		state.animation.totalFrames = (std::min)(state.animation.totalFrames, size_t{1});
 	state.animation.lastFrameTime = std::chrono::steady_clock::now();
 	state.frameTiming.dirtyFrame = true;
+	if (startPreparedMusicAtFrameZero)
+	{
+		// The VDX is completely decoded/configured and frame zero is ready. Release
+		// the paused MIDI backend here—not before vdxPlay setup—and wait until its
+		// playback clock confirms it has started before presenting the frame.
+		musicStartPrepared();
+		state.animation.lastFrameTime = std::chrono::steady_clock::now();
+	}
 	// Present the first frame immediately before processing queued window messages.
 	maybeRenderFrame(true);
 

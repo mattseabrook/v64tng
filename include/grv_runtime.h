@@ -133,6 +133,9 @@ public:
 		int clientX, int clientY, int clientWidth, int clientHeight) const;
 	[[nodiscard]] std::optional<uint16_t> activateAt(
 		int clientX, int clientY, int clientWidth, int clientHeight);
+	// Target of the native 640x80 top-bar hotspot discarded by v64tng's
+	// 640x320 presentation, evaluated against the currently active input loop.
+	[[nodiscard]] std::optional<uint16_t> topBarTarget() const;
 	[[nodiscard]] std::expected<GrvTransition, std::string> follow(uint16_t target);
 	[[nodiscard]] std::expected<std::optional<GrvTransition>, std::string>
 		handleKey(uint8_t key);

@@ -1,11 +1,12 @@
 ; Linear entry 05A6C (1000:5a6c)
 ; Ghidra working symbol: FUN_1000_5a6c
-; Role not yet verified; boundary is provisional.
+; Verified GRV opcode 31h implementation. Forwards the requested volume and
+; ramp time to the active Miles sequence, suppressing duplicate requests.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_05a6c_part_00 0
+%macro emit_set_midi_sequence_volume_ramp_part_00 0
     %%fragment_start:
-func_05a6c:
+set_midi_sequence_volume_ramp:
     %%insn_05a6c:
     push si ; 05A6C 56
     %if ($ - %%insn_05a6c) > 1

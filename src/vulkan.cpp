@@ -21,6 +21,7 @@
 #include "vulkan.h"
 #include "game.h"
 #include "config.h"
+#include "version.h"
 #include "window.h"
 #include "raycast.h"
 #include "render.h"
@@ -838,10 +839,10 @@ void initializeVulkan()
 {
 	VkApplicationInfo appInfo = {};
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	appInfo.pApplicationName = "Vulkan Renderer";
-	appInfo.applicationVersion = (1 << 22);
-	appInfo.pEngineName = "v64tng";
-	appInfo.engineVersion = (1 << 22);
+	appInfo.pApplicationName = "v64tng " V64TNG_VERSION_STRING;
+	appInfo.applicationVersion = VK_MAKE_API_VERSION(0, 1, 0, 811);
+	appInfo.pEngineName = "v64tng " V64TNG_VERSION_STRING;
+	appInfo.engineVersion = VK_MAKE_API_VERSION(0, 1, 0, 811);
 	appInfo.apiVersion = (1 << 22);
 
 	VkInstanceCreateInfo instInfo = {};
@@ -1046,15 +1047,7 @@ void renderFrameVk()
 	auto changed = getChangedRowsAndUpdatePrevious(pixels, vkCtx.previousFrameData, MIN_CLIENT_WIDTH, MIN_CLIENT_HEIGHT, vkCtx.forceFullUpdate || !state.transient_animation_name.empty());
 	vkCtx.forceFullUpdate = false;
 
-	// Heuristic for Auto mode
-	const float changedRatio = MIN_CLIENT_HEIGHT ? (static_cast<float>(changed.size()) / static_cast<float>(MIN_CLIENT_HEIGHT)) : 1.0f;
-	bool preferGPU = (state.renderMode == GameState::RenderMode::GPU);
-	if (state.renderMode == GameState::RenderMode::Auto)
-	{
-		preferGPU = (changedRatio >= 0.4f) || (static_cast<int>(MIN_CLIENT_HEIGHT) >= 1080);
-	}
-
-	vkCtx.doCompute = preferGPU;
+	vkCtx.doCompute = true;
 	vkCtx.pendingCopyRegions.clear();
 	if (vkCtx.doCompute)
 	{
@@ -1185,13 +1178,9 @@ Description:
 */
 void renderFrameRaycastVkGPU()
 {
-	// Check render mode preference
-	bool useGPU = (state.renderMode == GameState::RenderMode::GPU || 
-	               state.renderMode == GameState::RenderMode::Auto);
-	
-	if (!useGPU || !vkCtx.raycastPipeline)
+	if (!vkCtx.raycastPipeline)
 	{
-		// Fall back to CPU rendering if mode is CPU or GPU pipeline not available
+		// Emergency compatibility fallback when GPU pipeline creation failed.
 		renderFrameRaycastVk();
 		return;
 	}

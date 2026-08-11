@@ -1324,6 +1324,61 @@ std::optional<GrvHotspotView> GrvRuntime::hotspotAtCanonical(uint16_t x, uint16_
 	return std::nullopt;
 }
 
+std::optional<uint16_t> GrvRuntime::topBarTarget() const
+{
+	if (!activeLoop_ || activeLoop_ >= bytes_.size())
+		return std::nullopt;
+
+	// Preserve the retail input-loop ordering and conditional jumps. Local
+	// declarations take precedence over persistent edge declarations.
+	size_t pc = activeLoop_ + 1;
+	while (pc < bytes_.size())
+	{
+		const uint8_t raw = bytes_[pc];
+		const uint8_t op = raw & 0x7f;
+		const size_t varBytes = (raw & 0x80) ? 1 : 2;
+		const auto endResult = instructionEnd(bytes_, pc);
+		if (!endResult)
+			return std::nullopt;
+		const size_t next = *endResult;
+		if (op == 0x13)
+			break;
+		if (op == 0x1a || op == 0x23)
+		{
+			const uint16_t variable = varBytes == 1
+				? bytes_[pc + 1] : read16(bytes_, pc + 1);
+			const size_t sequence = pc + 1 + varBytes;
+			const size_t targetAt = skipSequence(bytes_, sequence);
+			const bool equal = sequenceEquals(variable, sequence);
+			if ((op == 0x1a && !equal) || (op == 0x23 && equal))
+			{
+				pc = read16(bytes_, targetAt);
+				continue;
+			}
+		}
+		const bool hotspot = op == 0x0d || (op >= 0x0e && op <= 0x12) ||
+			op == 0x30 || op == 0x3b || op == 0x53;
+		if (hotspot)
+		{
+			GrvHotspotView view(
+				bytes_.subspan(pc, next - pc), static_cast<uint16_t>(pc));
+			if (view.top() < 80 && view.bottom() <= 80)
+				return view.target();
+		}
+		pc = next;
+	}
+
+	const uint16_t topOffset = persistentHotspots_[0];
+	if (!topOffset)
+		return std::nullopt;
+	const auto end = instructionEnd(bytes_, topOffset);
+	if (!end)
+		return std::nullopt;
+	GrvHotspotView top(
+		bytes_.subspan(topOffset, *end - topOffset), topOffset);
+	return top.bottom() <= 80 ? std::optional<uint16_t>{top.target()} : std::nullopt;
+}
+
 std::optional<GrvHotspotView> GrvRuntime::hotspotAt(
 	int clientX, int clientY, int clientWidth, int clientHeight) const
 {

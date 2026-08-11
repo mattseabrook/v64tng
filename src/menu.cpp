@@ -14,7 +14,6 @@
 #include <commctrl.h>
 #include <algorithm>
 #include <cctype>
-#include <cmath>
 #include <string>
 
 #ifndef DBG_LOG
@@ -44,7 +43,6 @@ void initMenu(HWND hwnd)
     HMENU hFileMenu = CreatePopupMenu();
     DBG_LOGF("CreatePopupMenu() for File returned %p", (void*)hFileMenu);
     HMENU hHelpMenu = CreatePopupMenu();
-    HMENU hEditMenu = CreatePopupMenu();
     HMENU hToolsMenu = CreatePopupMenu();
     DBG_LOGF("CreatePopupMenu() for Help returned %p", (void*)hHelpMenu);
 
@@ -52,8 +50,9 @@ void initMenu(HWND hwnd)
     AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_FILE_LOAD), L"Load");
     AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_FILE_SAVE), L"Save");
     AppendMenu(hFileMenu, MF_SEPARATOR, 0, nullptr);
+    AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_EDIT_SETTINGS), L"Config...");
+    AppendMenu(hFileMenu, MF_SEPARATOR, 0, nullptr);
     AppendMenu(hFileMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_FILE_EXIT), L"Exit");
-    AppendMenu(hEditMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_EDIT_SETTINGS), L"Settings...");
     AppendMenu(hToolsMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_TOOLS_WINDOW), L"Asset Browser...");
     AppendMenu(hToolsMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_GRV_EDITOR), L"GRV Editor...");
     DBG_LOG("Adding Help menu items...");
@@ -61,7 +60,6 @@ void initMenu(HWND hwnd)
 
     DBG_LOG("Appending menus to menu bar...");
     AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hFileMenu), L"File");
-    AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hEditMenu), L"Edit");
     AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hToolsMenu), L"Tools");
     AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hHelpMenu), L"Help");
 
@@ -96,12 +94,50 @@ static void centerDialogInParent(HWND dialog)
     SetWindowPos(dialog, HWND_TOP, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 }
 
+static void applyLiveMusicSelection(HWND dialog)
+{
+    const int selection = static_cast<int>(SendDlgItemMessageW(
+        dialog, IDC_SETTINGS_MIDI_MODE, CB_GETCURSEL, 0, 0));
+    config["midiMode"] = selection == 1
+        ? "general" : selection == 2 ? "wavetable" : "opl3";
+    config["midiEnabled"] =
+        IsDlgButtonChecked(dialog, IDC_SETTINGS_MIDI_ENABLED) == BST_CHECKED;
+    applyMusicRuntimeSettings();
+}
+
+static void applyLiveRendererSelection(HWND dialog)
+{
+    const int selection = static_cast<int>(SendDlgItemMessageW(
+        dialog, IDC_SETTINGS_RENDERER, CB_GETCURSEL, 0, 0));
+    config["renderer"] = selection == 0 ? "Vulkan" : "DirectX";
+    applyConfiguredRenderer();
+}
+
+static nlohmann::json* settingsSnapshot(HWND dialog)
+{
+    return reinterpret_cast<nlohmann::json*>(
+        GetWindowLongPtrW(dialog, GWLP_USERDATA));
+}
+
+static void restoreSettingsSnapshot(HWND dialog)
+{
+    if (const auto* original = settingsSnapshot(dialog))
+    {
+        config = *original;
+        applyMusicRuntimeSettings();
+        applyPcmRuntimeSettings();
+        applyConfiguredRenderer();
+    }
+}
+
 static INT_PTR CALLBACK SettingsDialogProc(HWND dialog, UINT message, WPARAM wParam, LPARAM)
 {
     switch (message)
     {
     case WM_INITDIALOG:
     {
+        SetWindowLongPtrW(dialog, GWLP_USERDATA,
+            reinterpret_cast<LONG_PTR>(new nlohmann::json(config)));
         g_menuActive = true;
         KillTimer(g_hwnd, 0x7C0B);
         centerDialogInParent(dialog);
@@ -110,23 +146,12 @@ static INT_PTR CALLBACK SettingsDialogProc(HWND dialog, UINT message, WPARAM wPa
         SendMessageW(midiMode, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"OPL (FM synthesis)"));
         SendMessageW(midiMode, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"General MIDI device"));
         SendMessageW(midiMode, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Wavetable / SoundFont"));
-        const std::string_view configuredMidi = config.value("midiMode", std::string{"opl3"});
+        const std::string configuredMidi = config.value("midiMode", std::string{"opl3"});
         SendMessageW(midiMode, CB_SETCURSEL,
                      configuredMidi == "general" ? 1 : configuredMidi == "wavetable" ? 2 : 0, 0);
 
-        HWND supersample = GetDlgItem(dialog, IDC_SETTINGS_SUPERSAMPLE);
-        const int supersampleValues[] = {1, 2, 4, 8, 16};
-        const int configuredSupersample = std::clamp(config.value("raycastSupersample", 1), 1, 16);
-        int supersampleSelection = 0;
-        for (int i = 0; i < 5; ++i)
-        {
-            const std::wstring label = std::to_wstring(supersampleValues[i]) + L"x";
-            const LRESULT item = SendMessageW(supersample, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(label.c_str()));
-            SendMessageW(supersample, CB_SETITEMDATA, item, supersampleValues[i]);
-            if (supersampleValues[i] == configuredSupersample)
-                supersampleSelection = i;
-        }
-        SendMessageW(supersample, CB_SETCURSEL, supersampleSelection, 0);
+        CheckDlgButton(dialog, IDC_SETTINGS_MIDI_ENABLED,
+                       config.value("midiEnabled", true) ? BST_CHECKED : BST_UNCHECKED);
 
         HWND rendererControl = GetDlgItem(dialog, IDC_SETTINGS_RENDERER);
         SendMessageW(rendererControl, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Vulkan"));
@@ -136,12 +161,13 @@ static INT_PTR CALLBACK SettingsDialogProc(HWND dialog, UINT message, WPARAM wPa
                        [](unsigned char ch) { return static_cast<char>(std::toupper(ch)); });
         SendMessageW(rendererControl, CB_SETCURSEL, configuredRenderer == "VULKAN" ? 0 : 1, 0);
 
+        CheckDlgButton(dialog, IDC_SETTINGS_FULLSCREEN,
+                       config.value("fullscreen", false) ? BST_CHECKED : BST_UNCHECKED);
         SetDlgItemInt(dialog, IDC_SETTINGS_MIDI_VOLUME, std::clamp(config.value("midiVolume", 100), 0, 100), FALSE);
-        SetDlgItemInt(dialog, IDC_SETTINGS_MLOOK, std::clamp(config.value("mlookSensitivity", 50), 1, 200), FALSE);
+        SetDlgItemInt(dialog, IDC_SETTINGS_MIDI_BANK, std::clamp(config.value("midiBank", 0), 0, 999), FALSE);
         CheckDlgButton(dialog, IDC_SETTINGS_PCM_ENABLED,
                        config.value("pcmEnabled", true) ? BST_CHECKED : BST_UNCHECKED);
         SetDlgItemInt(dialog, IDC_SETTINGS_PCM_VOLUME, std::clamp(config.value("pcmVolume", 100), 0, 100), FALSE);
-        SetDlgItemInt(dialog, IDC_SETTINGS_RAYCAST_FOV, std::clamp(config.value("raycastFov", 90), 30, 170), FALSE);
 
         HWND tooltip = CreateWindowExW(WS_EX_TOPMOST, TOOLTIPS_CLASSW, nullptr,
                                        WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX,
@@ -158,27 +184,39 @@ static INT_PTR CALLBACK SettingsDialogProc(HWND dialog, UINT message, WPARAM wPa
             L"Selects the MIDI synthesis backend. OPL recreates FM-synthesized DOS music, General MIDI uses the Windows MIDI output device, and Wavetable renders through the configured SoundFont. Changing this setting restarts an active MIDI track so the new backend takes effect immediately.");
         tip(IDC_SETTINGS_MIDI_VOLUME, IDC_SETTINGS_LABEL_MIDI_VOL,
             L"Controls MIDI playback gain from 0 (silent) to 100 (full volume). The value is applied immediately to OPL, Wavetable, and an open General MIDI device. It does not change PCM sound-effect volume.");
-        tip(IDC_SETTINGS_MLOOK, IDC_SETTINGS_LABEL_MLOOK,
-            L"Controls raw-mouse look sensitivity in raycast games. Higher values turn the camera farther for the same physical mouse movement. The valid range is 1 through 200 and changes take effect immediately.");
         tip(IDC_SETTINGS_PCM_ENABLED, 0,
             L"Enables or disables PCM digital audio such as voices and sound effects. Disabling it immediately stops active PCM playback and prevents new PCM sounds from starting. MIDI music is controlled separately.");
         tip(IDC_SETTINGS_PCM_VOLUME, IDC_SETTINGS_LABEL_PCM_VOL,
             L"Controls PCM digital-audio gain from 0 (silent) to 100 (full volume). Active WASAPI playback reads this value continuously, so volume changes take effect without restarting the sound. This does not change MIDI music volume.");
-        tip(IDC_SETTINGS_RAYCAST_FOV, IDC_SETTINGS_LABEL_FOV,
-            L"Sets the horizontal raycast field of view in degrees. Lower values zoom in; higher values show more of the room but introduce stronger wide-angle perspective. The accepted range is 30 through 170 degrees and applies immediately.");
-        tip(IDC_SETTINGS_SUPERSAMPLE, IDC_SETTINGS_LABEL_SS,
-            L"Sets how many sub-pixel rays are evaluated per output pixel. 1x is the fastest and is recommended for high frame rates; larger values reduce edge aliasing at a directly proportional GPU or CPU cost. High-resolution Vulkan rendering may clamp excessive values to protect frame time.");
         tip(IDC_SETTINGS_RENDERER, IDC_SETTINGS_LABEL_RENDERER,
-            L"Selects the graphics backend used by v64tng. Vulkan uses the native compute and GPU model pipeline; DirectX 11 provides the Windows fallback renderer. The engine safely tears down the old backend and activates the new one when you press OK.");
+            L"Selects the graphics backend used by v64tng. Vulkan uses the native compute and GPU model pipeline; DirectX 11 provides the Windows fallback renderer. The selection takes effect immediately and Cancel restores the previous backend.");
         return TRUE;
     }
     case WM_COMMAND:
+        if (HIWORD(wParam) == CBN_SELCHANGE &&
+            LOWORD(wParam) == IDC_SETTINGS_MIDI_MODE)
+        {
+            applyLiveMusicSelection(dialog);
+            return TRUE;
+        }
+        if (HIWORD(wParam) == BN_CLICKED &&
+            LOWORD(wParam) == IDC_SETTINGS_MIDI_ENABLED)
+        {
+            applyLiveMusicSelection(dialog);
+            return TRUE;
+        }
+        if (HIWORD(wParam) == CBN_SELCHANGE &&
+            LOWORD(wParam) == IDC_SETTINGS_RENDERER)
+        {
+            applyLiveRendererSelection(dialog);
+            return TRUE;
+        }
         if (LOWORD(wParam) == IDOK)
         {
             auto readBounded = [&](int id, int minimum, int maximum, const wchar_t* label, int& value) {
                 BOOL valid = FALSE;
-                const UINT raw = GetDlgItemInt(dialog, id, &valid, FALSE);
-                if (!valid || raw < static_cast<UINT>(minimum) || raw > static_cast<UINT>(maximum))
+                const int raw = static_cast<int>(GetDlgItemInt(dialog, id, &valid, TRUE));
+                if (!valid || raw < minimum || raw > maximum)
                 {
                     std::wstring message = std::wstring(label) + L" must be between " +
                                            std::to_wstring(minimum) + L" and " + std::to_wstring(maximum) + L".";
@@ -186,43 +224,66 @@ static INT_PTR CALLBACK SettingsDialogProc(HWND dialog, UINT message, WPARAM wPa
                     SetFocus(GetDlgItem(dialog, id));
                     return false;
                 }
-                value = static_cast<int>(raw);
+                value = raw;
                 return true;
             };
-            int midiVolume = 0, sensitivity = 0, pcmVolume = 0, fov = 0;
-            if (!readBounded(IDC_SETTINGS_MIDI_VOLUME, 0, 100, L"MIDI volume", midiVolume) ||
-                !readBounded(IDC_SETTINGS_MLOOK, 1, 200, L"Mouse-look sensitivity", sensitivity) ||
-                !readBounded(IDC_SETTINGS_PCM_VOLUME, 0, 100, L"PCM volume", pcmVolume) ||
-                !readBounded(IDC_SETTINGS_RAYCAST_FOV, 30, 170, L"Raycast FOV", fov))
+            int midiVolume = 0, midiBank = 0, pcmVolume = 0;
+            if (!readBounded(IDC_SETTINGS_MIDI_BANK, 0, 999, L"MIDI bank", midiBank) ||
+                !readBounded(IDC_SETTINGS_MIDI_VOLUME, 0, 100, L"MIDI volume", midiVolume) ||
+                !readBounded(IDC_SETTINGS_PCM_VOLUME, 0, 100, L"PCM volume", pcmVolume))
                 return TRUE;
 
             const int midiSelection = static_cast<int>(SendDlgItemMessageW(dialog, IDC_SETTINGS_MIDI_MODE, CB_GETCURSEL, 0, 0));
-            const int ssSelection = static_cast<int>(SendDlgItemMessageW(dialog, IDC_SETTINGS_SUPERSAMPLE, CB_GETCURSEL, 0, 0));
             const int rendererSelection = static_cast<int>(SendDlgItemMessageW(dialog, IDC_SETTINGS_RENDERER, CB_GETCURSEL, 0, 0));
-            const LRESULT supersample = SendDlgItemMessageW(dialog, IDC_SETTINGS_SUPERSAMPLE, CB_GETITEMDATA, ssSelection, 0);
 
-            // v64tng keeps its native libADLMIDI OPL3 mode name. The core
-            // engine's public "opl" alias would otherwise select OPL2 here.
+            if (midiSelection == CB_ERR || rendererSelection == CB_ERR)
+            {
+                MessageBoxW(dialog, L"Select a value in every drop-down list.",
+                            L"Invalid setting", MB_OK | MB_ICONWARNING);
+                return TRUE;
+            }
+
+            const bool oldFullscreen = config.value("fullscreen", false);
+            const bool newFullscreen =
+                IsDlgButtonChecked(dialog, IDC_SETTINGS_FULLSCREEN) == BST_CHECKED;
+            config["fullscreen"] = newFullscreen;
             config["midiMode"] = midiSelection == 1 ? "general" : midiSelection == 2 ? "wavetable" : "opl3";
+            config["midiEnabled"] =
+                IsDlgButtonChecked(dialog, IDC_SETTINGS_MIDI_ENABLED) == BST_CHECKED;
+            config["midiBank"] = midiBank;
             config["midiVolume"] = midiVolume;
-            config["mlookSensitivity"] = sensitivity;
             config["pcmEnabled"] = IsDlgButtonChecked(dialog, IDC_SETTINGS_PCM_ENABLED) == BST_CHECKED;
             config["pcmVolume"] = pcmVolume;
-            config["raycastFov"] = fov;
-            config["raycastSupersample"] = static_cast<int>(supersample);
             config["renderer"] = rendererSelection == 0 ? "Vulkan" : "DirectX";
+
+            applyMusicRuntimeSettings();
+            applyPcmRuntimeSettings();
+            applyConfiguredRenderer();
+
+            if (oldFullscreen != newFullscreen)
+            {
+                // toggleFullscreen derives the desired state by inversion.
+                config["fullscreen"] = oldFullscreen;
+                toggleFullscreen();
+            }
             EndDialog(dialog, IDOK);
             return TRUE;
         }
         if (LOWORD(wParam) == IDCANCEL)
         {
+            restoreSettingsSnapshot(dialog);
             EndDialog(dialog, IDCANCEL);
             return TRUE;
         }
         break;
     case WM_CLOSE:
+        restoreSettingsSnapshot(dialog);
         EndDialog(dialog, IDCANCEL);
         return TRUE;
+    case WM_NCDESTROY:
+        delete settingsSnapshot(dialog);
+        SetWindowLongPtrW(dialog, GWLP_USERDATA, 0);
+        return FALSE;
     }
     return FALSE;
 }
@@ -322,8 +383,6 @@ LRESULT HandleMenuCommand(HWND hwnd, WPARAM wParam)
         {
             applyMusicRuntimeSettings();
             applyPcmRuntimeSettings();
-            if (state.raycast.enabled)
-                state.raycast.player.fov = deg2rad(static_cast<float>(config.value("raycastFov", 90)));
             applyConfiguredRenderer();
             state.frameTiming.dirtyFrame = true;
             save_config("config.json");

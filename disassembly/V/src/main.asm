@@ -164,12 +164,12 @@ bits 16
 %include "src/functions/unknown/05754_func_05754.asm"
 %include "src/functions/unknown/0575e_func_0575e.asm"
 %include "src/functions/platform/initialize_subsystems_xms.asm"
-%include "src/functions/unknown/05a37_func_05a37.asm"
-%include "src/functions/unknown/05a6c_func_05a6c.asm"
-%include "src/functions/unknown/05a8b_func_05a8b.asm"
-%include "src/functions/unknown/05aac_func_05aac.asm"
+%include "src/functions/audio/wait_for_midi_sequence_completion.asm"
+%include "src/functions/audio/set_midi_sequence_volume_ramp.asm"
+%include "src/functions/audio/set_midi_driver_master_volume.asm"
+%include "src/functions/audio/load_xmidi_timbre_patches.asm"
 %include "src/functions/audio/load_and_play_selected_xmi.asm"
-%include "src/functions/unknown/05c06_func_05c06.asm"
+%include "src/functions/audio/replace_active_midi_sequence.asm"
 %include "src/functions/runtime/shutdown_player.asm"
 %include "src/functions/unknown/05e8d_func_05e8d.asm"
 %include "src/functions/unknown/05ea9_func_05ea9.asm"
@@ -952,19 +952,19 @@ load_image_start:
     ; 0576E..05A36 function
     emit_initialize_subsystems_xms_part_00
     ; 05A37..05A4E function
-    emit_func_05a37_part_00
+    emit_wait_for_midi_sequence_completion_part_00
     ; 05A4F..05A6B gap
     emit_gap_059_05a4f
     ; 05A6C..05A8A function
-    emit_func_05a6c_part_00
+    emit_set_midi_sequence_volume_ramp_part_00
     ; 05A8B..05AAB function
-    emit_func_05a8b_part_00
+    emit_set_midi_driver_master_volume_part_00
     ; 05AAC..05BD0 function
-    emit_func_05aac_part_00
+    emit_load_xmidi_timbre_patches_part_00
     ; 05BD1..05C05 function
     emit_load_and_play_selected_xmi_part_00
     ; 05C06..05CDD function
-    emit_func_05c06_part_00
+    emit_replace_active_midi_sequence_part_00
     ; 05CDE..05CEC gap
     emit_gap_060_05cde
     ; 05CED..05E8B function

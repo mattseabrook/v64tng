@@ -86,14 +86,6 @@ struct FrameTiming
 ///////////////////////////////////////////////////////////////////////////////
 struct GameState
 {
-	// Render mode selection (CPU SIMD vs GPU compute), with Auto heuristic
-	enum class RenderMode
-	{
-		Auto = 0,
-		CPU,
-		GPU
-	};
-
 	//
 	// SIMD selection for hot-path pixel conversion
 	//
@@ -168,9 +160,6 @@ struct GameState
 
 	// Selected SIMD level for conversion paths
 	SIMDLevel simd = SIMDLevel::Scalar;
-
-	// Selected render mode (defaults populated from config)
-	RenderMode renderMode = RenderMode::Auto;
 
 	//
 	// Raycasting
@@ -265,6 +254,7 @@ bool initializeGrvMainMenu();
 bool grvInputActive();
 bool grvPointerClick(int x, int y);
 uint8_t grvPointerCursor(int x, int y);
+bool grvEscapeAction();
 void init();
 
 #endif // GAME_H

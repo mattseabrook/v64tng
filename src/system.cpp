@@ -10,6 +10,7 @@
 #include "../resource.h"
 #include "system.h"
 #include "config.h"
+#include "version.h"
 #include "window.h"
 #include "game.h"
 
@@ -220,7 +221,7 @@ void ShowSystemInfoWindow()
     HWND hwnd = CreateWindowExA(
         0, // No extended styles
         className,
-        "v64tng System Info",
+        "v64tng " V64TNG_VERSION_STRING " System Info",
         WS_POPUP, // Borderless window
         x, y,
         WINDOW_WIDTH, WINDOW_HEIGHT,
