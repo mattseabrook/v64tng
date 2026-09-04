@@ -35,7 +35,9 @@ struct CPUFeatures
 extern CPUFeatures cpuFeatures;
 
 // Function prototypes
-void ShowSystemInfoWindow();
+// Shows the no-argument launcher. Returns true when the user chooses PLAY and
+// false when the launcher is closed or EXIT is chosen.
+bool ShowSystemInfoWindow();
 void DetectCPUFeatures();
 void SetBestSIMDLevel();
 

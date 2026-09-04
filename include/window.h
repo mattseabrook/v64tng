@@ -41,6 +41,7 @@ void cleanupWindow();
 void pauseCursorTimer();
 void resumeCursorTimer();
 void applyConfiguredRenderer();
+void refreshRendererForCurrentMode();
 int getDisplayRefreshRate();
 
 #endif // WINDOW_H

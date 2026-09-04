@@ -9,6 +9,8 @@
 #include <span>
 #include <atomic>
 #include <condition_variable>
+#include <cstdio>
+#include <filesystem>
 #include <mutex>
 
 #ifdef _WIN32
@@ -16,11 +18,14 @@
 #include <audioclient.h>
 #include <avrt.h>
 #include <mmdeviceapi.h>
+#include <vorbis/vorbisfile.h>
 #endif
 
 #include "audio.h"
 #include "game.h"
 #include "config.h"
+#include "console.h"
+#include "music.h"
 
 #ifdef _WIN32
 #pragma comment(lib, "avrt.lib")
@@ -30,6 +35,9 @@
 static std::atomic<bool> g_audioStopRequested{false};
 static std::atomic<float> g_pcmRuntimeVolume{1.0f};
 static std::atomic<bool> g_pcmPaused{false};
+static std::atomic<bool> g_redbookStopRequested{false};
+static std::atomic<bool> g_redbookPlaying{false};
+static std::thread g_redbookThread;
 
 // Synchronization for A/V sync - audio signals when playback actually starts
 static std::mutex g_audioStartMutex;
@@ -38,6 +46,7 @@ static std::atomic<bool> g_audioStarted{false};
 
 #ifdef _WIN32
 static HANDLE g_audioStopEvent = nullptr;
+static HANDLE g_redbookStopEvent = nullptr;
 static std::mutex g_pcmClientMutex;
 static IAudioClient* g_pcmAudioClient = nullptr;
 
@@ -72,12 +81,16 @@ struct WasapiPcmSession
     UINT32 bufferFrameCount = 0;
     uint32_t outputSampleRate = 0;
     bool comInit = false;
+    bool exposeAsPcmClient = true;
+
+    explicit WasapiPcmSession(bool exposePcmClient = true)
+        : exposeAsPcmClient(exposePcmClient) {}
 
     ~WasapiPcmSession()
     {
         {
             std::lock_guard<std::mutex> lock(g_pcmClientMutex);
-            if (g_pcmAudioClient == audioClient)
+            if (exposeAsPcmClient && g_pcmAudioClient == audioClient)
                 g_pcmAudioClient = nullptr;
         }
 
@@ -160,6 +173,7 @@ struct WasapiPcmSession
         if (FAILED(hr))
             return false;
 
+        if (exposeAsPcmClient)
         {
             std::lock_guard<std::mutex> lock(g_pcmClientMutex);
             g_pcmAudioClient = audioClient;
@@ -167,6 +181,49 @@ struct WasapiPcmSession
 
         return true;
     }
+};
+
+struct VorbisFileHandle
+{
+    OggVorbis_File file{};
+    bool open = false;
+
+    ~VorbisFileHandle()
+    {
+        if (open)
+            ov_clear(&file);
+    }
+};
+
+class VorbisFloatReader
+{
+public:
+    explicit VorbisFloatReader(OggVorbis_File& file, int channels)
+        : file_(file), channels_(channels) {}
+
+    bool next(float& left, float& right)
+    {
+        while (pageIndex_ >= pageFrames_)
+        {
+            pageFrames_ = ov_read_float(&file_, &page_, 4096, &bitstream_);
+            pageIndex_ = 0;
+            if (pageFrames_ <= 0)
+                return false;
+        }
+
+        left = page_[0][pageIndex_];
+        right = page_[channels_ > 1 ? 1 : 0][pageIndex_];
+        ++pageIndex_;
+        return true;
+    }
+
+private:
+    OggVorbis_File& file_;
+    int channels_ = 0;
+    int bitstream_ = 0;
+    float** page_ = nullptr;
+    long pageFrames_ = 0;
+    long pageIndex_ = 0;
 };
 
 AudioPlaybackFormat resolveConfiguredPcmFormat()
@@ -199,6 +256,32 @@ void ensureAudioStopEvent()
 {
     if (!g_audioStopEvent)
         g_audioStopEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+}
+
+void ensureRedbookStopEvent()
+{
+    if (!g_redbookStopEvent)
+        g_redbookStopEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+}
+
+// Last-resort safety net: by the time this runs, the worker has already been
+// signaled to stop, so a normal join returns almost instantly. If it is still
+// stuck, waiting forever is exactly the zombie-process bug this prevents —
+// force the whole process down instead of leaving an EXE resident in memory
+// still playing audio.
+bool joinThreadWithTimeout(std::thread &worker, DWORD timeoutMs, const char *label)
+{
+    if (!worker.joinable())
+        return true;
+    if (WaitForSingleObject(worker.native_handle(), timeoutMs) == WAIT_OBJECT_0)
+    {
+        worker.join();
+        return true;
+    }
+    consoleLogf("AUDIO", "worker '{}' did not stop within {}ms; forcing exit",
+        label, timeoutMs);
+    TerminateProcess(GetCurrentProcess(), 1);
+    return false;
 }
 
 float decodePcmSample(const std::vector<uint8_t>& data, const AudioPlaybackFormat& format, size_t frameIndex, uint16_t channel)
@@ -250,8 +333,14 @@ void wavPlay(std::shared_ptr<const std::vector<uint8_t>> audioData, const AudioP
 {
     bool pcmEnabled = config.value("pcmEnabled", true);
     int pcmVolume = config.value("pcmVolume", 100);
-    if (!pcmEnabled || !audioData || audioData->empty())
-        return;
+	if (!pcmEnabled || !audioData || audioData->empty())
+	{
+		consoleLogf("AUDIO", "PCM play ignored enabled={} bytes={}", pcmEnabled,
+			audioData ? audioData->size() : 0);
+		return;
+	}
+	consoleLogf("AUDIO", "PCM play bytes={} rate={} channels={} bits={} volume={}",
+		audioData->size(), format.sampleRate, format.channels, format.bitsPerSample, pcmVolume);
 
     // Stop or reap any previous PCM thread before replacing std::thread.
     if (state.pcm_playing || state.pcm_thread.joinable())
@@ -318,7 +407,8 @@ void wavPlay(std::shared_ptr<const std::vector<uint8_t>> audioData, const AudioP
                                                const float left1 = decodePcmSample(*audioData, format, nextFrameIndex, 0);
                                                const float right1 = decodePcmSample(*audioData, format, nextFrameIndex, format.channels > 1 ? 1 : 0);
 
-                                               const float volume = g_pcmRuntimeVolume.load(std::memory_order_relaxed);
+                                               const float volume =
+                                                   g_pcmRuntimeVolume.load(std::memory_order_relaxed);
                                                const float left = (left0 + (left1 - left0) * frac) * volume;
                                                const float right = (right0 + (right1 - right0) * frac) * volume;
 
@@ -360,6 +450,10 @@ void wavPlay(std::shared_ptr<const std::vector<uint8_t>> audioData, const AudioP
 
                                        g_audioStarted.store(true, std::memory_order_release);
                                        g_audioStartCV.notify_one();
+                                       // Any live WAV/PCM stream ducks the music
+                                       // mix to the dialogue level for exactly as
+                                       // long as the PCM is audible.
+                                       setVdxDialogueMusicDuck(true);
                                        if (keepPlaying)
                                            session.audioClient->Start();
 
@@ -400,6 +494,7 @@ void wavPlay(std::shared_ptr<const std::vector<uint8_t>> audioData, const AudioP
                                        }
 #endif
                                        state.pcm_playing = false;
+                                       setVdxDialogueMusicDuck(false);
                                    });
 
     // Wait for audio to actually start playing (or fail) for proper A/V sync
@@ -421,10 +516,37 @@ void applyPcmRuntimeSettings()
         wavStop();
 }
 
+double pcmPlaybackDurationSeconds(size_t byteCount)
+{
+    const AudioPlaybackFormat format = resolveConfiguredPcmFormat();
+    const size_t bytesPerSample = format.bitsPerSample / 8u;
+    const size_t bytesPerFrame =
+        static_cast<size_t>(format.channels) * bytesPerSample;
+    if (!format.sampleRate || !bytesPerFrame)
+        return 0.0;
+    return static_cast<double>(byteCount / bytesPerFrame) /
+        static_cast<double>(format.sampleRate);
+}
+
+void audioRequestStop()
+{
+    g_audioStopRequested.store(true, std::memory_order_release);
+    g_redbookStopRequested.store(true, std::memory_order_release);
+#ifdef _WIN32
+    ensureAudioStopEvent();
+    if (g_audioStopEvent)
+        SetEvent(g_audioStopEvent);
+    ensureRedbookStopEvent();
+    if (g_redbookStopEvent)
+        SetEvent(g_redbookStopEvent);
+#endif
+}
+
 void wavStop()
 {
-    if (!state.pcm_playing && !state.pcm_thread.joinable())
-        return;
+	if (!state.pcm_playing && !state.pcm_thread.joinable())
+		return;
+	consoleLog("AUDIO", "PCM stop");
 
     g_audioStopRequested.store(true, std::memory_order_release);
 
@@ -437,21 +559,208 @@ void wavStop()
     state.pcm_playing = false;
 
     if (state.pcm_thread.joinable())
-        state.pcm_thread.join();
+        joinThreadWithTimeout(state.pcm_thread, 3000, "pcm");
+    setVdxDialogueMusicDuck(false);
 }
 
 void wavPause()
 {
+	consoleLog("AUDIO", "PCM pause");
     g_pcmPaused.store(true, std::memory_order_release);
 }
 
 void wavResume()
 {
+	consoleLog("AUDIO", "PCM resume");
     g_pcmPaused.store(false, std::memory_order_release);
+}
+
+bool redbookPlayOgg(const std::filesystem::path& path)
+{
+    redbookStop();
+
+#ifdef _WIN32
+    if (!config.value("midiEnabled", true))
+    {
+        consoleLogf("REDBOOK", "Ogg playback disabled by music setting: {}", path.string());
+        return false;
+    }
+
+    FILE* input = nullptr;
+    if (_wfopen_s(&input, path.c_str(), L"rb") != 0 || !input)
+    {
+        consoleLogf("REDBOOK", "Ogg track not found: {}", path.string());
+        return false;
+    }
+
+    auto decoder = std::make_unique<VorbisFileHandle>();
+    if (ov_open(input, &decoder->file, nullptr, 0) < 0)
+    {
+        std::fclose(input);
+        consoleLogf("REDBOOK", "Invalid Ogg Vorbis track: {}", path.string());
+        return false;
+    }
+    decoder->open = true;
+    const vorbis_info* info = ov_info(&decoder->file, -1);
+    if (!info || info->rate <= 0 || info->channels <= 0)
+    {
+        consoleLogf("REDBOOK", "Ogg track has no playable stream: {}", path.string());
+        return false;
+    }
+
+    const uint32_t sampleRate = static_cast<uint32_t>(info->rate);
+    const int channels = info->channels;
+    const auto sourcePath = path.string();
+    ensureRedbookStopEvent();
+    if (g_redbookStopEvent)
+        ResetEvent(g_redbookStopEvent);
+    g_redbookStopRequested.store(false, std::memory_order_release);
+    g_redbookPlaying.store(true, std::memory_order_release);
+
+    try
+    {
+        g_redbookThread = std::thread(
+            [decoderHandle = std::move(decoder), sampleRate, channels,
+                trackPath = sourcePath]() mutable
+            {
+                MmcssScope mmcss;
+                WasapiPcmSession session(false);
+                if (!session.init(sampleRate >= 44100 ? sampleRate : 44100))
+                {
+                    consoleLogf("REDBOOK", "Cannot open audio endpoint for {}", trackPath);
+                    g_redbookPlaying.store(false, std::memory_order_release);
+                    return;
+                }
+
+                VorbisFloatReader reader(decoderHandle->file, channels);
+                float sourceLeft = 0.0f;
+                float sourceRight = 0.0f;
+                bool sourceAvailable = reader.next(sourceLeft, sourceRight);
+                double sourcePhase = 0.0;
+                const double sourceStep = static_cast<double>(sampleRate) /
+                    static_cast<double>(session.outputSampleRate);
+
+                auto renderFrames = [&](BYTE* destination, UINT32 frameCount)
+                {
+                    int16_t* output = reinterpret_cast<int16_t*>(destination);
+                    for (UINT32 frame = 0; frame < frameCount; ++frame)
+                    {
+                        if (!sourceAvailable)
+                        {
+                            std::memset(output + frame * 2u, 0,
+                                static_cast<size_t>(frameCount - frame) *
+                                    sizeof(int16_t) * 2u);
+                            break;
+                        }
+
+						// Ogg is the modern replacement for Red Book *music*. Apply the
+						// same VDX-dialogue duck used by every XMI backend; embedded VDX
+						// PCM is rendered by wavPlay() and remains at its own 100% gain.
+						const float volume = musicPlaybackVolume();
+                        output[frame * 2u] = static_cast<int16_t>(std::clamp(
+                            sourceLeft * volume * 32767.0f, -32768.0f, 32767.0f));
+                        output[frame * 2u + 1u] = static_cast<int16_t>(std::clamp(
+                            sourceRight * volume * 32767.0f, -32768.0f, 32767.0f));
+
+                        sourcePhase += sourceStep;
+                        while (sourcePhase >= 1.0 && sourceAvailable)
+                        {
+                            sourceAvailable = reader.next(sourceLeft, sourceRight);
+                            sourcePhase -= 1.0;
+                        }
+                    }
+                    return sourceAvailable;
+                };
+
+                BYTE* data = nullptr;
+                HRESULT hr = session.renderClient->GetBuffer(session.bufferFrameCount, &data);
+                if (FAILED(hr))
+                {
+                    g_redbookPlaying.store(false, std::memory_order_release);
+                    return;
+                }
+                bool keepPlaying = renderFrames(data, session.bufferFrameCount);
+                hr = session.renderClient->ReleaseBuffer(session.bufferFrameCount, 0);
+                if (FAILED(hr) || FAILED(session.audioClient->Start()))
+                {
+                    g_redbookPlaying.store(false, std::memory_order_release);
+                    return;
+                }
+
+                HANDLE waitHandles[2] = {session.bufferEvent, g_redbookStopEvent};
+                const DWORD waitCount = g_redbookStopEvent ? 2u : 1u;
+                while (!g_redbookStopRequested.load(std::memory_order_acquire))
+                {
+                    const DWORD waitResult = WaitForMultipleObjects(
+                        waitCount, waitHandles, FALSE, 200);
+                    if (waitCount == 2u && waitResult == WAIT_OBJECT_0 + 1u)
+                        break;
+                    if (waitResult != WAIT_OBJECT_0 && waitResult != WAIT_TIMEOUT)
+                        break;
+
+                    UINT32 padding = 0;
+                    hr = session.audioClient->GetCurrentPadding(&padding);
+                    if (FAILED(hr) || (!keepPlaying && padding == 0))
+                        break;
+                    if (!keepPlaying)
+                        continue;
+
+                    const UINT32 framesAvailable = session.bufferFrameCount - padding;
+                    if (!framesAvailable)
+                        continue;
+                    hr = session.renderClient->GetBuffer(framesAvailable, &data);
+                    if (FAILED(hr))
+                        break;
+                    keepPlaying = renderFrames(data, framesAvailable);
+                    hr = session.renderClient->ReleaseBuffer(framesAvailable, 0);
+                    if (FAILED(hr))
+                        break;
+                }
+
+                g_redbookPlaying.store(false, std::memory_order_release);
+                consoleLogf("REDBOOK", "Ogg track ended: {}", trackPath);
+            });
+    }
+    catch (...)
+    {
+        g_redbookPlaying.store(false, std::memory_order_release);
+        consoleLogf("REDBOOK", "Cannot start Ogg playback worker: {}", sourcePath);
+        return false;
+    }
+
+	const int musicPercent = static_cast<int>(std::lround(
+		musicPlaybackVolume() * 100.0f));
+	consoleLogf("REDBOOK",
+		"Playing {} ({} Hz, {} channels); effective music volume={}%, VDX dialogue duck enabled",
+		sourcePath, sampleRate, channels, musicPercent);
+    return true;
+#else
+    (void)path;
+    return false;
+#endif
+}
+
+void redbookStop()
+{
+    g_redbookStopRequested.store(true, std::memory_order_release);
+#ifdef _WIN32
+    ensureRedbookStopEvent();
+    if (g_redbookStopEvent)
+        SetEvent(g_redbookStopEvent);
+#endif
+    if (g_redbookThread.joinable())
+        joinThreadWithTimeout(g_redbookThread, 3000, "redbook");
+    g_redbookPlaying.store(false, std::memory_order_release);
+}
+
+bool redbookIsActive()
+{
+    return g_redbookPlaying.load(std::memory_order_acquire);
 }
 
 void audioShutdown()
 {
+    redbookStop();
     wavStop();
 #ifdef _WIN32
     std::lock_guard<std::mutex> lock(g_pcmClientMutex);
@@ -459,6 +768,11 @@ void audioShutdown()
     {
         CloseHandle(g_audioStopEvent);
         g_audioStopEvent = nullptr;
+    }
+    if (g_redbookStopEvent)
+    {
+        CloseHandle(g_redbookStopEvent);
+        g_redbookStopEvent = nullptr;
     }
 #endif
 }

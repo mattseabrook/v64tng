@@ -6,6 +6,8 @@
 ; VIDEOREF is synchronous: 03h/05h/06h/07h/0Ah stage bits 9/8/6/7/5, 09h resolves and plays one VDX, then transient flags clear.
 ; SCRIPT.GRV uses bit 5 to discard an overlay still and composite its deltas over the held background; an 80h sound chunk remains inside that same blocking playback.
 ; Shared SCRIPT.GRV PCs/operands for boot, Zaphod, and quit are runtime-confirmed by Win32 trace 20260809-164423; this is script-level correspondence, not a DOS runtime capture.
+; LI.GRV trace 20260825-223925 confirms opcode 37h restores one saved-background rectangle after each telescope letter; the shared bytecode is Win32 runtime evidence, not a DOS capture.
+; GRATE.GRV trace 20260903-225430 confirms on Win32 that mgpuzbkd.vdx remains the foreground matte while every grate-motion VDX uses BF6+BF7 (00C0h) against the independently updated background. The retail DOS handler below stages the same BF6 state for the shared script; this is correspondence, not a DOS runtime capture.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
 %macro emit_run_grv_vm_part_00 0
@@ -404,6 +406,9 @@ run_grv_vm:
         %error "LONG_03B78"
     %endif
     times 2 - ($ - %%insn_03b78) db 0
+; Opcode 06h VIDEOFLAG6_ON: stage the one-shot surface-refresh/drawing-
+; transaction state used with BF7 by every GRATE.GRV movement clip.
+grv_opcode_video_flag6_on:
     %%insn_03b7a:
     mov word [bp-0x30da],0x1 ; 03B7A C78626CF0100
     %if ($ - %%insn_03b7a) > 6
@@ -1441,7 +1446,7 @@ run_grv_vm:
     %endif
     times 2 - ($ - %%insn_03d2b) db 0
     %%insn_03d2d:
-    call 0x23a5 ; 03D2D E875E6
+    call copy_background_rectangle_to_foreground ; 03D2D E875E6
     %if ($ - %%insn_03d2d) > 3
         %error "LONG_03D2D"
     %endif

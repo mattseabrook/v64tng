@@ -4,6 +4,7 @@
 #include <windowsx.h>
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <string>
 
 #include "../resource.h"
@@ -14,11 +15,13 @@
 #include "config.h"
 #include "game.h"
 #include "audio.h"
+#include "music.h"
 #include "menu.h"
 #include "map_overlay.h"
 #include "raycast.h"
 #include "tools.h"
 #include "grv_editor.h"
+#include "console.h"
 
 constexpr UINT CURSOR_TIMER_ID = 0x7C0A;
 constexpr UINT CURSOR_TIMER_INTERVAL = static_cast<UINT>(1000.0 / CURSOR_FPS);
@@ -31,6 +34,50 @@ bool g_userIsResizing = false;
 static bool g_rawMouseInput = false;
 static bool g_rendererInitialized = false;
 static int g_startupFullscreenDisplay = 0;
+static bool g_suppressConsoleToggleChar = false;
+enum PresentationPauseReason : unsigned
+{
+	PRESENTATION_PAUSE_MENU = 1u << 0,
+	PRESENTATION_PAUSE_RESIZE = 1u << 1,
+	PRESENTATION_PAUSE_FOCUS = 1u << 2,
+};
+static unsigned g_presentationPauseReasons = 0;
+static std::chrono::steady_clock::time_point g_presentationPausedAt{};
+
+static void pausePresentation(unsigned reason)
+{
+	if ((g_presentationPauseReasons & reason) != 0)
+		return;
+	if (g_presentationPauseReasons == 0)
+	{
+		g_presentationPausedAt = std::chrono::steady_clock::now();
+		wavPause();
+	}
+	g_presentationPauseReasons |= reason;
+}
+
+static void resumePresentation(unsigned reason)
+{
+	if ((g_presentationPauseReasons & reason) == 0)
+		return;
+	g_presentationPauseReasons &= ~reason;
+	if (g_presentationPauseReasons != 0)
+		return;
+
+	const auto pausedFor = std::chrono::steady_clock::now() -
+		g_presentationPausedAt;
+	auto shiftClock = [pausedFor](auto &clock)
+	{
+		if (clock.time_since_epoch().count() != 0)
+			clock += pausedFor;
+	};
+	shiftClock(state.animation.lastFrameTime);
+	shiftClock(state.transient_animation.lastFrameTime);
+	shiftClock(state.frameTiming.lastRenderTime);
+	shiftClock(state.frameTiming.fpsWindowStart);
+	state.frameTiming.dirtyFrame = true;
+	wavResume();
+}
 
 static RendererType configuredRenderer()
 {
@@ -48,7 +95,7 @@ static RendererType configuredRenderer()
 RendererType renderer;
 float scaleFactor = 1.0f;
 DWORD g_windowedStyle = WS_OVERLAPPEDWINDOW;
-WINDOWPLACEMENT g_windowedPlacement = {sizeof(WINDOWPLACEMENT)};
+WINDOWPLACEMENT g_windowedPlacement{};
 
 // Use arrays indexed by enum for O(1) lookup instead of std::map O(log n)
 // RendererType::VULKAN = 0, RendererType::DIRECTX = 1
@@ -60,12 +107,14 @@ static constexpr RenderFunc cleanupFuncsArr[] = { cleanupVulkan, cleanupD2D };
 
 LRESULT HandleMove(HWND hwnd)
 {
+	syncGameConsoleOverlay();
 	if (!state.ui.enabled)
 		return 0;
 	RECT rect;
 	GetWindowRect(hwnd, &rect);
 	HMONITOR mon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-	MONITORINFOEX info = {sizeof(MONITORINFOEX)};
+	MONITORINFOEX info{};
+	info.cbSize = sizeof(info);
 	if (GetMonitorInfo(mon, &info))
 	{
 		state.ui.x = rect.left - info.rcMonitor.left;
@@ -130,6 +179,7 @@ LRESULT HandleSize(HWND hwnd, WPARAM wParam)
 			config["width"] = newW;
 		maybeRenderFrame(true); // Direct render instead of invalidate
 	}
+	syncGameConsoleOverlay();
 	return 0;
 }
 
@@ -220,6 +270,8 @@ LRESULT HandleMouseMove(LPARAM lParam)
 
 LRESULT HandleLButtonDown(LPARAM lParam)
 {
+	if (gameConsoleActive())
+		return 0;
 	// Use GET_X/Y_LPARAM for proper signed coordinate handling (multi-monitor support)
 	POINT pt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
 	if (grvInputActive())
@@ -236,7 +288,7 @@ LRESULT HandleLButtonDown(LPARAM lParam)
 LRESULT HandleMenuLoop(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	g_menuActive = true;
-	wavPause();
+	pausePresentation(PRESENTATION_PAUSE_MENU);
 	SetCursor(LoadCursor(nullptr, IDC_ARROW));
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
@@ -244,12 +296,13 @@ LRESULT HandleMenuLoop(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 LRESULT HandleExitMenuLoop(HWND hwnd)
 {
 	SetTimer(hwnd, 0x7C0B, 50, NULL);
-	wavResume();
+	resumePresentation(PRESENTATION_PAUSE_MENU);
 	return DefWindowProc(hwnd, WM_EXITMENULOOP, 0, 0);
 }
 
 LRESULT HandleDestroy()
 {
+	shutdownGameConsole();
 	CloseToolsWindow();  // Close tools window if open
 	CloseGrvEditor();
 	if (g_mouseHook)
@@ -293,6 +346,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return HandleNCHitTest(hwnd, lParam);
 	case WM_MOUSEMOVE:
 		return HandleMouseMove(lParam);
+	case WM_MOUSEWHEEL:
+		if (gameConsoleMouseWheel(GET_WHEEL_DELTA_WPARAM(wParam)))
+			return 0;
+		break;
 	case WM_INPUT:
 		if (state.raycast.enabled && g_rawMouseInput)
 		{
@@ -310,10 +367,31 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_KILLFOCUS:
 		resetRaycastInput();
+		pausePresentation(PRESENTATION_PAUSE_FOCUS);
+		return 0;
+	case WM_SETFOCUS:
+		resumePresentation(PRESENTATION_PAUSE_FOCUS);
 		return 0;
 	case WM_LBUTTONDOWN:
 		return HandleLButtonDown(lParam);
 	case WM_KEYDOWN:
+		// Bind the physical Windows OEM tilde/backtick key regardless of which
+		// renderer is active. Ignore auto-repeat so holding it cannot flicker.
+		if (wParam == VK_OEM_3)
+		{
+			g_suppressConsoleToggleChar = true;
+			if ((lParam & (1LL << 30)) == 0)
+			{
+				toggleGameConsole();
+				resetRaycastInput();
+			}
+			return 0;
+		}
+		if (gameConsoleActive())
+		{
+			gameConsoleKeyDown(wParam);
+			return 0;
+		}
 		if (wParam == VK_ESCAPE && grvEscapeAction())
 			return 0;
 		if (state.raycast.enabled)
@@ -325,10 +403,24 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		}
 		return 0;
 	case WM_CHAR:
-		if (state.mainMenu.active && wParam <= 0xff)
-			mainMenuKeyDown(static_cast<char>(wParam));
+		if (g_suppressConsoleToggleChar)
+		{
+			g_suppressConsoleToggleChar = false;
+			return 0;
+		}
+		if (gameConsoleChar(static_cast<wchar_t>(wParam)))
+			return 0;
+		if (grvInputActive() && wParam <= 0xff)
+			grvKeyInput(static_cast<char>(wParam));
 		return 0;
 	case WM_KEYUP:
+		if (wParam == VK_OEM_3)
+		{
+			g_suppressConsoleToggleChar = false;
+			return 0;
+		}
+		if (gameConsoleActive())
+			return 0;
 		if (state.raycast.enabled)
 			raycastKeyUp(wParam);
 		return 0;
@@ -345,12 +437,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_ENTERSIZEMOVE:
 		g_userIsResizing = true;
-		wavPause();
+		pausePresentation(PRESENTATION_PAUSE_RESIZE);
 		break;
 	case WM_EXITSIZEMOVE:
 	{
 		g_userIsResizing = false;
-		wavResume();
+		resumePresentation(PRESENTATION_PAUSE_RESIZE);
 		RECT client;
 		GetClientRect(hwnd, &client);
 		float scale = state.raycast.enabled ? 1.0f : static_cast<float>(client.right - client.left) / MIN_CLIENT_WIDTH;
@@ -371,10 +463,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return HandleExitMenuLoop(hwnd);
 	case WM_CLOSE:
 		save_config("config.json");
-		wavStop();
+		// Request every audio backend to stop, but never join a worker thread
+		// inside the window procedure: a join here can deadlock against a
+		// worker and leaves the process alive in memory with music still
+		// playing. The regular cleanup path (musicShutdown / audioShutdown)
+		// performs the joins once the message loop has unwound.
+		g_quitRequested = true;
+		musicRequestStop();
+		audioRequestStop();
 		return DefWindowProc(hwnd, uMsg, wParam, lParam);
 	case WM_DESTROY:
-		wavStop();
+		audioRequestStop();
 		return HandleDestroy();
 	}
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
@@ -392,7 +491,8 @@ void initHandlers() {}
 BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC, LPRECT, LPARAM)
 {
 	static int count = 0;
-	MONITORINFOEX info = {sizeof(MONITORINFOEX)};
+	MONITORINFOEX info{};
+	info.cbSize = sizeof(info);
 	if (GetMonitorInfo(hMonitor, &info))
 		state.ui.displays.push_back({++count, info.rcMonitor, (info.dwFlags & MONITORINFOF_PRIMARY) != 0});
 	return TRUE;
@@ -422,7 +522,8 @@ void toggleFullscreen()
 
 		// Normal Alt+Enter follows the monitor containing the window.
 		HMONITOR currentMonitor = MonitorFromWindow(g_hwnd, MONITOR_DEFAULTTONEAREST);
-		MONITORINFOEX monitorInfo = {sizeof(MONITORINFOEX)};
+		MONITORINFOEX monitorInfo{};
+		monitorInfo.cbSize = sizeof(monitorInfo);
 		if (!sel && GetMonitorInfo(currentMonitor, &monitorInfo))
 		{
 			// Find the matching display info
@@ -464,6 +565,7 @@ void toggleFullscreen()
 		ShowWindow(g_hwnd, SW_SHOWNORMAL);
 		initMenu(g_hwnd);
 	}
+	syncGameConsoleOverlay();
 }
 
 void initWindow()
@@ -516,6 +618,7 @@ void initWindow()
 	initializeRendererFuncs[static_cast<int>(renderer)]();
 	g_rendererInitialized = true;
 	ShowWindow(g_hwnd, SW_SHOW);
+	initializeGameConsole(g_hwnd);
 	if (startFullscreen)
 	{
 		// A persisted fullscreen launch must use the exact same tested transition
@@ -525,6 +628,7 @@ void initWindow()
 		config["fullscreen"] = false;
 		toggleFullscreen();
 	}
+	syncGameConsoleOverlay();
 	g_mouseHook = SetWindowsHookEx(WH_MOUSE, MouseHookProc, NULL, GetCurrentThreadId());
 	SetTimer(g_hwnd, CURSOR_TIMER_ID, CURSOR_TIMER_INTERVAL, NULL);
 	RAWINPUTDEVICE rid = {0x01, 0x02, 0, g_hwnd};
@@ -546,7 +650,16 @@ bool processEvents()
 	{
 		if (msg.message == WM_QUIT)
 		{
-			g_quitRequested = true;
+			// WM_QUIT can arrive without WM_CLOSE (File>Exit posts WM_CLOSE, but
+			// external tools and the task manager can post WM_QUIT directly).
+			// Flag the quit and signal the audio backends here too, so no quit
+			// path leaves a worker thread able to start a new song.
+			if (!g_quitRequested)
+			{
+				g_quitRequested = true;
+				musicRequestStop();
+				audioRequestStop();
+			}
 			return false;
 		}
 		TranslateMessage(&msg);
@@ -579,7 +692,8 @@ void updateCursorBasedOnPosition(POINT clientPos)
 			: static_cast<CursorType>(style);
 		return;
 	}
-	if (state.raycast.enabled || state.animation.isPlaying || state.transient_animation.isPlaying)
+	if (state.introSequencePlaying || state.raycast.enabled ||
+		state.animation.isPlaying || state.transient_animation.isPlaying)
 	{
 		g_activeCursorType = CURSOR_DEFAULT; // Will show transparent or default
 		return;
@@ -605,6 +719,18 @@ void applyConfiguredRenderer()
 	renderer = requested;
 	initializeRendererFuncs[static_cast<int>(renderer)]();
 	g_rendererInitialized = true;
+	state.frameTiming.dirtyFrame = true;
+}
+
+void refreshRendererForCurrentMode()
+{
+	if (!g_rendererInitialized || !g_hwnd)
+		return;
+	// The 2D player always owns a 640x320 source texture, while the raycaster
+	// owns a full-client texture. A live GRATE -> raycaster handoff changes that
+	// contract without generating WM_SIZE, so rebuild the active renderer's
+	// size-dependent resources explicitly.
+	HandleSize(g_hwnd, SIZE_RESTORED);
 	state.frameTiming.dirtyFrame = true;
 }
 

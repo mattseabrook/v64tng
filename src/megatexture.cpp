@@ -233,7 +233,8 @@ static float mortarShapeAt(float x, float y, const MegatextureParams &params)
     return shape;
 }
 
-static uint32_t generatePixelVeins(int u, int v, const MegatextureParams &params)
+[[maybe_unused]] static uint32_t generatePixelVeins(
+    int u, int v, const MegatextureParams &params)
 {
     // Convert pixel coordinates to world units with anisotropy:
     // 1024 px width = 3 world units (horizontal), 1024 px height = 1 world unit (vertical)
@@ -729,8 +730,6 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
     
     // Pre-compute edge info for each column
     {
-        size_t edgeIdx = 0;
-        int currentEnd = 0;
         for (size_t i = 0; i < megatex.edges.size(); ++i)
         {
             const auto& edge = megatex.edges[i];
@@ -781,7 +780,7 @@ bool generateMegatextureTilesOnly(const MegatextureParams& params, const std::st
                 
                 if (yStart >= H_px) break;
                 
-                workers.emplace_back([&tile, &validParams, &columnEdgeMap, tileU0, tileW, tileWidth, yStart, yEnd]()
+                workers.emplace_back([&tile, &validParams, &columnEdgeMap, tileU0, tileW, yStart, yEnd]()
                 {
                     for (int y = yStart; y < yEnd; ++y)
                     {
@@ -1018,7 +1017,6 @@ bool saveMTX(const std::string& mtxPath, const std::string& tilesDir, const Mega
 
     // Compress and write each tile
     size_t totalOriginalBytes = 0;
-    size_t totalCompressedBytes = 0;
 
     for (uint32_t i = 0; i < header.tileCount; ++i)
     {
@@ -1059,8 +1057,6 @@ bool saveMTX(const std::string& mtxPath, const std::string& tilesDir, const Mega
         mtxFile.write(reinterpret_cast<const char*>(compressedData.data()), compressedSize);
 
         totalOriginalBytes += rgba.size();
-        totalCompressedBytes += compressedSize + sizeof(uint32_t);
-
         if ((i + 1) % 100 == 0 || i == header.tileCount - 1)
         {
             std::println("  Compressed tile {}/{} ({} bytes)", i + 1, header.tileCount, compressedSize);

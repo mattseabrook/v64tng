@@ -25,7 +25,7 @@ bits 16
 %include "src/functions/vdx/decode_vdx_delta_frame.asm"
 %include "src/functions/unknown/0230f_func_0230f.asm"
 %include "src/functions/vdx/decompress_vdx_lzss.asm"
-%include "src/functions/vdx/copy_rect_to_background.asm"
+%include "src/functions/vdx/copy_background_rectangle_to_foreground.asm"
 %include "src/functions/vdx/copy_background_to_foreground.asm"
 %include "src/functions/unknown/026e5_func_026e5.asm"
 %include "src/functions/vdx/mark_used_background_palette_entries.asm"
@@ -562,7 +562,7 @@ load_image_start:
     ; 0236A..023A4 function
     emit_decompress_vdx_lzss_part_00
     ; 023A5..02590 function
-    emit_copy_rect_to_background_part_00
+    emit_copy_background_rectangle_to_foreground_part_00
     ; 02591..026E4 function
     emit_copy_background_to_foreground_part_00
     ; 026E5..0276C function

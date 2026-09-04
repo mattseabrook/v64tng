@@ -1,11 +1,12 @@
 ; PE virtual entry 0040716E
 ; Ghidra working symbol: FUN_0040716e
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role: forwards volume and ramp time to AIL_set_sequence_volume for
+; the active Miles MIDI sequence. Called by GRV opcode 31h.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_0040716e_part_00 0
+%macro emit_set_active_midi_sequence_volume_ramp_part_00 0
     %%fragment_start:
-func_0040716e:
+set_active_midi_sequence_volume_ramp:
     %%insn_0040716e:
     push ebp ; 0040716E 55
     %if ($ - %%insn_0040716e) > 1

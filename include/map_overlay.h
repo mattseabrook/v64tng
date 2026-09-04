@@ -21,7 +21,8 @@ extern bool g_mapOverlayVisible;
 // Function Prototypes
 
 void OpenMapOverlay(HWND parent);
-void UpdateMapOverlay();
 void CloseMapOverlay();
+// Composite the transparent map into the raycast framebuffer each frame.
+void renderMapOverlay(uint8_t *fb, size_t pitch, int w, int h);
 
 #endif // MAP_OVERLAY_H

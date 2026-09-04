@@ -2,6 +2,8 @@
 /build/
 build.log
 /obj/
+/grooviev1/build/grooviev1-native
+/grooviev1/build/font-atlas-glyphs/
 
 # Ignore .vs dir
 /.vs/

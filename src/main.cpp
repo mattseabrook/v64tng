@@ -308,7 +308,7 @@ int process_args(const std::vector<std::string> &args)
 	{
 		// Enable raycasting mode - Development/Testing purposes only
 		state.raycast.enabled = true;
-		state.raycast.map = &map; // From basement.h * make dynamic later
+		state.raycast.map = &basementMap; // From basement.h * make dynamic later
 				state.frameTiming.currentFPS = 60.0;
 		float fovDeg = config.contains("raycastFov") ? static_cast<float>(config["raycastFov"]) : 90.0f;
 		state.raycast.player.fov = deg2rad(fovDeg);
@@ -317,7 +317,7 @@ int process_args(const std::vector<std::string> &args)
 		// Note: analyzeMapEdges builds the wall-edge list once from the current map.
 		// loadMTX preloads tiles for fast sampling at runtime.
 		// If the MTX isn't present, the renderer will gracefully fall back to solid walls.
-		analyzeMapEdges(map);
+		analyzeMapEdges(basementMap);
 		// Prefer the game directory path if present, else current working directory
 		if (!loadMTX("C:\\T7G\\megatexture.mtx"))
 		{
@@ -372,7 +372,7 @@ int process_args(const std::vector<std::string> &args)
 		{
 			std::println("Generating megatexture tiles from basement map...");
 			
-			if (!analyzeMapEdges(map))
+			if (!analyzeMapEdges(basementMap))
 			{
 				std::println(stderr, "ERROR: Failed to analyze map for megatexture generation.");
 				return -1;
@@ -438,7 +438,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
 
 		if (args.size() == 1)
 		{
-			ShowSystemInfoWindow();
+			if (ShowSystemInfoWindow())
+				init();
 			return 0;
 		}
 		else if (args.size() > 1 && args[1] == "!")

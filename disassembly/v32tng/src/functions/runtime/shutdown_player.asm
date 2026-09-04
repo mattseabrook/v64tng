@@ -20,7 +20,7 @@ shutdown_player:
     %endif
     times 10 - ($ - %%insn_004096f3) db 0
     %%insn_004096fd:
-    call 0x4075ad ; 004096FD E8ABDEFFFF
+    call shutdown_miles_audio_system ; 004096FD E8ABDEFFFF
     %if ($ - %%insn_004096fd) > 5
         %error "LONG_004096FD"
     %endif

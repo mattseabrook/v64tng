@@ -1,6 +1,10 @@
 ; Linear entry 00587 (1000:0587)
 ; Ghidra working symbol: FUN_1000_0587
 ; Verified VDX 20h still/base-frame decoder; GRV video flags decide whether its pixels seed the displayed background or are skipped for a delta overlay.
+; The foreground matte and decoded background remain independent across
+; VIDEOREFs. Win32 trace 20260903-225430 proves GRATE.GRV keeps mgpuzbkd.vdx as
+; that matte while BF6+BF7 movement clips update the background; the shared DOS
+; script and this decoder implement the corresponding two-buffer contract.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
 %macro emit_decode_vdx_bitmap_still_part_00 0

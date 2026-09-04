@@ -242,6 +242,36 @@ lookup and hooks application-owned `MessageBoxA/W` calls. A Windows Error
 Reporting dialog can belong to a different process, so the human screenshot is
 still required even if the trace contains popup evidence.
 
+### Next capture: Library telescope reveal and map navigation
+
+Use `--mode full` and leave variable capture enabled. The existing semantic
+probes cover both questions: each telescope click is retained with exact client
+coordinates, the following GRV dispatches are retained instruction-for-
+instruction, and every resulting variable-bank change is attributed to its
+originating opcode. Script loads, VDX selections, and decoder activity show
+whether **THERE IS NO POSSIBLE WAY** is revealed incrementally or queued and
+presented as one visual transition.
+
+Use these boundaries in one fresh trace:
+
+1. **F9 / mark-1:** stable Library view immediately before entering the
+   telescope puzzle;
+2. click through the puzzle at a deliberate pace, waiting for each expected
+   incremental reveal before the next click;
+3. **F9 / mark-2:** puzzle result settled, before opening the map;
+4. open the map and wait until it is stable;
+5. **F9 / mark-3:** map open, immediately before choosing a destination;
+6. click one map destination once, then do not add input until navigation and
+   all automatic media have settled;
+7. **F9 / mark-4:** destination settled; then quit normally.
+
+The digester now prints an ordered Win32 input timeline, including exact mouse
+client coordinates, beside the GRV trace and variable writes. This supplies the
+missing alignment needed to distinguish map hit-testing/dispatch from the
+downstream room-transition code. No new native address probe is required for
+this capture; the verified GRV dispatch, script-load, resource, and input hooks
+already sit on the relevant semantic boundaries.
+
 By default, output is written below:
 
 ```text
@@ -318,7 +348,7 @@ Each scene report includes:
 - GRV variable writes with the originating instruction when known;
 - load/save/check-valid-saves handler hits and `st7g.N` open/read/write/close
   evidence, including SHA-256 of captured payloads;
-- filtered input event counts;
+- an ordered filtered input timeline with exact mouse client coordinates;
 - opcode coverage;
 - an exact GRV trace with PC, instruction bytes, decoded mnemonic/operands,
   inferred non-fallthrough control transfers, and consecutive-repeat counts;

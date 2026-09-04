@@ -1,6 +1,8 @@
+#ifdef _WIN32
 #define NOMINMAX
 #include <windows.h>
 #include <wincodec.h>
+#endif
 
 #include <algorithm>
 #include <array>
@@ -41,9 +43,10 @@ struct Options
     int fps = 15;
     int lowerIntermediateQuality = -1;
     size_t audioChunkBytes = 2048;
+    size_t holdFrames = 0;
     int maxLocalPaletteUpdates = 32;
     bool rawInput = false;
-    bool compress = true;
+    bool compress = false;
     bool validate = true;
     uint8_t lengthMask = 0x7F;
     uint8_t lengthBits = 7;
@@ -84,6 +87,15 @@ struct EncodeStats
     size_t localPaletteUpdates = 0;
 };
 
+static constexpr int kGroovieWidth = 640;
+static constexpr int kGroovieMaxHeight = 480;
+
+static bool isValidGroovieGeometry(int width, int height)
+{
+    return width == kGroovieWidth && height > 0 && height <= kGroovieMaxHeight &&
+           (height % 4) == 0;
+}
+
 static void printUsage()
 {
     std::cout
@@ -103,16 +115,18 @@ static void printUsage()
         << "  --output PATH                      Output VDX file (required)\n"
         << "  --input-dir DIR                    Read frames from DIR (sorted by name)\n"
         << "  --raw                              Treat frames as raw RGB24 files\n"
-        << "  --width N                          Required for --raw\n"
-        << "  --height N                         Required for --raw\n"
-        << "  --resize WxH                       Resize all frames before encoding\n"
+        << "  --width N                          Required for --raw; must be 640\n"
+        << "  --height N                         Required for --raw; max 480, divisible by 4\n"
+        << "  --resize WxH                       Resize before encoding; width 640, max height 480\n"
         << "  --dos-canonical                    Alias for --resize 640x320\n"
         << "  --fps N                            VDX header frame rate (default: 15)\n"
         << "  --wav PATH                         Optional WAV audio for 0x80 interleave\n"
         << "  --audio-chunk-bytes N              0x80 chunk payload size (default: 2048)\n"
+        << "  --hold-frames N                    Append N timed 0x00 no-change chunks\n"
         << "  --lower-intermediate-quality 0..9  Lower quality for frames 1..N-1 only\n"
         << "  --max-local-palette-updates N      Max per 0x25 local palette edits\n"
-        << "  --no-compress                      Disable VDX LZSS compression\n"
+        << "  --compress                         Enable native-compatible VDX LZSS compression (off by default)\n"
+        << "  --no-compress                      Explicitly write raw chunks (the default)\n"
         << "  --length-mask N                    LZSS length mask (default: 127)\n"
         << "  --length-bits N                    LZSS length bits (default: 7)\n"
         << "  --no-validate                      Skip internal round-trip validation\n\n"
@@ -258,6 +272,12 @@ static bool parseOptions(int argc, char **argv, Options &opt)
             if (!v || !parseSizeT(v, opt.audioChunkBytes))
                 return false;
         }
+        else if (arg == "--hold-frames")
+        {
+            const char *v = needValue("--hold-frames");
+            if (!v || !parseSizeT(v, opt.holdFrames))
+                return false;
+        }
         else if (arg == "--length-mask")
         {
             int v = 0;
@@ -277,6 +297,10 @@ static bool parseOptions(int argc, char **argv, Options &opt)
         else if (arg == "--raw")
         {
             opt.rawInput = true;
+        }
+        else if (arg == "--compress")
+        {
+            opt.compress = true;
         }
         else if (arg == "--no-compress")
         {
@@ -322,6 +346,16 @@ static bool parseOptions(int argc, char **argv, Options &opt)
         std::cerr << "--audio-chunk-bytes must be > 0\n";
         return false;
     }
+    if (opt.holdFrames > 65535)
+    {
+        std::cerr << "--hold-frames must be in [0, 65535]\n";
+        return false;
+    }
+    if (opt.lengthMask != static_cast<uint8_t>((1u << opt.lengthBits) - 1u))
+    {
+        std::cerr << "--length-mask must equal (1 << --length-bits) - 1 for native-compatible output\n";
+        return false;
+    }
 
     if (!opt.inputDir.empty() && opt.framePaths.empty())
     {
@@ -349,21 +383,23 @@ static bool parseOptions(int argc, char **argv, Options &opt)
         return false;
     }
 
-    if (opt.rawInput && (opt.width <= 0 || opt.height <= 0 || (opt.width % 4) != 0 || (opt.height % 4) != 0))
+    if (opt.rawInput && !isValidGroovieGeometry(opt.width, opt.height))
     {
-        std::cerr << "RAW mode requires --width/--height, each divisible by 4\n";
+        std::cerr << "RAW mode requires --width 640 and --height in [4, 480], divisible by 4\n";
         return false;
     }
 
-    if ((opt.resizeWidth != 0 || opt.resizeHeight != 0) && ((opt.resizeWidth % 4) != 0 || (opt.resizeHeight % 4) != 0))
+    if ((opt.resizeWidth != 0 || opt.resizeHeight != 0) &&
+        !isValidGroovieGeometry(opt.resizeWidth, opt.resizeHeight))
     {
-        std::cerr << "Resize dimensions must be divisible by 4\n";
+        std::cerr << "Resize output must be 640 pixels wide and 4..480 pixels high, divisible by 4\n";
         return false;
     }
 
     return true;
 }
 
+#ifdef _WIN32
 static std::wstring utf8ToWide(const std::string &s)
 {
     if (s.empty())
@@ -484,6 +520,40 @@ static std::vector<uint8_t> loadImageWicRGB24(const std::string &path, int &widt
     height = static_cast<int>(h);
     return rgb;
 }
+#else
+static std::vector<uint8_t> resizeNearestRGB(const std::vector<uint8_t> &src, int sw, int sh, int dw, int dh)
+{
+    if (sw == dw && sh == dh)
+        return src;
+
+    std::vector<uint8_t> out(static_cast<size_t>(dw) * static_cast<size_t>(dh) * 3);
+    for (int y = 0; y < dh; ++y)
+    {
+        const int sy = (y * sh) / dh;
+        for (int x = 0; x < dw; ++x)
+        {
+            const int sx = (x * sw) / dw;
+            const size_t s = (static_cast<size_t>(sy) * static_cast<size_t>(sw) + static_cast<size_t>(sx)) * 3;
+            const size_t d = (static_cast<size_t>(y) * static_cast<size_t>(dw) + static_cast<size_t>(x)) * 3;
+            out[d + 0] = src[s + 0];
+            out[d + 1] = src[s + 1];
+            out[d + 2] = src[s + 2];
+        }
+    }
+    return out;
+}
+
+class ComInit
+{
+public:
+    ComInit() = default;
+};
+
+static std::vector<uint8_t> loadImageWicRGB24(const std::string &path, int &, int &)
+{
+    throw std::runtime_error("Native grooviev1 builds require --raw input; Windows builds use WIC for " + path);
+}
+#endif
 
 static std::vector<uint8_t> loadRawRGB24(const std::string &path, int width, int height)
 {
@@ -630,74 +700,116 @@ static inline void writeLE16(std::vector<uint8_t> &out, uint16_t v)
 
 static std::vector<uint8_t> lzssCompress(const std::vector<uint8_t> &inputData, uint8_t lengthMask, uint8_t lengthBits)
 {
-    (void)lengthMask;
-    const uint16_t N = 1 << (16 - lengthBits);
-    const uint16_t F = 1 << lengthBits;
-    const uint8_t threshold = 3;
+    const size_t maxDistance = 0xFFFFu >> lengthBits;
+    const size_t maxLength = static_cast<size_t>(lengthMask) + 3u;
+    constexpr size_t threshold = 3;
 
     std::vector<uint8_t> compressedData;
     compressedData.reserve(inputData.size() / 2 + 16);
-    std::vector<uint8_t> hisBuf(N);
-    size_t hisBufPos = N - F;
     size_t pos = 0;
+    bool terminated = false;
 
-    while (pos < inputData.size())
+    while (!terminated)
     {
         uint8_t flags = 0;
-        size_t flagsPos = compressedData.size();
+        const size_t flagsPos = compressedData.size();
         compressedData.push_back(0);
 
-        for (int i = 0; i < 8 && pos < inputData.size(); ++i)
+        for (int i = 0; i < 8; ++i)
         {
-            size_t maxMatchLength = 0;
-            size_t matchOffset = 0;
-
-            for (size_t j = 1; j <= N && pos >= j; ++j)
+            if (pos == inputData.size())
             {
-                size_t k = (hisBufPos - j) & (N - 1);
+                // A zero match token is the native end marker. It must occupy
+                // a clear-flag item; when the preceding group used all eight
+                // items this deliberately creates a new control byte.
+                compressedData.push_back(0);
+                compressedData.push_back(0);
+                terminated = true;
+                break;
+            }
+
+            size_t maxMatchLength = 0;
+            size_t matchDistance = 0;
+
+            const size_t distanceLimit = std::min(pos, maxDistance);
+            for (size_t distance = 1; distance <= distanceLimit; ++distance)
+            {
+                if (inputData[pos - distance] != inputData[pos])
+                    continue;
+
                 size_t matchLength = 0;
-                while (matchLength < F && pos + matchLength < inputData.size() &&
-                       hisBuf[(k + matchLength) & (N - 1)] == inputData[pos + matchLength])
+                while (matchLength < maxLength && pos + matchLength < inputData.size() &&
+                       inputData[pos + matchLength - distance] == inputData[pos + matchLength])
                     ++matchLength;
 
                 if (matchLength > maxMatchLength)
                 {
                     maxMatchLength = matchLength;
-                    matchOffset = j;
+                    matchDistance = distance;
                 }
-                if (maxMatchLength == F)
+                if (maxMatchLength == maxLength)
                     break;
             }
 
             if (maxMatchLength >= threshold)
             {
-                uint16_t length = static_cast<uint16_t>(maxMatchLength - threshold);
-                uint16_t ofsLen = static_cast<uint16_t>((matchOffset << lengthBits) | length);
-                compressedData.push_back(static_cast<uint8_t>(ofsLen & 0xFF));
-                compressedData.push_back(static_cast<uint8_t>((ofsLen >> 8) & 0xFF));
-                flags &= ~(1 << i);
-
-                for (size_t j = 0; j < maxMatchLength; ++j)
-                {
-                    hisBuf[hisBufPos] = inputData[pos++];
-                    hisBufPos = (hisBufPos + 1) & (N - 1);
-                }
+                const uint16_t token = static_cast<uint16_t>(
+                    (matchDistance << lengthBits) | (maxMatchLength - threshold));
+                compressedData.push_back(static_cast<uint8_t>(token & 0xFF));
+                compressedData.push_back(static_cast<uint8_t>((token >> 8) & 0xFF));
+                pos += maxMatchLength;
             }
             else
             {
-                uint8_t b = inputData[pos++];
-                compressedData.push_back(b);
-                hisBuf[hisBufPos] = b;
-                hisBufPos = (hisBufPos + 1) & (N - 1);
+                compressedData.push_back(inputData[pos++]);
                 flags |= (1 << i);
             }
         }
         compressedData[flagsPos] = flags;
     }
 
-    compressedData.push_back(0);
-    compressedData.push_back(0);
     return compressedData;
+}
+
+static std::vector<uint8_t> lzssDecompressForValidation(const std::vector<uint8_t> &encoded,
+                                                        uint8_t lengthMask,
+                                                        uint8_t lengthBits)
+{
+    std::vector<uint8_t> decoded;
+    size_t source = 0;
+
+    for (;;)
+    {
+        if (source >= encoded.size())
+            throw std::runtime_error("LZSS validation: missing control byte");
+        const uint8_t flags = encoded[source++];
+
+        for (int bit = 0; bit < 8; ++bit)
+        {
+            if ((flags & (1u << bit)) != 0)
+            {
+                if (source >= encoded.size())
+                    throw std::runtime_error("LZSS validation: truncated literal");
+                decoded.push_back(encoded[source++]);
+                continue;
+            }
+
+            if (source + 2 > encoded.size())
+                throw std::runtime_error("LZSS validation: truncated match token");
+            const uint16_t token = static_cast<uint16_t>(encoded[source]) |
+                                   (static_cast<uint16_t>(encoded[source + 1]) << 8);
+            source += 2;
+            if (token == 0)
+                return decoded;
+
+            const size_t distance = token >> lengthBits;
+            const size_t length = (token & lengthMask) + 3u;
+            if (distance == 0 || distance > decoded.size())
+                throw std::runtime_error("LZSS validation: invalid output-relative distance");
+            for (size_t i = 0; i < length; ++i)
+                decoded.push_back(decoded[decoded.size() - distance]);
+        }
+    }
 }
 
 static std::vector<uint8_t> encodeStill0x20(const std::vector<uint8_t> &indexed,
@@ -1384,6 +1496,8 @@ static void writeVDX(const std::string &path,
         if (compress && !payload.empty())
         {
             payload = lzssCompress(b.data, lengthMask, lengthBits);
+            if (lzssDecompressForValidation(payload, lengthMask, lengthBits) != b.data)
+                throw std::runtime_error("Internal LZSS round-trip validation failed");
             coding = 0x77;
             lm = lengthMask;
             lb = lengthBits;
@@ -2472,8 +2586,9 @@ int main(int argc, char **argv)
                 h = opt.resizeHeight;
             }
 
-            if ((w % 4) != 0 || (h % 4) != 0)
-                throw std::runtime_error("Frame dimensions must be divisible by 4: " + p);
+            if (!isValidGroovieGeometry(w, h))
+                throw std::runtime_error(
+                    "VDX frames must be 640 pixels wide and 4..480 pixels high, divisible by 4: " + p);
 
             if (width == 0 || height == 0)
             {
@@ -2487,7 +2602,7 @@ int main(int argc, char **argv)
             rgbFrames.push_back(std::move(rgb));
         }
 
-        if (width <= 0 || height <= 0 || (width % 4) != 0 || (height % 4) != 0)
+        if (!isValidGroovieGeometry(width, height))
             throw std::runtime_error("Invalid output dimensions");
 
         std::vector<std::vector<uint8_t>> qualityFrames = rgbFrames;
@@ -2530,6 +2645,16 @@ int main(int argc, char **argv)
             }
 
             workingPalette = std::move(nextPalette);
+        }
+
+        // A 0x00 chunk leaves the framebuffer untouched but still traverses
+        // the original players' per-frame pacing path. Keep these explicit:
+        // they are useful for still-image diagnostics and avoid synthesizing
+        // duplicate input frames merely to request a timed hold.
+        for (size_t i = 0; i < opt.holdFrames; ++i)
+        {
+            indexedFrames.push_back(indexedFrames.back());
+            visualBlocks.push_back(Block{0x00, {}});
         }
 
         if (opt.validate)
@@ -2595,6 +2720,7 @@ int main(int argc, char **argv)
                   << " localPalUpdates=" << stats.localPaletteUpdates << "\n";
         if (opt.validate)
             std::cout << "Validation: PASS\n";
+        std::cout << "Chunk coding: " << (opt.compress ? "0x77 LZSS (--compress)" : "0x67 raw (default)") << "\n";
         if (!opt.wavPath.empty())
             std::cout << "Audio bytes (post-convert): " << audio.size() << "\n";
         if (width != 640 || height != 320)

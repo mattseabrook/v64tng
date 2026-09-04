@@ -10,7 +10,7 @@ Current scope:
 - Emits adaptive `0x25` local-palette updates for stronger canonical similarity.
 - Emits `0x00` duplicate-frame chunks when frame data is unchanged.
 - Optionally interleaves WAV PCM as `0x80` chunks.
-- Optional LZSS compression (`coding=0x77`, configurable length mask/bits).
+- Optional native-compatible LZSS compression (`coding=0x77`, off by default).
 - Runs an internal decode/compare validation pass (can be disabled).
 - Lists, extracts, and repacks Groovie `SPHINX.FNT` bitmap font files.
 
@@ -26,7 +26,10 @@ chmod +x build.sh
 
 Output:
 - `grooviev1/build/grooviev1.exe`
-- If `/mnt/T7G` exists, it is also copied to `/mnt/T7G/grooviev1.exe`
+- The Windows executable is also copied to the repository-local
+  `../T7G/grooviev1.exe`; `/mnt/T7G` is never used by this build.
+- A native Linux command-line build is written to
+  `grooviev1/build/grooviev1-native` for raw-frame validation and automation.
 
 ## Usage
 
@@ -46,16 +49,19 @@ Options:
 - `--output PATH` output VDX path (required)
 - `--input-dir DIR` discover input frames from directory (sorted lexicographically)
 - `--raw` treat input frames as raw RGB24 files
-- `--width N` width in pixels (required for `--raw`)
-- `--height N` height in pixels (required for `--raw`)
-- `--resize WxH` resize all frames before encoding
+- `--width N` width in pixels (required for `--raw`; must be `640`)
+- `--height N` height in pixels (required for `--raw`; maximum `480`)
+- `--resize WxH` resize all frames before encoding (width `640`, height at most `480`)
 - `--dos-canonical` shorthand for `--resize 640x320`
 - `--fps N` VDX header frame rate (default: `15`)
 - `--wav PATH` optional WAV source for `0x80` interleave
 - `--audio-chunk-bytes N` audio bytes per `0x80` chunk (default: `2048`)
+- `--hold-frames N` append `N` timed `0x00` no-change chunks after the final
+  input frame
 - `--lower-intermediate-quality 0..9` lower quality for frames `1..N-1` only (off by default)
 - `--max-local-palette-updates N` max palette edits per `0x25` (default: `32`)
-- `--no-compress` disable LZSS chunk compression
+- `--compress` apply native-compatible parameterized LZSS (`0x77`); off by default
+- `--no-compress` explicitly select raw `0x67` chunks (the default)
 - `--length-mask N` LZSS length mask (default: `127`)
 - `--length-bits N` LZSS length bits (default: `7`)
 - `--no-validate` skip internal round-trip validation
@@ -119,7 +125,9 @@ FNT with a rebuilt offset table.
 
 ## Notes
 
-- Default is full quality for all frames.
+- Default is full quality for all frames and raw `0x67` chunk payloads.
+- `--compress` uses the original output-relative, overlap-capable LZSS token
+  model and validates every compressed payload by decoding it before writing.
 - The 192-byte VDX tile-map table is copied byte-for-byte from two independent
   decoder locations: DOS `V.EXE` load offset `015DBEh` (`DS:D48Eh`) and Win32
   `v32tng.exe` VA `0041A088h`. The two original tables are identical.
@@ -127,9 +135,17 @@ FNT with a rebuilt offset table.
   first through second-last; the last frame remains full quality.
 - Image decoding uses Windows WIC (PNG/BMP/JPEG/TIFF/GIF/WebP depending on installed codecs).
 - WAV input is converted to unsigned 8-bit mono 22050 Hz PCM for `0x80` chunks.
-- Frame dimensions must be divisible by 4 for Groovie tile encoding.
-- Canonical T7G movie content is typically `640x320` (`160x80` tiles), though
-  the VDX header stores dimensions and other sizes can be encoded.
+- `--hold-frames` emits real zero-payload `0x00` chunks. In DOS `V.EXE`, the
+  initial `0x20` decode is not itself a timed wait, so a five-second standalone
+  still at 15 Hz uses `--hold-frames 75`.
+- Groovie v1 output is fixed at 640 pixels wide. Height is stored as 4-pixel
+  tile rows, must be divisible by 4, and may not exceed 480 pixels.
+- Canonical T7G movie content is typically `640x320` (`160x80` tiles). Its
+  top and bottom letterbox bars are display composition, not bitmap rows in
+  those assets. Full-screen material may use `640x480` (`160x120` tiles).
+- Every `0x20` still tile stores at most two palette indices. `0x25` delta
+  opcode `0x60` is the exception to treating that as a format-wide limit: it
+  can store sixteen independent indices for one 4×4 tile.
 - `archive-pack` writes the RL file as exact 20-byte records and writes the GJD
   as raw concatenated payloads in RL order.
 - RL entry names must fit the original 12-byte filename field.

@@ -1,6 +1,11 @@
 ; PE virtual entry 0040AB84
 ; Ghidra working symbol: FUN_0040ab84
 ; Verified VDX 20h full-palette and 4x4 two-colour tile decoder.
+; Native background and foreground are independent persistent surfaces. Trace
+; 20260903-225430 shows GRATE.GRV installing mgpuzbkd.vdx in the foreground
+; before 00C0h movement clips; ordinary VIDEOREF completion does not copy the
+; decoded background back over that matte. Bit 6 is consumed only around the
+; surface drawing transaction, while bit 7 supplies skip/composite policy.
 ; Generated losslessly; preserve byte identity after edits.
 
 %macro emit_decode_vdx_bitmap_still_part_00 0

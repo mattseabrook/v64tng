@@ -82,4 +82,27 @@ int main()
 	assert(std::get<GrvVideoCommand>(clock->commands[2]).flags == (1u << 5));
 	assert(std::get<GrvVideoCommand>(clock->commands[3]).ref == 0x1410);
 	assert(std::get<GrvPlaySongCommand>(clock->commands[4]).ref == 0x4c0c);
+
+	// In-game Escape hierarchy: a room's persistent top hotspot enters the
+	// SCRIPT.GRV menu, save/name screens cancel to that menu, and Resume restores
+	// the exact suspended VM rather than trying to enter the menu a second time.
+	auto menuRuntime = GrvRuntime::load(root / "SCRIPT.GRV", root);
+	assert(menuRuntime && menuRuntime->boot());
+	const auto foyer = menuRuntime->follow(0x03e8);
+	assert(foyer && menuRuntime->activeLoop() == 0x04fd);
+	const auto gameMenuTarget = menuRuntime->topBarTarget();
+	assert(gameMenuTarget);
+	const auto gameMenu = menuRuntime->follow(*gameMenuTarget);
+	assert(gameMenu && !menuRuntime->inChildScript());
+	assert(menuRuntime->activeLoop() == 0x17d4);
+	const auto saveSlots = menuRuntime->follow(0x1dbe);
+	assert(saveSlots && menuRuntime->activeLoop() == 0x1dce);
+	const auto saveName = menuRuntime->follow(0x1e5e);
+	assert(saveName && menuRuntime->activeLoop() == 0x1ed3);
+	const auto typed = menuRuntime->handleKey('a');
+	assert(typed && *typed && menuRuntime->activeLoop() == 0x1ed3);
+	const auto cancelSave = menuRuntime->follow(0x17ab);
+	assert(cancelSave && menuRuntime->activeLoop() == 0x17d4);
+	const auto resume = menuRuntime->follow(0x1c55);
+	assert(resume && menuRuntime->activeLoop() == 0x04fd);
 }

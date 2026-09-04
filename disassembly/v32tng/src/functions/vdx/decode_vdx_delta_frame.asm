@@ -1,6 +1,10 @@
 ; PE virtual entry 0040B198
 ; Ghidra working symbol: FUN_0040b198
 ; Verified VDX 25h local-palette and 4x4 tile-opcode delta compositor.
+; With bit 7 set, delta FF selects the persistent foreground pixel and a
+; foreground FF protects the background pixel. GRATE trace 20260903-225430
+; proves every movement enters here with flags 00C0h after mgpuzbkd established
+; that foreground matte; the matte is not replaced at VIDEOREF completion.
 ; Generated losslessly; preserve byte identity after edits.
 
 %macro emit_decode_vdx_delta_frame_part_00 0

@@ -1,6 +1,10 @@
 ; T7G/MAZE.GRV
 ; size=3652 sha256=c6de4be84360b4d14e39a4babe17c49713224e36a76248533eb689dbd3f721f6
 ; instructions=1432 input_loops=128
+; Trace 20260903-225430 verifies the successful GRATE.GRV handoff. MAZE starts
+; with mg_thru.vdx (the player traversing the opened grate), then 8_s_11.vdx,
+; then m_ghostb.vdx (the basement ghost lady). v64tng deliberately switches to
+; its replacement raycaster after mg_thru and before the latter two resources.
 
 0000  01                                     RESERVED_01
 0001  2C 2F 0E 08                            SET_HOTSPOT_TOP               target=0x0E2F, cursor=0x08

@@ -14,6 +14,6 @@ inline constexpr int MAP_COLS = 59;
 using TileMap = std::array<std::array<uint8_t, MAP_COLS>, MAP_ROWS>;
 
 // Global basement maze map (immutable)
-extern const TileMap map;
+extern const TileMap basementMap;
 
 #endif // BASEMENT_H

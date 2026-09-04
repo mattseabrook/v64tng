@@ -946,13 +946,13 @@ void renderFrameRaycast()
         WaitForSingleObjectEx(d2dCtx.frameLatencyWaitableObject, 100, TRUE);
     }
 
-    const auto &map = *state.raycast.map;
+    const auto &tileMap = *state.raycast.map;
     const RaycastPlayer &player = state.raycast.player;
 
     // Render into CPU-side BGRA buffer then upload once
     const UINT pitch = static_cast<UINT>(state.ui.width) * 4;
     d2dCtx.frameBGRA.resize(static_cast<size_t>(state.ui.width) * state.ui.height * 4);
-    renderRaycastView(map, player, d2dCtx.frameBGRA.data(), pitch, state.ui.width, state.ui.height);
+    renderRaycastView(tileMap, player, d2dCtx.frameBGRA.data(), pitch, state.ui.width, state.ui.height);
 
     D3D11_BOX full{};
     full.left = 0;
@@ -1137,13 +1137,13 @@ void renderFrameRaycastGPU()
         return;
     }
     
-    const auto& map = *state.raycast.map;
+    const auto& tileMap = *state.raycast.map;
     const RaycastPlayer& player = state.raycast.player;
     
     // Update tile map texture if needed
-    updateRaycastTileMap(map);
+    updateRaycastTileMap(tileMap);
     // Update edge offset lookup SRV
-    updateRaycastEdgeOffsets(map);
+    updateRaycastEdgeOffsets(tileMap);
     
     // Prepare constant buffer data
     struct RaycastConstants
@@ -1172,8 +1172,8 @@ void renderFrameRaycastGPU()
     constants.playerFOV = player.fov;
     constants.screenWidth = state.ui.width;
     constants.screenHeight = state.ui.height;
-    constants.mapWidth = static_cast<uint32_t>(map[0].size());
-    constants.mapHeight = static_cast<uint32_t>(map.size());
+    constants.mapWidth = static_cast<uint32_t>(tileMap[0].size());
+    constants.mapHeight = static_cast<uint32_t>(tileMap.size());
     constants.visualScale = config.contains("raycastScale") ? config["raycastScale"].get<float>() : 3.0f;
     float baseTorchRange = 20.0f;
     constants.torchRange = baseTorchRange * constants.visualScale;

@@ -370,7 +370,14 @@ LRESULT HandleMenuCommand(HWND hwnd, WPARAM wParam)
         break;
     case static_cast<int>(MenuCommands::MC_FILE_EXIT):
         save_config("config.json");
-        ::PostQuitMessage(0);
+        // Mirror the WM_CLOSE path: flag the quit and signal every audio
+        // backend before the message loop unwinds, so the legacy music worker
+        // can never re-arm a new song between loop passes. Posting WM_CLOSE
+        // (instead of a bare WM_QUIT) also runs the window teardown path.
+        g_quitRequested = true;
+        musicRequestStop();
+        audioRequestStop();
+        ::PostMessage(hwnd, WM_CLOSE, 0, 0);
         break;
     case static_cast<int>(MenuCommands::MC_TOOLS_WINDOW):
         ShowToolsWindow(hwnd);

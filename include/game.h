@@ -152,6 +152,7 @@ struct GameState
 		bool active = false;	  // True while the boot main menu is displayed
 		std::string cheatBuffer;  // Rolling buffer for typed cheat codes
 	} mainMenu;
+	bool introSequencePlaying = false; // New Game transition through foyer handoff
 
 	//
 	// Rendering state (moved hot fields into FrameTiming)
@@ -249,7 +250,7 @@ void viewHandler();
 void maybeRenderFrame(bool force = false);
 std::span<const uint8_t> presentationPixels(const VDXFile *vdx, size_t frameIndex);
 void startNewGame();
-void mainMenuKeyDown(char c);
+void grvKeyInput(char c);
 bool initializeGrvMainMenu();
 bool grvInputActive();
 bool grvPointerClick(int x, int y);

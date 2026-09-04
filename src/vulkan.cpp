@@ -731,7 +731,9 @@ static void createVulkanTexture(uint32_t width, uint32_t height)
     
     // Create raycast GPU pipeline once
     if (!vkCtx.raycastPipeline)
+    {
         createRaycastPipeline();
+    }
 
 	vkCtx.rowBuffer.resize(width * 4);
 	vkCtx.previousFrameData.resize(width * height * 3);
@@ -840,9 +842,13 @@ void initializeVulkan()
 	VkApplicationInfo appInfo = {};
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	appInfo.pApplicationName = "v64tng " V64TNG_VERSION_STRING;
-	appInfo.applicationVersion = VK_MAKE_API_VERSION(0, 1, 0, 811);
+	appInfo.applicationVersion = VK_MAKE_API_VERSION(
+		0, V64TNG_VERSION_MAJOR, V64TNG_VERSION_MINOR,
+		V64TNG_VERSION_DATE_CODE);
 	appInfo.pEngineName = "v64tng " V64TNG_VERSION_STRING;
-	appInfo.engineVersion = VK_MAKE_API_VERSION(0, 1, 0, 811);
+	appInfo.engineVersion = VK_MAKE_API_VERSION(
+		0, V64TNG_VERSION_MAJOR, V64TNG_VERSION_MINOR,
+		V64TNG_VERSION_DATE_CODE);
 	appInfo.apiVersion = (1 << 22);
 
 	VkInstanceCreateInfo instInfo = {};
@@ -1141,14 +1147,14 @@ Description:
 */
 void renderFrameRaycastVk()
 {
-	const auto &map = *state.raycast.map;
+	const auto &tileMap = *state.raycast.map;
 	const RaycastPlayer &player = state.raycast.player;
 
 	uint8_t *dst = static_cast<uint8_t *>(vkCtx.mappedStagingData);
 	size_t pitch = static_cast<size_t>(vkCtx.stagingRowPitch);
 
 	// Assume modified to use pitch
-	renderRaycastView(map, player, dst, pitch, state.ui.width, state.ui.height);
+	renderRaycastView(tileMap, player, dst, pitch, state.ui.width, state.ui.height);
 
 	// Full-image copy region
 	vkCtx.pendingCopyRegions.clear();
@@ -1185,11 +1191,11 @@ void renderFrameRaycastVkGPU()
 		return;
 	}
 	
-	const auto& map = *state.raycast.map;
+	const auto& tileMap = *state.raycast.map;
 	const RaycastPlayer& player = state.raycast.player;
 	
 	// Upload tile map and edge offsets to GPU (batched single submit)
-	uploadRaycastBuffers(map);
+	uploadRaycastBuffers(tileMap);
 	
 	// Update descriptors if needed
 	if (vkCtx.tileMapBuffer && vkCtx.raycastDescriptorsDirty)
@@ -1225,8 +1231,8 @@ void renderFrameRaycastVkGPU()
 	constants.playerFOV = player.fov;
 	constants.screenWidth = state.ui.width;
 	constants.screenHeight = state.ui.height;
-	constants.mapWidth = static_cast<uint32_t>(map[0].size());
-	constants.mapHeight = static_cast<uint32_t>(map.size());
+	constants.mapWidth = static_cast<uint32_t>(tileMap[0].size());
+	constants.mapHeight = static_cast<uint32_t>(tileMap.size());
 	constants.visualScale = config.contains("raycastScale") ? config["raycastScale"].get<float>() : 3.0f;
 	float baseTorchRange = 20.0f;
 	constants.torchRange = baseTorchRange * constants.visualScale;

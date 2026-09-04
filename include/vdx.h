@@ -9,6 +9,7 @@
 #include <string>
 #include <span>
 #include <expected>
+#include <functional>
 #include <memory>
 
 #include "bitmap.h"
@@ -105,11 +106,22 @@ void parseVDXChunks(
     VDXFile &vdxFile,
     const VDXDecodeContext &context,
     uint16_t grvVideoFlags);
-[[nodiscard]] double vdxPlaybackRate(const VDXFile &vdxFile);
+[[nodiscard]] double vdxPlaybackRate(
+    const VDXFile &vdxFile,
+    size_t playbackFrameCount = 0);
 void vdxPlay(
     const std::string &filename,
     VDXFile *preloadedVdx = nullptr,
     bool startPreparedMusicAtFrameZero = false);
+// Console previews must play exactly once.  A separate entry point also avoids
+// consuming the Space used between the PLAY verb and its argument as a skip.
+void vdxPlayUnskippable(const std::string &filename, VDXFile *preloadedVdx);
+// Repeats a preloaded silent animation until the supplied initialization gate
+// opens. Used for the original MIDI-driver preparation screen.
+void vdxPlayUntil(
+    const std::string &filename,
+    VDXFile *preloadedVdx,
+    const std::function<bool()> &complete);
 std::expected<VDXFile, std::string> loadSingleVDX(const std::string &room, const std::string &vdxName);
 VDXFile &getOrLoadVDX(const std::string &name);
 void unloadVDX(const std::string &name);

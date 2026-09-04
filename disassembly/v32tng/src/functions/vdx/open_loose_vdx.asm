@@ -1,6 +1,7 @@
 ; PE virtual entry 00408DF6
 ; Ghidra working symbol: FUN_00408df6
-; Verified exact-filename open and little-endian 9267h VDX magic check.
+; Verified exact-filename open and little-endian 9267h VDX magic check. Unlike
+; DOS V, this path neither strips a dot suffix nor appends .vdx.
 ; Generated losslessly; preserve byte identity after edits.
 
 %macro emit_open_loose_vdx_part_00 0

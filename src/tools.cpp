@@ -75,7 +75,6 @@ static std::vector<uint8_t> g_bitmapData;  // RGB pixel data (current frame for 
 static std::vector<uint8_t> g_baseFrame;   // Base 0x20 frame for delta application
 static int g_bitmapWidth = 0;
 static int g_bitmapHeight = 0;
-static HBITMAP g_hBitmap = nullptr;
 
 // Delta visualization
 static bool g_deltaVisualization = false;

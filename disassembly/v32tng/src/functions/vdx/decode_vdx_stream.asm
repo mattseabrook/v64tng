@@ -1,6 +1,9 @@
 ; PE virtual entry 0040C261
 ; Ghidra working symbol: FUN_0040c261
-; Verified blocking VDX chunk decode/playback loop: still/delta composition and interleaved sound are consumed as one stream before GRV resumes.
+; Verified blocking VDX chunk decode/playback loop: 20h stills, 25h deltas,
+; 80h interleaved sound, and 00h timed framebuffer holds are consumed as one
+; stream before GRV resumes. Dispatch index 0 (word 6700h) selects 0040C59Dh,
+; which mutates no pixels and only services audio/pacing.
 ; Generated losslessly; preserve byte identity after edits.
 
 %macro emit_decode_vdx_stream_part_00 0
@@ -1360,6 +1363,7 @@ vdx_chunk_dispatch:
         %error "LONG_0040C59B"
     %endif
     times 2 - ($ - %%insn_0040c59b) db 0
+vdx_timed_no_change_hold:
     %%insn_0040c59d:
     mov eax,[ebp+0x8] ; 0040C59D 8B4508
     %if ($ - %%insn_0040c59d) > 3

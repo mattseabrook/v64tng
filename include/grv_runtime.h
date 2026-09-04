@@ -87,6 +87,11 @@ struct GrvSetBackgroundSongCommand
 	uint16_t ref = 0;
 };
 
+struct GrvPlayCdCommand
+{
+	uint8_t selection = 0;
+};
+
 struct GrvCopyBackgroundCommand {};
 struct GrvPaletteMergeOnceCommand {};
 
@@ -98,6 +103,7 @@ using GrvPresentationCommand = std::variant<
 	GrvSleepCommand,
 	GrvPlaySongCommand,
 	GrvSetBackgroundSongCommand,
+	GrvPlayCdCommand,
 	GrvPaletteMergeOnceCommand>;
 
 struct GrvTransition
@@ -141,6 +147,9 @@ public:
 		handleKey(uint8_t key);
 	[[nodiscard]] std::optional<GrvResource> resolve(uint16_t ref) const;
 	[[nodiscard]] uint16_t activeLoop() const { return activeLoop_; }
+	// True while a room script runs as a LOADSCRIPT child of SCRIPT.GRV —
+	// definitive proof the player has left the top-level title menu.
+	[[nodiscard]] bool inChildScript() const { return parentScript_.has_value(); }
 	[[nodiscard]] std::span<const uint8_t> variables() const { return variables_; }
 	[[nodiscard]] uint16_t cursorStyleAt(
 		int clientX, int clientY, int clientWidth, int clientHeight) const;

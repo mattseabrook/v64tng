@@ -1,6 +1,11 @@
 ; T7G/LI.GRV
 ; size=2168 sha256=85164d9159e1030ea284ec58a29789e2745f3567afbe299bd2ea77c10af2007f
 ; instructions=451 input_loops=20
+; Win32 trace 20260825-223925: each accepted telescope letter changes one of
+; v[01Ah]..v[02Dh] from 0 to 2, plays its station/letter overlays, executes
+; COPY_BG_TO_FG, applies li_nolet.vdx, then restores only its rectangle with
+; opcode 37h (historical COPY_RECT_TO_BG name; actual background->foreground).
+; The twentieth letter reaches 082Ch and sets v[0F5h]=49.
 
 0000  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 0004  16 07 01 B0                            LOADSTRING                    dst=v[0x107], values=[0]

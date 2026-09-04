@@ -1,11 +1,13 @@
 ; PE virtual entry 0040C6A5
 ; Ghidra working symbol: FUN_0040c6a5
-; Role not yet verified; analyzer boundary is provisional.
+; Verified VDX stream finalizer used for EOF, rejected coding/size, and playback
+; teardown. It clears active stream state, closes owned handles, and releases
+; audio/player resources; analyzer boundary is retained.
 ; Generated losslessly; preserve byte identity after edits.
 
 %macro emit_func_0040c6a5_part_00 0
     %%fragment_start:
-func_0040c6a5:
+finalize_vdx_stream_playback:
     %%insn_0040c6a5:
     push ebp ; 0040C6A5 55
     %if ($ - %%insn_0040c6a5) > 1

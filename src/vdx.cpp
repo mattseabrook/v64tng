@@ -4,8 +4,10 @@
 #include <fstream>
 #include <filesystem>
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <memory>
+#include <mutex>
 #include <unordered_map>
 #include <stdexcept>
 
@@ -20,6 +22,7 @@
 #include "music.h"
 #include "window.h"
 #include "assets.h"
+#include "console.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -108,6 +111,8 @@ void parseVDXChunksFromSpan(VDXFile &vdxFile, std::span<const uint8_t> rawSpan)
 	vdxFile.identifier = static_cast<uint16_t>(rawSpan[0] | (rawSpan[1] << 8));
 	std::copy(rawSpan.begin() + 2, rawSpan.begin() + 6, vdxFile.unknown.begin());
 	vdxFile.frameRate = static_cast<uint16_t>(rawSpan[6] | rawSpan[7] << 8);
+	consoleLogf("VDX", "index {} bytes={} id=0x{:04X} header-rate={} chunks={}",
+		vdxFile.filename, rawSpan.size(), vdxFile.identifier, vdxFile.frameRate, preCount);
 
 	size_t offset = 8;
 	while (offset + 8 <= rawSpan.size())
@@ -398,7 +403,12 @@ void parseVDXChunks(
 	std::span<const uint8_t> background,
 	uint16_t grvVideoFlags)
 {
-	parseVDXChunks(vdxFile, VDXDecodeContext{.background = background}, grvVideoFlags);
+	parseVDXChunks(vdxFile, VDXDecodeContext{
+		.background = background,
+		.backgroundIndices = {},
+		.foregroundIndices = {},
+		.palette = {},
+		.mergePaletteOnce = false}, grvVideoFlags);
 }
 
 void parseVDXChunks(
@@ -615,6 +625,9 @@ void parseVDXChunks(
 		}
 	}
 	vdxFile.palette = palette;
+	consoleLogf("VDX", "decoded {} frames={} audio-bytes={} dimensions={}x{} flags=0x{:04X}",
+		vdxFile.filename, vdxFile.frameData.size(), vdxFile.audioData.size(),
+		vdxFile.width, vdxFile.height, grvVideoFlags);
 
 	// Clear chunks after processing (free memory)
 	vdxFile.chunks.clear();
@@ -629,7 +642,7 @@ void parseVDXChunks(VDXFile &vdxFile)
 	parseVDXChunks(vdxFile, std::span<const uint8_t>{}, 0);
 }
 
-double vdxPlaybackRate(const VDXFile &vdxFile)
+double vdxPlaybackRate(const VDXFile &vdxFile, size_t playbackFrameCount)
 {
 	constexpr double kHeaderFallbackFPS = 15.0;
 	constexpr double kFastNavigationFPS = 26.0;
@@ -642,9 +655,38 @@ double vdxPlaybackRate(const VDXFile &vdxFile)
 	// Encountering an interleaved sound chunk cancels that override, and
 	// SCRIPT.GRV also injects bit 15 for theater-mask/teeth actions that must
 	// obey the header rate even when the stream itself is silent.
-	if (!vdxFile.audioData.empty() ||
-		(vdxFile.playbackFlags & (1u << 15)) != 0)
+	if (!vdxFile.audioData.empty())
+	{
+		const double audioSeconds =
+			pcmPlaybackDurationSeconds(vdxFile.audioData.size());
+		const size_t frames = playbackFrameCount
+			? playbackFrameCount : vdxFile.frameData.size();
+		if (audioSeconds > 0.0 && frames > 1)
+		{
+			const double headerSeconds = static_cast<double>(frames) / headerRate;
+			const double disagreement =
+				std::abs(headerSeconds - audioSeconds) / audioSeconds;
+			if (disagreement > 0.10)
+			{
+				const double synchronizedRate =
+					static_cast<double>(frames) / audioSeconds;
+				consoleLogf("VDX",
+					"audio-clock pacing '{}' header={:.3f} FPS ({:.3f}s), "
+					"PCM={:.3f}s -> {:.3f} FPS",
+					vdxFile.filename, headerRate, headerSeconds,
+					audioSeconds, synchronizedRate);
+				return synchronizedRate;
+			}
+		}
 		return headerRate;
+	}
+	if ((vdxFile.playbackFlags & (1u << 15)) != 0)
+		return headerRate;
+	// v32tng snapshots the active Red Book track when it configures each VDX:
+	// an active track uses 100 ms steps, while a missing/ended track retains the
+	// fast silent-navigation path. Installed Ogg tracks inherit that contract.
+	if (redbookIsActive())
+		return 10.0;
 	return kFastNavigationFPS;
 }
 
@@ -661,11 +703,15 @@ Parameters:
 	- preloadedVdx: Optional pointer to pre-loaded VDXFile object
 ===============================================================================
 */
-void vdxPlay(
+static void vdxPlayInternal(
 	const std::string &filename,
 	VDXFile *preloadedVdx,
-	bool startPreparedMusicAtFrameZero)
+	bool startPreparedMusicAtFrameZero,
+	bool allowSkip,
+	const std::function<bool()> &complete = {})
 {
+	consoleLogf("VDX", "play begin '{}' source={} prepared-music={}", filename,
+		preloadedVdx ? "archive" : "file", startPreparedMusicAtFrameZero);
 	VDXFile vdx;
 	VDXFile *vdxToUse = preloadedVdx;
 	std::unique_ptr<StreamingVDXDecoder> streamDecoder;
@@ -720,9 +766,15 @@ void vdxPlay(
 	double prevFPS = state.frameTiming.currentFPS;
 	size_t prevFrame = state.currentFrameIndex;
 	AnimationState prevAnim = state.animation;
+	// wavPlay() owns the dialogue music duck: any live PCM stream pulls the
+	// music mix down to the dialogue level and releases it when playback ends.
+	// PCM itself remains at its configured volume throughout.
 
 	// Setup playback
-	state.frameTiming.currentFPS = vdxPlaybackRate(*vdxToUse);
+	const size_t audioByteCount = vdxToUse->audioData.size();
+	state.frameTiming.currentFPS = vdxPlaybackRate(
+		*vdxToUse,
+		streamDecoder ? streamDecoder->totalFrames : vdxToUse->frameData.size());
 	if (!vdxToUse->audioData.empty())
 	{
 		auto audioOwner = std::make_shared<std::vector<uint8_t>>(std::move(vdxToUse->audioData));
@@ -739,6 +791,9 @@ void vdxPlay(
 	if ((vdxToUse->playbackFlags & (1u << 8)) != 0)
 		state.animation.totalFrames = (std::min)(state.animation.totalFrames, size_t{1});
 	state.animation.lastFrameTime = std::chrono::steady_clock::now();
+	consoleLogf("VDX", "play configured '{}' frames={} fps={:.3f} audio-bytes={}",
+		filename, state.animation.totalFrames, state.frameTiming.currentFPS,
+		audioByteCount);
 	state.frameTiming.dirtyFrame = true;
 	if (startPreparedMusicAtFrameZero)
 	{
@@ -762,9 +817,11 @@ void vdxPlay(
 			skipped = true;
 			break;
 		}
+		if (complete && complete())
+			break;
 
 #ifdef _WIN32
-		if (GetAsyncKeyState(VK_SPACE) & 1)
+		if (allowSkip && (GetAsyncKeyState(VK_SPACE) & 1))
 		{
 			skipped = true;
 			break;
@@ -793,12 +850,17 @@ void vdxPlay(
 				state.currentFrameIndex++;
 				if (state.currentFrameIndex >= state.animation.totalFrames)
 				{
-					playing = false;
-					state.currentFrameIndex = state.animation.totalFrames - 1;
+					if (complete)
+						state.currentFrameIndex = 0;
+					else
+					{
+						playing = false;
+						state.currentFrameIndex = state.animation.totalFrames - 1;
+					}
 				}
 			}
 			state.animation.lastFrameTime += frameDuration;
-						state.frameTiming.dirtyFrame = true;
+			state.frameTiming.dirtyFrame = true;
 		}
 
 		maybeRenderFrame();
@@ -822,6 +884,8 @@ void vdxPlay(
 	state.currentFrameIndex = prevFrame;
 	state.animation = prevAnim;
 	state.frameTiming.dirtyFrame = true;
+	consoleLogf("VDX", "play end '{}' skipped={} restored-frame={}",
+		filename, skipped, prevFrame);
 
 	if (streamDecoder)
 	{
@@ -832,6 +896,27 @@ void vdxPlay(
 		vdxToUse->rawView = {};
 		vdxToUse->externalDataOwner.reset();
 	}
+}
+
+void vdxPlay(
+	const std::string &filename,
+	VDXFile *preloadedVdx,
+	bool startPreparedMusicAtFrameZero)
+{
+	vdxPlayInternal(filename, preloadedVdx, startPreparedMusicAtFrameZero, true);
+}
+
+void vdxPlayUnskippable(const std::string &filename, VDXFile *preloadedVdx)
+{
+	vdxPlayInternal(filename, preloadedVdx, false, false);
+}
+
+void vdxPlayUntil(
+	const std::string &filename,
+	VDXFile *preloadedVdx,
+	const std::function<bool()> &complete)
+{
+	vdxPlayInternal(filename, preloadedVdx, false, false, complete);
 }
 
 /*
@@ -851,62 +936,68 @@ Return:
 */
 std::expected<VDXFile, std::string> loadSingleVDX(const std::string &room, const std::string &vdxName)
 {
-	// Cache RL parse results — the RL file is read-only and small, avoid re-parsing every VDX load
+	consoleLogf("RESOURCE", "load VDX request archive={} name={}", room, vdxName);
+	// RL indexes and read-only GJD mappings are immutable after load. Keep strong
+	// process-lifetime mappings so sequential intro resources do not repeatedly
+	// open/map the same archive, and serialize cache insertion for async preload.
 	static std::unordered_map<std::string, std::vector<RLEntry>> rlCache;
+	static std::unordered_map<std::string,
+		std::pair<std::shared_ptr<const uint8_t>, size_t>> gjdCache;
+	static std::mutex cacheMutex;
 	const std::string rlKey = assetPath(room + ".RL").string();
-	auto cacheIt = rlCache.find(rlKey);
-	if (cacheIt == rlCache.end())
-	{
-		auto result = parseRLFile(rlKey);
-		if (!result)
-			return std::unexpected(result.error());
-		cacheIt = rlCache.emplace(rlKey, std::move(*result)).first;
-	}
-	const auto &indices = cacheIt->second;
-
-	auto it = std::find_if(indices.begin(), indices.end(),
-						   [&](const auto &e)
-						   {
-							   std::string_view rlClean{e.filename};
-							   const auto dotPos = rlClean.find_first_of('.');
-							   if (dotPos != std::string_view::npos)
-								   rlClean.remove_suffix(rlClean.size() - dotPos);
-							   return rlClean == vdxName;
-						   });
-
-	if (it == indices.end())
-		return std::unexpected("VDX not found in RL: " + vdxName);
-
-	std::string gjdPath = assetPath(room + ".GJD").string();
-
-	// Cache per-room GJD mappings weakly so multiple VDX loads from the same room
-	// reuse the memory map instead of repeatedly opening/mapping the file.
-	static std::unordered_map<std::string, std::pair<std::weak_ptr<const uint8_t>, size_t>> gjdCache;
+	const std::string gjdPath = assetPath(room + ".GJD").string();
+	RLEntry entry;
 	std::shared_ptr<const uint8_t> owner;
 	size_t fileSize = 0;
-	auto gjdCacheIt = gjdCache.find(gjdPath);
-	if (gjdCacheIt != gjdCache.end() && (owner = gjdCacheIt->second.first.lock()))
 	{
-		fileSize = gjdCacheIt->second.second;
-	}
-	else
-	{
-		auto mapped = mapFileReadOnly(gjdPath);
-		if (!mapped)
+		std::lock_guard<std::mutex> lock(cacheMutex);
+		auto cacheIt = rlCache.find(rlKey);
+		if (cacheIt == rlCache.end())
 		{
-			return std::unexpected(mapped.error());
+			auto result = parseRLFile(rlKey);
+			if (!result)
+				return std::unexpected(result.error());
+			cacheIt = rlCache.emplace(rlKey, std::move(*result)).first;
 		}
-		auto [mappedOwner, mappedSize] = std::move(*mapped);
-		owner = std::move(mappedOwner);
-		fileSize = mappedSize;
-		gjdCache[gjdPath] = {owner, fileSize};
+		const auto &indices = cacheIt->second;
+		const auto it = std::find_if(indices.begin(), indices.end(),
+			[&](const auto &candidate)
+			{
+				std::string_view rlClean{candidate.filename};
+				const auto dotPos = rlClean.find_first_of('.');
+				if (dotPos != std::string_view::npos)
+					rlClean.remove_suffix(rlClean.size() - dotPos);
+				return rlClean == vdxName;
+			});
+		if (it == indices.end())
+			return std::unexpected("VDX not found in RL: " + vdxName);
+		entry = *it;
+
+		const auto gjdCacheIt = gjdCache.find(gjdPath);
+		if (gjdCacheIt != gjdCache.end())
+		{
+			owner = gjdCacheIt->second.first;
+			fileSize = gjdCacheIt->second.second;
+		}
+		else
+		{
+			auto mapped = mapFileReadOnly(gjdPath);
+			if (!mapped)
+				return std::unexpected(mapped.error());
+			auto [mappedOwner, mappedSize] = std::move(*mapped);
+			owner = std::move(mappedOwner);
+			fileSize = mappedSize;
+			gjdCache.emplace(gjdPath, std::pair{owner, fileSize});
+		}
 	}
 
-	if (it->offset > fileSize || it->length > fileSize - it->offset)
+	if (entry.offset > fileSize || entry.length > fileSize - entry.offset)
 	{
 		return std::unexpected("VDX entry exceeds GJD bounds: " + vdxName);
 	}
-	std::span<const uint8_t> vdxSpan{owner.get() + it->offset, it->length};
+	std::span<const uint8_t> vdxSpan{owner.get() + entry.offset, entry.length};
+	consoleLogf("RESOURCE", "mapped {}/{} offset={} length={} GJD-bytes={}",
+		room, vdxName, entry.offset, entry.length, fileSize);
 	return parseVDXFileBorrowed(vdxName, vdxSpan, owner);
 }
 

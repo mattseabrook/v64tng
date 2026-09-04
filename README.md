@@ -1,11 +1,11 @@
 # v64tng
 
-Current release: **1.0.20260811.1**
+Current release: **1.0.20260904.11**
 
 [![v64tng build](https://img.shields.io/badge/v64tng%20build-passing-2ea44f?logo=github)](build.sh)
 [![V.EXE NASM rebuild](https://img.shields.io/badge/V.EXE%20NASM%20rebuild-passing-2ea44f?logo=nasm)](disassembly/V)
 [![v32tng.exe NASM rebuild](https://img.shields.io/badge/v32tng.exe%20NASM%20rebuild-passing-2ea44f?logo=nasm)](disassembly/v32tng)
-[![semantic disassembly](https://img.shields.io/badge/semantic%20disassembly-17.9%25-7c3aed)](#semantic-disassembly-progress)
+[![semantic disassembly](https://img.shields.io/badge/semantic%20disassembly-19.8%25-7c3aed)](#semantic-disassembly-progress)
 [![source byte coverage](https://img.shields.io/badge/source%20byte%20coverage-100%25-2ea44f)](#semantic-disassembly-progress)
 [![License](https://img.shields.io/badge/license-see%20LICENSE-64748b?logo=github)](LICENSE)
 
@@ -14,11 +14,11 @@ Current release: **1.0.20260811.1**
 | Original executable | Verified semantic roles | Provisional roles remaining | Semantic completeness | Lossless source-byte coverage |
 |---|---:|---:|---:|---:|
 | [`V.EXE` 1.30`](disassembly/V) | 58 / 261 | 203 | **22.2%** | 101,624 / 101,624 bytes (**100%**) |
-| [`v32tng.exe` 1.02b1](disassembly/v32tng) | 49 / 336 | 287 | **14.6%** | 144,896 / 144,896 bytes (**100%**) |
-| **Combined** | **107 / 597** | **490** | **17.9%** | **246,520 / 246,520 bytes (100%)** |
+| [`v32tng.exe` 1.02b1](disassembly/v32tng) | 60 / 336 | 276 | **17.9%** | 144,896 / 144,896 bytes (**100%**) |
+| **Combined** | **118 / 597** | **479** | **19.8%** | **246,520 / 246,520 bytes (100%)** |
 
-Across both permanent disassemblies, **37,665 machine instructions** are
-decoded and **107 analyzer-discovered function entries have evidence-backed
+Across both permanent disassemblies, **33,236 machine instructions** are
+decoded and **118 analyzer-discovered function entries have evidence-backed
 semantic roles**. Semantic completeness is calculated as verified roles divided
 by provisional analyzer function entries. It is intentionally distinct from
 mechanical source coverage: every executable byte is already represented in
@@ -211,7 +211,10 @@ This project is an academic endeavor, created as a technical study and homage to
 
 ## Running the Game
 
-Running `v64tng.exe` with no arguments opens a small system information window displaying detected graphics capabilities and configuration details. To start the game itself, launch the executable with an exclamation mark:
+Running `v64tng.exe` with no arguments opens the launcher, where the essential
+video and audio settings can be changed before selecting **PLAY**. The command
+line can still bypass the launcher and start the game directly with an
+exclamation mark:
 
 ```cmd
 v64tng.exe !
@@ -546,6 +549,12 @@ attract/demo reel containing 69 video operations and no input loop. It selects
 music according to variable `0x100`, plays logos and a long tour of game
 scenes, then jumps back to offset zero. It is unrelated to the earlier
 promotional TLC archive except that both are linear presentations.
+
+The first source-controlled replacement is the
+[`SPHINX.FNT diagnostic mod`](mods/font-diagnostic). It assembles a 57-byte
+`DEMO.GRV` that pages through all 37 unique font glyph records using the retail
+`PRINTSTRING` path. Launch it from the game directory with `V.EXE @`; the `@`
+switch itself selects `DEMO.GRV`, so no filename argument follows it.
 
 One dialect conflict remains. The corpus produces coherent `MAZE.GRV` control
 flow when opcode `0x1E` consumes one byte, as in Windows and ScummVM. Both DOS
@@ -959,10 +968,15 @@ The header rate is not the only timing input:
 
 - ordinary silent movement VDXes run at the original player's fast navigation
   rate of **26 FPS**;
+- while a modern `trackN.ogg` replacement is actively standing in for Red Book
+  audio, silent VDXes inherit v32tng's **100 ms / 10 FPS** CD-audio cadence;
 - an externally supplied bit 15 disables that override, but v32tng's traced
   GRV path does not synthesize it from cursor style;
-- encountering an interleaved `80h` sound chunk also cancels the override, so
-  an audio-bearing FMV obeys its VDX header rate and stays synchronized;
+- encountering an interleaved `80h` sound chunk also cancels the override. An
+  audio-bearing FMV normally obeys its VDX header rate, but when the header
+  duration and PCM duration disagree by more than 10%, the PCM duration clocks
+  the visual frames instead (notably `Vielogo.vdx`: about 15.18 FPS rather than
+  its inconsistent 30 FPS header);
 - opcode `48h` can override the header rate in DOS when its operand is
   nonzero; the Windows T7G path consumes it without that effect.
 
@@ -1010,7 +1024,7 @@ include the opcode byte; `V` sizes are shown as short/long where useful.
 | `03` | `FADEIN_NEXT_VIDEO` | — | 1 | Sets video flag 9. DOS/Win/ScummVM. |
 | `04` | `PALFADEOUT` | — | 1 | Fades the current palette to black. DOS/Win/ScummVM. |
 | `05` | `FIRSTFRAME_NEXT_VIDEO` | — | 1 | Sets video flag 8; next VDX stops after its first visual frame. DOS/Win/ScummVM. |
-| `06` | `VIDEOFLAG6_ON` | — | 1 | Sets video flag 6. Original code confirms the flag; its complete visual meaning is unresolved. |
+| `06` | `VIDEOFLAG6_ON` | — | 1 | Selects the next VDX's one-shot surface refresh/drawing transaction. GRATE.GRV pairs it with flag 7 (`0xC0`) for every moving-grate clip; Win32 trace `20260903-225430` confirms the flag reaches both still and delta decoders without replacing the persistent foreground matte. |
 | `07` | `VIDEOFLAG7_ON` | — | 1 | Sets video/compositing flag 7. DOS/Win/ScummVM. |
 | `08` | `SETBACKGROUNDSONG` | `U16 ref` | 3 | Selects the background XMI resource. DOS/Win/ScummVM. |
 | `09` | `VIDEOREF` | `U16 ref` | 3 | Plays a VDX by packed resource reference using the currently staged video flags. DOS/Win/ScummVM. |
@@ -1064,7 +1078,7 @@ include the opcode byte; `V` sizes are shown as short/long where useful.
 | `34` | `CHAR_GREATER_JMP` | `V start, C...END, A16 target` | variable | Jumps if any compared variable byte is greater than its encoded value. |
 | `35` | `VIDEOFLAG7_OFF` | — | 1 | Clears video/compositing flag 7. |
 | `36` | `CHAR_LESS_JMP` | `V start, C...END, A16 target` | variable | Jumps if any compared variable byte is less than its encoded value. |
-| `37` | `COPY_RECT_TO_BG` | `U16 left, top, right, bottom` | 9 | Retail V copies the foreground rectangle into the persistent VDX background using half-open right/bottom bounds. Win32 beta 1.02b1 reverses the direction and includes the bottom row; v64tng deliberately follows retail V. |
+| `37` | `COPY_RECT_TO_BG` | `U16 left, top, right, bottom` | 9 | Despite the historical mnemonic, both native engines restore the saved background rectangle into the displayed foreground. DOS uses half-open right/bottom bounds; Win32 and v64tng use a right-exclusive width and an inclusive bottom row. |
 | `38` | `RESTORESTACK` | — | 1 | Restores the call-stack depth checkpoint saved on entry to the current GRV. DOS main-script behavior is an explicit clear to depth zero. |
 | `39` | `GRID_SWAP` | `C row1, C col1, C row2, C col2` | variable | Swaps `variables[0x19+10×row1+col1]` and `variables[0x19+10×row2+col2]`; each component may be immediate or `#` indirect. |
 | `3A` | `PRINTSTRING` | `C...END` | variable | Converts values back with `+0x30`, treats `$` as the native string terminator, and draws at most 14 `SPHINX.FNT` characters centered in the top bar. |
@@ -1091,7 +1105,7 @@ include the opcode byte; `V` sizes are shown as short/long where useful.
 | `4A` | `MIDI_DRIVER_PARAM` | `U16 value` | 3 | DOS forwards a changed value to the active Miles sequence/driver; exact musical meaning is unresolved. Win/ScummVM consume it as NOP. |
 | `4B` | `SET_VIDEO_MODE` | `U8 mode` | 2 | DOS: zero re-enters the detected SVGA path; nonzero selects BIOS mode `0x13`. Win/ScummVM consume the byte as NOP. |
 | `4C` | `GETCD` | — | 1 | Writes media availability to variable `0x106`. DOS values: 0=both `B.GJD` and `AT.GJD`, 1=B, 2=AT, 3=neither. |
-| `4D` | `PLAYCD` | `U8 track/mode` | 2 | Stops MIDI and starts the requested CD/Redbook selection. Value 2 also drives alternate-logo handling in Windows. |
+| `4D` | `PLAYCD` | `U8 track/mode` | 2 | Stops MIDI and starts the requested CD/Redbook selection. v64tng maps original audio track 2 to modern `track1.ogg`, track 3 to `track2.ogg`, and so on. Like v32tng, `62h` waits for selection 2 to finish naturally but stops the later selection 3 immediately. An active Ogg track selects the native 100 ms silent-VDX cadence. |
 | `4E` | `MUSICDELAY` | `U16 delay` | 3 | DOS stores a frame countdown before a background-music action. ScummVM models it as background-song delay; Windows consumes it. |
 | `4F` | `RESERVED_4F` | `U16 value` | 3 | Windows consumes it; ScummVM T7G uses `NOP16`. V2 uses this slot to save a screen buffer. Not handled by DOS v1.26. |
 | `50` | `RESERVED_50` | `U16 value` | 3 | Windows/ScummVM T7G consume it. V2 uses this slot to restore a screen buffer. Not handled by DOS. |
@@ -1232,24 +1246,48 @@ surface rather than silently advancing over unknown behavior:
 
 Presentation commands remain ordered alongside VIDEOREF operations.
 `COPY_BG_TO_FG` (`22h`) restores the full 640×320 background band,
-`COPY_RECT_TO_BG` (`37h`) performs retail V's indexed
-foreground-to-background rectangle copy, `PRINTSTRING` (`3Ah`) draws the real
+historically named `COPY_RECT_TO_BG` (`37h`) restores an indexed background
+rectangle into the foreground, `PRINTSTRING` (`3Ah`) draws the real
 `SPHINX.FNT` indexed glyphs in the top band, and retail
 `PALETTE_MERGE_ONCE` (`49h`) preserves precisely the palette indices used by
 the current indexed background for the next still. `SLEEP` remains in that
 ordered stream so preceding text, copies, and video frames are presented
 before the native `ticks × 3 ms` delay. The New Game branch now presents the
 complete `SCRIPT.GRV` transition through its first foyer input loop instead of
-advancing and discarding that transition after two hard-coded logos. Every unimplemented opcode
-uses the same failure path; there is no
+advancing and discarding that transition after two hard-coded logos. While the
+loose opening logo and its black transition are playing, v64tng asynchronously
+loads and decodes the complete ordered intro video sequence. The worker mirrors
+the foreground, background, palette, copy, and transition state required by
+delta VDX frames; the presentation thread takes ownership only at the first
+scripted video and falls back to ordinary on-demand decoding after any preload
+error. This bounded preload applies only to New Game, not normal room travel.
+
+Every unimplemented opcode uses the same failure path; there is no
 default silent no-op. Operations proven externally inert for this native
 target remain explicit cases. `PALFADEOUT` (`04h`) is consumed as a known
 renderer-owned presentation command so it cannot prevent a following
 `VIDEOREF` or `ENDSCRIPT`; timed RGB interpolation is still a renderer gap.
+Scripted delays retain their exact `ticks × 3 ms` deadline while pumping window
+and console events, rather than suspending the presentation thread.
 
 The kitchen full-clear semantics and exact 33-cell solved comparison are
 recorded at `K.GRV:0062` in the source listing; the verified swap commit is
 `K.GRV:0565`, backed by the native `39h` handlers named above.
+
+Library trace `20260825-223925` verifies the telescope reveal sequence. Each
+accepted letter changes exactly one of `v[01Ah]` through `v[02Dh]`, runs its
+station and letter overlays, restores the full background with `22h`, then
+uses `37h` to reveal only that letter's rectangle. Only the twentieth accepted
+letter reaches `LI.GRV:082C` and sets `v[0F5h]` to `49`. This also fixes the
+earlier v64tng behavior where the first `T` exposed the complete answer.
+
+Grate trace `20260903-225430` verifies all 21 player moves, the final scripted
+swap, the `v[0F8h] = 31h` completion write, and `RETURNSCRIPT 02h`. The native
+basement entry begins with `MC/mg_thru.vdx`; v64tng preserves that traversal,
+fades its final frame to black, and then initializes the replacement raycaster.
+The original sequence would next play `GAMWAV/8_s_11.vdx` followed by
+`MC/m_ghostb.vdx` (the basement ghost lady), but those events are intentionally
+left to the raycaster integration instead of appearing as passive maze clips.
 
 The known non-inert gaps are intentionally visible:
 
@@ -1326,17 +1364,16 @@ The bytecode is a family, not one perfectly frozen specification:
 
 Still unresolved:
 
-1. The exact visual semantics of video flag 6.
-2. The original names and precise Miles-driver meaning of opcode `0x4A`.
-3. Whether `0x51` and `0x55`, absent from all 23 supplied retail scripts, were
+1. The original names and precise Miles-driver meaning of opcode `0x4A`.
+2. Whether `0x51` and `0x55`, absent from all 23 supplied retail scripts, were
    active in another shipped T7G revision or merely forward-compatible fields.
-4. The meaning of the `mode` byte consumed by Windows opcode `0x52`.
-5. Which platform/version emitted the divergent `0x1E` operand width.
-6. Runtime-reachable control-flow coverage and comparison against independently
+3. The meaning of the `mode` byte consumed by Windows opcode `0x52`.
+4. Which platform/version emitted the divergent `0x1E` operand width.
+5. Runtime-reachable control-flow coverage and comparison against independently
    sourced DOS/Windows GRV revisions.
-7. The exact retail PRNG range difference: DOS/ScummVM evidence is inclusive
+6. The exact retail PRNG range difference: DOS/ScummVM evidence is inclusive
    `0..max`, while the recovered Windows path appears to use modulo `max`.
-8. The exact playback-clock handoff at the first interleaved `80h` audio chunk;
+7. The exact playback-clock handoff at the first interleaved `80h` audio chunk;
    the native player currently selects header timing for the complete
    audio-bearing stream.
 
@@ -1398,7 +1435,16 @@ This chunk, as processed by `getBitmapDataChecked`, contains a static bitmap ima
 | 6+     | RGBColor[] | varies       | palette     | RGB color entries: `(1 << colourDepth) * 3` bytes (768 for 8-bit) |
 | varies | uint8_t[]  | varies       | image       | Tile data: 4 bytes per tile (colour1, colour0, colourMap[2])      |
 
-The overall bitmap dimensions are derived from these tile counts. Width is `numXTiles * 4` pixels and height is `numYTiles * 4` pixels. Most assets measure 640×320 pixels (160×80 tiles), but `Vielogo.vdx` from the Windows release uses 640×480 pixels (160×120 tiles). In other words, the player does not hardcode 640×320 as the only legal VDX height; dimensions come from the encoded tile counts, although 640×320 remains the canonical in-game movie size.
+The overall bitmap dimensions are derived from these tile counts. Width is `numXTiles * 4` pixels and height is `numYTiles * 4` pixels. Groovie v1 output is 640 pixels wide and supports heights through 480. Most assets measure 640×320 pixels (160×80 tiles), but `Vielogo.vdx` from the Windows release uses 640×480 pixels (160×120 tiles). The top and bottom black bars seen around ordinary game media are display composition and are not rows in those 640×320 bitmap payloads.
+
+A full 640×480 `20h` payload is 77,574 decoded bytes: six dimension/depth
+bytes, a 768-byte palette, and 160×120 four-byte tiles. The recovered DOS
+LZSS routine writes output through 16-bit `ES:DI`, so compressed full-height
+stills cross a segment-offset boundary even when their on-disk payload is
+small. At fixed width 640, every four additional pixel rows cost 640 payload
+bytes. The technical DOS ceiling is therefore 640×404 (65,414 bytes); 640×400
+is the clean safe convention at 64,774 bytes. The Windows decoder still has a
+full-height 640×480 retail precedent.
 
 The palette contains `(1 << colourDepth)` RGB triplets. For 8-bit color depth, this is 256 colors × 3 bytes = 768 bytes.
 
@@ -1428,7 +1474,11 @@ For each pixel `i` (0-15):
 - **Bit set to 1** (`colourMap & (0x8000 >> i)`): Use `colour1` palette entry
 - **Bit set to 0**: Use `colour0` palette entry
 
-This 2-color-per-tile encoding provides efficient compression while allowing relatively rich detail through careful color selection per tile.
+Thus every tile in a `20h` full still contains at most two palette indices
+(and may use only one if both selections resolve to the same colour). This is
+not a format-wide restriction on every VDX tile operation: a later `25h` delta
+may use opcode `60h` to supply sixteen independent palette indices for one
+4×4 tile. Other delta opcode families encode solid or two-colour tiles.
 
 ##### Original-player `20h` path
 
@@ -1685,16 +1735,32 @@ struct WAVHeader {
 ```
 
 Multiple `0x80` chunks in a single VDX file form one continuous audio stream.
-The first sound chunk disables the silent-navigation speed override; playback
-then follows the header rate while the PCM is queued. VIDEOREF does not finish
-until the queued audio has drained. v64tng implements this synchronized
-playback through its native Windows audio path.
+The first sound chunk disables the silent-navigation speed override. Playback
+uses the header rate when its duration agrees with the queued PCM; otherwise,
+a discrepancy greater than 10% derives the frame cadence from the PCM duration.
+VIDEOREF does not finish until the queued audio has drained. v64tng implements
+this synchronized playback through its native Windows audio path. The title
+menu uses a 100% music mix and gameplay uses 80%. While embedded PCM is enabled
+and playing during gameplay, music switches to an absolute 55% mix (not 55% of
+the gameplay mix) so spoken dialogue remains clear; PCM stays at its configured
+volume. Ducking is disabled while either the title or in-game menu is open.
+Silent VDXes do not activate the duck. A concurrently playing Ogg/Red Book
+replacement is music, so it follows the same live level while VDX PCM is active.
 
 #### 0x00 Frame Duplication
 
-This chunk type indicates that the previous frame should be duplicated without modification. This is an optimization technique used in VDX files to represent static frames in video sequences without storing redundant data. When a 0x00 chunk is encountered, the engine simply copies the last frame in the `frameData` vector to create a new frame entry.
+This chunk type is a timed visual hold: it leaves the persistent framebuffer
+unchanged and still advances through the normal per-frame pacing path. A
+retained-frame implementation may model that as duplicating the previous
+frame, but the native DOS handler performs no pixel copy; it clears the
+current chunk state and waits for the next frame deadline.
 
 This chunk type has no data payload—only the chunk header exists.
+
+For a standalone silent VDX with no GRV rate override, each `00h` chunk
+occupies one interval of the nominal header rate. DOS does not pace the initial
+`20h` decode itself, so five seconds at 15 FPS requires one initial `20h` frame
+followed by 75 `00h` holds.
 
 #### Notes
 
@@ -2197,6 +2263,14 @@ The mask is not redundant historical padding. It is loaded independently and
 used in the token-length expression, even though all observed encoders chose
 the regular relation `lengthMask == (1 << lengthBits) - 1`.
 
+`grooviev1.exe` writes raw `67h` chunks by default. Its explicit `--compress`
+option now emits `77h` streams using the same LSB-first control groups,
+output-relative distances, overlapping matches, three-byte threshold, and
+zero-token terminator accepted by both original decoders. Compression is
+lossless rather than quality-based; the default maximum-match profile is
+`lengthMask=7Fh`, `lengthBits=7`. Every compressed payload is immediately
+decoded and compared byte-for-byte with its source before the VDX is written.
+
 ### Original DOS implementation
 
 The complete DOS decoder is
@@ -2408,13 +2482,13 @@ The permanent NASM projects now begin at:
   deterministically from the hashed LZEXE original. Its complete lossless NASM
   tree represents the MZ header, relocations, all analyzer-owned instructions,
   and every remaining data byte without `incbin`, then verifies byte-identical
-  unpacked MZ output. The current 261 function boundaries are provisional; 48
-  roles are verified and the remaining 213 names stay address-based.
+  unpacked MZ output. The current 261 function boundaries are provisional; 58
+  roles are verified and the remaining 203 names stay address-based.
 - [`disassembly/v32tng`](disassembly/v32tng): Windows player 1.02b1. Its loose
   VDX open/magic path, game/VDX command dispatch, `SETUPEXEC` handling, and
   `WinMain` message loop retain verified names inside a complete lossless NASM
   tree. All 144,896 PE bytes and 336 provisional function entries are explicit
-  source with no `incbin`; 30 roles are verified and 306 remain address-based.
+  source with no `incbin`; 60 roles are verified and 276 remain address-based.
   The project rebuilds into a byte-identical PE.
 
 Both trees now have complete byte coverage, but byte coverage and semantic
@@ -2453,14 +2527,29 @@ no dual-execution machinery is part of the current runtime.
 The near-term engineering queue is:
 
 1. validate the current v64tng build through structured gameplay sessions;
-2. add a Quake-style tilde console consuming the same structured GRV/VDX event
-   stream used by external traces;
+2. extend the implemented tilde console with filtering, search, and trace
+   export over its structured GRV/VDX event stream;
 3. capture deterministic DOS and Win32 oracle sessions and implement
    first-divergence comparison;
 4. build a VDX encoder in independently testable still, delta, palette, LZSS,
    audio, and container layers;
 5. validate newly encoded content in v64tng, `v32tng.exe`, DOSBox-X, and real
    DOS hardware with `V.EXE ~NAME.VDX`.
+
+### In-game debug console
+
+Press the physical tilde/backtick key to open or close the renderer-independent
+debug overlay. Command names are case-insensitive, and `HELP` prints the live
+reference:
+
+- `HELP`: show commands and console navigation keys.
+- `LIST <archive>`: list VDX resources in an RL/GJD pair, for example
+  `LIST INTRO`.
+- `PLAY <archive>/<vdx>`: preview one VDX without changing game progress,
+  for example `PLAY INTRO/rolmid`; the `.VDX` suffix is optional.
+
+Up/Down recalls command history, PgUp/PgDn scrolls output, and Home/End jumps
+to the oldest/newest output.
 
 ## Runtime capture and differential validation
 
@@ -3070,9 +3159,8 @@ COMMON_FLAGS=(
     "/std:c++latest"         # C++23 mode
     "/EHsc"                  # Exception handling
     "/MT"                    # Static CRT linkage
-    "-fopenmp"               # OpenMP support
     "-msse4.2"               # SSE optimizations
-    "-Wall" "-Wextra"        # Warning levels
+    "/W4" "-Wextra"          # Warning levels
     "-fms-compatibility"     # MSVC ABI compat
 )
 ```
@@ -3223,6 +3311,14 @@ V64TNG_NO_DEPLOY=1 ./build.sh
 By default, successful builds deploy to `/mnt/T7G`. Set
 `V64TNG_NO_DEPLOY=1` for local validation or when you want to copy the
 executable manually.
+
+Every non-clean build advances the product version in the form
+`1.0.YYYYMMDD.N`, using the US/Eastern calendar date and an incrementing daily
+build number. `build.sh` validates and updates both `include/version.h` and all
+matching README version text before compilation, and refreshes object files so
+the executable and Windows resource metadata cannot retain the previous value.
+`V64TNG_BUILD_DATE=YYYYMMDD` provides a deterministic date override for build
+automation and version-script testing.
 
 **Typical Build Times** (on AMD Ryzen 9 5950X, 16 cores):
 - **Full build**: ~3-5 seconds

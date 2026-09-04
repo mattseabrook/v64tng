@@ -363,7 +363,7 @@ select_grv_song_resource:
     %endif
     times 1 - ($ - %%insn_0040205a) db 0
     %%insn_0040205b:
-    call 0x407049 ; 0040205B E8E94F0000
+    call play_selected_midi_sequence ; 0040205B E8E94F0000
     %if ($ - %%insn_0040205b) > 5
         %error "LONG_0040205B"
     %endif

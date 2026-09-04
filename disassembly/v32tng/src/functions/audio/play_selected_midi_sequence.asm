@@ -1,11 +1,12 @@
 ; PE virtual entry 00407049
 ; Ghidra working symbol: FUN_00407049
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role: stops conflicting Redbook/MIDI playback, creates the selected
+; MIDI sequence, records it as active, and starts it.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_00407049_part_00 0
+%macro emit_play_selected_midi_sequence_part_00 0
     %%fragment_start:
-func_00407049:
+play_selected_midi_sequence:
     %%insn_00407049:
     push ebp ; 00407049 55
     %if ($ - %%insn_00407049) > 1
@@ -110,7 +111,7 @@ func_00407049:
     %endif
     times 1 - ($ - %%insn_00407083) db 0
     %%insn_00407084:
-    call 0x40709f ; 00407084 E816000000
+    call create_midi_sequence_from_resource ; 00407084 E816000000
     %if ($ - %%insn_00407084) > 5
         %error "LONG_00407084"
     %endif

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Build Windows static libraries using clang cross-compilation
-# This builds zlib, libpng, and libADLMIDI for Windows target on Linux
+# This builds the static third-party libraries for the Windows target on Linux.
 
 set -e
 
@@ -10,6 +10,10 @@ INSTALL_PREFIX="/opt/windows-libs"
 WINSDK_BASE="/opt/winsdk"
 WINSDK_VERSION="10.0.22621.0"
 BUILD_DIR="/tmp/windows-libs-build"
+LIBOGG_VERSION="1.3.6"
+LIBOGG_XZ_SHA256="5c8253428e181840cd20d41f3ca16557a9cc04bad4a3d04cce84808677fa1061"
+LIBVORBIS_VERSION="1.3.7"
+LIBVORBIS_XZ_SHA256="b33cc4934322bcbf6efcbacf49e3ca01aadbea4114ec9589d1b1e9d20f72954b"
 
 # Ensure we have the directories
 mkdir -p "$INSTALL_PREFIX"
@@ -44,6 +48,11 @@ create_toolchain_file() {
     cat > windows-cross.cmake << EOF
 set(CMAKE_SYSTEM_NAME Windows)
 set(CMAKE_SYSTEM_PROCESSOR AMD64)
+
+# Make CMAKE_MSVC_RUNTIME_LIBRARY authoritative for clang-cl. Without CMP0091,
+# CMake's legacy flags append /MD after our /MT setting and the resulting static
+# archives retain imports from the dynamic CRT.
+set(CMAKE_POLICY_DEFAULT_CMP0091 NEW)
 
 set(CMAKE_C_COMPILER clang-cl)
 set(CMAKE_CXX_COMPILER clang-cl)
@@ -344,6 +353,80 @@ build_libpng() {
     echo "✓ libpng 1.6.50 built successfully with manual compilation"
     echo "✓ No dllimport symbols detected - ready for static linking"
     echo "✓ Library size: $(stat -c%s "$INSTALL_PREFIX/libpng/lib/libpng.lib") bytes"
+}
+
+build_libogg() {
+    echo "=== Building static libogg $LIBOGG_VERSION ==="
+    cd "$BUILD_DIR"
+
+    local archive="libogg-$LIBOGG_VERSION.tar.xz"
+    if [[ ! -f "$archive" ]]; then
+        wget "https://downloads.xiph.org/releases/ogg/$archive"
+    fi
+    echo "$LIBOGG_XZ_SHA256  $archive" | sha256sum -c -
+    if [[ ! -d "libogg-$LIBOGG_VERSION" ]]; then
+        tar -xf "$archive"
+    fi
+
+    cd "libogg-$LIBOGG_VERSION"
+    rm -rf build_windows
+    mkdir build_windows
+    cd build_windows
+    create_toolchain_file
+
+    cmake .. \
+        -DCMAKE_TOOLCHAIN_FILE="$PWD/windows-cross.cmake" \
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.15 \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX/libogg" \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DBUILD_TESTING=OFF \
+        -DINSTALL_DOCS=OFF \
+        -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+    cmake --build . --config Release --parallel "$(nproc)"
+    cmake --install . --config Release
+    test -f "$INSTALL_PREFIX/libogg/lib/ogg.lib"
+    echo "static libogg build complete"
+}
+
+build_libvorbis() {
+    echo "=== Building static libvorbis $LIBVORBIS_VERSION ==="
+    if [[ ! -f "$INSTALL_PREFIX/libogg/lib/ogg.lib" ]]; then
+        build_libogg
+    fi
+    cd "$BUILD_DIR"
+
+    local archive="libvorbis-$LIBVORBIS_VERSION.tar.xz"
+    if [[ ! -f "$archive" ]]; then
+        wget "https://downloads.xiph.org/releases/vorbis/$archive"
+    fi
+    echo "$LIBVORBIS_XZ_SHA256  $archive" | sha256sum -c -
+    if [[ ! -d "libvorbis-$LIBVORBIS_VERSION" ]]; then
+        tar -xf "$archive"
+    fi
+
+    cd "libvorbis-$LIBVORBIS_VERSION"
+    rm -rf build_windows
+    mkdir build_windows
+    cd build_windows
+    create_toolchain_file
+
+    cmake .. \
+        -DCMAKE_TOOLCHAIN_FILE="$PWD/windows-cross.cmake" \
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.15 \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX/libvorbis" \
+        -DCMAKE_PREFIX_PATH="$INSTALL_PREFIX/libogg" \
+        -DOGG_ROOT="$INSTALL_PREFIX/libogg" \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DBUILD_TESTING=OFF \
+        -DBUILD_EXAMPLES=OFF \
+        -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+    cmake --build . --config Release --parallel "$(nproc)"
+    cmake --install . --config Release
+    test -f "$INSTALL_PREFIX/libvorbis/lib/vorbis.lib"
+    test -f "$INSTALL_PREFIX/libvorbis/lib/vorbisfile.lib"
+    echo "static libvorbis/vorbisfile build complete"
 }
 
 build_adlmidi() {
@@ -821,6 +904,15 @@ case "$1" in
         setup_winsdk
         build_adlmidi
         ;;
+    "libogg")
+        setup_winsdk
+        build_libogg
+        ;;
+    "vorbis")
+        setup_winsdk
+        build_libogg
+        build_libvorbis
+        ;;
     "glslang")
         setup_winsdk
         build_glslang
@@ -834,18 +926,22 @@ case "$1" in
         test_cross_compilation || exit 1
         build_zlib
         build_libpng
+        build_libogg
+        build_libvorbis
         build_glslang
         build_spirv_cross
         build_adlmidi
         echo "=== All libraries built successfully ==="
         ;;
     *)
-        echo "Usage: $0 {setup|test|zlib|libpng|adlmidi|all}"
+        echo "Usage: $0 {setup|test|zlib|libpng|libogg|vorbis|adlmidi|all}"
         echo ""
         echo "  setup   - Check/setup Windows SDK"
         echo "  test    - Test cross-compilation setup"
         echo "  zlib    - Build zlib only" 
         echo "  libpng  - Build libpng only"
+        echo "  libogg  - Build static libogg only"
+        echo "  vorbis  - Build static libogg + libvorbis/vorbisfile"
         echo "  adlmidi - Build libADLMIDI only"
         echo "  all     - Build all libraries"
         exit 1

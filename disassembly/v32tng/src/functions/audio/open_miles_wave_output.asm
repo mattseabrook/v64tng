@@ -1,11 +1,12 @@
 ; PE virtual entry 00407507
 ; Ghidra working symbol: FUN_00407507
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role: builds a PCM WAVEFORMAT structure from the requested format
+; and opens a Miles digital driver through AIL_waveOutOpen.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_00407507_part_00 0
+%macro emit_open_miles_wave_output_part_00 0
     %%fragment_start:
-func_00407507:
+open_miles_wave_output:
     %%insn_00407507:
     push ebp ; 00407507 55
     %if ($ - %%insn_00407507) > 1

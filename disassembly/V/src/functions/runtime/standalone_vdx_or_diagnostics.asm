@@ -1,6 +1,8 @@
 ; Linear entry 000D1 (1000:00d1)
 ; Ghidra working symbol: FUN_1000_00d1
-; Verified ?, empty-tail, ~name, and loose-name.vdx startup path.
+; Verified ?, empty-tail, ~name, and loose-name.vdx startup path. Loose names
+; are copied only through the first dot and the player appends lowercase .vdx;
+; a leading ~ is omitted from the filename and decrements word CF22h.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
 %macro emit_standalone_vdx_or_diagnostics_part_00 0

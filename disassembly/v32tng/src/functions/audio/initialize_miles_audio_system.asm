@@ -92,7 +92,7 @@ initialize_miles_audio_system:
     %endif
     times 5 - ($ - %%insn_00407339) db 0
     %%insn_0040733e:
-    call 0x407507 ; 0040733E E8C4010000
+    call open_miles_wave_output ; 0040733E E8C4010000
     %if ($ - %%insn_0040733e) > 5
         %error "LONG_0040733E"
     %endif
@@ -140,7 +140,7 @@ initialize_miles_audio_system:
     %endif
     times 5 - ($ - %%insn_00407358) db 0
     %%insn_0040735d:
-    call 0x407507 ; 0040735D E8A5010000
+    call open_miles_wave_output ; 0040735D E8A5010000
     %if ($ - %%insn_0040735d) > 5
         %error "LONG_0040735D"
     %endif
@@ -188,7 +188,7 @@ initialize_miles_audio_system:
     %endif
     times 5 - ($ - %%insn_00407377) db 0
     %%insn_0040737c:
-    call 0x407507 ; 0040737C E886010000
+    call open_miles_wave_output ; 0040737C E886010000
     %if ($ - %%insn_0040737c) > 5
         %error "LONG_0040737C"
     %endif
@@ -266,7 +266,7 @@ initialize_miles_audio_system:
     %endif
     times 5 - ($ - %%insn_004073a9) db 0
     %%insn_004073ae:
-    call 0x407507 ; 004073AE E854010000
+    call open_miles_wave_output ; 004073AE E854010000
     %if ($ - %%insn_004073ae) > 5
         %error "LONG_004073AE"
     %endif
@@ -314,7 +314,7 @@ initialize_miles_audio_system:
     %endif
     times 5 - ($ - %%insn_004073c8) db 0
     %%insn_004073cd:
-    call 0x407507 ; 004073CD E835010000
+    call open_miles_wave_output ; 004073CD E835010000
     %if ($ - %%insn_004073cd) > 5
         %error "LONG_004073CD"
     %endif
@@ -362,7 +362,7 @@ initialize_miles_audio_system:
     %endif
     times 5 - ($ - %%insn_004073e7) db 0
     %%insn_004073ec:
-    call 0x407507 ; 004073EC E816010000
+    call open_miles_wave_output ; 004073EC E816010000
     %if ($ - %%insn_004073ec) > 5
         %error "LONG_004073EC"
     %endif
@@ -554,7 +554,7 @@ initialize_miles_audio_system:
     %endif
     times 5 - ($ - %%insn_0040746c) db 0
     %%insn_00407471:
-    call 0x4074c1 ; 00407471 E84B000000
+    call open_miles_midi_driver ; 00407471 E84B000000
     %if ($ - %%insn_00407471) > 5
         %error "LONG_00407471"
     %endif
@@ -584,7 +584,7 @@ initialize_miles_audio_system:
     %endif
     times 2 - ($ - %%insn_00407487) db 0
     %%insn_00407489:
-    push dword 0x4072a1 ; 00407489 68A1724000
+    push dword miles_audio_timer_callback ; 00407489 68A1724000
     %if ($ - %%insn_00407489) > 5
         %error "LONG_00407489"
     %endif

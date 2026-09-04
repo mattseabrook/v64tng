@@ -1,11 +1,12 @@
 ; PE virtual entry 0040709F
 ; Ghidra working symbol: FUN_0040709f
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role: obtains the selected XMI resource bytes, allocates a Miles
+; sequence handle, initializes it, and returns the handle.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_0040709f_part_00 0
+%macro emit_create_midi_sequence_from_resource_part_00 0
     %%fragment_start:
-func_0040709f:
+create_midi_sequence_from_resource:
     %%insn_0040709f:
     push ebp ; 0040709F 55
     %if ($ - %%insn_0040709f) > 1

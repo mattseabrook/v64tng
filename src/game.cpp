@@ -10,9 +10,12 @@
 #include <thread>
 #include <filesystem>
 #include <fstream>
+#include <format>
+#include <future>
 #include <utility>
 #include <cstring>
 #include <type_traits>
+#include <unordered_set>
 
 #include "game.h"
 #include "window.h"
@@ -23,6 +26,7 @@
 #include "raycast.h"
 #include "assets.h"
 #include "grv_runtime.h"
+#include "console.h"
 
 #ifdef _WIN32
 #endif
@@ -37,9 +41,24 @@ static std::string pendingGrvBackgroundSong;
 static std::string activeGrvBackgroundSong;
 static bool pendingGrvPaletteMerge = false;
 static bool grvVideoPlayback = false;
+static bool grvHoldBlackFrame = false;
+static uint8_t grvPresentationLevel = 0xff;
+static std::vector<uint8_t> grvFadedPresentationFrame;
+static bool previousGrvVideoWasForegroundStill = false;
+static bool optionalVielogoPlayed = false;
+static uint8_t activeRedbookSelection = 0;
+static bool raycasterMenuOpen = false;
+static bool grvGameMenuOpen = false;
+struct PreparedGrvVideo
+{
+	std::unique_ptr<VDXFile> file;
+	std::string error;
+};
+using PreparedGrvVideos = std::vector<PreparedGrvVideo>;
 static void applyGrvTransition(
 	const GrvTransition &transition,
-	bool synchronizeMusicWithFirstVideo = false);
+	bool synchronizeMusicWithFirstVideo = false,
+	std::future<PreparedGrvVideos> *preloadFuture = nullptr);
 
 namespace
 {
@@ -48,6 +67,33 @@ constexpr size_t kCanvasHeight = 480;
 constexpr size_t kVideoHeight = 320;
 constexpr size_t kVideoTop = 80;
 constexpr size_t kPixelBytes = 3;
+
+constexpr uint16_t effectiveGrvVideoFlags(
+	uint16_t flags, bool &previousForegroundStill)
+{
+	// The native VDX player implicitly enables foreground compositing when a
+	// normal animation immediately follows a VIDEO_TRANSITION_REF. LI.GRV uses
+	// this exact stateful rule: li_stnXX installs a protection mask, then the
+	// shared li_let_i animation is clipped to the selected letter. Without the
+	// inherited flag, that common animation draws every solution letter.
+	uint16_t effective = flags;
+	const bool foregroundStill = (flags & (1u << 1)) != 0;
+	const bool firstFrameOnly = (flags & (1u << 8)) != 0;
+	if (previousForegroundStill && !foregroundStill && !firstFrameOnly)
+		effective |= 1u << 7;
+	previousForegroundStill = foregroundStill;
+	return effective;
+}
+
+static_assert([]
+{
+	bool previousForegroundStill = false;
+	const uint16_t station = effectiveGrvVideoFlags(
+		(1u << 1) | (1u << 2), previousForegroundStill);
+	const uint16_t letter = effectiveGrvVideoFlags(0, previousForegroundStill);
+	return (station & (1u << 7)) == 0 &&
+		(letter & (1u << 7)) != 0 && !previousForegroundStill;
+}(), "a foreground still must mask the immediately following animation");
 
 void materializeIndexedFrame(
 	std::span<const uint8_t> indices,
@@ -95,7 +141,7 @@ void composeGrvForegroundFromBackground()
 	state.frameTiming.dirtyFrame = true;
 }
 
-void copyGrvForegroundRectangleToBackground(const GrvCopyRectCommand &rectangle)
+void copyGrvBackgroundRectangleToForeground(const GrvCopyRectCommand &rectangle)
 {
 	if (state.grvForegroundIndices.size() != kCanvasWidth * kCanvasHeight ||
 		state.grvBackgroundIndices.size() != kCanvasWidth * kVideoHeight)
@@ -103,22 +149,24 @@ void copyGrvForegroundRectangleToBackground(const GrvCopyRectCommand &rectangle)
 	const size_t left = (std::min<size_t>)(rectangle.left, kCanvasWidth);
 	const size_t right = (std::min<size_t>)(rectangle.right, kCanvasWidth);
 	const size_t top = (std::max<size_t>)(rectangle.top, kVideoTop);
-	const size_t bottom = (std::min<size_t>)(rectangle.bottom, kVideoTop + kVideoHeight);
-	if (right <= left || bottom <= top)
+	const size_t bottom = (std::min<size_t>)(
+		rectangle.bottom, kVideoTop + kVideoHeight - 1);
+	if (right <= left || bottom < top)
 		return;
-	// Retail V.EXE semantics: copy the foreground rectangle into the persistent
-	// VDX background with half-open right/bottom bounds. The Win32 1.02b1 beta
-	// reverses this copy and includes the bottom row; v64tng follows retail V.
+	// Despite its historical COPY_RECT_TO_BG name, opcode 37h restores the
+	// persistent VDX background into the displayed foreground in both native
+	// engines. Win32 1.02b1 copies (right-left) bytes for rows top..bottom.
+	// Trace 20260825-223925 confirms that LI.GRV uses this after every letter.
 	const size_t rowBytes = right - left;
-	for (size_t y = top; y < bottom; ++y)
+	for (size_t y = top; y <= bottom; ++y)
 	{
-		const size_t source = y * kCanvasWidth + left;
-		const size_t destination = (y - kVideoTop) * kCanvasWidth + left;
-		std::memcpy(state.grvBackgroundIndices.data() + destination,
-			state.grvForegroundIndices.data() + source, rowBytes);
+		const size_t source = (y - kVideoTop) * kCanvasWidth + left;
+		const size_t destination = y * kCanvasWidth + left;
+		std::memcpy(state.grvForegroundIndices.data() + destination,
+			state.grvBackgroundIndices.data() + source, rowBytes);
 	}
 	materializeIndexedFrame(
-		state.grvBackgroundIndices, state.grvPalette, state.grvBackgroundFrame);
+		state.grvForegroundIndices, state.grvPalette, state.grvForegroundFrame);
 	state.grvForegroundActive = true;
 	state.frameTiming.dirtyFrame = true;
 }
@@ -183,13 +231,46 @@ void printGrvString(const GrvPrintCommand &command)
 	}
 	materializeIndexedFrame(
 		state.grvForegroundIndices, state.grvPalette, state.grvForegroundFrame);
+	// PRINTSTRING draws only in the discarded 80-row top bar. Keep the retained
+	// puzzle matte in its indexed surface, but present the current background in
+	// the visible game band. Re-materializing the old matte with the menu palette
+	// is what produced the corrupted telescope image on the save-name screen.
+	if (state.grvBackgroundFrame.size() ==
+		kCanvasWidth * kVideoHeight * kPixelBytes)
+	{
+		std::memcpy(
+			state.grvForegroundFrame.data() +
+				kVideoTop * kCanvasWidth * kPixelBytes,
+			state.grvBackgroundFrame.data(), state.grvBackgroundFrame.size());
+	}
 	state.grvForegroundActive = true;
 	state.frameTiming.dirtyFrame = true;
+}
+
+std::span<const uint8_t> applyGrvPresentationLevel(
+	std::span<const uint8_t> pixels)
+{
+	if (grvPresentationLevel == 0xff || pixels.empty())
+		return pixels;
+	grvFadedPresentationFrame.resize(pixels.size());
+	for (size_t index = 0; index < pixels.size(); ++index)
+	{
+		grvFadedPresentationFrame[index] = static_cast<uint8_t>(
+			(static_cast<unsigned>(pixels[index]) * grvPresentationLevel + 127u) /
+			255u);
+	}
+	return grvFadedPresentationFrame;
 }
 } // namespace
 
 std::span<const uint8_t> presentationPixels(const VDXFile *vdx, size_t frameIndex)
 {
+	if (grvHoldBlackFrame && !grvVideoPlayback)
+	{
+		static const std::vector<uint8_t> blackFrame(
+			kCanvasWidth * kVideoHeight * kPixelBytes, 0);
+		return blackFrame;
+	}
 	if (!vdx || vdx->frameData.empty())
 		return {};
 	frameIndex = (std::min)(frameIndex, vdx->frameData.size() - 1);
@@ -200,18 +281,20 @@ std::span<const uint8_t> presentationPixels(const VDXFile *vdx, size_t frameInde
 		if (!grvVideoPlayback && state.grvForegroundFrame.size() ==
 			kCanvasWidth * kCanvasHeight * kPixelBytes)
 		{
-			return std::span<const uint8_t>{state.grvForegroundFrame}.subspan(
-				kVideoTop * kCanvasWidth * kPixelBytes,
-				kCanvasWidth * kVideoHeight * kPixelBytes);
+			return applyGrvPresentationLevel(
+				std::span<const uint8_t>{state.grvForegroundFrame}.subspan(
+					kVideoTop * kCanvasWidth * kPixelBytes,
+					kCanvasWidth * kVideoHeight * kPixelBytes));
 		}
 	}
 	if (source.size() == kCanvasWidth * kVideoHeight * kPixelBytes)
-		return source;
+		return applyGrvPresentationLevel(source);
 	if (source.size() == kCanvasWidth * kCanvasHeight * kPixelBytes)
 	{
-		return std::span<const uint8_t>{source}.subspan(
-			kVideoTop * kCanvasWidth * kPixelBytes,
-			kCanvasWidth * kVideoHeight * kPixelBytes);
+		return applyGrvPresentationLevel(
+			std::span<const uint8_t>{source}.subspan(
+				kVideoTop * kCanvasWidth * kPixelBytes,
+				kCanvasWidth * kVideoHeight * kPixelBytes));
 	}
 	state.composedPresentationFrame.assign(
 		kCanvasWidth * kVideoHeight * kPixelBytes, 0);
@@ -225,7 +308,201 @@ std::span<const uint8_t> presentationPixels(const VDXFile *vdx, size_t frameInde
 		std::memcpy(state.composedPresentationFrame.data() + destinationTop * rowBytes,
 			source.data() + sourceTop * rowBytes, copyRows * rowBytes);
 	}
-	return state.composedPresentationFrame;
+	return applyGrvPresentationLevel(state.composedPresentationFrame);
+}
+
+struct GrvPreloadState
+{
+	std::vector<uint8_t> backgroundFrame;
+	std::vector<uint8_t> backgroundIndices;
+	std::vector<uint8_t> foregroundBandIndices;
+	std::array<RGBColor, 256> palette{};
+	bool paletteMergeOnce = false;
+	bool previousForegroundStill = false;
+};
+
+static GrvPreloadState captureGrvPreloadState()
+{
+	GrvPreloadState result{
+		.backgroundFrame = state.grvBackgroundFrame,
+		.backgroundIndices = state.grvBackgroundIndices,
+		.foregroundBandIndices = {},
+		.palette = state.grvPalette,
+		.paletteMergeOnce = pendingGrvPaletteMerge,
+		.previousForegroundStill = previousGrvVideoWasForegroundStill};
+	if (state.grvForegroundIndices.size() == kCanvasWidth * kCanvasHeight)
+	{
+		const auto first = state.grvForegroundIndices.begin() +
+			static_cast<std::ptrdiff_t>(kVideoTop * kCanvasWidth);
+		result.foregroundBandIndices.assign(
+			first, first + static_cast<std::ptrdiff_t>(kVideoHeight * kCanvasWidth));
+	}
+	else
+		result.foregroundBandIndices.assign(kVideoHeight * kCanvasWidth, 0);
+	return result;
+}
+
+static size_t decodedVideoBytes(const VDXFile &video)
+{
+	size_t bytes = video.audioData.size();
+	std::unordered_set<const std::vector<uint8_t> *> counted;
+	for (const auto &frame : video.frameData)
+		if (frame && counted.insert(frame.get()).second)
+			bytes += frame->size();
+	counted.clear();
+	for (const auto &indices : video.frameIndices)
+		if (indices && counted.insert(indices.get()).second)
+			bytes += indices->size();
+	bytes += video.framePalettes.size() * sizeof(video.framePalettes.front());
+	return bytes;
+}
+
+static PreparedGrvVideos preloadGrvTransition(
+	GrvTransition transition,
+	GrvPreloadState decodeState)
+{
+	const auto started = std::chrono::steady_clock::now();
+	PreparedGrvVideos prepared;
+	prepared.reserve(transition.videos.size());
+	bool contextReliable = true;
+	size_t decodedBytes = 0;
+
+	auto process = [&](const GrvPresentationCommand &command)
+	{
+		std::visit([&](const auto &value)
+		{
+			using T = std::decay_t<decltype(value)>;
+			if constexpr (std::is_same_v<T, GrvVideoCommand>)
+			{
+				const uint16_t effectiveFlags = effectiveGrvVideoFlags(
+					value.flags, decodeState.previousForegroundStill);
+				PreparedGrvVideo item;
+				if (!contextReliable)
+				item.error = "preload context unavailable after an earlier decode failure";
+				else if (!grvRuntime)
+				item.error = "GRV runtime unavailable";
+				else if (const auto resource = grvRuntime->resolve(value.ref))
+				{
+					auto loaded = loadSingleVDX(
+						std::string(resource->archive), resource->stem());
+					if (!loaded)
+						item.error = loaded.error();
+					else
+					{
+						try
+						{
+							VDXDecodeContext context{
+								.background = decodeState.backgroundFrame,
+								.backgroundIndices = decodeState.backgroundIndices,
+								.foregroundIndices = decodeState.foregroundBandIndices,
+								.palette = decodeState.palette,
+								.mergePaletteOnce = decodeState.paletteMergeOnce};
+							parseVDXChunks(*loaded, context, effectiveFlags);
+							loaded->parsed = true;
+							loaded->rateOverride = value.rateOverride;
+							if (loaded->paletteMergeConsumed)
+								decodeState.paletteMergeOnce = false;
+
+							if ((effectiveFlags & (1u << 1)) != 0)
+							{
+								if (!loaded->frameIndices.empty() &&
+									loaded->frameIndices.front()->size() ==
+										kVideoHeight * kCanvasWidth)
+									decodeState.foregroundBandIndices =
+										*loaded->frameIndices.front();
+							}
+							else if (!loaded->frameData.empty())
+							{
+								const size_t persistentFrame =
+									(effectiveFlags & (1u << 8)) != 0
+										? 0 : loaded->frameData.size() - 1;
+								decodeState.backgroundFrame =
+									*loaded->frameData[persistentFrame];
+								if (persistentFrame < loaded->frameIndices.size())
+									decodeState.backgroundIndices =
+										*loaded->frameIndices[persistentFrame];
+								else
+									decodeState.backgroundIndices.clear();
+								decodeState.palette =
+									persistentFrame < loaded->framePalettes.size()
+										? loaded->framePalettes[persistentFrame]
+										: loaded->palette;
+								// VIDEOREF updates the native background/display surface,
+								// but it does not replace the persistent foreground matte.
+								// GRATE.GRV installs mgpuzbkd there once, then every
+								// flag-7 movement uses it to erase the old grate position.
+								// Only explicit opcode 22h/37h copies modify the matte.
+							}
+							decodedBytes += decodedVideoBytes(*loaded);
+							item.file =
+								std::make_unique<VDXFile>(std::move(*loaded));
+						}
+						catch (const std::exception &error)
+						{
+							item.error = error.what();
+						}
+					}
+				}
+				else
+					item.error = std::format(
+						"unresolved GRV video ref 0x{:04X}", value.ref);
+				if (!item.file)
+					contextReliable = false;
+				prepared.push_back(std::move(item));
+			}
+			else if constexpr (std::is_same_v<T, GrvCopyBackgroundCommand>)
+			{
+				if (decodeState.backgroundIndices.size() ==
+					kVideoHeight * kCanvasWidth)
+					decodeState.foregroundBandIndices =
+						decodeState.backgroundIndices;
+			}
+			else if constexpr (std::is_same_v<T, GrvCopyRectCommand>)
+			{
+				if (decodeState.backgroundIndices.size() !=
+						kVideoHeight * kCanvasWidth ||
+					decodeState.foregroundBandIndices.size() !=
+						kVideoHeight * kCanvasWidth)
+					return;
+				const size_t left =
+					(std::min<size_t>)(value.left, kCanvasWidth);
+				const size_t right =
+					(std::min<size_t>)(value.right, kCanvasWidth);
+				const size_t top =
+					(std::max<size_t>)(value.top, kVideoTop);
+				const size_t bottom = (std::min<size_t>)(
+					value.bottom, kVideoTop + kVideoHeight - 1);
+				if (right <= left || bottom < top)
+					return;
+				for (size_t y = top; y <= bottom; ++y)
+				{
+					const size_t offset =
+						(y - kVideoTop) * kCanvasWidth + left;
+					std::memcpy(
+						decodeState.foregroundBandIndices.data() + offset,
+						decodeState.backgroundIndices.data() + offset,
+						right - left);
+				}
+			}
+			else if constexpr (std::is_same_v<T, GrvPaletteMergeOnceCommand>)
+				decodeState.paletteMergeOnce = true;
+		}, command);
+	};
+
+	if (!transition.commands.empty())
+		for (const auto &command : transition.commands)
+			process(command);
+	else
+		for (const auto &video : transition.videos)
+			process(GrvPresentationCommand{video});
+
+	const double seconds = std::chrono::duration<double>(
+		std::chrono::steady_clock::now() - started).count();
+	consoleLogf("ENGINE",
+		"intro preload complete: videos={} decoded={:.1f} MiB elapsed={:.3f}s",
+		prepared.size(), static_cast<double>(decodedBytes) / (1024.0 * 1024.0),
+		seconds);
+	return prepared;
 }
 
 static void startPendingGrvBackgroundSong()
@@ -301,6 +578,8 @@ static std::unique_ptr<VDXFile> loadTransientVDX(const std::string &name)
 //
 static void setupView(const std::string &view_name, bool is_static, auto now)
 {
+	consoleLogf("ENGINE", "setup view room={} view={} static={}",
+		state.current_room, view_name, is_static);
 	getOrLoadVDX(view_name); // Sets state.currentVDX internally
 	if (!state.currentVDX->parsed)
 	{
@@ -346,13 +625,14 @@ void viewHandler()
 		if (!state.transient_animation.totalFrames)
 			state.transient_animation.totalFrames = state.transientVDX->frameData.size();
 
-			if (now - state.transient_animation.lastFrameTime >= state.transient_animation.getFrameDuration(state.frameTiming.currentFPS))
+		if (now - state.transient_animation.lastFrameTime >= state.transient_animation.getFrameDuration(state.frameTiming.currentFPS))
 		{
 			if (++state.transient_frame_index >= state.transient_animation.totalFrames)
 			{
+				consoleLogf("ENGINE", "transient complete: {}", state.transient_animation_name);
 				state.transient_animation.isPlaying = false;
 				state.transient_frame_index = state.transient_animation.totalFrames - 1;
-				if (!state.current_song.empty())
+				if (!state.current_song.empty() && !g_quitRequested)
 					xmiPlay(state.current_song, false);
 
 				state.transientVDX.reset();
@@ -376,6 +656,8 @@ void viewHandler()
 	// Load new view/sequence
 	if (state.current_view != state.previous_view)
 	{
+		consoleLogf("ENGINE", "view change requested: room={} '{}' -> '{}'",
+			state.current_room, state.previous_view, state.current_view);
 		// Clear and parse sequence
 		state.animation_sequence.clear();
 		std::string_view seq{state.current_view};
@@ -433,6 +715,8 @@ void viewHandler()
 	{
 		if (++state.currentFrameIndex >= state.animation.totalFrames)
 		{
+			consoleLogf("ENGINE", "animation complete: room={} view={} frames={}",
+				state.current_room, state.current_view, state.animation.totalFrames);
 			state.animation.isPlaying = false;
 			state.currentFrameIndex = state.animation.totalFrames - 1;
 
@@ -599,15 +883,16 @@ Description:
 */
 static void playIntroVideos()
 {
-	std::ifstream file("Vielogo.vdx", std::ios::binary);
+	const auto vielogo = assetPath("Vielogo.vdx");
+	std::ifstream file(vielogo, std::ios::binary);
 	if (file)
 	{
 		try
 		{
 			std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)), {});
-			VDXFile vdx = parseVDXFile("Vielogo.vdx", std::move(buffer));
+			VDXFile vdx = parseVDXFile(vielogo.string(), std::move(buffer));
 			parseVDXChunks(vdx);
-			vdxPlay("Vielogo.vdx", &vdx);
+			vdxPlay(vielogo.string(), &vdx);
 		}
 		catch (const std::exception &e)
 		{
@@ -616,13 +901,17 @@ static void playIntroVideos()
 	}
 	if (!g_quitRequested)
 	{
-		try
+		const auto trilogo = assetPath("TRILOGO.VDX");
+		if (std::filesystem::exists(trilogo))
 		{
-			vdxPlay("TRILOGO.VDX");
-		}
-		catch (const std::exception &e)
-		{
-			std::println(stderr, "WARNING: Failed to play TRILOGO.VDX: {}", e.what());
+			try
+			{
+				vdxPlay(trilogo.string());
+			}
+			catch (const std::exception &e)
+			{
+				std::println(stderr, "WARNING: Failed to play TRILOGO.VDX: {}", e.what());
+			}
 		}
 	}
 }
@@ -639,6 +928,7 @@ Description:
 static void enterFoyer()
 {
 	state.mainMenu.active = false;
+	setGameplayMusicMix(true);
 	state.current_view = "FH:f_1fb;static";
 	state.animation_sequence.clear();
 	viewHandler();
@@ -658,6 +948,29 @@ Description:
 void startNewGame()
 {
 	state.mainMenu.active = false;
+	setGameplayMusicMix(true);
+	// Keep the pointer hidden for the entire scripted intro, including the
+	// short gaps between blocking VDX files and GRV sleep/music commands. The
+	// ordinary animation flags briefly restore between files and otherwise let
+	// hotspot cursors (pyramids, hands, etc.) leak onto the presentation.
+	struct IntroCursorGuard
+	{
+		IntroCursorGuard()
+		{
+			state.introSequencePlaying = true;
+#ifdef _WIN32
+			SetCursor(getCurrentCursor());
+#endif
+		}
+		~IntroCursorGuard()
+		{
+			state.introSequencePlaying = false;
+			forceUpdateCursor();
+#ifdef _WIN32
+			SetCursor(getCurrentCursor());
+#endif
+		}
+	} introCursorGuard;
 	if (grvRuntime)
 	{
 		const auto transition = grvRuntime->follow(0x03E8);
@@ -666,7 +979,19 @@ void startNewGame()
 			// SCRIPT.GRV owns the complete logo, story-book, mansion-entry, and
 			// foyer sequence. Present its commands in order instead of discarding
 			// them after advancing the VM to the foyer input loop.
-			applyGrvTransition(*transition);
+			// Decode the bounded transition on a worker while the loose logo and
+			// intentional black-screen delays are playing. All dependent palette,
+			// foreground, and background state is simulated from this immutable
+			// snapshot, so playback can consume ready frames without changing VM
+			// ordering or normal room-cache behavior.
+			auto preloadFuture = std::async(std::launch::async,
+				[preloadTransition = *transition,
+				 preloadState = captureGrvPreloadState()]() mutable
+				{
+					return preloadGrvTransition(
+						std::move(preloadTransition), std::move(preloadState));
+				});
+			applyGrvTransition(*transition, false, &preloadFuture);
 			return;
 		}
 		std::println(stderr, "WARNING: Cannot enter first GRV game loop: {}", transition.error());
@@ -680,7 +1005,8 @@ void startNewGame()
 
 static bool playGrvVideo(
 	const GrvVideoCommand &command,
-	bool startPreparedMusicAtFrameZero = false)
+	bool startPreparedMusicAtFrameZero = false,
+	PreparedGrvVideo *prepared = nullptr)
 {
 	if (!grvRuntime || !command.ref)
 		return false;
@@ -690,34 +1016,65 @@ static bool playGrvVideo(
 		std::println(stderr, "WARNING: Unresolved GRV video ref 0x{:04X}", command.ref);
 		return false;
 	}
-	auto loaded = loadSingleVDX(std::string(resource->archive), resource->stem());
+	std::unique_ptr<VDXFile> loaded;
+	if (prepared && prepared->file)
+	{
+		loaded = std::move(prepared->file);
+		consoleLogf("ENGINE", "using predecoded GRV video {} / {}",
+			resource->archive, resource->name());
+	}
+	else
+	{
+		if (prepared && !prepared->error.empty())
+			consoleLogf("ENGINE",
+				"predecode unavailable for {} / {}: {}; decoding on demand",
+				resource->archive, resource->name(), prepared->error);
+		auto onDemand = loadSingleVDX(
+			std::string(resource->archive), resource->stem());
+		if (onDemand)
+			loaded = std::make_unique<VDXFile>(std::move(*onDemand));
+		else
+		{
+			std::println(stderr, "WARNING: Cannot load GRV video 0x{:04X}: {}",
+				command.ref, onDemand.error());
+			return false;
+		}
+	}
 	if (!loaded)
 	{
-		std::println(stderr, "WARNING: Cannot load GRV video 0x{:04X}: {}",
-			command.ref, loaded.error());
+		std::println(stderr, "WARNING: Cannot load GRV video 0x{:04X}",
+			command.ref);
 		return false;
 	}
+	const uint16_t effectiveFlags = effectiveGrvVideoFlags(
+		command.flags, previousGrvVideoWasForegroundStill);
+	consoleLogf("ENGINE",
+		"GRV video request ref=0x{:04X} flags=0x{:04X} effective=0x{:04X} rate={}",
+		command.ref, command.flags, effectiveFlags, command.rateOverride);
 	try
 	{
-		if (state.grvForegroundIndices.size() != kCanvasWidth * kCanvasHeight)
-			state.grvForegroundIndices.assign(kCanvasWidth * kCanvasHeight, 0);
-		const auto foregroundBand = std::span<const uint8_t>{
-			state.grvForegroundIndices}.subspan(
-				kVideoTop * kCanvasWidth, kCanvasWidth * kVideoHeight);
-		VDXDecodeContext context{
-			.background = state.grvBackgroundFrame,
-			.backgroundIndices = state.grvBackgroundIndices,
-			.foregroundIndices = foregroundBand,
-			.palette = state.grvPalette,
-			.mergePaletteOnce = pendingGrvPaletteMerge};
-		parseVDXChunks(*loaded, context, command.flags);
+		if (!loaded->parsed)
+		{
+			if (state.grvForegroundIndices.size() != kCanvasWidth * kCanvasHeight)
+				state.grvForegroundIndices.assign(kCanvasWidth * kCanvasHeight, 0);
+			const auto foregroundBand = std::span<const uint8_t>{
+				state.grvForegroundIndices}.subspan(
+					kVideoTop * kCanvasWidth, kCanvasWidth * kVideoHeight);
+			VDXDecodeContext context{
+				.background = state.grvBackgroundFrame,
+				.backgroundIndices = state.grvBackgroundIndices,
+				.foregroundIndices = foregroundBand,
+				.palette = state.grvPalette,
+				.mergePaletteOnce = pendingGrvPaletteMerge};
+			parseVDXChunks(*loaded, context, effectiveFlags);
+			loaded->parsed = true;
+		}
 		if (loaded->paletteMergeConsumed)
 			pendingGrvPaletteMerge = false;
-		loaded->parsed = true;
 		if (command.rateOverride)
 			loaded->rateOverride = command.rateOverride;
 
-		if ((command.flags & (1u << 1)) != 0)
+		if ((effectiveFlags & (1u << 1)) != 0)
 		{
 			// VIDEO_TRANSITION_REF is a one-frame foreground/matte operation.
 			// It must not replace the held room background or current view.
@@ -733,6 +1090,8 @@ static bool playGrvVideo(
 			}
 			return true;
 		}
+		consoleLogf("ENGINE", "GRV video decoded {} / {} frames={} audio={} bytes",
+			resource->archive, resource->name(), loaded->frameData.size(), loaded->audioData.size());
 
 		// VIDEOREF is a blocking VM opcode: render every frame (and its
 		// interleaved PCM stream) before the interpreter's next command becomes
@@ -740,14 +1099,50 @@ static bool playGrvVideo(
 		// for BF5 delta overlays.
 		state.grvForegroundActive = true;
 		grvVideoPlayback = true;
-		vdxPlay(std::string(resource->name()), &*loaded,
-			startPreparedMusicAtFrameZero);
+		const bool driverPreparationMode =
+			state.music_mode == "general" ||
+			state.music_mode == "wavetable" ||
+			state.music_mode == "opl3" ||
+			state.music_mode == "opl2" ||
+			state.music_mode == "opl" ||
+			state.music_mode == "dual_opl2";
+		if (startPreparedMusicAtFrameZero && driverPreparationMode)
+		{
+			// SCRIPT.GRV subroutine 02F1 uses rolmid.vdx for Roland MT-32
+			// initialization (PCs 0309-0311) and genmid.vdx for General MIDI
+			// (PCs 02F7-0302). Present that native feedback while retaining v64's
+			// existing deferred, sample-zero-exact soundfont/MIDI warm-up barrier.
+			const std::string preparationName =
+				state.music_mode == "general" ? "genmid" : "rolmid";
+			auto preparation = loadSingleVDX("INTRO", preparationName);
+			musicBeginPrepared();
+			if (preparation)
+			{
+				consoleLogf("MUSIC",
+					"native MIDI preparation screen INTRO/{}.vdx (SCRIPT.GRV 02F1)",
+					preparationName);
+				vdxPlayUntil("INTRO/" + preparationName + ".vdx", &*preparation,
+					[] { return musicPreparedStarted(); });
+			}
+			else
+				consoleLogf("MUSIC", "cannot load native preparation screen: {}",
+					preparation.error());
+			musicWaitPreparedStarted();
+			grvHoldBlackFrame = false;
+			vdxPlay(std::string(resource->name()), &*loaded, false);
+		}
+		else
+		{
+			grvHoldBlackFrame = false;
+			vdxPlay(std::string(resource->name()), &*loaded,
+				startPreparedMusicAtFrameZero);
+		}
 		grvVideoPlayback = false;
 
 		if (!loaded->frameData.empty())
 		{
 			const size_t persistentFrame =
-				(command.flags & (1u << 8)) != 0
+				(effectiveFlags & (1u << 8)) != 0
 					? 0 : loaded->frameData.size() - 1;
 			state.grvBackgroundFrame = *loaded->frameData[persistentFrame];
 			if (persistentFrame < loaded->frameIndices.size())
@@ -766,7 +1161,13 @@ static bool playGrvVideo(
 			state.animation.isPlaying = false;
 			state.animation.totalFrames = state.currentVDX->frameData.size();
 			state.animation_sequence.clear();
-			composeGrvForegroundFromBackground();
+			// Playback leaves its final background frame on the display while
+			// retaining the independently managed foreground matte. Conflating
+			// those two native surfaces here caused flag-7 puzzle animations to
+			// copy the old sprite back over their erase pixels (duplicate grates,
+			// and the same first-click reveal seen by the library telescope).
+			state.grvForegroundActive = false;
+			state.frameTiming.dirtyFrame = true;
 		}
 		return true;
 	}
@@ -779,37 +1180,149 @@ static bool playGrvVideo(
 	}
 }
 
+static bool isGrateRaycasterHandoff(const GrvVideoCommand &command)
+{
+	if (!grvRuntime || !grvRuntime->inChildScript())
+		return false;
+	const auto variables = grvRuntime->variables();
+	if (variables.size() <= 0x0f8 || variables[0x0f8] != 0x31)
+		return false;
+	const auto resource = grvRuntime->resolve(command.ref);
+	return resource && resource->archive == "MC" &&
+		resource->stem() == "mg_thru";
+}
+
+static void fadeGrateTraversalToBlack()
+{
+	using namespace std::chrono_literals;
+	constexpr unsigned fadeFrames = 18;
+	for (unsigned frame = 1; frame <= fadeFrames && !g_quitRequested; ++frame)
+	{
+		grvPresentationLevel = static_cast<uint8_t>(
+			255u * (fadeFrames - frame) / fadeFrames);
+		state.frameTiming.dirtyFrame = true;
+		maybeRenderFrame(true);
+		if (!processEvents())
+			break;
+		std::this_thread::sleep_for(16ms);
+	}
+	grvPresentationLevel = 0xff;
+	grvHoldBlackFrame = true;
+	state.frameTiming.dirtyFrame = true;
+	maybeRenderFrame(true);
+}
+
+static void enterRaycasterAfterGrate()
+{
+	consoleLog("ENGINE",
+		"GRATE solved: mg_thru.vdx complete; fading into raycaster basement");
+	fadeGrateTraversalToBlack();
+	if (g_quitRequested)
+		return;
+
+	// Keep the MAZE.GRV runtime parked at its input loop. The raycaster replaces
+	// its presentation and navigation, but the live runtime still owns the
+	// original in-game menu reached by Escape.
+	//
+	// Music: do NOT stop the score here. The grate traversal is a continuous
+	// scene transition into the basement; whatever background song MAZE.GRV had
+	// looping should keep playing through the raycaster. Only foreground PCM is
+	// silenced. (Reverts Codex's musicStop()+clear() that left the basement
+	// silent.)
+	state.mainMenu.active = false;
+	state.introSequencePlaying = false;
+	raycasterMenuOpen = false;
+	grvGameMenuOpen = false;
+	initRaycaster();
+	grvHoldBlackFrame = false;
+	state.frameTiming.dirtyFrame = true;
+	maybeRenderFrame(true);
+	forceUpdateCursor();
+}
+
 static void applyGrvTransition(
 	const GrvTransition &transition,
-	bool synchronizeMusicWithFirstVideo)
+	bool synchronizeMusicWithFirstVideo,
+	std::future<PreparedGrvVideos> *preloadFuture)
 {
+	consoleLogf("ENGINE", "apply GRV transition commands={} videos={} ended={}",
+		transition.commands.size(), transition.videos.size(), transition.ended);
 	bool preparedMusicReleased = false;
+	std::optional<PreparedGrvVideos> preloadedVideos;
+	bool preloadFailed = false;
+	size_t videoIndex = 0;
 	auto apply = [&](const GrvPresentationCommand &command)
 	{
-		if (g_quitRequested)
+		if (g_quitRequested || state.raycast.enabled)
 			return;
-		std::visit([synchronizeMusicWithFirstVideo, &preparedMusicReleased](const auto &value)
+		std::visit([&](const auto &value)
 		{
 			using T = std::decay_t<decltype(value)>;
 			if constexpr (std::is_same_v<T, GrvVideoCommand>)
 			{
+				const bool grateRaycasterHandoff =
+					isGrateRaycasterHandoff(value);
+				if (preloadFuture && !preloadedVideos && !preloadFailed)
+				{
+					const auto waitStarted = std::chrono::steady_clock::now();
+					try
+					{
+						preloadedVideos.emplace(preloadFuture->get());
+						consoleLogf("ENGINE",
+							"intro preload handoff wait={:.3f}s",
+							std::chrono::duration<double>(
+								std::chrono::steady_clock::now() - waitStarted).count());
+					}
+					catch (const std::exception &error)
+					{
+						preloadFailed = true;
+						consoleLogf("ENGINE", "intro preload failed: {}", error.what());
+					}
+				}
+				PreparedGrvVideo *preparedVideo = nullptr;
+				if (preloadedVideos && videoIndex < preloadedVideos->size())
+					preparedVideo = &(*preloadedVideos)[videoIndex];
+				++videoIndex;
 				const bool blockingVideo = (value.flags & (1u << 1)) == 0;
 				const bool releaseMusic = synchronizeMusicWithFirstVideo &&
 					!preparedMusicReleased && blockingVideo;
-				if (playGrvVideo(value, releaseMusic) && releaseMusic)
-					preparedMusicReleased = true;
+				if (playGrvVideo(value, releaseMusic, preparedVideo))
+				{
+					if (releaseMusic)
+						preparedMusicReleased = true;
+					if (grateRaycasterHandoff && !g_quitRequested)
+						enterRaycasterAfterGrate();
+				}
 			}
 			else if constexpr (std::is_same_v<T, GrvCopyBackgroundCommand>)
 				composeGrvForegroundFromBackground();
 			else if constexpr (std::is_same_v<T, GrvCopyRectCommand>)
-				copyGrvForegroundRectangleToBackground(value);
+				copyGrvBackgroundRectangleToForeground(value);
 			else if constexpr (std::is_same_v<T, GrvPrintCommand>)
 				printGrvString(value);
 			else if constexpr (std::is_same_v<T, GrvSleepCommand>)
 			{
 				maybeRenderFrame(true);
-				std::this_thread::sleep_for(
-					std::chrono::milliseconds(value.ticks * 3u));
+				const auto deadline = std::chrono::steady_clock::now() +
+					std::chrono::milliseconds(value.ticks * 3u);
+				while (!g_quitRequested &&
+					std::chrono::steady_clock::now() < deadline)
+				{
+					if (!processEvents())
+						break;
+					maybeRenderFrame();
+					const auto remaining = deadline -
+						std::chrono::steady_clock::now();
+					if (remaining > std::chrono::milliseconds(1))
+					{
+						const auto maximumSlice =
+							std::chrono::duration_cast<
+								std::chrono::steady_clock::duration>(
+									std::chrono::milliseconds(5));
+						std::this_thread::sleep_for(
+							(std::min)(remaining, maximumSlice));
+					}
+				}
 			}
 			else if constexpr (std::is_same_v<T, GrvPlaySongCommand>)
 			{
@@ -828,6 +1341,92 @@ static void applyGrvTransition(
 				if (grvRuntime)
 					if (const auto song = grvRuntime->resolve(value.ref))
 						pendingGrvBackgroundSong = song->stem();
+			}
+			else if constexpr (std::is_same_v<T, GrvPlayCdCommand>)
+			{
+				// Original CD track 1 is the data track. Modern GOG/Steam rips omit
+				// it, so PLAYCD 02 maps to track1.ogg, 03 to track2.ogg, etc.
+				// Win32 also consumes the loose Vielogo movie once before it
+				// re-executes the first PLAYCD 02 request.
+				if (value.selection == 0x02 && !optionalVielogoPlayed)
+				{
+					optionalVielogoPlayed = true;
+					// PALFADEOUT precedes this path in SCRIPT.GRV. Keep that black
+					// presentation through the intentional post-logo delay instead
+					// of briefly restoring the held main-menu framebuffer.
+					grvHoldBlackFrame = true;
+					// Stop the menu/background score before entering the blocking loose
+					// movie. Leaving this until after vdxPlay made Start New appear stuck
+					// on the menu while two audio paths continued underneath it.
+					musicStop();
+					const auto logo = assetPath("Vielogo.vdx");
+					if (std::filesystem::exists(logo))
+					{
+						consoleLogf("REDBOOK",
+							"PLAYCD 02 native prelude: playing {} before track1.ogg",
+							logo.string());
+						grvVideoPlayback = true;
+						try
+						{
+							vdxPlay(logo.string());
+						}
+						catch (...)
+						{
+							grvVideoPlayback = false;
+							throw;
+						}
+						grvVideoPlayback = false;
+						if (g_quitRequested)
+							return;
+					}
+					else
+						consoleLogf("REDBOOK", "optional PLAYCD prelude not found: {}",
+							logo.string());
+				}
+
+				musicStop();
+				if (value.selection == 0x62)
+				{
+					if (activeRedbookSelection == 0x03)
+					{
+						consoleLog("REDBOOK",
+							"PLAYCD 62 stopping active selection 03 immediately");
+						redbookStop();
+					}
+					else
+					{
+						consoleLogf("REDBOOK",
+							"PLAYCD 62 waiting for selection {:02X} to finish naturally",
+							activeRedbookSelection);
+						while (redbookIsActive() && !g_quitRequested)
+						{
+							if (!processEvents())
+								break;
+							maybeRenderFrame();
+						}
+						redbookStop();
+					}
+					activeRedbookSelection = 0;
+					return;
+				}
+				const unsigned trackNumber = redbookOggTrackNumber(value.selection);
+				if (!trackNumber)
+				{
+					redbookStop();
+					activeRedbookSelection = 0;
+				}
+				else
+				{
+					const auto track = assetPath(std::format("track{}.ogg", trackNumber));
+					if (redbookPlayOgg(track))
+						activeRedbookSelection = value.selection;
+					else
+					{
+						activeRedbookSelection = 0;
+						std::println(stderr, "WARNING: PLAYCD {:02X} cannot play {}",
+							value.selection, track.string());
+					}
+				}
 			}
 			else if constexpr (std::is_same_v<T, GrvPaletteMergeOnceCommand>)
 				pendingGrvPaletteMerge = true;
@@ -861,6 +1460,8 @@ static void applyGrvTransition(
 
 bool initializeGrvMainMenu()
 {
+	previousGrvVideoWasForegroundStill = false;
+	setGameplayMusicMix(false);
 	auto runtime = GrvRuntime::load(assetPath("SCRIPT.GRV"), assetRoot());
 	if (!runtime)
 	{
@@ -892,6 +1493,42 @@ bool grvInputActive()
 	return grvRuntime && grvRuntime->activeLoop() != 0;
 }
 
+namespace
+{
+constexpr uint16_t kGrvGameMenuEntry = 0x17AB;
+constexpr uint16_t kGrvGameMenuLoop = 0x17D4;
+constexpr uint16_t kGrvGameMenuResume = 0x1C55;
+
+void resumeParkedRaycaster()
+{
+	// SCRIPT.GRV has already restored the parked MAZE.GRV input loop. Suppress
+	// its obsolete 2D maze presentation and return to the exact raycaster state
+	// that was parked when the menu opened.
+	consoleLog("INPUT", "GRV menu Resume returning to parked raycaster");
+	musicStop();
+	redbookStop();
+	wavStop();
+	pendingGrvBackgroundSong.clear();
+	activeGrvBackgroundSong.clear();
+	activeRedbookSelection = 0;
+	grvGameMenuOpen = false;
+	raycasterMenuOpen = false;
+	state.raycast.enabled = true;
+	state.mainMenu.active = false;
+	state.animation.reset();
+	state.transient_animation.reset();
+	state.transientVDX.reset();
+	setGameplayMusicMix(true);
+#ifdef _WIN32
+	ShowCursor(FALSE);
+#endif
+	refreshRendererForCurrentMode();
+	state.frameTiming.dirtyFrame = true;
+	maybeRenderFrame(true);
+	forceUpdateCursor();
+}
+} // namespace
+
 uint8_t grvPointerCursor(int x, int y)
 {
 	if (!grvRuntime)
@@ -902,6 +1539,8 @@ uint8_t grvPointerCursor(int x, int y)
 
 bool grvPointerClick(int x, int y)
 {
+	consoleLogf("INPUT", "left click client=({}, {}) GRV-active={}", x, y,
+		grvRuntime.has_value());
 	if (!grvRuntime)
 		return false;
 	const auto target = grvRuntime->activateAt(x, y, state.ui.width, state.ui.height);
@@ -922,20 +1561,126 @@ bool grvPointerClick(int x, int y)
 		std::println(stderr, "WARNING: GRV target 0x{:04X}: {}", *target, transition.error());
 		return true;
 	}
+	const bool menuResume = grvGameMenuOpen && *target == kGrvGameMenuResume;
+	const bool menuLoadedGame = grvGameMenuOpen && grvRuntime->inChildScript();
+	if (menuResume || menuLoadedGame)
+	{
+		grvGameMenuOpen = false;
+		setGameplayMusicMix(true);
+	}
+	if (raycasterMenuOpen && menuResume)
+	{
+		resumeParkedRaycaster();
+		return true;
+	}
 	applyGrvTransition(*transition);
 	return true;
 }
 
 bool grvEscapeAction()
 {
+	if (grvGameMenuOpen)
+	{
+		const bool closeMenu = grvRuntime &&
+			grvRuntime->activeLoop() == kGrvGameMenuLoop;
+		const uint16_t target = closeMenu
+			? kGrvGameMenuResume : kGrvGameMenuEntry;
+		consoleLog("INPUT", closeMenu
+			? "Escape closing GRV game menu"
+			: "Escape returning to GRV game menu");
+		const auto transition = grvRuntime->follow(target);
+		if (!transition)
+		{
+			std::println(stderr, "WARNING: GRV Escape target 0x{:04X}: {}",
+				target, transition.error());
+			return true;
+		}
+		if (closeMenu)
+		{
+			grvGameMenuOpen = false;
+			if (raycasterMenuOpen)
+			{
+				resumeParkedRaycaster();
+				return true;
+			}
+			setGameplayMusicMix(true);
+		}
+		applyGrvTransition(*transition);
+		return true;
+	}
+	if (state.raycast.enabled)
+	{
+		if (!grvRuntime)
+		{
+			consoleLog("INPUT",
+				"Escape ignored in standalone raycaster: no parked GRV game menu");
+			return true;
+		}
+		const auto target = grvRuntime->topBarTarget();
+		if (!target)
+		{
+			consoleLog("INPUT", "Escape could not find the parked GRV menu action");
+			return true;
+		}
+		consoleLog("INPUT", "Escape parking raycaster and opening GRV game menu");
+		resetRaycastInput();
+		state.raycast.enabled = false;
+		raycasterMenuOpen = true;
+		grvGameMenuOpen = true;
+		setGameplayMusicMix(false);
+#ifdef _WIN32
+		ShowCursor(TRUE);
+#endif
+		refreshRendererForCurrentMode();
+		const auto transition = grvRuntime->follow(*target);
+		// DIAGNOSTIC (ESC blank screen): capture why nothing presents after
+		// parking the raycaster. If currentVDX is null/empty here, the parked
+		// menu transition produced no presentable frame and the 2D renderer
+		// early-outs -> blank screen with live input.
+		consoleLogf("INPUT",
+			"ESC park diag: transition={} currentVDX={} frames={}",
+			transition ? "ok" : "null",
+			state.currentVDX ? "set" : "null",
+			state.currentVDX ? state.currentVDX->frameData.size() : 0);
+		if (!transition)
+		{
+			grvGameMenuOpen = false;
+			raycasterMenuOpen = false;
+			state.raycast.enabled = true;
+			setGameplayMusicMix(true);
+#ifdef _WIN32
+			ShowCursor(FALSE);
+#endif
+			refreshRendererForCurrentMode();
+			std::println(stderr, "WARNING: GRV raycaster menu target 0x{:04X}: {}",
+				*target, transition.error());
+			return true;
+		}
+		applyGrvTransition(*transition);
+		return true;
+	}
 	if (!grvRuntime)
 		return false;
+	if (state.mainMenu.active && !grvRuntime->inChildScript())
+	{
+		// The title screen already owns its New/Load/Quit choices. Routing Escape
+		// through the persistent in-game top hotspot can jump into a stale menu
+		// branch and reset the live variable table, making valid saves appear gone.
+		consoleLog("INPUT",
+			"Escape ignored on main menu; save data and GRV state left unchanged");
+		return true;
+	}
+	consoleLog("INPUT", "Escape requested GRV top-bar action");
 	const auto target = grvRuntime->topBarTarget();
 	if (!target)
 		return false;
+	grvGameMenuOpen = true;
+	setGameplayMusicMix(false);
 	const auto transition = grvRuntime->follow(*target);
 	if (!transition)
 	{
+		grvGameMenuOpen = false;
+		setGameplayMusicMix(true);
 		std::println(stderr, "WARNING: GRV top-bar target 0x{:04X}: {}",
 			*target, transition.error());
 		return true;
@@ -946,19 +1691,15 @@ bool grvEscapeAction()
 
 /*
 ===============================================================================
-Function Name: mainMenuKeyDown
+Function Name: grvKeyInput
 
 Description:
-		- Handles cheat code entry on the boot main menu.
-		- Feeds characters to SCRIPT.GRV's original case-sensitive
-		  "Zaphod Beeblebrox" key-action state machine.
+		- Feeds character input to the active GRV input loop.
+		- This includes the boot-menu cheat and in-game save-name editor.
 ===============================================================================
 */
-void mainMenuKeyDown(char c)
+void grvKeyInput(char c)
 {
-	if (!state.mainMenu.active)
-		return;
-
 	if (grvRuntime)
 	{
 		const auto transition = grvRuntime->handleKey(static_cast<uint8_t>(c));
@@ -970,6 +1711,8 @@ void mainMenuKeyDown(char c)
 	}
 
 	// Compatibility fallback if SCRIPT.GRV was unavailable at boot.
+	if (!state.mainMenu.active)
+		return;
 	static constexpr std::string_view cheat = "zaphodbeeblebrox";
 	auto &buf = state.mainMenu.cheatBuffer;
 	buf.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
@@ -977,6 +1720,24 @@ void mainMenuKeyDown(char c)
 		buf.erase(0, buf.size() - cheat.size());
 	if (buf == cheat)
 		enterFoyer();
+}
+
+// Keeps the scene music mix pinned to the real menu/gameplay state. Menu
+// music plays at full scale; gameplay is mixed lower. A room script running
+// as a LOADSCRIPT child of SCRIPT.GRV proves the player left the title
+// screen even on paths that never clear mainMenu.active (e.g. LOADGAME
+// directly from the menu).
+static void syncSceneMusicMix()
+{
+	const bool inGameplay =
+		!grvGameMenuOpen &&
+		((grvRuntime && grvRuntime->inChildScript()) || !state.mainMenu.active);
+	// LOADGAME enters a room GRV directly from the title screen. Reflect that
+	// VM transition in the UI state as well; otherwise Escape is mistaken for
+	// a title-screen key and the in-game menu action is swallowed.
+	if (grvRuntime && grvRuntime->inChildScript())
+		state.mainMenu.active = false;
+	setGameplayMusicMix(inGameplay);
 }
 
 /*
@@ -992,13 +1753,17 @@ Description:
 */
 void init()
 {
+	consoleLog("ENGINE", "engine initialization begin");
 #ifdef _WIN32
 	timeBeginPeriod(1);
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
 	SetPriorityClass(GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS);
 #endif
 	initWindow();
+	consoleLog("ENGINE", "window and renderer initialized");
 	musicInit();
+	setGameplayMusicMix(state.raycast.enabled);
+	consoleLog("ENGINE", "music subsystem initialized");
 
 	// Boot into the main menu: gu61 starts immediately, then sphinx.vdx from
 	// INTRO.GJD plays once (synchronized with the music) and holds its last
@@ -1038,6 +1803,7 @@ void init()
 			running = processEvents();
 			if (!running)
 				break; // Window is gone — do not render after WM_QUIT
+			syncSceneMusicMix();
 			viewHandler();
 			maybeRenderFrame();
 		}
@@ -1063,6 +1829,7 @@ void init()
 	state.transientVDX.reset();
 	cleanupCursors();
 	cleanupWindow();
+	consoleLog("ENGINE", "engine shutdown complete");
 #ifdef _WIN32
 	timeEndPeriod(1);
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);

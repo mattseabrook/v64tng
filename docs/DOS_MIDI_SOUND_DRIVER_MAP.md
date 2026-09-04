@@ -37,6 +37,30 @@ The external `.ADV` modules are therefore active code drivers, not passive
 instrument data. `V.EXE` calls the loaded MIDI-driver interface through far
 entry points; PCM and MIDI use separately configured drivers.
 
+## Win32/Miles audio correlation
+
+The Win32 1.02b1 PE imports Miles Sound System entry points by name, allowing
+the corresponding local wrappers to be identified directly and correlated
+with the DOS GRV behavior:
+
+| PE entry | Recovered role | Direct evidence |
+|---:|---|---|
+| `00407049` | `play_selected_midi_sequence` | Ends conflicting Redbook/MIDI playback, creates the selected sequence, and calls `_AIL_start_sequence@4` |
+| `0040709F` | `create_midi_sequence_from_resource` | Calls `_AIL_allocate_sequence_handle@4` and `_AIL_init_sequence@12` for the selected XMI bytes |
+| `0040716E` | `set_active_midi_sequence_volume_ramp` | GRV opcode `31h` forwards volume/time to `_AIL_set_sequence_volume@12` |
+| `00407188` | `reacquire_miles_audio_devices` | Calls `_AIL_digital_handle_reacquire@4` and `_AIL_MIDI_handle_reacquire@4` |
+| `00407290` | `stop_redbook_playback` | Calls `_AIL_redbook_stop@4` on the active handle |
+| `004072A1` | `miles_audio_timer_callback` | Installed through `timeSetEvent`; guards reentry and advances the audio pacing counters |
+| `004074C1` | `open_miles_midi_driver` | Tries `_AIL_midiOutOpen@12` with mapper/default fallbacks |
+| `00407507` | `open_miles_wave_output` | Constructs the PCM format and calls `_AIL_waveOutOpen@16` |
+| `004075AD` | `shutdown_miles_audio_system` | Closes Redbook, stops the timer, shuts down Miles, and frees the stream buffer |
+| `00407638` | `end_active_sample_and_midi` | Calls `_AIL_end_sample@4`, then ends/releases the active sequence |
+
+This identifies the full local Win32 MIDI control chain used by the GRV VM;
+it does not imply 100% semantic recovery of unrelated renderer, runtime, or
+library functions. Both executable source trees do already have 100% byte
+coverage, as reported in the root README.
+
 ## Shipped patch artifacts
 
 The 1.30 installation contains three distinct classes of audio artifact:

@@ -77,21 +77,21 @@ bits 32
 %include "src/functions/unknown/00406d8e_func_00406d8e.asm"
 %include "src/functions/vdx/service_vdx_audio_and_wait_for_pacing.asm"
 %include "src/functions/unknown/00406fae_func_00406fae.asm"
-%include "src/functions/unknown/00407049_func_00407049.asm"
-%include "src/functions/unknown/0040709f_func_0040709f.asm"
+%include "src/functions/audio/play_selected_midi_sequence.asm"
+%include "src/functions/audio/create_midi_sequence_from_resource.asm"
 %include "src/functions/audio/end_active_midi_sequence.asm"
 %include "src/functions/audio/is_midi_sequence_playing.asm"
-%include "src/functions/unknown/0040716e_func_0040716e.asm"
-%include "src/functions/unknown/00407188_func_00407188.asm"
+%include "src/functions/audio/set_active_midi_sequence_volume_ramp.asm"
+%include "src/functions/audio/reacquire_miles_audio_devices.asm"
 %include "src/functions/audio/get_active_redbook_track.asm"
 %include "src/functions/audio/play_redbook_selection.asm"
-%include "src/functions/unknown/00407290_func_00407290.asm"
-%include "src/functions/unknown/004072a1_func_004072a1.asm"
+%include "src/functions/audio/stop_redbook_playback.asm"
+%include "src/functions/audio/miles_audio_timer_callback.asm"
 %include "src/functions/audio/initialize_miles_audio_system.asm"
-%include "src/functions/unknown/004074c1_func_004074c1.asm"
-%include "src/functions/unknown/00407507_func_00407507.asm"
-%include "src/functions/unknown/004075ad_func_004075ad.asm"
-%include "src/functions/unknown/00407638_func_00407638.asm"
+%include "src/functions/audio/open_miles_midi_driver.asm"
+%include "src/functions/audio/open_miles_wave_output.asm"
+%include "src/functions/audio/shutdown_miles_audio_system.asm"
+%include "src/functions/audio/end_active_sample_and_midi.asm"
 %include "src/functions/unknown/00407670_func_00407670.asm"
 %include "src/functions/unknown/0040768c_func_0040768c.asm"
 %include "src/functions/unknown/00407748_func_00407748.asm"
@@ -161,7 +161,7 @@ bits 32
 %include "src/functions/unknown/0040c197_func_0040c197.asm"
 %include "src/functions/vdx/configure_vdx_stream.asm"
 %include "src/functions/vdx/decode_vdx_stream.asm"
-%include "src/functions/unknown/0040c6a5_func_0040c6a5.asm"
+%include "src/functions/vdx/finalize_vdx_stream_playback.asm"
 %include "src/functions/unknown/0040c780_func_0040c780.asm"
 %include "src/functions/unknown/0040c79c_func_0040c79c.asm"
 %include "src/functions/unknown/0040c7c3_func_0040c7c3.asm"
@@ -1067,13 +1067,13 @@ emit_func_00406fae_part_00
 %if ($ - $$) != 0x006449
     %error "layout drift at raw 006449"
 %endif
-emit_func_00407049_part_00
+emit_play_selected_midi_sequence_part_00
 
 ; raw 00649F..00652C (function)
 %if ($ - $$) != 0x00649F
     %error "layout drift at raw 00649F"
 %endif
-emit_func_0040709f_part_00
+emit_create_midi_sequence_from_resource_part_00
 
 ; raw 00652C..006546 (function)
 %if ($ - $$) != 0x00652C
@@ -1091,13 +1091,13 @@ emit_is_midi_sequence_playing_part_00
 %if ($ - $$) != 0x00656E
     %error "layout drift at raw 00656E"
 %endif
-emit_func_0040716e_part_00
+emit_set_active_midi_sequence_volume_ramp_part_00
 
 ; raw 006588..0065D4 (function)
 %if ($ - $$) != 0x006588
     %error "layout drift at raw 006588"
 %endif
-emit_func_00407188_part_00
+emit_reacquire_miles_audio_devices_part_00
 
 ; raw 0065D4..0065F2 (function)
 %if ($ - $$) != 0x0065D4
@@ -1115,13 +1115,13 @@ emit_play_redbook_selection_part_00
 %if ($ - $$) != 0x006690
     %error "layout drift at raw 006690"
 %endif
-emit_func_00407290_part_00
+emit_stop_redbook_playback_part_00
 
 ; raw 0066A1..006702 (function)
 %if ($ - $$) != 0x0066A1
     %error "layout drift at raw 0066A1"
 %endif
-emit_func_004072a1_part_00
+emit_miles_audio_timer_callback_part_00
 
 ; raw 006702..0068C1 (function)
 %if ($ - $$) != 0x006702
@@ -1133,25 +1133,25 @@ emit_initialize_miles_audio_system_part_00
 %if ($ - $$) != 0x0068C1
     %error "layout drift at raw 0068C1"
 %endif
-emit_func_004074c1_part_00
+emit_open_miles_midi_driver_part_00
 
 ; raw 006907..0069AD (function)
 %if ($ - $$) != 0x006907
     %error "layout drift at raw 006907"
 %endif
-emit_func_00407507_part_00
+emit_open_miles_wave_output_part_00
 
 ; raw 0069AD..006A38 (function)
 %if ($ - $$) != 0x0069AD
     %error "layout drift at raw 0069AD"
 %endif
-emit_func_004075ad_part_00
+emit_shutdown_miles_audio_system_part_00
 
 ; raw 006A38..006A6D (function)
 %if ($ - $$) != 0x006A38
     %error "layout drift at raw 006A38"
 %endif
-emit_func_00407638_part_00
+emit_end_active_sample_and_midi_part_00
 
 ; raw 006A6D..006A70 (explicit-data)
 %if ($ - $$) != 0x006A6D

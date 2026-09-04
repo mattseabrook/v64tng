@@ -1,6 +1,8 @@
 ; Linear entry 0030E (1000:030e)
 ; Ghidra working symbol: FUN_1000_030e
-; Verified VDX chunk loop and type dispatcher for 00h holds, 20h stills, 25h deltas, and interleaved 80h audio.
+; Verified VDX chunk loop and type dispatcher for 00h timed framebuffer holds,
+; 20h stills, 25h deltas, and interleaved 80h audio. The 00h path performs no
+; pixel mutation and continues through the common per-frame deadline wait.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
 %macro emit_decode_vdx_stream_part_00 0

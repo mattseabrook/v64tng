@@ -1,11 +1,12 @@
 ; PE virtual entry 004075AD
 ; Ghidra working symbol: FUN_004075ad
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role: ends active playback, closes Redbook, stops the service timer,
+; shuts down Miles, and frees the locked streaming buffer.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_004075ad_part_00 0
+%macro emit_shutdown_miles_audio_system_part_00 0
     %%fragment_start:
-func_004075ad:
+shutdown_miles_audio_system:
     %%insn_004075ad:
     push ebp ; 004075AD 55
     %if ($ - %%insn_004075ad) > 1
@@ -14,7 +15,7 @@ func_004075ad:
     times 1 - ($ - %%insn_004075ad) db 0
     db 0x8B, 0xEC ; 004075AE 8BEC | mov ebp,esp | encoding preserved
     %%insn_004075b0:
-    call 0x407638 ; 004075B0 E883000000
+    call end_active_sample_and_midi ; 004075B0 E883000000
     %if ($ - %%insn_004075b0) > 5
         %error "LONG_004075B0"
     %endif

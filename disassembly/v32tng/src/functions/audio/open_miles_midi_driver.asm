@@ -1,11 +1,12 @@
 ; PE virtual entry 004074C1
 ; Ghidra working symbol: FUN_004074c1
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role: opens the Miles MIDI output driver, first using the mapper
+; device and then the default fallback, returning the driver handle.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_004074c1_part_00 0
+%macro emit_open_miles_midi_driver_part_00 0
     %%fragment_start:
-func_004074c1:
+open_miles_midi_driver:
     %%insn_004074c1:
     push ebp ; 004074C1 55
     %if ($ - %%insn_004074c1) > 1

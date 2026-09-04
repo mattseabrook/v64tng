@@ -20,7 +20,23 @@
 // Music system lifecycle
 void musicInit();
 void musicShutdown();
+void musicBeginPrepared();
+[[nodiscard]] bool musicPreparedStarted();
+void musicWaitPreparedStarted();
 void musicStartPrepared();
+// Signal-only stop for the WM_CLOSE path: wakes every backend wait loop and
+// silences General MIDI without joining workers inside the window procedure.
+// musicShutdown() performs the joins once the message loop has unwound.
+void musicRequestStop();
+void musicStop();
+constexpr float kMainMenuMusicGain = 1.00f;
+constexpr float kGameplayMusicGain = 0.80f;
+// Absolute music level while audible gameplay PCM is active. The title and
+// in-game menus deliberately ignore this duck and retain their scene mix.
+constexpr float kVdxDialogueMusicGain = 0.55f;
+[[nodiscard]] float musicPlaybackVolume();
+void setGameplayMusicMix(bool gameplay);
+void setVdxDialogueMusicDuck(bool active);
 
 // Function prototypes
 std::vector<uint8_t> xmiConverter(const RLEntry &song);

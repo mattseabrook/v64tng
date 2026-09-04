@@ -1,6 +1,11 @@
 ; T7G/GRATE.GRV
 ; size=1086 sha256=3c276cbb0a8b5a84a109a9db2a2958da8c0f117bf1c4ba5210119b918b725e8e
 ; instructions=277 input_loops=1
+; Trace 20260903-225430: 0041 installs MC[46]=mgpuzbkd.vdx as the persistent
+; foreground matte. Every accepted grate move reaches one of the BF7+BF6 pairs
+; below and configures its movement VDX with flags 00C0h. Those VIDEOREFs write
+; the background/display surface; their FF delta pixels recover the clean old
+; grate position from mgpuzbkd rather than replacing that foreground matte.
 
 0000  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 0004  16 07 01 B0                            LOADSTRING                    dst=v[0x107], values=[0]

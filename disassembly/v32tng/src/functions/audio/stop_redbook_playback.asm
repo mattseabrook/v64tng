@@ -1,11 +1,11 @@
 ; PE virtual entry 00407290
 ; Ghidra working symbol: FUN_00407290
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role: calls AIL_redbook_stop for the active Redbook handle.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_00407290_part_00 0
+%macro emit_stop_redbook_playback_part_00 0
     %%fragment_start:
-func_00407290:
+stop_redbook_playback:
     %%insn_00407290:
     push ebp ; 00407290 55
     %if ($ - %%insn_00407290) > 1

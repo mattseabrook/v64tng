@@ -25,9 +25,11 @@ if [[ $# -ne 0 ]]; then
 fi
 
 rebuilt="$build_dir/V130-rebuilt-unpacked.exe"
-deploy_dir="/mnt/T7G"
-deployed="$deploy_dir/T7G.EXE"
+deploy_dir="$project_dir/../../T7G"
+deployed="$deploy_dir/V.EXE"
+packed_backup="$deploy_dir/V.EXE.BAK"
 unpacked_hash="f2f7febb70b5008ee94e535b0224e918eeec4c71404c899c0d6b50f10c0816c4"
+packed_hash="e01c3a49cede63ad409e67ce10fdb9f98c6f42600cdfd67124b0d03f1c001585"
 
 if rg --line-number '^[[:space:]]*incbin([[:space:]]|$)' \
     "$project_dir/src"; then
@@ -44,8 +46,12 @@ verify_hash "$rebuilt" "$unpacked_hash"
 echo "V 1.30: canonical unpacked SHA-256 verified"
 
 if [[ "${V_DISASSEMBLY_NO_DEPLOY:-0}" != "1" ]]; then
-    sudo mkdir -p "$deploy_dir"
-    sudo install -m 0755 "$rebuilt" "$deployed"
+    mkdir -p "$deploy_dir"
+    if [[ -f "$deployed" && ! -e "$packed_backup" ]]; then
+        verify_hash "$deployed" "$packed_hash"
+        cp --preserve=mode,timestamps "$deployed" "$packed_backup"
+    fi
+    install -m 0755 "$rebuilt" "$deployed"
     verify_hash "$deployed" "$unpacked_hash"
     echo "V 1.30: deployed rebuilt player to $deployed"
 else

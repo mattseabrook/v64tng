@@ -8,6 +8,8 @@
 ; Trace 20260809-164423 runtime-verified the no-save boot, exact Zaphod state machine/rate-15 groovie.vdx response, hidden-map hotspot installation, and normal YES-to-quit path.
 ; Trace 20260809-170739 runtime-verified GETCD=1, the Start-New PLAYCD 02 path, synchronous vielogo.vdx prelude, and re-executed Red Book request.
 ; Trace 20260809-180432 runtime-verified a nonzero data-disc device handle with zero track-2 bounds, continued execution, and the complete intro resource sequence.
+; Trace 20260825-223925 runtime-verified LI.GRV's telescope sequence: each accepted letter executes 22h then 37h for one rectangle, and all 20 are required before v[0F5h]=49 at 082Ch.
+; Trace 20260903-225430 runtime-verified GRATE.GRV's two-surface animation contract: mgpuzbkd.vdx is installed with flags 0002h, while every sliding-grate VDX is configured with flags 00C0h (BF6+BF7). The foreground matte persists across those VIDEOREFs; they update the background/display surface without an implicit background-to-foreground copy.
 ; Generated losslessly; preserve byte identity after edits.
 
 %macro emit_run_grv_vm_part_00 0
@@ -388,7 +390,7 @@ run_grv_vm:
     %endif
     times 2 - ($ - %%insn_004022e1) db 0
     %%insn_004022e3:
-    call 0x407290 ; 004022E3 E8A84F0000
+    call stop_redbook_playback ; 004022E3 E8A84F0000
     %if ($ - %%insn_004022e3) > 5
         %error "LONG_004022E3"
     %endif
@@ -714,6 +716,10 @@ grv_opcode_dispatch:
         %error "LONG_00402403"
     %endif
     times 5 - ($ - %%insn_00402403) db 0
+; Opcode 06h VIDEOFLAG6_ON. GRATE.GRV pairs this one-shot surface-refresh/
+; drawing-transaction bit with BF7 for every grate-motion VDX (trace
+; 20260903-225430: configure flags 00C0h).
+grv_opcode_video_flag6_on:
     %%insn_00402408:
     mov cx,[0x41f2ac] ; 00402408 668B0DACF24100
     %if ($ - %%insn_00402408) > 7
@@ -6266,7 +6272,7 @@ grv_opcode_save_game:
     %endif
     times 1 - ($ - %%insn_00403581) db 0
     %%insn_00403582:
-    call 0x40716e ; 00403582 E8E73B0000
+    call set_active_midi_sequence_volume_ramp ; 00403582 E8E73B0000
     %if ($ - %%insn_00403582) > 5
         %error "LONG_00403582"
     %endif
@@ -7070,10 +7076,10 @@ grv_opcode_save_game:
         %error "LONG_00403825"
     %endif
     times 5 - ($ - %%insn_00403825) db 0
-; Opcode 37h COPY_RECT_TO_BG.  Decodes four 16-bit rectangle coordinates and
-; copies that presentation region; the dining trace reached this handler at
-; SCRIPT.GRV:347A and DR.GRV-adjacent parent paths.
-grv_opcode_copy_rectangle_to_background:
+; Opcode 37h COPY_RECT_TO_BG (historical mnemonic). Decodes four 16-bit
+; rectangle coordinates and restores that saved-background region into the
+; foreground. LI.GRV trace 20260825-223925 reached it once per accepted letter.
+grv_opcode_copy_background_rectangle_to_foreground:
     %%insn_0040382a:
     call 0x401473 ; 0040382A E844DCFFFF
     %if ($ - %%insn_0040382a) > 5
@@ -7195,7 +7201,7 @@ grv_opcode_copy_rectangle_to_background:
     %endif
     times 1 - ($ - %%insn_00403879) db 0
     %%insn_0040387a:
-    call 0x40a7aa ; 0040387A E82B6F0000
+    call copy_background_rectangle_to_foreground_0040a7aa ; 0040387A E82B6F0000
     %if ($ - %%insn_0040387a) > 5
         %error "LONG_0040387A"
     %endif

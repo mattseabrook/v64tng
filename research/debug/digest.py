@@ -659,6 +659,49 @@ def append_ui_section(lines, events):
     lines.append("")
 
 
+def append_input_section(lines, events, start_ms):
+    inputs = [
+        event for event in events
+        if event.get("probe") == "input.win32_message"
+    ]
+    if not inputs:
+        return
+    names = {
+        "0x0100": "WM_KEYDOWN",
+        "0x0101": "WM_KEYUP",
+        "0x0102": "WM_CHAR",
+        "0x0104": "WM_SYSKEYDOWN",
+        "0x0105": "WM_SYSKEYUP",
+        "0x0201": "WM_LBUTTONDOWN",
+        "0x0202": "WM_LBUTTONUP",
+        "0x0204": "WM_RBUTTONDOWN",
+        "0x0205": "WM_RBUTTONUP",
+        "0x0207": "WM_MBUTTONDOWN",
+        "0x0208": "WM_MBUTTONUP",
+        "0x020a": "WM_MOUSEWHEEL",
+    }
+    counts = Counter(str(event.get("message")) for event in inputs)
+    lines.append("Win32 input timeline (exact client coordinates for mouse events):")
+    lines.append(
+        "  totals: " + ", ".join(
+            f"{names.get(message, message)} x{count}"
+            for message, count in counts.most_common()
+        )
+    )
+    for event in inputs[:500]:
+        relative = (event.get("host_ms", start_ms) - start_ms) / 1000.0
+        message = str(event.get("message"))
+        detail = f"wparam={event.get('wparam')} lparam={event.get('lparam')}"
+        if isinstance(event.get("x"), int) and isinstance(event.get("y"), int):
+            detail += f" client=({event['x']},{event['y']})"
+        lines.append(
+            f"  [+{relative:8.3f}s] {names.get(message, message):16s} {detail}"
+        )
+    if len(inputs) > 500:
+        lines.append(f"  … {len(inputs) - 500} more; see events.ndjson")
+    lines.append("")
+
+
 def make_trace_rows(events, legacy_confident):
     rows = []
     anomalies = []
@@ -879,16 +922,7 @@ def main():
         append_save_section(lines, scene_events)
         append_ui_section(lines, scene_events)
 
-        inputs = Counter(
-            event.get("message")
-            for event in scene_events
-            if event.get("probe") == "input.win32_message"
-        )
-        if inputs:
-            lines.append("Win32 input messages:")
-            for message, count in inputs.most_common():
-                lines.append(f"  {message} x{count}")
-            lines.append("")
+        append_input_section(lines, scene_events, start_ms)
 
         if opcodes:
             lines.append("GRV opcode coverage:")

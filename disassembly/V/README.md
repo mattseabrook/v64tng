@@ -17,9 +17,9 @@ Run:
 
 The build assembles [`src/main.asm`](src/main.asm), rejects executable-byte
 `incbin` directives, and verifies the canonical unpacked SHA-256. Only after
-that check passes does it deploy the rebuilt executable as
-`/mnt/T7G/T7G.EXE`. The original `/mnt/T7G/V.EXE` is never removed or
-overwritten.
+that check passes does it deploy the rebuilt executable as the repository-local
+`../../T7G/V.EXE`. On the first deployment it preserves the packed retail
+player as `../../T7G/V.EXE.BAK`. The build does not access `/mnt/T7G`.
 
 Set `V_DISASSEMBLY_NO_DEPLOY=1` to perform the complete build and verification
 without deploying.
@@ -301,7 +301,7 @@ Owned ranges are inclusive linear offsets into the unpacked load image.
 | `0105A` | `1000:105a` | verified-role | `decode_vdx_delta_frame` | `FUN_1000_105a` | `0105A–01216`<br>`01218–01234`<br>`01236–0127C`<br>`0127E–012BC`<br>`012C1–01396`<br>`01398–0168E`<br>`01691–0169A`<br>`0169C–01ED2`<br>`01ED5–01FE6`<br>`01FE8–0205C`<br>`0205E–0207A`<br>`0207C–0210A`<br>`0210C–02174`<br>`02178–02180`<br>`02182–02218`<br>`02260–02288`<br>`0228A–022A6`<br>`022A8–022E0`<br>`022E2–02303`<br>`02306–0230E` | [`src/functions/vdx/decode_vdx_delta_frame.asm`](src/functions/vdx/decode_vdx_delta_frame.asm) |
 | `0230F` | `1000:230f` | unidentified | `func_0230f` | `FUN_1000_230f` | `0230F–02369` | [`src/functions/unknown/0230f_func_0230f.asm`](src/functions/unknown/0230f_func_0230f.asm) |
 | `0236A` | `1000:236a` | verified-role | `decompress_vdx_lzss` | `FUN_1000_236a` | `0236A–023A4` | [`src/functions/vdx/decompress_vdx_lzss.asm`](src/functions/vdx/decompress_vdx_lzss.asm) |
-| `023A5` | `1000:23a5` | verified-role | `copy_rect_to_background` | `FUN_1000_23a5` | `023A5–02590` | [`src/functions/vdx/copy_rect_to_background.asm`](src/functions/vdx/copy_rect_to_background.asm) |
+| `023A5` | `1000:23a5` | verified-role | `copy_background_rectangle_to_foreground` | `FUN_1000_23a5` | `023A5–02590` | [`src/functions/vdx/copy_background_rectangle_to_foreground.asm`](src/functions/vdx/copy_background_rectangle_to_foreground.asm) |
 | `02591` | `1000:2591` | verified-role | `copy_background_to_foreground` | `FUN_1000_2591` | `02591–026E4` | [`src/functions/vdx/copy_background_to_foreground.asm`](src/functions/vdx/copy_background_to_foreground.asm) |
 | `026E5` | `1000:26e5` | unidentified | `func_026e5` | `FUN_1000_26e5` | `026E5–0276C` | [`src/functions/unknown/026e5_func_026e5.asm`](src/functions/unknown/026e5_func_026e5.asm) |
 | `0276D` | `1000:276d` | palette-use scanner for one-shot still-palette merge | `mark_used_background_palette_entries` | `FUN_1000_276d` | `0276D–02821` | [`src/functions/vdx/mark_used_background_palette_entries.asm`](src/functions/vdx/mark_used_background_palette_entries.asm) |

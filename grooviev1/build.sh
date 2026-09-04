@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT_DIR="${ROOT_DIR}/build"
 OUT_EXE="${OUT_DIR}/grooviev1.exe"
+OUT_NATIVE="${OUT_DIR}/grooviev1-native"
+LOCAL_T7G="${ROOT_DIR}/../T7G"
 
 mkdir -p "${OUT_DIR}"
 
@@ -26,10 +28,11 @@ echo "Building grooviev1 with ${CXX}..."
 
 echo "Built: ${OUT_EXE}"
 
-if [[ -d /mnt/T7G ]]; then
-  if cp -f "${OUT_EXE}" /mnt/T7G/grooviev1.exe; then
-    echo "Deployed: /mnt/T7G/grooviev1.exe"
-  else
-    echo "WARN: Build succeeded, but deploy to /mnt/T7G failed (permission denied or read-only)."
-  fi
-fi
+NATIVE_CXX="${CXX_NATIVE:-g++}"
+echo "Building native raw-frame encoder with ${NATIVE_CXX}..."
+"${NATIVE_CXX}" "${ROOT_DIR}/main.cpp" -o "${OUT_NATIVE}" -std=c++20 -O2
+echo "Built: ${OUT_NATIVE}"
+
+mkdir -p "${LOCAL_T7G}"
+install -m 0755 "${OUT_EXE}" "${LOCAL_T7G}/grooviev1.exe"
+echo "Deployed: ${LOCAL_T7G}/grooviev1.exe"

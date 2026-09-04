@@ -137,6 +137,17 @@ class DecoderTests(unittest.TestCase):
                 "schema": "v64tng.trace/2",
                 "seq": 13,
                 "host_ms": 20,
+                "probe": "input.win32_message",
+                "message": "0x0201",
+                "wparam": "0x1",
+                "lparam": "0x00640032",
+                "x": 50,
+                "y": 100,
+            },
+            {
+                "schema": "v64tng.trace/2",
+                "seq": 14,
+                "host_ms": 21,
                 "probe": "grv.dispatch",
                 "script": "SCRIPT.GRV",
                 "script_base": "0x1000",
@@ -169,6 +180,8 @@ class DecoderTests(unittest.TestCase):
             self.assertIn('VIDEO_NAME "test.vdx" => "test.vdx"', scene)
             self.assertIn("Application popup evidence:", scene)
             self.assertIn("Cannot open test.vdx", scene)
+            self.assertIn("WM_LBUTTONDOWN", scene)
+            self.assertIn("client=(50,100)", scene)
             self.assertTrue((trace / "digest" / "report.json").is_file())
 
 

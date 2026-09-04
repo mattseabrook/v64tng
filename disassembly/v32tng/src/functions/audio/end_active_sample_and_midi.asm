@@ -1,11 +1,11 @@
 ; PE virtual entry 00407638
 ; Ghidra working symbol: FUN_00407638
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role: ends the active Miles digital sample and active MIDI sequence.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_00407638_part_00 0
+%macro emit_end_active_sample_and_midi_part_00 0
     %%fragment_start:
-func_00407638:
+end_active_sample_and_midi:
     %%insn_00407638:
     push ebp ; 00407638 55
     %if ($ - %%insn_00407638) > 1

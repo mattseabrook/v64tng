@@ -6,6 +6,8 @@
 #include <fstream>
 #include <format>
 
+#include "console.h"
+
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -249,6 +251,19 @@ uint16_t hotspotField(std::span<const uint8_t> bytes, size_t offset)
 {
 	return read16(bytes, offset);
 }
+
+std::string hexBytes(std::span<const uint8_t> bytes)
+{
+	std::string result;
+	result.reserve(bytes.size() * 3);
+	for (size_t index = 0; index < bytes.size(); ++index)
+	{
+		if (index)
+			result.push_back(' ');
+		result += std::format("{:02X}", bytes[index]);
+	}
+	return result;
+}
 } // namespace
 
 std::string_view GrvResource::name() const
@@ -368,6 +383,8 @@ std::expected<GrvRuntime, std::string> GrvRuntime::load(
 	runtime.scriptPath_ = scriptPath;
 	runtime.assetRoot_ = assetRoot;
 	runtime.saveConvention_ = saveConvention;
+	consoleLogf("GRV", "loaded {} ({} bytes) from {}", scriptPath.filename().string(),
+		runtime.bytes_.size(), scriptPath.string());
 	return runtime;
 }
 
@@ -696,6 +713,11 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 	size_t pc = entry;
 	for (size_t steps = 0; steps < 100000 && pc < bytes_.size(); ++steps)
 	{
+		// Both original engines own variable 0x103 as a byte timer. In the
+		// captured Windows VM it advances in the pre-dispatch path once the Miles
+		// pacing counter starts. Scripts use it for deterministic "random" ambient
+		// dialogue; LI.GRV resets and tests it to schedule the telescope taunts.
+		++variables_[0x103];
 		const uint8_t raw = bytes_[pc];
 		const uint8_t op = raw & 0x7f;
 		const size_t varBytes = (raw & 0x80) ? 1 : 2;
@@ -703,6 +725,11 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 		if (!endResult)
 			return std::unexpected(std::format("Truncated GRV instruction at 0x{:04X}", pc));
 		const size_t next = *endResult;
+		consoleLogf("GRV",
+			"{}+0x{:04X} step={} raw=0x{:02X} op=0x{:02X} next=0x{:04X} "
+			"depth={} loop=0x{:04X} video-flags=0x{:04X} bytes=[{}]",
+			scriptPath_.filename().string(), pc, steps, raw, op, next,
+			callDepth_, activeLoop_, videoFlags_, hexBytes(bytes_.subspan(pc, next - pc)));
 		auto variableAt = [&](size_t at) -> uint16_t
 		{
 			return varBytes == 1 ? bytes_[at] : read16(bytes_, at);
@@ -721,6 +748,8 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 				videoRateOverride_};
 			videoCommands_.push_back(command);
 			presentationCommands_.push_back(command);
+			consoleLogf("GRV", "queue VIDEO ref=0x{:04X} flags=0x{:04X} rate={}",
+				ref, command.flags, command.rateOverride);
 			videoFlags_ = 0;
 			videoRateOverride_ = 0;
 		};
@@ -767,6 +796,8 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 			break;
 		case 0x0b:
 			activeLoop_ = static_cast<uint16_t>(pc);
+			consoleLogf("GRV", "entered input loop at {}+0x{:04X}",
+				scriptPath_.filename().string(), pc);
 			return true;
 		case 0x15:
 			pc = read16(bytes_, pc + 1);
@@ -950,6 +981,8 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 			break;
 		case 0x2a:
 			ended_ = true;
+			consoleLogf("GRV", "ENDSCRIPT at {}+0x{:04X}",
+				scriptPath_.filename().string(), pc);
 			return false;
 		case 0x2c:
 			persistentHotspots_[0] = static_cast<uint16_t>(pc);
@@ -1181,6 +1214,10 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 				(hasB ? 0 : 2) | (hasAt ? 0 : 1));
 			break;
 		}
+		case 0x4d:
+			presentationCommands_.emplace_back(
+				GrvPlayCdCommand{bytes_[pc + 1]});
+			break;
 		default:
 			return std::unexpected(unimplementedOpcode(raw, static_cast<uint16_t>(pc)));
 		}
@@ -1191,6 +1228,7 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 
 std::expected<GrvBoot, std::string> GrvRuntime::boot()
 {
+	consoleLogf("GRV", "boot VM: {}", scriptPath_.filename().string());
 	videoCommands_.clear();
 	presentationCommands_.clear();
 	videoFlags_ = 0;
@@ -1208,6 +1246,8 @@ std::expected<GrvBoot, std::string> GrvRuntime::boot()
 
 std::expected<GrvTransition, std::string> GrvRuntime::follow(uint16_t target)
 {
+	consoleLogf("GRV", "follow target 0x{:04X} from active loop 0x{:04X}",
+		target, activeLoop_);
 	videoCommands_.clear();
 	presentationCommands_.clear();
 	videoFlags_ = 0;
@@ -1223,6 +1263,8 @@ std::expected<GrvTransition, std::string> GrvRuntime::follow(uint16_t target)
 std::expected<std::optional<GrvTransition>, std::string>
 GrvRuntime::handleKey(uint8_t key)
 {
+	consoleLogf("GRV", "input key 0x{:02X} ('{}') at loop 0x{:04X}", key,
+		key >= 0x20 && key < 0x7f ? static_cast<char>(key) : '?', activeLoop_);
 	if (!activeLoop_ || activeLoop_ >= bytes_.size())
 		return std::optional<GrvTransition>{};
 	size_t pc = activeLoop_ + 1;
@@ -1412,8 +1454,16 @@ std::optional<uint16_t> GrvRuntime::activateAt(
 {
 	const auto hotspot = hotspotAt(clientX, clientY, clientWidth, clientHeight);
 	if (!hotspot)
+	{
+		consoleLogf("GRV", "pointer ({},{}) missed every hotspot in loop 0x{:04X}",
+			clientX, clientY, activeLoop_);
 		return std::nullopt;
+	}
 	lastCursor_ = hotspot->cursor();
+	consoleLogf("GRV",
+		"pointer ({},{}) activated hotspot @0x{:04X} rect=({},{}..{},{}), cursor={}, target=0x{:04X}",
+		clientX, clientY, hotspot->instructionOffset(), hotspot->left(), hotspot->top(),
+		hotspot->right(), hotspot->bottom(), hotspot->cursor(), hotspot->target());
 	return hotspot->target();
 }
 
@@ -1439,5 +1489,7 @@ std::optional<GrvResource> GrvRuntime::resolve(uint16_t ref) const
 	if (!file.read(result.filename.data(), 12))
 		return std::nullopt;
 	result.filename[12] = '\0';
+	consoleLogf("RESOURCE", "resolve ref=0x{:04X} archive={} index={} -> {}",
+		ref, archive, entryIndex, result.name());
 	return result;
 }

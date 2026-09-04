@@ -61,6 +61,8 @@ VULKAN_DIR="/opt/VulkanSDK/1.4.313.2"
 ZLIB_DIR="/opt/windows-libs/zlib"
 LIBPNG_DIR="/opt/windows-libs/libpng"
 ADLMIDI_DIR="/opt/windows-libs/ADLMIDI"
+OGG_DIR="/opt/windows-libs/libogg"
+VORBIS_DIR="/opt/windows-libs/libvorbis"
 
 # Parallel compilation settings
 MAX_JOBS=$(nproc)
@@ -97,6 +99,99 @@ log_output() {
         fi
         rm -f "$tmp_file"
     fi
+}
+
+# Advance the source-controlled release identity once per actual build. The
+# human version is 1.0.YYYYMMDD.N. Both output files are prepared and validated
+# before either is replaced, so an interrupted transform cannot leave the
+# header and README disagreeing.
+update_build_version() {
+    local version_header="include/version.h"
+    local version_readme="README.md"
+    local current_version
+    current_version=$(sed -nE 's/^#define V64TNG_VERSION_STRING "([^"]+)"$/\1/p' "$version_header")
+    if [[ ! "$current_version" =~ ^1\.0\.([0-9]{8})\.([0-9]+)$ ]]; then
+        echo -e "${COLOR_RED}${EMOJI_FAILED} ERROR: Invalid current version: ${current_version}${COLOR_RESET}"
+        exit 1
+    fi
+
+    local previous_date="${BASH_REMATCH[1]}"
+    local previous_build=$((10#${BASH_REMATCH[2]}))
+    local build_date="${V64TNG_BUILD_DATE:-$(TZ=America/New_York date +%Y%m%d)}"
+    if [[ ! "$build_date" =~ ^[0-9]{8}$ ]]; then
+        echo -e "${COLOR_RED}${EMOJI_FAILED} ERROR: Invalid build date: ${build_date}${COLOR_RESET}"
+        exit 1
+    fi
+
+    local build_year="${build_date:0:4}"
+    local build_month="${build_date:4:2}"
+    local build_day="${build_date:6:2}"
+    local normalized_date
+    normalized_date=$(TZ=America/New_York date -d "${build_year}-${build_month}-${build_day}" +%Y%m%d 2>/dev/null || true)
+    if [[ "$normalized_date" != "$build_date" ]]; then
+        echo -e "${COLOR_RED}${EMOJI_FAILED} ERROR: Invalid calendar date: ${build_date}${COLOR_RESET}"
+        exit 1
+    fi
+
+    local daily_build=1
+    if [[ "$previous_date" == "$build_date" ]]; then
+        daily_build=$((previous_build + 1))
+    fi
+    if ((daily_build > 99)); then
+        echo -e "${COLOR_RED}${EMOJI_FAILED} ERROR: Daily build counter exceeds 99${COLOR_RESET}"
+        exit 1
+    fi
+
+    local month_day=$((10#${build_month} * 100 + 10#${build_day}))
+    local day_of_year
+    day_of_year=$(TZ=America/New_York date -d "${build_year}-${build_month}-${build_day}" +%j)
+    day_of_year=$((10#$day_of_year))
+    # VS_FIXEDFILEINFO has only four 16-bit fields. Encode the year directly
+    # and pack day-of-year plus the 0..99 daily build into the revision field.
+    local file_revision=$((day_of_year * 100 + daily_build))
+    local next_version="1.0.${build_date}.${daily_build}"
+
+    local header_tmp
+    local readme_tmp
+    header_tmp=$(mktemp "${version_header}.tmp.XXXXXX")
+    readme_tmp=$(mktemp "${version_readme}.tmp.XXXXXX")
+    if ! sed -E -e "s/^#define V64TNG_VERSION_MAJOR .*/#define V64TNG_VERSION_MAJOR 1/" -e "s/^#define V64TNG_VERSION_MINOR .*/#define V64TNG_VERSION_MINOR 0/" -e "s/^#define V64TNG_VERSION_YEAR .*/#define V64TNG_VERSION_YEAR ${build_year}/" -e "s/^#define V64TNG_VERSION_DATE_CODE .*/#define V64TNG_VERSION_DATE_CODE ${month_day}/" -e "s/^#define V64TNG_VERSION_DAILY_BUILD .*/#define V64TNG_VERSION_DAILY_BUILD ${daily_build}/" -e "s/^#define V64TNG_VERSION_STRING \"[^\"]+\"/#define V64TNG_VERSION_STRING \"${next_version}\"/" -e "s/^#define V64TNG_VERSION_WSTRING L\"[^\"]+\"/#define V64TNG_VERSION_WSTRING L\"${next_version}\"/" -e "s/^#define V64TNG_FILE_VERSION .*/#define V64TNG_FILE_VERSION 1,0,${build_year},${file_revision}/" "$version_header" > "$header_tmp"; then
+        rm -f "$header_tmp" "$readme_tmp"
+        exit 1
+    fi
+    if ! sed -E "s/^Current release: \*\*1\.0\.[0-9]{8}\.[0-9]+\*\*$/Current release: **${next_version}**/" "$version_readme" > "$readme_tmp"; then
+        rm -f "$header_tmp" "$readme_tmp"
+        exit 1
+    fi
+
+    if [[ $(grep -Ec '^#define V64TNG_VERSION_(MAJOR|MINOR|YEAR|DATE_CODE|DAILY_BUILD|STRING|WSTRING) ' "$header_tmp") -ne 7 ]] ||
+       [[ $(grep -Ec '^#define V64TNG_FILE_VERSION ' "$header_tmp") -ne 1 ]] ||
+       [[ $(grep -Fc "Current release: **${next_version}**" "$readme_tmp") -ne 1 ]]; then
+        rm -f "$header_tmp" "$readme_tmp"
+        echo -e "${COLOR_RED}${EMOJI_FAILED} ERROR: Version update validation failed${COLOR_RESET}"
+        exit 1
+    fi
+
+    chmod --reference="$version_header" "$header_tmp"
+    chmod --reference="$version_readme" "$readme_tmp"
+    mv "$header_tmp" "$version_header"
+    mv "$readme_tmp" "$version_readme"
+
+    mapfile -t version_literals < <(rg -o --no-filename '1\.0\.[0-9]{8}\.[0-9]+' include src resource.rc README.md | sort -u)
+    if [[ ${#version_literals[@]} -ne 1 ||
+          "${version_literals[0]}" != "$next_version" ]]; then
+        echo -e "${COLOR_RED}${EMOJI_FAILED} ERROR: Version literals are inconsistent after update${COLOR_RESET}"
+        exit 1
+    fi
+
+    # The object cache is source-timestamp based. Recompile every translation
+    # unit that embeds the header and force the Windows version resource too.
+    while IFS= read -r source; do
+        touch "$source"
+    done < <(rg -l '#include "version\.h"' src --glob '*.cpp')
+
+    banner "${EMOJI_PACKAGE} Build Version"
+    echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} ${current_version} -> ${next_version}${COLOR_RESET}"
 }
 
 #===============================================================================
@@ -303,6 +398,8 @@ if [[ "$1" == "clean" ]]; then
     exit 0
 fi
 
+update_build_version
+
 # Determine build type
 BUILD_TYPE="Release"
 if [[ "$1" == "debug" ]]; then
@@ -326,6 +423,7 @@ RESOURCE_RC="resource.rc"
 RESOURCE_INPUTS=(
     "$RESOURCE_RC"
     "resource.h"
+    "include/version.h"
     "SystemInformation.png"
     "icon.ico"
     "sc55.sf2"
@@ -524,10 +622,13 @@ fi
 USER_INCLUDES=(
     "-I./include"
     "-I$BUILD_DIR"
-    "-I$ZLIB_DIR/include"
-    "-I$LIBPNG_DIR/include"
-    "-I$ADLMIDI_DIR/include"
-    "-I$VULKAN_DIR/Include"
+    "-imsvc$ZLIB_DIR/include"
+    "-imsvc$LIBPNG_DIR/include"
+    "-imsvc$ADLMIDI_DIR/include"
+    "-imsvc$OGG_DIR/include"
+    "-imsvc$VORBIS_DIR/include"
+    "-imsvc$VULKAN_DIR/Include"
+    "-imsvc./include/schellingb"
 )
 
 COMMON_FLAGS=(
@@ -541,7 +642,6 @@ COMMON_FLAGS=(
     "/MT"
     "-fexceptions"
     "-fcxx-exceptions"
-    "-fopenmp"
     "-msse2"
     "-msse3"
     "-mssse3"
@@ -552,15 +652,17 @@ COMMON_FLAGS=(
     "-fms-compatibility"
     "-fms-compatibility-version=19.37"
     "-D_MT"
-    "-Wall"
+    "/W4"
     "-Wextra"
     "-Wpedantic"
     "-Wshadow"
     "-Wnon-virtual-dtor"
-    "-Wold-style-cast"
     "-Wcast-align"
     "-Wunused"
     "-Woverloaded-virtual"
+    # Required target/compiler extensions used by COM and the VDX decoder.
+    "-Wno-language-extension-token"
+    "-Wno-gnu-case-range"
     "-Wno-unknown-argument"
     "-Wno-unused-command-line-argument"
     "-Wno-c++98-compat"
@@ -787,6 +889,8 @@ LINKER_ARGS=(
     "/libpath:$ZLIB_DIR/lib"
     "/libpath:$LIBPNG_DIR/lib"
     "/libpath:$ADLMIDI_DIR/lib"
+    "/libpath:$OGG_DIR/lib"
+    "/libpath:$VORBIS_DIR/lib"
     "/libpath:$VULKAN_DIR/Lib"
     "/libpath:$DETECTED_SDK_LIB/um/$DETECTED_LIB_ARCH"
     "/libpath:$DETECTED_SDK_LIB/ucrt/$DETECTED_LIB_ARCH"
@@ -794,8 +898,12 @@ LINKER_ARGS=(
     "zlib.lib"
     "libpng.lib"
     "ADLMIDI.lib"
+    # Static Ogg Vorbis decoder used by the GRV PLAYCD compatibility path.
+    # Keeping it static avoids an extra DLL deployment beside v64tng.exe.
+    "vorbisfile.lib"
+    "vorbis.lib"
+    "ogg.lib"
     "vulkan-1.lib"
-    "libomp.lib"
     "user32.lib"
     "gdi32.lib"
     "shlwapi.lib"
@@ -857,8 +965,8 @@ if clang-cl "${COMPILER_ARGS[@]}" -o "$OUTPUT_EXE" /link "${LINKER_ARGS[@]}" 2>"
         echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Link completed in ${LINK_DURATION}s${COLOR_RESET}"
     fi
 else
-    log_output "$LINK_LOG"
     cat "$LINK_LOG"
+    log_output "$LINK_LOG"
     echo -e "${COLOR_RED}${EMOJI_FAILED} ERROR: Linking failed${COLOR_RESET}"
     exit 1
 fi

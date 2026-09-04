@@ -1,11 +1,12 @@
 ; PE virtual entry 00407188
 ; Ghidra working symbol: FUN_00407188
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role: reacquires Miles digital and MIDI driver handles when their
+; respective released-state flags are set.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_00407188_part_00 0
+%macro emit_reacquire_miles_audio_devices_part_00 0
     %%fragment_start:
-func_00407188:
+reacquire_miles_audio_devices:
     %%insn_00407188:
     push ebp ; 00407188 55
     %if ($ - %%insn_00407188) > 1

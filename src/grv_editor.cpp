@@ -720,7 +720,8 @@ LRESULT CALLBACK EditorProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
 
 void registerClasses(HINSTANCE instance)
 {
-    WNDCLASSEXW preview{sizeof(preview)};
+    WNDCLASSEXW preview{};
+    preview.cbSize = sizeof(preview);
     preview.style = CS_HREDRAW | CS_VREDRAW;
     preview.lpfnWndProc = PreviewProc;
     preview.hInstance = instance;
@@ -729,7 +730,8 @@ void registerClasses(HINSTANCE instance)
     preview.lpszClassName = kPreviewClass;
     RegisterClassExW(&preview);
 
-    WNDCLASSEXW editor{sizeof(editor)};
+    WNDCLASSEXW editor{};
+    editor.cbSize = sizeof(editor);
     editor.style = CS_HREDRAW | CS_VREDRAW;
     editor.lpfnWndProc = EditorProc;
     editor.hInstance = instance;

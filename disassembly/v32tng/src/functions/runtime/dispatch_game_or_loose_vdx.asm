@@ -1,6 +1,7 @@
 ; PE virtual entry 00408E75
 ; Ghidra working symbol: FUN_00408e75
-; Verified empty command line selects game; non-empty selects loose VDX.
+; Verified empty command line selects game; any non-empty WinMain lpCmdLine is
+; treated as one exact loose-VDX filename, not as a switch list.
 ; Generated losslessly; preserve byte identity after edits.
 
 %macro emit_dispatch_game_or_loose_vdx_part_00 0

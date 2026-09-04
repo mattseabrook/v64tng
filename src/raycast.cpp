@@ -19,6 +19,7 @@
 #include "game.h"
 #include "basement.h"
 #include "megatexture.h"
+#include "map_overlay.h"
 
 // Constants
 static constexpr float PI = std::numbers::pi_v<float>;
@@ -35,6 +36,7 @@ struct RaycastConfig
     float fovMul = 1.0f;
     int supersample = 1;
     float baseTorchRange = 20.0f;
+    bool megatexture = false; // default OFF: flat-shaded walls; enable via raycastMegatexture=true
 };
 static RaycastConfig g_rayConfig;
 
@@ -273,6 +275,9 @@ static void cacheConfigValues()
     g_rayConfig.supersample = std::clamp(config.contains("raycastSupersample")
         ? config["raycastSupersample"].get<int>() : 1, 1, 8);
     g_rayConfig.baseTorchRange = 20.0f;
+    // Megatexture is opt-in and defaults OFF (classic flat-shaded walls).
+    g_rayConfig.megatexture = config.contains("raycastMegatexture")
+        ? config["raycastMegatexture"].get<bool>() : false;
 }
 
 // Normalize angle to [0, 2π) using std::fmod (branchless)
@@ -527,7 +532,8 @@ void accumulateColumn(int x,
 
             uint8_t wallR_px = wallR, wallG_px = wallG, wallB_px = wallB; // defaults
             const float baseColor = 120.0f;
-            
+
+            if (g_rayConfig.megatexture)
             {
                 uint32_t texSample = sampleMegatextureEdge(wallEdge, hit.wallX, v);
                 uint8_t texR = (texSample >> 0) & 0xFF;
@@ -699,6 +705,7 @@ void renderRaycastView(const TileMap &tileMap,
     
     drawCrosshair(fb, pitch, w, h);
     drawMeasuredFpsOverlay(fb, pitch, w, h);
+    renderMapOverlay(fb, pitch, w, h);
 
     // Lightweight overlay via window title (avoids console/files)
 #ifdef _WIN32
@@ -931,7 +938,7 @@ Description:
 void initRaycaster()
 {
     state.raycast.enabled = true;
-    state.raycast.map = &map;
+    state.raycast.map = &basementMap;
     state.frameTiming.currentFPS =
         static_cast<double>(std::max(1, getDisplayRefreshRate()));
     float fovDeg = config.contains("raycastFov") ? static_cast<float>(config["raycastFov"]) : 90.0f;
@@ -940,12 +947,14 @@ void initRaycaster()
     // Hide the OS cursor in raycast mode to avoid visible system pointer
     ShowCursor(FALSE);
 
-    // Ensure megatexture is ready (avoid duplicate heavy work if main already did it)
+    // Megatexture is opt-in (raycastMegatexture=true). Edges are needed by the
+    // GPU renderers regardless; the heavy .mtx tile set only loads when the
+    // CPU renderer will actually sample it.
     if (megatex.edges.empty())
     {
-        analyzeMapEdges(map);
+        analyzeMapEdges(basementMap);
     }
-    if (!megatex.loaded)
+    if (g_rayConfig.megatexture && !megatex.loaded)
     {
         // Try current working dir MTX as a generic fallback
         loadMTX("megatexture.mtx");
@@ -960,4 +969,6 @@ void initRaycaster()
 
     state.animation.reset();
     state.transient_animation.reset();
+    resetRaycastInput();
+    refreshRendererForCurrentMode();
 }

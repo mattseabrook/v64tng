@@ -1,6 +1,10 @@
 ; Linear entry 0105A (1000:105a)
 ; Ghidra working symbol: FUN_1000_105a
 ; Verified VDX 25h palette-update and 4x4-tile delta compositor; unchanged tiles retain the prior persistent frame.
+; BF7 delta compositing uses the persistent foreground matte to resolve erase/
+; transparent pixels while writing the independent background. Win32 trace
+; 20260903-225430 confirms GRATE.GRV exercises this path with BF6+BF7 (00C0h)
+; for every sliding-grate clip; correspondence here follows the shared script.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
 %macro emit_decode_vdx_delta_frame_part_00 0

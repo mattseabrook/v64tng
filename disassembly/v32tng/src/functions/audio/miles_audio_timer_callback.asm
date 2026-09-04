@@ -1,11 +1,12 @@
 ; PE virtual entry 004072A1
 ; Ghidra working symbol: FUN_004072a1
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role: periodic multimedia-timer callback installed by the Miles
+; initializer. It guards reentry and advances the audio pacing counters.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_004072a1_part_00 0
+%macro emit_miles_audio_timer_callback_part_00 0
     %%fragment_start:
-func_004072a1:
+miles_audio_timer_callback:
     %%insn_004072a1:
     push ebp ; 004072A1 55
     %if ($ - %%insn_004072a1) > 1
