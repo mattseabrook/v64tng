@@ -205,6 +205,185 @@ static void PrepareVDXPlayback(std::string_view filename, std::span<const uint8_
 static void ShowVDXPlaybackFrame();
 static void StopVDXPlayback(bool resetFrame);
 
+// All dimensions are logical pixels; split ratios survive window/DPI changes.
+static UINT g_toolsDpi = 96;
+static HFONT g_toolsFont = nullptr, g_toolsBoldFont = nullptr;
+static HWND g_fullscreenButton = nullptr;
+static bool g_toolsFullscreen = false;
+static WINDOWPLACEMENT g_toolsPlacement{};
+static LONG_PTR g_toolsWindowStyle = 0;
+static constexpr int IDC_TOOLS_FULLSCREEN = 1090;
+struct ToolSplit {
+    RECT hit{}, area{};
+    bool vertical = false;
+    float ratio = 0.5f;
+};
+static std::array<ToolSplit, 4> g_toolSplits{{
+    {{}, {}, true, .43f}, {{}, {}, false, .24f},
+    {{}, {}, false, .76f}, {{}, {}, true, .40f}
+}};
+static int g_dragSplit = -1;
+static int ToolPx(int value) { return MulDiv(value, g_toolsDpi, 96); }
+static void LayoutTools(HWND hwnd);
+
+static void ToggleToolsFullscreen(HWND hwnd)
+{
+    if (!g_toolsFullscreen) {
+        g_toolsPlacement.length = sizeof(g_toolsPlacement);
+        GetWindowPlacement(hwnd, &g_toolsPlacement);
+        g_toolsWindowStyle = GetWindowLongPtrW(hwnd, GWL_STYLE);
+        MONITORINFO monitor{};
+        monitor.cbSize = sizeof(monitor);
+        if (!GetMonitorInfoW(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &monitor))
+            return;
+        g_toolsFullscreen = true;
+        SetWindowLongPtrW(hwnd, GWL_STYLE, g_toolsWindowStyle & ~WS_OVERLAPPEDWINDOW);
+        SetWindowPos(hwnd, nullptr, monitor.rcMonitor.left, monitor.rcMonitor.top,
+            monitor.rcMonitor.right - monitor.rcMonitor.left,
+            monitor.rcMonitor.bottom - monitor.rcMonitor.top,
+            SWP_NOZORDER | SWP_FRAMECHANGED);
+    } else {
+        g_toolsFullscreen = false;
+        SetWindowLongPtrW(hwnd, GWL_STYLE, g_toolsWindowStyle);
+        SetWindowPlacement(hwnd, &g_toolsPlacement);
+        SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+    }
+    SetWindowTextW(g_fullscreenButton,
+        g_toolsFullscreen ? L"Exit full screen (F11)" : L"Full screen (F11)");
+}
+
+static void ApplyToolsFont(HWND hwnd)
+{
+    HFONT oldFont = g_toolsFont, oldBold = g_toolsBoldFont;
+    static UINT previousDpi = 96;
+    const UINT columnDpi = oldFont ? previousDpi : 96;
+    for (HWND list : {g_assetControls[4], g_archiveControls[2],
+            g_vdxControls[5], g_vdxControls[9], g_vdxControls[12]}) {
+        const int count = Header_GetItemCount(ListView_GetHeader(list));
+        for (int i = 0; i < count; ++i) {
+            int width = ListView_GetColumnWidth(list, i);
+            if (!oldFont) width = (std::max)(width, i == 0 ? 42 : 62);
+            ListView_SetColumnWidth(list, i, MulDiv(width, g_toolsDpi, columnDpi));
+        }
+    }
+    previousDpi = g_toolsDpi;
+    g_toolsFont = CreateFontW(-MulDiv(9, g_toolsDpi, 72), 0, 0, 0, FW_NORMAL,
+        FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+        CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+    LOGFONTW bold{};
+    GetObjectW(g_toolsFont, sizeof(bold), &bold);
+    bold.lfWeight = FW_SEMIBOLD;
+    g_toolsBoldFont = CreateFontIndirectW(&bold);
+    EnumChildWindows(hwnd, [](HWND child, LPARAM) -> BOOL {
+        SendMessageW(child, WM_SETFONT, reinterpret_cast<WPARAM>(g_toolsFont), TRUE);
+        wchar_t name[32]{};
+        GetClassNameW(child, name, 32);
+        if (wcscmp(name, L"Button") == 0 || wcscmp(name, L"Edit") == 0 ||
+            wcscmp(name, WC_LISTVIEWW) == 0 || wcscmp(name, WC_TABCONTROLW) == 0)
+            SetWindowLongPtrW(child, GWL_STYLE, GetWindowLongPtrW(child, GWL_STYLE) | WS_TABSTOP);
+        return TRUE;
+    }, 0);
+    for (int index : {3, 6, 8, 10, 14})
+        SendMessageW(g_vdxControls[index], WM_SETFONT,
+            reinterpret_cast<WPARAM>(g_toolsBoldFont), TRUE);
+    if (oldFont) DeleteObject(oldFont);
+    if (oldBold) DeleteObject(oldBold);
+}
+
+static void LayoutTools(HWND hwnd)
+{
+    if (!g_hTab) return;
+    RECT rc{};
+    GetClientRect(hwnd, &rc);
+    if (rc.right <= 0 || rc.bottom <= 0) return;
+    const int pad = ToolPx(8), gap = ToolPx(6), row = ToolPx(24), label = ToolPx(18);
+    const int width = (std::max)(1, static_cast<int>(rc.right) - 2 * pad);
+    const int top = pad + row + gap, bottom = (std::max)(top + row, static_cast<int>(rc.bottom) - pad - label);
+    HDWP batch = BeginDeferWindowPos(40);
+    auto move = [&](HWND control, int x, int y, int w, int h) {
+        if (!control) return;
+        w = (std::max)(1, w); h = (std::max)(1, h);
+        if (batch) batch = DeferWindowPos(batch, control, nullptr, x, y, w, h,
+            SWP_NOZORDER | SWP_NOACTIVATE);
+        else SetWindowPos(control, nullptr, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
+    };
+    move(g_hTab, pad, pad, width - ToolPx(155) - gap, row);
+    move(g_fullscreenButton, rc.right - pad - ToolPx(155), pad, ToolPx(155), row);
+    auto fileRow = [&](HWND edit, HWND button, int buttonWidth) {
+        move(edit, pad, top, width - buttonWidth - gap, row);
+        move(button, rc.right - pad - buttonWidth, top, buttonWidth, row);
+    };
+    fileRow(g_assetControls[0], g_assetControls[1], ToolPx(112));
+    move(g_assetControls[2], pad, top + row + gap, ToolPx(42), row);
+    move(g_assetControls[3], pad + ToolPx(46), top + row + gap, width - ToolPx(46), row);
+    move(g_assetControls[4], pad, top + 2 * (row + gap), width, bottom - top - 2 * (row + gap) - gap);
+    move(g_assetControls[5], pad, bottom, width, label);
+    fileRow(g_archiveControls[0], g_archiveControls[1], ToolPx(80));
+    move(g_archiveControls[2], pad, top + row + gap, width, bottom - top - row - 2 * gap);
+    move(g_archiveControls[3], pad, bottom, width, label);
+    move(g_cursorControls[0], pad, top, width, 2 * row);
+    move(g_cursorControls[1], pad, top + 2 * row + gap, ToolPx(132), row);
+    fileRow(g_vdxControls[0], g_vdxControls[1], ToolPx(80));
+    move(g_vdxControls[2], pad, top + row + gap, width, label);
+    move(g_vdxControls[13], pad, bottom, width, label);
+    const int y = top + row + gap + label + gap, end = bottom - gap;
+    auto split = [&](int index, RECT area, int minFirst, int minLast) {
+        auto& s = g_toolSplits[index];
+        s.area = area;
+        int start = s.vertical ? area.left : area.top;
+        int length = (s.vertical ? area.right - area.left : area.bottom - area.top) - gap;
+        length = (std::max)(0, length);
+        int low = (std::min)(minFirst, length / 2);
+        int high = (std::max)(low, length - (std::min)(minLast, length / 2));
+        int position = start + std::clamp(static_cast<int>(length * s.ratio), low, high);
+        s.hit = area;
+        if (s.vertical) { s.hit.left = position; s.hit.right = position + gap; }
+        else { s.hit.top = position; s.hit.bottom = position + gap; }
+        return position;
+    };
+    const int divider = split(0, {pad, y, rc.right - pad, end}, ToolPx(320), ToolPx(280));
+    const int leftWidth = divider - pad, rightX = divider + gap;
+    const int rightWidth = rc.right - pad - rightX;
+    const int upper = split(1, {pad, y, divider, end - ToolPx(160)}, ToolPx(90), ToolPx(80));
+    const int lower = split(2, {pad, upper + gap, divider, end}, ToolPx(115), ToolPx(85));
+    move(g_vdxControls[3], pad, y, leftWidth, label);
+    move(g_vdxControls[4], pad, y + label, leftWidth, label);
+    move(g_vdxControls[5], pad, y + 2 * label, leftWidth, upper - y - 2 * label);
+    const int middle = upper + gap;
+    const int paletteEdge = split(3, {pad, middle, divider, lower}, ToolPx(124), ToolPx(150));
+    const int paletteWidth = paletteEdge - pad, deltaX = paletteEdge + gap;
+    move(g_vdxControls[6], pad, middle, paletteWidth, label);
+    move(g_vdxControls[7], pad, middle + label, paletteWidth, lower - middle - label - row - gap);
+    move(g_vdxControls[16], pad, lower - row, paletteWidth, row);
+    move(g_vdxControls[8], deltaX, middle, divider - deltaX, label);
+    move(g_vdxControls[9], deltaX, middle + label, divider - deltaX, lower - middle - label);
+    move(g_vdxControls[10], pad, lower + gap, leftWidth, label);
+    move(g_vdxControls[11], pad, lower + gap + label, leftWidth, label);
+    move(g_vdxControls[12], pad, lower + gap + 2 * label, leftWidth, end - lower - gap - 2 * label);
+    move(g_vdxControls[14], rightX, y, rightWidth, label);
+    move(g_vdxControls[15], rightX, y + label, rightWidth, end - y - 2 * label - row - gap);
+    const int buttonWidth = (std::min)(ToolPx(78), (rightWidth - 3 * gap) / 4);
+    for (int i = 0; i < 4; ++i)
+        move(g_vdxPlaybackControls[i], rightX + i * (buttonWidth + gap), end - label - row, buttonWidth, row);
+    move(g_vdxPlaybackControls[4], rightX, end - label, rightWidth, label);
+    if (batch) EndDeferWindowPos(batch);
+    InvalidateRect(hwnd, nullptr, FALSE);
+    InvalidateRect(g_vdxControls[7], nullptr, FALSE);
+    InvalidateRect(g_vdxControls[15], nullptr, FALSE);
+}
+
+static int HitToolSplit(HWND hwnd)
+{
+    if (g_currentTab != TAB_VDX_INFO) return -1;
+    POINT point{};
+    GetCursorPos(&point);
+    ScreenToClient(hwnd, &point);
+    for (int i = 0; i < static_cast<int>(g_toolSplits.size()); ++i)
+        if (PtInRect(&g_toolSplits[i].hit, point)) return i;
+    return -1;
+}
+
 static void ShowVDXPlaybackFrame()
 {
     if (g_playbackFrame >= g_playbackVDX.frameData.size())
@@ -292,7 +471,7 @@ void RegisterToolsWindowClass(HINSTANCE hInstance)
     wc.lpszClassName = TOOLS_CLASS_NAME;
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    wc.style = CS_HREDRAW | CS_VREDRAW;
+    wc.style = CS_DBLCLKS;
     
     RegisterClassExW(&wc);
 }
@@ -356,6 +535,18 @@ void ShowToolsWindow(HWND hParent)
 Function: CloseToolsWindow - Called when main app closes
 ===============================================================================
 */
+bool ToolsTranslateMessage(MSG* message)
+{
+    if (!g_toolsWindow || (message->hwnd != g_toolsWindow && !IsChild(g_toolsWindow, message->hwnd)))
+        return false;
+    if (message->message == WM_KEYDOWN && (message->wParam == VK_F11 ||
+        (message->wParam == VK_ESCAPE && g_toolsFullscreen))) {
+        if (!(message->lParam & (1LL << 30))) ToggleToolsFullscreen(g_toolsWindow);
+        return true;
+    }
+    return IsDialogMessageW(g_toolsWindow, message) != FALSE;
+}
+
 void CloseToolsWindow()
 {
     if (g_toolsWindow && IsWindow(g_toolsWindow)) {
@@ -697,8 +888,6 @@ static LRESULT CALLBACK PaletteWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
         DeleteObject(bgBrush);
         
         if (g_hasPalette) {
-            int cellWidth = rc.right / 16;
-            int cellHeight = rc.bottom / 16;
             
             for (int y = 0; y < 16; y++) {
                 for (int x = 0; x < 16; x++) {
@@ -708,10 +897,10 @@ static LRESULT CALLBACK PaletteWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
                     uint8_t b = g_palette[idx * 3 + 2];
                     
                     RECT cellRc = {
-                        x * cellWidth,
-                        y * cellHeight,
-                        (x + 1) * cellWidth,
-                        (y + 1) * cellHeight
+                        x * rc.right / 16,
+                        y * rc.bottom / 16,
+                        (x + 1) * rc.right / 16,
+                        (y + 1) * rc.bottom / 16
                     };
                     
                     HBRUSH brush = CreateSolidBrush(RGB(r, g, b));
@@ -766,9 +955,14 @@ static LRESULT CALLBACK BitmapWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
                 bgrData[i + 2] = g_bitmapData[i + 0];  // R
             }
             
-            // Draw 1:1 at origin
-            SetDIBitsToDevice(hdc, 0, 0, g_bitmapWidth, g_bitmapHeight,
-                0, 0, 0, g_bitmapHeight, bgrData.data(), &bmi, DIB_RGB_COLORS);
+            const double scale = (std::min)(double(rc.right) / g_bitmapWidth,
+                double(rc.bottom) / g_bitmapHeight);
+            const int width = (std::max)(1, int(g_bitmapWidth * scale));
+            const int height = (std::max)(1, int(g_bitmapHeight * scale));
+            SetStretchBltMode(hdc, COLORONCOLOR);
+            StretchDIBits(hdc, (rc.right - width) / 2, (rc.bottom - height) / 2,
+                width, height, 0, 0, g_bitmapWidth, g_bitmapHeight,
+                bgrData.data(), &bmi, DIB_RGB_COLORS, SRCCOPY);
         }
         
         EndPaint(hwnd, &ps);
@@ -794,6 +988,12 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         CreateArchiveInfoTab(hwnd);
         CreateVDXInfoTab(hwnd);
         CreateCursorsTab(hwnd);
+        g_fullscreenButton = CreateWindowExW(0, L"BUTTON", L"Full screen (F11)",
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+            0, 0, 0, 0, hwnd, (HMENU)IDC_TOOLS_FULLSCREEN, GetModuleHandle(nullptr), nullptr);
+        g_toolsDpi = GetDpiForWindow(hwnd);
+        ApplyToolsFont(hwnd);
+        LayoutTools(hwnd);
         SwitchTab(TAB_ASSET_BROWSER);
         LoadAssetCatalog(assetRoot());
         return 0;
@@ -805,35 +1005,89 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         return (LRESULT)GetSysColorBrush(COLOR_3DFACE);
     }
     
-    case WM_SETCURSOR:
-        SetCursor(LoadCursor(nullptr, IDC_ARROW));
-        return TRUE;
-        
-    case WM_SIZE: {
-        RECT rc;
-        GetClientRect(hwnd, &rc);
-        
-        // Tab control - header only (about 30 pixels tall)
-        if (g_hTab) {
-            SetWindowPos(g_hTab, nullptr, 5, 5, rc.right - 10, 30, SWP_NOZORDER);
+    case WM_SETCURSOR: {
+        const int hit = HitToolSplit(hwnd);
+        if (LOWORD(lParam) == HTCLIENT && hit >= 0) {
+            SetCursor(LoadCursor(nullptr, g_toolSplits[hit].vertical ? IDC_SIZEWE : IDC_SIZENS));
+            return TRUE;
         }
-        
-        int listWidth = rc.right - 50;
-        int listHeight = rc.bottom - 150;
-        
-        if (g_archiveControls[2]) {
-            SetWindowPos(g_archiveControls[2], nullptr, 20, 90, listWidth, listHeight, SWP_NOZORDER);
+        break;
+    }
+    case WM_LBUTTONDBLCLK: {
+        const int hit = HitToolSplit(hwnd);
+        if (hit >= 0) {
+            constexpr float defaults[] = {.43f, .24f, .76f, .40f};
+            g_toolSplits[hit].ratio = defaults[hit];
+            LayoutTools(hwnd);
         }
-        if (g_assetControls[4]) {
-            SetWindowPos(g_assetControls[4], nullptr, 20, 120, listWidth, rc.bottom - 175, SWP_NOZORDER);
-        }
-        if (g_assetControls[5]) {
-            SetWindowPos(g_assetControls[5], nullptr, 20, rc.bottom - 42, listWidth, 22, SWP_NOZORDER);
-        }
-        // VDX tab uses fixed layout with multiple sections - no resize needed
         return 0;
     }
-    
+    case WM_LBUTTONDOWN:
+        g_dragSplit = HitToolSplit(hwnd);
+        if (g_dragSplit >= 0) SetCapture(hwnd);
+        return 0;
+    case WM_MOUSEMOVE:
+        if (g_dragSplit >= 0 && GetCapture() == hwnd) {
+            auto& split = g_toolSplits[g_dragSplit];
+            POINT point{};
+            GetCursorPos(&point);
+            ScreenToClient(hwnd, &point);
+            const int start = split.vertical ? split.area.left : split.area.top;
+            const int length = (split.vertical ? split.area.right - split.area.left :
+                split.area.bottom - split.area.top) - ToolPx(6);
+            if (length > 0)
+                split.ratio = std::clamp(float((split.vertical ? point.x : point.y) - start) / length, 0.0f, 1.0f);
+            LayoutTools(hwnd);
+        }
+        return 0;
+    case WM_LBUTTONUP:
+    case WM_CANCELMODE:
+        if (GetCapture() == hwnd) ReleaseCapture();
+        g_dragSplit = -1;
+        return 0;
+    case WM_CAPTURECHANGED:
+        g_dragSplit = -1;
+        return 0;
+    case WM_KEYDOWN:
+        if (wParam == VK_F11 || (wParam == VK_ESCAPE && g_toolsFullscreen)) {
+            if (!(lParam & (1LL << 30))) ToggleToolsFullscreen(hwnd);
+            return 0;
+        }
+        break;
+    case WM_GETMINMAXINFO: {
+        auto* info = reinterpret_cast<MINMAXINFO*>(lParam);
+        info->ptMinTrackSize = {ToolPx(760), ToolPx(560)};
+        return 0;
+    }
+    case WM_DPICHANGED: {
+        g_toolsDpi = HIWORD(wParam);
+        ApplyToolsFont(hwnd);
+        const auto* bounds = reinterpret_cast<RECT*>(lParam);
+        SetWindowPos(hwnd, nullptr, bounds->left, bounds->top,
+            bounds->right - bounds->left, bounds->bottom - bounds->top,
+            SWP_NOZORDER | SWP_NOACTIVATE);
+        LayoutTools(hwnd);
+        return 0;
+    }
+    case WM_SIZE:
+        if (wParam != SIZE_MINIMIZED) LayoutTools(hwnd);
+        return 0;
+    case WM_PAINT: {
+        PAINTSTRUCT paint{};
+        HDC dc = BeginPaint(hwnd, &paint);
+        FillRect(dc, &paint.rcPaint, GetSysColorBrush(COLOR_3DFACE));
+        if (g_currentTab == TAB_VDX_INFO) {
+            for (const auto& split : g_toolSplits) {
+                RECT line = split.hit;
+                if (split.vertical) { line.left += ToolPx(2); line.right = line.left + ToolPx(2); }
+                else { line.top += ToolPx(2); line.bottom = line.top + ToolPx(2); }
+                FillRect(dc, &line, GetSysColorBrush(COLOR_3DSHADOW));
+            }
+        }
+        EndPaint(hwnd, &paint);
+        return 0;
+    }
+
     case WM_NOTIFY: {
         NMHDR* nmhdr = (NMHDR*)lParam;
         
@@ -1237,6 +1491,9 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         int id = LOWORD(wParam);
         
         switch (id) {
+        case IDC_TOOLS_FULLSCREEN:
+            ToggleToolsFullscreen(hwnd);
+            break;
         case IDC_ASSET_BROWSE_BTN: {
             const std::filesystem::path folder = OpenFolderDialog(hwnd);
             if (!folder.empty())
@@ -1493,6 +1750,12 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         g_currentVDXFile.clear();
         g_playbackVDX = {};
         g_hasPalette = false;
+        if (g_toolsFont) DeleteObject(g_toolsFont);
+        if (g_toolsBoldFont) DeleteObject(g_toolsBoldFont);
+        g_toolsFont = g_toolsBoldFont = nullptr;
+        g_fullscreenButton = nullptr;
+        g_toolsFullscreen = false;
+        g_dragSplit = -1;
         return 0;
     }
     
@@ -1653,9 +1916,7 @@ static void CreateVDXInfoTab(HWND hwnd)
 {
     HINSTANCE hInst = GetModuleHandle(nullptr);
     HFONT hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
-    HFONT hBoldFont = CreateFontW(-14, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
-        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-        DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+    HFONT hBoldFont = hFont; // Replaced by the owned, DPI-scaled font after creation.
     
     // Register palette window class
     WNDCLASSW wc = {};
@@ -1773,7 +2034,7 @@ static void CreateVDXInfoTab(HWND hwnd)
     // RIGHT COLUMN - Bitmap display (1:1)
     
     // [14] Bitmap label - renamed to just "Preview"
-    g_vdxControls[14] = CreateWindowExW(0, L"STATIC", L"Preview",
+    g_vdxControls[14] = CreateWindowExW(0, L"STATIC", L"Preview  |  Drag dividers to resize",
         WS_CHILD | SS_LEFT,
         360, 92, 200, 16, hwnd, (HMENU)IDC_VDX_BITMAP_LABEL, hInst, nullptr);
     SendMessage(g_vdxControls[14], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
@@ -1947,6 +2208,7 @@ static void SwitchTab(int tabIndex)
     HideAllTabs();
     ShowTab(tabIndex);
     g_currentTab = tabIndex;
+    if (g_hTab) LayoutTools(GetParent(g_hTab));
 }
 
 /*

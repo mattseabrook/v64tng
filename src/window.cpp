@@ -662,6 +662,8 @@ bool processEvents()
 			}
 			return false;
 		}
+		if (ToolsTranslateMessage(&msg))
+			continue;
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}

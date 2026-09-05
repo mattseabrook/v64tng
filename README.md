@@ -1,6 +1,6 @@
 # v64tng
 
-Current release: **1.0.20260904.11**
+Current release: **1.0.20260904.14**
 
 [![v64tng build](https://img.shields.io/badge/v64tng%20build-passing-2ea44f?logo=github)](build.sh)
 [![V.EXE NASM rebuild](https://img.shields.io/badge/V.EXE%20NASM%20rebuild-passing-2ea44f?logo=nasm)](disassembly/V)
@@ -233,6 +233,14 @@ chunks can be inspected and played with Previous, Play/Pause, Stop, and Next.
 Right-click any catalog row and choose **Save VDX As...** (or **Save Resource
 As...**) to copy exactly that RL-indexed byte range from its GJD archive to a
 chosen file. Export does not decode, normalize, or re-encode the resource.
+
+The Tools window supports edge/corner resizing and maximize. Use **Full screen**
+or **F11** to fill the current monitor; **Escape** exits fullscreen and restores
+its previous placement. In VDX Info, drag the dividers to size the preview,
+bitmap details, palette/delta area, and audio table. Double-click a divider to
+reset it. The preview scales with its aspect ratio preserved, and all tabs use
+compact 9-point Segoe UI with DPI scaling. Table columns remain manually
+resizable; Tab/Shift+Tab navigate the controls.
 
 **Tools -> GRV Editor** scans the same asset root for `.GRV` files, sorts them
 alphabetically, selects `SCRIPT.GRV` by default, and decompiles the selected

@@ -43,6 +43,7 @@
 //
 #define TSF_IMPLEMENTATION
 #include <tsf.h>
+#include "wavetable_output.h"
 //------------------------------------------------------------------------------
 // Choose the most widely available emulator IDs for OPL2 and OPL3.  Older
 // versions of libADLMIDI may not define the newer YMFM constants, so fall back
@@ -558,8 +559,8 @@ public:
 			{
 				const UINT32 batch = static_cast<UINT32>((std::min<uint64_t>)(
 					framesUntilEvent_, frames - rendered));
-				tsf_render_float(synth_, output + static_cast<size_t>(rendered) * 2u,
-					static_cast<int>(batch), 0);
+				renderWavetableOutput(synth_, output + static_cast<size_t>(rendered) * 2u,
+					static_cast<int>(batch), musicPlaybackVolume());
 				rendered += batch;
 				framesUntilEvent_ -= batch;
 				continue;
@@ -818,7 +819,7 @@ bool g_wavetableStartupSucceeded = false;
 void configureWavetableSynth(tsf *synth, int sampleRate)
 {
 	tsf_set_output(synth, TSF_STEREO_INTERLEAVED, sampleRate, 0.0f);
-	tsf_set_volume(synth, musicPlaybackVolume() * kFullScaleOutputGain);
+	tsf_set_volume(synth, kFullScaleOutputGain);
 	for (int channel = 0; channel < 16; ++channel)
 	{
 		tsf_channel_set_bank(synth, channel, channel == 9 ? 128 : 0);
@@ -1068,8 +1069,6 @@ void wavetableWorker()
 					continue;
 				if (FAILED(session.renderClient->GetBuffer(available, &buffer)))
 					break;
-				tsf_set_volume(synth,
-					musicPlaybackVolume() * kFullScaleOutputGain);
 				trackAlive = cursor.render(reinterpret_cast<float *>(buffer), available);
 				if (FAILED(session.renderClient->ReleaseBuffer(available, 0)))
 					break;
@@ -2763,7 +2762,7 @@ void PlayMIDI_Wavetable(const std::vector<uint8_t> &midiData, bool isTransient)
 	
 	// Unity at MIDI volume 100: authored velocity/controller relationships pass
 	// through unchanged and TinySoundFont is neither attenuated nor boosted.
-	tsf_set_volume(synth, musicPlaybackVolume() * kFullScaleOutputGain);
+	tsf_set_volume(synth, kFullScaleOutputGain);
 	
 	// Initialize all 16 MIDI channels for General MIDI bank mode
 	// This ensures program changes work correctly and prevents crazy volume
@@ -2821,10 +2820,8 @@ void PlayMIDI_Wavetable(const std::vector<uint8_t> &midiData, bool isTransient)
 			if (FAILED(hr))
 				break;
 
-			// Re-apply the live mix (scene tier / VDX dialogue duck) with every
-			// buffer; setting it once at track start baked the volume in place.
-			tsf_set_volume(synth, musicPlaybackVolume() * kFullScaleOutputGain);
-			tsf_render_float(synth, reinterpret_cast<float *>(pData), static_cast<int>(framesToRender), 0);
+			renderWavetableOutput(synth, reinterpret_cast<float *>(pData),
+				static_cast<int>(framesToRender), musicPlaybackVolume());
 
 			hr = session.renderClient->ReleaseBuffer(framesToRender, 0);
 			if (FAILED(hr))

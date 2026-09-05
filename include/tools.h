@@ -28,6 +28,8 @@
 // Function prototypes
 void ShowToolsWindow(HWND hParent);
 void CloseToolsWindow();
+// Route native keyboard navigation and Tools-only shortcuts before dispatch.
+bool ToolsTranslateMessage(MSG* message);
 void RegisterToolsWindowClass(HINSTANCE hInstance);
 
 #endif // TOOLS_H
