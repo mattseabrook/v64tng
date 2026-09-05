@@ -2,6 +2,19 @@
 
 Current release: **1.0.20260904.28**
 
+Recent changes in this build:
+
+- VDX Tools provides Alpha Mode, transparent/chroma backgrounds, single-frame
+  PNG export, and numbered PNG sequence export. Bitmap and palette inspection
+  uses retained source data alongside the decoded playback frames.
+- Gameplay music ducks to **35% of the configured MIDI volume** while PCM plays.
+  The title and in-game menus never duck; their scene mix remains at 100%.
+- Escape and music scene selection recognize gameplay in `SCRIPT.GRV` itself,
+  including the cheat room selector and foyer, as well as child room scripts.
+- Shutdown signals the persistent WaveTable/OPL workers. MIDI preparation,
+  legacy worker shutdown, and final PCM draining have bounded waits.
+
+
 [![v64tng build](https://img.shields.io/badge/v64tng%20build-passing-2ea44f?logo=github)](build.sh)
 [![V.EXE NASM rebuild](https://img.shields.io/badge/V.EXE%20NASM%20rebuild-passing-2ea44f?logo=nasm)](disassembly/V)
 [![v32tng.exe NASM rebuild](https://img.shields.io/badge/v32tng.exe%20NASM%20rebuild-passing-2ea44f?logo=nasm)](disassembly/v32tng)
@@ -39,7 +52,7 @@ The NASM builds reject executable-byte `incbin` directives and verify the rebuil
 | [`V.EXE` 1.30 unpacked MZ](disassembly/V) | `f2f7febb70b5008ee94e535b0224e918eeec4c71404c899c0d6b50f10c0816c4` | `f2f7febb70b5008ee94e535b0224e918eeec4c71404c899c0d6b50f10c0816c4` | Match |
 | [`v32tng.exe` 1.02b1 PE](disassembly/v32tng) | `3c8c3fd3edc27717ae2a08b1f98c7a58f72bd91860a080a29e40d1da8854c36c` | `3c8c3fd3edc27717ae2a08b1f98c7a58f72bd91860a080a29e40d1da8854c36c` | Match |
 
-`v64tng.exe` is a Windows x86_64 executable that is an attempt at re-creating the complete 7th Guest game engine from scratch. It is written in C++ 23 and uses `VULKAN` or `DirectX` for graphics, `TBD` for audio, and `TBD` for input. The game engine is designed to work placed into the original game directory (*regardless of where you purchased it/what version you have*), and it is required to be used with the original game data files.
+`v64tng.exe` is a Windows x86_64 executable that is an attempt at re-creating the complete 7th Guest game engine from scratch. It is written in C++23 and uses Vulkan or DirectX for graphics, WASAPI for PCM and software-synthesized audio, WinMM for General MIDI output, and Win32 input handling. The game engine is designed to work placed into the original game directory (*regardless of where you purchased it/what version you have*), and it is required to be used with the original game data files.
 
 ---
 
@@ -56,6 +69,7 @@ The NASM builds reject executable-byte `incbin` directives and verify the rebuil
 - [Disclaimer](#disclaimer)
 - [Usage](#usage)
   - [Running the Game](#running-the-game)
+  - [Win32 Asset Browser and GRV Editor](#win32-asset-browser-and-grv-editor)
   - [Command Line Utilities](#command-line-utilities)
     - [`-c <FILE>`](#-c-file)
     - [`-g <RL_FILE>`](#-g-rl_file)
@@ -222,6 +236,13 @@ v64tng.exe !
 
 The engine must be placed in the original 7th Guest game directory alongside the game's data files (`.GJD`, `.RL`, etc.). It is compatible with all known releases of The 7th Guest, regardless of where purchased (Steam, GOG, original CD-ROM).
 
+During gameplay, **Escape** opens the in-game menu; from its main page, Escape
+resumes the game. This also applies after entering the cheat room selector or
+foyer through `SCRIPT.GRV`. The title screen retains its own New/Load/Quit
+controls. Gameplay uses an 80% music mix, reduced to 35% while PCM dialogue or
+effects play; menu music remains at 100%. These levels multiply the configured
+MIDI volume and do not change PCM volume.
+
 ### Win32 Asset Browser and GRV Editor
 
 The native Win32 application exposes a top-level **Tools** menu. **Asset Browser**
@@ -234,7 +255,9 @@ Right-click any catalog row and choose **Save VDX As...** (or **Save Resource
 As...**) to copy exactly that RL-indexed byte range from its GJD archive to a
 chosen file. Export does not decode, normalize, or re-encode the resource.
 
-The Tools window supports edge/corner resizing and maximize. Use **F11** to fill the current monitor; **Escape** exits fullscreen and restores
+The Tools window supports edge/corner resizing and maximize. The fullscreen
+button has been removed; **F11** remains available to fill the current monitor.
+**Escape** exits Tools fullscreen and restores
 its previous placement. In VDX Info, drag the dividers to size the preview,
 bitmap details, palette/delta area, and audio table. Double-click a divider to
 reset it. The preview scales with its aspect ratio preserved, and all tabs use
@@ -245,7 +268,7 @@ resizable; Tab/Shift+Tab navigate the controls.
 frame. The square beside it selects transparent, magenta (#FF00FF), blue
 (#0000FF), or green (#00FF00). Transparency appears as a checkerboard in the
 preview and is saved as actual PNG alpha. This extracts encoded delta writes,
-not an actor silhouette: rewritten background tiles remain, still frames are
+with no automatic actor segmentation: rewritten background tiles remain, still frames are
 fully opaque, and duplicate or palette-only frames are empty in Alpha Mode.
 
 **Save Frame...** exports the displayed frame at its native resolution.
@@ -1882,7 +1905,10 @@ const std::array<uint8_t, 18> midiHeader = {
 
 ### OPL Synthesis via libADLMIDI
 
-After conversion, the MIDI data is synthesized using libADLMIDI, which provides cycle-accurate emulation of Yamaha OPL2 and OPL3 FM synthesis chips:
+With an OPL mode selected, converted MIDI is synthesized using libADLMIDI for
+Yamaha OPL2/OPL3 emulation. The other backends are `general` (the Windows MIDI
+output device through WinMM) and `wavetable` (TinySoundFont with the configured
+SF2 SoundFont, rendered through WASAPI).
 
 #### Emulator Selection
 
@@ -1906,21 +1932,19 @@ V64TNG_EMU_OPL3  // Prefers YMFM_OPL3, falls back to NUKED, then DOSBOX
 
 #### Real-Time Audio Rendering
 
-The `PlayMIDI` function implements real-time audio playback using the Windows Audio API (WASAPI):
+Normal OPL and WaveTable playback uses persistent, event-driven WASAPI workers.
+The shared endpoint's device period determines the buffer duration; output runs
+at 44.1 kHz with a 48 kHz fallback. OPL submits 16-bit stereo PCM and WaveTable
+submits stereo floating-point samples.
 
-1. **Audio Format**: 16-bit stereo PCM at 44.1 kHz (falls back to 48 kHz if unsupported)
-2. **Buffer Management**: Uses a shared-mode audio client with a 500ms buffer
-3. **Rendering Loop**:
-   - Queries available buffer space (`GetCurrentPadding`)
-   - Generates PCM samples via `adl_play` (libADLMIDI renders MIDI → OPL → PCM)
-   - Applies gain (6.0× multiplication) and volume scaling
-   - Applies fade-in (500ms) for main songs after the first song plays
-   - Writes samples to the audio endpoint
-4. **Position Tracking**: For main (non-transient) songs, saves playback position when paused to enable resume functionality
+Both software backends apply the live music mix to rendered samples, so held
+notes respond to volume and ducking changes. OPL retains its 6.0× output
+calibration. WaveTable keeps the synth at unity and applies the gain after
+rendering. General MIDI receives equivalent device-volume updates.
 
-### Music State Management
-
-The engine maintains sophisticated music state to support layered playback:
+Closing the application signals each worker's stop event before cleanup joins
+the threads. WaveTable also checks cancellation while processing MIDI events;
+preparation and PCM drain waits are bounded.
 
 #### Song Types
 
@@ -1948,16 +1972,26 @@ The stack system enables complex music transitions, such as playing a special th
 
 ### Configuration Options
 
-The following settings in `config.json` control music playback:
+The following settings in `config.json` control music and PCM playback:
 
 ```json
 {
-  "midiEnabled": true,           // Enable/disable music
-  "midiVolume": 100,              // Volume (0-100)
-  "midiMode": "opl3",             // Emulation mode: "opl2", "dual_opl2", "opl3"
-  "midiBank": 0                   // MIDI instrument bank (0-73+ depending on libADLMIDI version)
+  "midiEnabled": true,
+  "midiVolume": 100,
+  "midiMode": "wavetable",
+  "midiBank": 0,
+  "soundFont": "sc55.sf2",
+  "pcmEnabled": true,
+  "pcmVolume": 100
 }
 ```
+
+`midiMode` accepts `opl`, `opl2`, `dual_opl2`, `opl3`, `general`, or
+`wavetable`; the default is `opl3`. The example selects WaveTable with
+`sc55.sf2`; set `soundFont` to the SF2 file you have installed. `midiBank`
+selects an OPL instrument bank. MIDI and PCM volume settings each range from
+0 to 100. The gameplay/dialogue mix is applied on top of `midiVolume`.
+
 
 ### XMI Song Index
 
