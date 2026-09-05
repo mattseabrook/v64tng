@@ -34,7 +34,8 @@ bool getDeltaBitmapDataChecked(
 	std::span<uint8_t> frameBuffer,
 	int width,
 	std::span<uint8_t> indexBuffer,
-	std::span<const uint8_t> foregroundMask)
+	std::span<const uint8_t> foregroundMask,
+	std::span<uint8_t> writtenPixels)
 {
 	if (buffer.size() < 2 || palette.size() < 256 || width <= 0 ||
 		frameBuffer.size() % (static_cast<size_t>(width) * 3) != 0)
@@ -44,6 +45,9 @@ bool getDeltaBitmapDataChecked(
 	if (!foregroundMask.empty() &&
 		foregroundMask.size() != frameBuffer.size() / 3)
 		return false;
+	if (!writtenPixels.empty() && writtenPixels.size() != frameBuffer.size() / 3)
+		return false;
+	std::fill(writtenPixels.begin(), writtenPixels.end(), 0);
 	std::span<uint8_t> deltaFrame = frameBuffer;
 
 	const uint16_t localPaletteSize = readLittleEndian16(buffer);
@@ -87,6 +91,8 @@ bool getDeltaBitmapDataChecked(
 				if (paletteIndex == 0xff)
 					paletteIndex = foregroundMask[pixel];
 			}
+			if (!writtenPixels.empty())
+				writtenPixels[pixel] = 255;
 			const auto &color = palette[paletteIndex];
 			deltaFrame[pixelIndex] = color.r;
 			deltaFrame[pixelIndex + 1] = color.g;

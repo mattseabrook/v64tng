@@ -1,6 +1,6 @@
 # v64tng
 
-Current release: **1.0.20260904.14**
+Current release: **1.0.20260904.26**
 
 [![v64tng build](https://img.shields.io/badge/v64tng%20build-passing-2ea44f?logo=github)](build.sh)
 [![V.EXE NASM rebuild](https://img.shields.io/badge/V.EXE%20NASM%20rebuild-passing-2ea44f?logo=nasm)](disassembly/V)
@@ -234,13 +234,28 @@ Right-click any catalog row and choose **Save VDX As...** (or **Save Resource
 As...**) to copy exactly that RL-indexed byte range from its GJD archive to a
 chosen file. Export does not decode, normalize, or re-encode the resource.
 
-The Tools window supports edge/corner resizing and maximize. Use **Full screen**
-or **F11** to fill the current monitor; **Escape** exits fullscreen and restores
+The Tools window supports edge/corner resizing and maximize. Use **F11** to fill the current monitor; **Escape** exits fullscreen and restores
 its previous placement. In VDX Info, drag the dividers to size the preview,
 bitmap details, palette/delta area, and audio table. Double-click a divider to
 reset it. The preview scales with its aspect ratio preserved, and all tabs use
 compact 9-point Segoe UI with DPI scaling. Table columns remain manually
 resizable; Tab/Shift+Tab navigate the controls.
+
+**Alpha Mode** in the VDX preview keeps only pixels written by the selected
+frame. The square beside it selects transparent, magenta (#FF00FF), blue
+(#0000FF), or green (#00FF00). Transparency appears as a checkerboard in the
+preview and is saved as actual PNG alpha. This extracts encoded delta writes,
+not an actor silhouette: rewritten background tiles remain, still frames are
+fully opaque, and duplicate or palette-only frames are empty in Alpha Mode.
+
+**Save Frame...** exports the displayed frame at its native resolution.
+**Dump PNGs...** asks for a parent folder and creates a folder named after the
+VDX, containing `00000.png`, `00001.png`, and so on, including duplicate frames
+to preserve sequence timing. Choose a new destination if that folder already
+exists. With Alpha Mode off, both actions export the complete composited frames.
+Previous/Next and chunk-row selection stop playback at the selected frame;
+Play/Pause uses the VDX timing and resumes audio from that frame. Stop returns
+to frame zero; reaching the end holds the final frame.
 
 **Tools -> GRV Editor** scans the same asset root for `.GRV` files, sorts them
 alphabetically, selects `SCRIPT.GRV` by default, and decompiles the selected
@@ -1749,9 +1764,9 @@ a discrepancy greater than 10% derives the frame cadence from the PCM duration.
 VIDEOREF does not finish until the queued audio has drained. v64tng implements
 this synchronized playback through its native Windows audio path. The title
 menu uses a 100% music mix and gameplay uses 80%. While embedded PCM is enabled
-and playing during gameplay, music switches to an absolute 55% mix (not 55% of
+and playing during gameplay, music switches to an absolute 35% mix (not 35% of
 the gameplay mix) so spoken dialogue remains clear; PCM stays at its configured
-volume. Ducking is disabled while either the title or in-game menu is open.
+volume. Menus retain their full scene mix and never duck.
 Silent VDXes do not activate the duck. A concurrently playing Ogg/Red Book
 replacement is music, so it follows the same live level while VDX PCM is active.
 

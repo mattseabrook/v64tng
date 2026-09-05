@@ -31,9 +31,8 @@ void musicRequestStop();
 void musicStop();
 constexpr float kMainMenuMusicGain = 1.00f;
 constexpr float kGameplayMusicGain = 0.80f;
-// Absolute music level while audible gameplay PCM is active. The title and
-// in-game menus deliberately ignore this duck and retain their scene mix.
-constexpr float kVdxDialogueMusicGain = 0.55f;
+// Absolute music level while gameplay PCM is active; menus never duck.
+constexpr float kVdxDialogueMusicGain = 0.35f;
 [[nodiscard]] float musicPlaybackVolume();
 void setGameplayMusicMix(bool gameplay);
 void setVdxDialogueMusicDuck(bool active);

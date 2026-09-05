@@ -514,8 +514,10 @@ struct WasapiSession {
 class MidiSynthCursor
 {
 public:
-	MidiSynthCursor(const std::vector<uint8_t> &midi, tsf *synth, int sampleRate)
-		: midi_(midi), synth_(synth), sampleRate_(sampleRate)
+	MidiSynthCursor(const std::vector<uint8_t> &midi, tsf *synth, int sampleRate,
+		HANDLE shutdownEvent, HANDLE commandEvent)
+		: midi_(midi), cancelEvents_{shutdownEvent, commandEvent},
+		  synth_(synth), sampleRate_(sampleRate)
 	{
 		const auto track = parseMidiTrack(midi_);
 		if (!track || track->timeDivision == 0)
@@ -535,6 +537,11 @@ public:
 		UINT32 rendered = 0;
 		while (rendered < frames)
 		{
+			// An XMIDI loop can keep processing events without producing PCM.
+			// Check the worker's own cancellation events inside that loop too.
+			const DWORD cancel = WaitForMultipleObjects(2, cancelEvents_, FALSE, 0);
+			if (cancel == WAIT_OBJECT_0 || cancel == WAIT_OBJECT_0 + 1u)
+				ended_ = true;
 			if (ended_)
 			{
 				std::fill_n(output + static_cast<size_t>(rendered) * 2u,
@@ -762,6 +769,7 @@ private:
 	}
 
 	const std::vector<uint8_t> &midi_;
+	HANDLE cancelEvents_[2];
 	struct XmidiLoop
 	{
 		size_t position = 0;
@@ -906,7 +914,8 @@ void wavetableWorker()
 				break;
 			}
 			configureWavetableSynth(synth, session.sampleRate);
-			MidiSynthCursor cursor(*request.midi, synth, session.sampleRate);
+			MidiSynthCursor cursor(*request.midi, synth, session.sampleRate,
+				g_wavetableShutdownEvent, g_wavetableCommandEvent);
 			if (!cursor.valid())
 			{
 				tsf_close(synth);
@@ -1624,8 +1633,8 @@ void stopActiveMusicPlayback()
 //==============================================================================
 float musicPlaybackVolume()
 {
-	const bool ducking =
-		g_gameplayMusicMix.load(std::memory_order_relaxed) &&
+	// Menus retain their full scene mix even when a VDX has PCM audio.
+	const bool ducking = g_gameplayMusicMix.load(std::memory_order_relaxed) &&
 		g_vdxDialogueMusicDuck.load(std::memory_order_relaxed);
 	const float mixGain = ducking
 		? kVdxDialogueMusicGain
@@ -1681,8 +1690,7 @@ void setVdxDialogueMusicDuck(bool active)
 
 	const int basePercent = static_cast<int>(std::lround(
 		std::clamp(state.music_volume.load(), 0.0f, 1.0f) * 100.0f));
-	const bool applied = active &&
-		g_gameplayMusicMix.load(std::memory_order_relaxed);
+	const bool applied = active && g_gameplayMusicMix.load(std::memory_order_relaxed);
 	const float mixGain = applied
 		? kVdxDialogueMusicGain
 		: g_sceneMusicGain.load(std::memory_order_relaxed);
@@ -1729,8 +1737,7 @@ void musicShutdown()
 #ifdef _WIN32
 	// Every backend can block its worker on a Windows audio/MIDI event. Signal
 	// that event before joining; joining first deadlocks General MIDI shutdown.
-	signalMusicStop();
-	state.music_playing = false;
+	musicRequestStop();
 	if (state.music_thread.joinable())
 		joinThreadWithTimeout(state.music_thread, 3000, "legacy-midi");
 	stopWavetableEngine();
@@ -1785,17 +1792,16 @@ void musicShutdown()
 void musicRequestStop()
 {
 #ifdef _WIN32
-	// WM_CLOSE path: signal every wait loop and silence the General MIDI
-	// stream immediately, but never join a worker inside the window
-	// procedure. musicShutdown() performs the joins after the message
-	// loop has unwound.
+	// Signal only: driver calls and joins belong to the cleanup path, never
+	// to WM_CLOSE. Persistent workers have their own events.
 	signalMusicStop();
 	state.music_playing = false;
-	if (g_midiStream)
-	{
-		midiStreamStop(g_midiStream);
-		midiOutReset(reinterpret_cast<HMIDIOUT>(g_midiStream));
-	}
+	if (g_wavetableShutdownEvent)
+		SetEvent(g_wavetableShutdownEvent);
+	if (g_oplShutdownEvent)
+		SetEvent(g_oplShutdownEvent);
+	g_wavetableReady.notify_all();
+	g_oplReady.notify_all();
 #endif
 }
 
@@ -3026,7 +3032,7 @@ void xmiPrepare(
 	signalMusicStop();
 	state.music_playing = false;
 	if (state.music_thread.joinable())
-		state.music_thread.join();
+		joinThreadWithTimeout(state.music_thread, 3000, "legacy-midi");
 	resetMusicStop();
 
 	if (!midi_enabled)
@@ -3123,7 +3129,10 @@ void xmiPrepare(
 				SetEvent(g_generalStartedEvent);
 		});
 		if (synchronizeAtStart)
-			WaitForSingleObject(g_generalPreparedEvent, INFINITE);
+		{
+			HANDLE handles[] = {g_musicStopEvent, g_generalPreparedEvent};
+			WaitForMultipleObjects(2, handles, FALSE, 10000);
+		}
 		return;
 	}
 
@@ -3250,22 +3259,29 @@ bool musicPreparedStarted()
 
 void musicWaitPreparedStarted()
 {
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+	auto cancelled = [&]
+	{
+		return (g_musicStopEvent &&
+			WaitForSingleObject(g_musicStopEvent, 0) == WAIT_OBJECT_0) ||
+			std::chrono::steady_clock::now() >= deadline;
+	};
 	if (state.music_mode == "general")
 	{
 		if (g_generalPreparedEvent && g_generalPrepareSucceeded.load() &&
 			g_generalStartedEvent)
-			WaitForSingleObject(g_generalStartedEvent, INFINITE);
+		{
+			HANDLE handles[] = {g_musicStopEvent, g_generalStartedEvent};
+			WaitForMultipleObjects(2, handles, FALSE, 10000);
+		}
 		return;
 	}
 	if (state.music_mode == "wavetable" && g_wavetableStartEvent)
 	{
 		std::unique_lock lock(g_wavetableMutex);
 		const uint64_t generation = g_wavetableRequest.generation;
-		if (generation != 0)
-			g_wavetableReady.wait(lock, [generation]
-			{
-				return g_wavetableStartedGeneration >= generation;
-			});
+		while (g_wavetableStartedGeneration < generation && !cancelled())
+			g_wavetableReady.wait_for(lock, std::chrono::milliseconds(50));
 	}
 	else if ((state.music_mode == "opl3" || state.music_mode == "opl2" ||
 		state.music_mode == "opl" || state.music_mode == "dual_opl2") &&
@@ -3273,11 +3289,8 @@ void musicWaitPreparedStarted()
 	{
 		std::unique_lock lock(g_oplMutex);
 		const uint64_t generation = g_oplRequest.generation;
-		if (generation != 0)
-			g_oplReady.wait(lock, [generation]
-			{
-				return g_oplStartedGeneration >= generation;
-			});
+		while (g_oplStartedGeneration < generation && !cancelled())
+			g_oplReady.wait_for(lock, std::chrono::milliseconds(50));
 	}
 }
 

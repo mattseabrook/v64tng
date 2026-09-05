@@ -448,18 +448,28 @@ void wavPlay(std::shared_ptr<const std::vector<uint8_t>> audioData, const AudioP
                                            return;
                                        }
 
+                                       // Duck before starting the endpoint or waking the video
+                                       // thread. Even a clip fitting in the initial buffer must
+                                       // start, then retain its duck until that buffer drains.
+                                       setVdxDialogueMusicDuck(true);
+                                       hr = session.audioClient->Start();
                                        g_audioStarted.store(true, std::memory_order_release);
                                        g_audioStartCV.notify_one();
-                                       // Any live WAV/PCM stream ducks the music
-                                       // mix to the dialogue level for exactly as
-                                       // long as the PCM is audible.
-                                       setVdxDialogueMusicDuck(true);
-                                       if (keepPlaying)
-                                           session.audioClient->Start();
+                                       if (FAILED(hr))
+                                       {
+                                           setVdxDialogueMusicDuck(false);
+                                           state.pcm_playing = false;
+                                           return;
+                                       }
 
+                                       // A stalled endpoint must not hold PCM completion (and a
+                                       // blocking VIDEOREF) forever after source exhaustion.
+                                       const auto drainTimeout = std::chrono::milliseconds(
+                                           250 + 1000ull * session.bufferFrameCount / session.outputSampleRate);
+                                       auto drainDeadline = std::chrono::steady_clock::now() + drainTimeout;
                                        HANDLE waitHandles[2] = {session.bufferEvent, g_audioStopEvent};
                                        const DWORD waitHandleCount = g_audioStopEvent ? 2u : 1u;
-                                       while (keepPlaying && !g_audioStopRequested.load(std::memory_order_acquire))
+                                       while (!g_audioStopRequested.load(std::memory_order_acquire))
                                        {
                                            const DWORD waitResult = WaitForMultipleObjects(waitHandleCount, waitHandles, FALSE, 200);
                                            if (waitHandleCount == 2u && waitResult == WAIT_OBJECT_0 + 1u)
@@ -471,6 +481,16 @@ void wavPlay(std::shared_ptr<const std::vector<uint8_t>> audioData, const AudioP
                                            hr = session.audioClient->GetCurrentPadding(&padding);
                                            if (FAILED(hr))
                                                break;
+
+                                           // Source exhaustion means the final samples were
+                                           // queued, not heard. Keep the session and duck alive
+                                           // until WASAPI consumes them.
+                                           if (!keepPlaying)
+                                           {
+                                               if (padding == 0 || std::chrono::steady_clock::now() >= drainDeadline)
+                                                   break;
+                                               continue;
+                                           }
 
                                            const UINT32 framesAvailable = session.bufferFrameCount - padding;
                                            if (!framesAvailable)
@@ -487,6 +507,8 @@ void wavPlay(std::shared_ptr<const std::vector<uint8_t>> audioData, const AudioP
                                            else
                                            {
                                                keepPlaying = renderFrames(pData, framesAvailable);
+                                               if (!keepPlaying)
+                                                   drainDeadline = std::chrono::steady_clock::now() + drainTimeout;
                                            }
                                            hr = session.renderClient->ReleaseBuffer(framesAvailable, 0);
                                            if (FAILED(hr))

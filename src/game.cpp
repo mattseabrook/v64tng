@@ -55,6 +55,7 @@ struct PreparedGrvVideo
 	std::string error;
 };
 using PreparedGrvVideos = std::vector<PreparedGrvVideo>;
+static void syncSceneMusicMix();
 static void applyGrvTransition(
 	const GrvTransition &transition,
 	bool synchronizeMusicWithFirstVideo = false,
@@ -1245,6 +1246,9 @@ static void applyGrvTransition(
 	bool synchronizeMusicWithFirstVideo,
 	std::future<PreparedGrvVideos> *preloadFuture)
 {
+	// VIDEOREF blocks the outer loop, so update the mix before any dialogue
+	// starts (including LOADGAME directly from the title screen).
+	syncSceneMusicMix();
 	consoleLogf("ENGINE", "apply GRV transition commands={} videos={} ended={}",
 		transition.commands.size(), transition.videos.size(), transition.ended);
 	bool preparedMusicReleased = false;
@@ -1579,6 +1583,8 @@ bool grvPointerClick(int x, int y)
 
 bool grvEscapeAction()
 {
+	// Input can arrive before the outer loop synchronizes a script transition.
+	syncSceneMusicMix();
 	if (grvGameMenuOpen)
 	{
 		const bool closeMenu = grvRuntime &&
@@ -1722,22 +1728,17 @@ void grvKeyInput(char c)
 		enterFoyer();
 }
 
-// Keeps the scene music mix pinned to the real menu/gameplay state. Menu
-// music plays at full scale; gameplay is mixed lower. A room script running
-// as a LOADSCRIPT child of SCRIPT.GRV proves the player left the title
-// screen even on paths that never clear mainMenu.active (e.g. LOADGAME
-// directly from the menu).
+// SCRIPT.GRV also runs the foyer and cheat room selector itself. Entering
+// gameplay does not require LOADSCRIPT: those paths install the native
+// game-menu top hotspot (17AB) while still in the top-level script.
 static void syncSceneMusicMix()
 {
-	const bool inGameplay =
-		!grvGameMenuOpen &&
-		((grvRuntime && grvRuntime->inChildScript()) || !state.mainMenu.active);
-	// LOADGAME enters a room GRV directly from the title screen. Reflect that
-	// VM transition in the UI state as well; otherwise Escape is mistaken for
-	// a title-screen key and the in-game menu action is swallowed.
-	if (grvRuntime && grvRuntime->inChildScript())
+	const bool scriptInGameplay = grvRuntime &&
+		(grvRuntime->inChildScript() ||
+			grvRuntime->topBarTarget() == kGrvGameMenuEntry);
+	if (scriptInGameplay)
 		state.mainMenu.active = false;
-	setGameplayMusicMix(inGameplay);
+	setGameplayMusicMix(!grvGameMenuOpen && !state.mainMenu.active);
 }
 
 /*

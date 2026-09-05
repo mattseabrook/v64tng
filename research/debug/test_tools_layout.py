@@ -22,8 +22,8 @@ constexpr int SWP_NOZORDER=0, SWP_NOACTIVATE=0, FALSE=0;
 int g_hTab=1, g_fullscreenButton=2, g_toolsDpi=96;
 int g_assetControls[]={3,4,5,6,7,8}, g_archiveControls[]={9,10,11,12};
 int g_cursorControls[]={13,14};
-int g_vdxControls[]={15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31};
-int g_vdxPlaybackControls[]={32,33,34,35,36};
+int g_vdxControls[]={15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,0};
+int g_vdxPlaybackControls[]={32,33,34,35,36,37,38,39,40};
 struct ToolSplit { RECT hit{},area{}; bool vertical; float ratio; };
 std::array<ToolSplit,4> g_toolSplits{{{{},{},true,.43f},{{},{},false,.24f},{{},{},false,.76f},{{},{},true,.40f}}};
 int ToolPx(int v) { return (v*g_toolsDpi+48)/96; }
@@ -44,7 +44,8 @@ int main(){
     for(int i=0;i<4;++i)g_toolSplits[i].ratio=defaults[i];
     g_toolSplits[active].ratio=ratio; LayoutTools(1);
     for(auto [id,r]:controls){assert(r.left>=0 && r.top>=0 && r.right<=client.right && r.bottom<=client.bottom);}
-    for(int a=15;a<=36;++a)for(int b=a+1;b<=36;++b){
+    for(int a=15;a<=40;++a)for(int b=a+1;b<=40;++b){
+      if(a==31 || b==31) continue;
       auto x=controls[a],y=controls[b];
       assert(std::min(x.right,y.right)<=std::max(x.left,y.left) || std::min(x.bottom,y.bottom)<=std::max(x.top,y.top));
     }

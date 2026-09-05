@@ -29,6 +29,7 @@
 #include "lzss.h"
 #include "bitmap.h"
 #include "delta.h"
+#include "vdx_alpha.h"
 
 #pragma comment(lib, "comctl32.lib")
 
@@ -72,30 +73,22 @@ static bool g_hasPalette = false;
 
 // Bitmap data for 0x20 display
 static std::vector<uint8_t> g_bitmapData;  // RGB pixel data (current frame for display)
-static std::vector<uint8_t> g_baseFrame;   // Base 0x20 frame for delta application
 static int g_bitmapWidth = 0;
 static int g_bitmapHeight = 0;
 
-// Delta visualization
-static bool g_deltaVisualization = false;
-static std::vector<RGBColor> g_basePalette(256);     // Original palette from 0x20 (never modified)
-static std::vector<RGBColor> g_currentPalette(256);  // Working palette for delta frames (gets modified)
-
-// Store decompressed chunk data for delta frame rendering
-struct DecompressedChunk {
-    std::vector<uint8_t> data;
-    uint8_t chunkType;
-    int chunkIndex;  // Original chunk index
-};
-static std::vector<DecompressedChunk> g_decompressedChunks;
+static std::vector<RGBColor> g_currentPalette(256);
 
 // Current VDX for delta processing
 static VDXFile g_currentVDX;
 static VDXFile g_playbackVDX;
 static size_t g_playbackFrame = 0;
 static bool g_vdxPlaying = false;
+static ULONGLONG g_playbackStartTick = 0;
+static size_t g_playbackStartFrame = 0;
 static constexpr UINT_PTR VDX_PLAYBACK_TIMER = 0x564458;
-static constexpr UINT VDX_PLAYBACK_INTERVAL_MS = 67;
+static std::vector<size_t> g_frameChunks;
+static bool g_alphaMode = false;
+static int g_alphaBackground = 0;
 
 // Tab indices
 enum TabIndex {
@@ -145,6 +138,7 @@ enum ControlID {
     IDC_VDX_STOP = 1042,
     IDC_VDX_NEXT = 1043,
     IDC_VDX_FRAME_STATUS = 1044,
+    IDC_VDX_ALPHA, IDC_VDX_COLOR, IDC_VDX_SAVE_FRAME, IDC_VDX_DUMP,
     
     // Cursors tab
     IDC_CURSOR_STATUS = 1040,
@@ -160,7 +154,7 @@ static HWND g_archiveControls[4] = {0};  // edit, browse btn, listview, status
 //               [10]=0x80 label, [11]=0x80 info, [12]=0x80 list, [13]=status,
 //               [14]=bitmap label, [15]=bitmap display, [16]=delta vis checkbox
 static HWND g_vdxControls[17] = {0};
-static HWND g_vdxPlaybackControls[5] = {nullptr};
+static HWND g_vdxPlaybackControls[9] = {nullptr};
 static HWND g_cursorControls[2] = {0};    // status, extract btn
 static HWND g_currentVDXSortList = nullptr;  // Track which VDX list is being sorted
 
@@ -208,7 +202,6 @@ static void StopVDXPlayback(bool resetFrame);
 // All dimensions are logical pixels; split ratios survive window/DPI changes.
 static UINT g_toolsDpi = 96;
 static HFONT g_toolsFont = nullptr, g_toolsBoldFont = nullptr;
-static HWND g_fullscreenButton = nullptr;
 static bool g_toolsFullscreen = false;
 static WINDOWPLACEMENT g_toolsPlacement{};
 static LONG_PTR g_toolsWindowStyle = 0;
@@ -249,8 +242,6 @@ static void ToggleToolsFullscreen(HWND hwnd)
         SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
             SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
     }
-    SetWindowTextW(g_fullscreenButton,
-        g_toolsFullscreen ? L"Exit full screen (F11)" : L"Full screen (F11)");
 }
 
 static void ApplyToolsFont(HWND hwnd)
@@ -308,8 +299,7 @@ static void LayoutTools(HWND hwnd)
             SWP_NOZORDER | SWP_NOACTIVATE);
         else SetWindowPos(control, nullptr, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
     };
-    move(g_hTab, pad, pad, width - ToolPx(155) - gap, row);
-    move(g_fullscreenButton, rc.right - pad - ToolPx(155), pad, ToolPx(155), row);
+    move(g_hTab, pad, pad, width, row);
     auto fileRow = [&](HWND edit, HWND button, int buttonWidth) {
         move(edit, pad, top, width - buttonWidth - gap, row);
         move(button, rc.right - pad - buttonWidth, top, buttonWidth, row);
@@ -354,18 +344,21 @@ static void LayoutTools(HWND hwnd)
     const int paletteEdge = split(3, {pad, middle, divider, lower}, ToolPx(124), ToolPx(150));
     const int paletteWidth = paletteEdge - pad, deltaX = paletteEdge + gap;
     move(g_vdxControls[6], pad, middle, paletteWidth, label);
-    move(g_vdxControls[7], pad, middle + label, paletteWidth, lower - middle - label - row - gap);
-    move(g_vdxControls[16], pad, lower - row, paletteWidth, row);
+    move(g_vdxControls[7], pad, middle + label, paletteWidth, lower - middle - label);
     move(g_vdxControls[8], deltaX, middle, divider - deltaX, label);
     move(g_vdxControls[9], deltaX, middle + label, divider - deltaX, lower - middle - label);
     move(g_vdxControls[10], pad, lower + gap, leftWidth, label);
     move(g_vdxControls[11], pad, lower + gap + label, leftWidth, label);
     move(g_vdxControls[12], pad, lower + gap + 2 * label, leftWidth, end - lower - gap - 2 * label);
-    move(g_vdxControls[14], rightX, y, rightWidth, label);
-    move(g_vdxControls[15], rightX, y + label, rightWidth, end - y - 2 * label - row - gap);
+    move(g_vdxControls[14], rightX, y, ToolPx(58), row);
+    move(g_vdxPlaybackControls[5], rightX + ToolPx(60), y, ToolPx(108), row);
+    move(g_vdxPlaybackControls[6], rightX + ToolPx(170), y, row, row);
+    move(g_vdxControls[15], rightX, y + row + gap, rightWidth, end - y - label - 3 * row - 3 * gap);
     const int buttonWidth = (std::min)(ToolPx(78), (rightWidth - 3 * gap) / 4);
     for (int i = 0; i < 4; ++i)
-        move(g_vdxPlaybackControls[i], rightX + i * (buttonWidth + gap), end - label - row, buttonWidth, row);
+        move(g_vdxPlaybackControls[i], rightX + i * (buttonWidth + gap), end - label - 2 * row - gap, buttonWidth, row);
+    move(g_vdxPlaybackControls[7], rightX, end - label - row, (rightWidth - gap) / 2, row);
+    move(g_vdxPlaybackControls[8], rightX + (rightWidth + gap) / 2, end - label - row, (rightWidth - gap) / 2, row);
     move(g_vdxPlaybackControls[4], rightX, end - label, rightWidth, label);
     if (batch) EndDeferWindowPos(batch);
     InvalidateRect(hwnd, nullptr, FALSE);
@@ -391,7 +384,15 @@ static void ShowVDXPlaybackFrame()
     const auto& frame = g_playbackVDX.frameData[g_playbackFrame];
     if (!frame || frame->empty())
         return;
-    g_bitmapData = *frame;
+    const auto rgba = vdxFrameRGBA(g_playbackVDX, g_playbackFrame,
+        g_currentVDX.chunks.at(g_frameChunks.at(g_playbackFrame)), g_alphaMode, g_alphaBackground);
+    g_bitmapData.resize(frame->size());
+    for (size_t p = 0; p < rgba.size() / 4; ++p) {
+        const size_t x = p % g_playbackVDX.width, y = p / g_playbackVDX.width;
+        const uint8_t checker = ((x / 8 + y / 8) % 2) ? 192 : 240;
+        for (size_t c = 0; c < 3; ++c)
+            g_bitmapData[p * 3 + c] = rgba[p * 4 + 3] ? rgba[p * 4 + c] : checker;
+    }
     g_bitmapWidth = g_playbackVDX.width;
     g_bitmapHeight = g_playbackVDX.height;
     if (g_vdxControls[15])
@@ -417,8 +418,23 @@ static void StopVDXPlayback(bool resetFrame)
 static void PrepareVDXPlayback(std::string_view filename, std::span<const uint8_t> bytes)
 {
     StopVDXPlayback(false);
+    g_frameChunks.clear();
+    g_bitmapData.clear();
+    g_playbackVDX = {};
     g_playbackVDX = parseVDXFile(filename, bytes);
     parseVDXChunks(g_playbackVDX);
+    g_frameChunks.clear();
+    // parseVDXChunks releases its source chunks and bytes after decoding.
+    // The inspector retains the original VDX separately for row selection
+    // and alpha extraction; its chunk spans remain backed by owned rawData.
+    for (size_t i = 0; i < g_currentVDX.chunks.size(); ++i) {
+        const auto type = g_currentVDX.chunks[i].chunkType;
+        if (type == 0x20 || type == 0x25 ||
+            (type == 0x00 && !g_frameChunks.empty()))
+            g_frameChunks.push_back(i);
+    }
+    if (g_frameChunks.size() != g_playbackVDX.frameData.size())
+        throw std::runtime_error("VDX frame/chunk count mismatch");
     g_playbackFrame = 0;
     ShowVDXPlaybackFrame();
 }
@@ -591,7 +607,7 @@ static std::filesystem::path OpenFolderDialog(HWND hwnd)
 {
     BROWSEINFOW browse = {};
     browse.hwndOwner = hwnd;
-    browse.lpszTitle = L"Select a The 7th Guest data folder";
+    browse.lpszTitle = L"Select a folder";
     browse.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
 
     PIDLIST_ABSOLUTE item = SHBrowseForFolderW(&browse);
@@ -602,6 +618,57 @@ static std::filesystem::path OpenFolderDialog(HWND hwnd)
     const bool resolved = SHGetPathFromIDListW(item, folder) != FALSE;
     CoTaskMemFree(item);
     return resolved ? std::filesystem::path(folder) : std::filesystem::path{};
+}
+
+static void SaveVDXFrame(const std::filesystem::path &path, size_t frame)
+{
+    const auto rgba = vdxFrameRGBA(g_playbackVDX, frame,
+        g_currentVDX.chunks.at(g_frameChunks.at(frame)), g_alphaMode, g_alphaBackground);
+    savePNG(path.string(), rgba, g_playbackVDX.width, g_playbackVDX.height, true);
+}
+
+static void ExportVDX(HWND hwnd, bool sequence)
+{
+    if (g_playbackVDX.frameData.empty()) return;
+    StopVDXPlayback(false);
+    try {
+        if (!sequence) {
+            wchar_t filename[MAX_PATH]{};
+            const auto name = std::format(L"{:05}.png", g_playbackFrame);
+            wcscpy_s(filename, name.c_str());
+            OPENFILENAMEW dialog{};
+            dialog.lStructSize = sizeof(dialog);
+            dialog.hwndOwner = hwnd;
+            dialog.lpstrFilter = L"PNG files\0*.png\0\0";
+            dialog.lpstrFile = filename;
+            dialog.nMaxFile = MAX_PATH;
+            dialog.lpstrDefExt = L"png";
+            dialog.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
+            if (!GetSaveFileNameW(&dialog)) return;
+            SaveVDXFrame(filename, g_playbackFrame);
+            SetWindowTextW(g_vdxControls[13], L"Frame saved.");
+        } else {
+            const auto parent = OpenFolderDialog(hwnd);
+            if (parent.empty()) return;
+            const auto folder = parent / std::filesystem::path(g_playbackVDX.filename).stem();
+            if (!std::filesystem::create_directory(folder))
+                throw std::runtime_error("Output folder already exists. Choose another parent folder or rename the existing output.");
+            SetCursor(LoadCursor(nullptr, IDC_WAIT));
+            for (size_t frame = 0; frame < g_playbackVDX.frameData.size(); ++frame) {
+                SaveVDXFrame(folder / std::format("{:05}.png", frame), frame);
+                const auto progress = std::format(L"Exporting PNGs: {} / {}", frame + 1, g_playbackVDX.frameData.size());
+                SetWindowTextW(g_vdxControls[13], progress.c_str());
+                UpdateWindow(g_vdxControls[13]);
+            }
+            const auto message = L"PNG sequence saved to " + folder.wstring();
+            SetWindowTextW(g_vdxControls[13], message.c_str());
+            SetCursor(LoadCursor(nullptr, IDC_ARROW));
+        }
+    } catch (const std::exception &error) {
+        SetCursor(LoadCursor(nullptr, IDC_ARROW));
+        SetWindowTextW(g_vdxControls[13], L"PNG export failed; any completed frames remain in the destination.");
+        MessageBoxA(hwnd, error.what(), "PNG export failed", MB_OK | MB_ICONERROR);
+    }
 }
 
 static std::string TrimResourceName(const std::string& name)
@@ -988,9 +1055,6 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         CreateArchiveInfoTab(hwnd);
         CreateVDXInfoTab(hwnd);
         CreateCursorsTab(hwnd);
-        g_fullscreenButton = CreateWindowExW(0, L"BUTTON", L"Full screen (F11)",
-            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
-            0, 0, 0, 0, hwnd, (HMENU)IDC_TOOLS_FULLSCREEN, GetModuleHandle(nullptr), nullptr);
         g_toolsDpi = GetDpiForWindow(hwnd);
         ApplyToolsFont(hwnd);
         LayoutTools(hwnd);
@@ -998,6 +1062,29 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         LoadAssetCatalog(assetRoot());
         return 0;
     
+    case WM_DRAWITEM: {
+        const auto *draw = reinterpret_cast<DRAWITEMSTRUCT*>(lParam);
+        if (draw->CtlID != IDC_VDX_COLOR) break;
+        const COLORREF colors[] = {RGB(240,240,240), RGB(255,0,255), RGB(0,0,255), RGB(0,255,0)};
+        RECT r = draw->rcItem;
+        HBRUSH brush = CreateSolidBrush(colors[g_alphaBackground]);
+        FillRect(draw->hDC, &r, brush);
+        DeleteObject(brush);
+        if (g_alphaBackground == 0) {
+            const int tile = (std::max)(1, ToolPx(6));
+            brush = CreateSolidBrush(RGB(160,160,160));
+            for (int y = r.top; y < r.bottom; y += tile)
+                for (int x = r.left; x < r.right; x += tile)
+                    if (((x / tile) + (y / tile)) % 2) {
+                        RECT cell{x,y,(std::min)(static_cast<LONG>(x+tile),r.right),(std::min)(static_cast<LONG>(y+tile),r.bottom)};
+                        FillRect(draw->hDC, &cell, brush);
+                    }
+            DeleteObject(brush);
+        }
+        DrawEdge(draw->hDC, &r, EDGE_RAISED, BF_RECT);
+        if (draw->itemState & ODS_FOCUS) { InflateRect(&r, -3, -3); DrawFocusRect(draw->hDC, &r); }
+        return TRUE;
+    }
     case WM_CTLCOLORSTATIC: {
         HDC hdcStatic = (HDC)wParam;
         SetBkMode(hdcStatic, TRANSPARENT);
@@ -1271,190 +1358,31 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                     }
                 }
                 else if (cmd == 2) {
-                    // Save PNG
-                    wchar_t filename[MAX_PATH] = L"bitmap.png";
-                    OPENFILENAMEW ofn = {};
-                    ofn.lStructSize = sizeof(ofn);
-                    ofn.hwndOwner = hwnd;
-                    ofn.lpstrFilter = L"PNG Files\0*.png\0All Files\0*.*\0";
-                    ofn.lpstrFile = filename;
-                    ofn.nMaxFile = MAX_PATH;
-                    ofn.lpstrDefExt = L"png";
-                    ofn.Flags = OFN_OVERWRITEPROMPT;
-                    
-                    if (GetSaveFileNameW(&ofn)) {
-                        // Convert wide string to narrow for savePNG
-                        char narrowFilename[MAX_PATH];
-                        WideCharToMultiByte(CP_UTF8, 0, filename, -1, 
-                                           narrowFilename, MAX_PATH, nullptr, nullptr);
-                        savePNG(narrowFilename, g_bitmapData, g_bitmapWidth, g_bitmapHeight, false);
-                    }
+                    ExportVDX(hwnd, false);
                 }
             }
             return 0;
         }
         
-        // Handle delta frame selection
-        if (nmhdr->code == LVN_ITEMCHANGED && nmhdr->idFrom == IDC_VDX_0x25_LIST) {
-            NMLISTVIEW* pnmv = (NMLISTVIEW*)lParam;
-            if ((pnmv->uNewState & LVIS_SELECTED) && !(pnmv->uOldState & LVIS_SELECTED)) {
-                // Item was selected
-                int selIdx = pnmv->iItem;
-                if (selIdx >= 0 && selIdx < (int)g_decompressedChunks.size() && g_baseFrame.size() > 0) {
-                    // Reset to base frame AND base palette
-                    g_bitmapData = g_baseFrame;
-                    g_currentPalette = g_basePalette;
-                    
-                    // Apply all delta frames up to and including selected one
-                    for (int i = 0; i <= selIdx; i++) {
-                        const auto& dc = g_decompressedChunks[i];
-                        if (dc.chunkType == 0x25 && !dc.data.empty()) {
-                            // First apply the delta normally
-                            getDeltaBitmapData(std::span<const uint8_t>(dc.data), 
-                                std::span<RGBColor>(g_currentPalette), 
-                                std::span<uint8_t>(g_bitmapData), 
-                                g_bitmapWidth);
-                            
-                            // If visualization enabled and this is the selected frame, highlight skipped tiles
-                            if (g_deltaVisualization && i == selIdx) {
-                                std::span<const uint8_t> buffer(dc.data);
-                                const uint16_t localPaletteSize = buffer[0] | (buffer[1] << 8);
-                                
-                                int tilesPerRow = g_bitmapWidth / 4;
-                                int numRows = g_bitmapHeight / 4;
-                                
-                                // Helper to paint a tile pink
-                                auto paintTilePink = [&](int tileX, int tileY) {
-                                    for (int ty = 0; ty < 4; ty++) {
-                                        for (int tx = 0; tx < 4; tx++) {
-                                            int px = tileX * 4 + tx;
-                                            int py = tileY * 4 + ty;
-                                            size_t pixelIndex = (py * g_bitmapWidth + px) * 3;
-                                            if (pixelIndex + 2 < g_bitmapData.size()) {
-                                                g_bitmapData[pixelIndex] = 255;     // R
-                                                g_bitmapData[pixelIndex + 1] = 0;   // G
-                                                g_bitmapData[pixelIndex + 2] = 255; // B (fuchsia)
-                                            }
-                                        }
-                                    }
-                                };
-                                
-                                int xTile = 0, yTile = 0;  // Track in tile coordinates
-                                for (size_t bufferIndex = localPaletteSize + 2; bufferIndex < buffer.size();) {
-                                    const uint8_t opcode = buffer[bufferIndex++];
-                                    
-                                    if (opcode >= 0x62 && opcode <= 0x6B) {
-                                        // Skip N tiles - these are unchanged, paint pink
-                                        int skipCount = opcode - 0x62;
-                                        for (int s = 0; s < skipCount; s++) {
-                                            if (xTile < tilesPerRow && yTile < numRows) {
-                                                paintTilePink(xTile, yTile);
-                                            }
-                                            xTile++;
-                                        }
-                                    } else if (opcode == 0x61) {
-                                        // New row - all remaining tiles on current row are unchanged
-                                        while (xTile < tilesPerRow) {
-                                            if (yTile < numRows) {
-                                                paintTilePink(xTile, yTile);
-                                            }
-                                            xTile++;
-                                        }
-                                        yTile++;
-                                        xTile = 0;
-                                    } else {
-                                        // Other opcodes - tile was changed, just advance position
-                                        if (opcode <= 0x5F) {
-                                            xTile++;
-                                            bufferIndex += 2;
-                                        } else if (opcode == 0x60) {
-                                            xTile++;
-                                            bufferIndex += 16;
-                                        } else if (opcode >= 0x6C && opcode <= 0x75) {
-                                            int repeatCount = opcode - 0x6B;
-                                            xTile += repeatCount;
-                                            bufferIndex += 1;
-                                        } else if (opcode >= 0x76 && opcode <= 0x7F) {
-                                            int colorCount = opcode - 0x75;
-                                            xTile += colorCount;
-                                            bufferIndex += colorCount;
-                                        } else {
-                                            // Default case (0x80+)
-                                            xTile++;
-                                            bufferIndex += 3;
-                                        }
-                                    }
-                                }
-                                
-                                // After processing, fill remaining tiles on current row
-                                while (xTile < tilesPerRow && yTile < numRows) {
-                                    paintTilePink(xTile, yTile);
-                                    xTile++;
-                                }
-                                // Fill all remaining rows
-                                yTile++;
-                                while (yTile < numRows) {
-                                    for (xTile = 0; xTile < tilesPerRow; xTile++) {
-                                        paintTilePink(xTile, yTile);
-                                    }
-                                    yTile++;
-                                }
-                            }
-                        }
-                        // 0x00 chunks are duplicates - if this is the selected frame with visualization,
-                        // paint entire frame pink since nothing changed
-                        else if (dc.chunkType == 0x00 && g_deltaVisualization && i == selIdx) {
-                            int tilesPerRow = g_bitmapWidth / 4;
-                            int numRows = g_bitmapHeight / 4;
-                            for (int yTile = 0; yTile < numRows; yTile++) {
-                                for (int xTile = 0; xTile < tilesPerRow; xTile++) {
-                                    for (int ty = 0; ty < 4; ty++) {
-                                        for (int tx = 0; tx < 4; tx++) {
-                                            int px = xTile * 4 + tx;
-                                            int py = yTile * 4 + ty;
-                                            size_t pixelIndex = (py * g_bitmapWidth + px) * 3;
-                                            if (pixelIndex + 2 < g_bitmapData.size()) {
-                                                g_bitmapData[pixelIndex] = 255;     // R
-                                                g_bitmapData[pixelIndex + 1] = 0;   // G
-                                                g_bitmapData[pixelIndex + 2] = 255; // B (fuchsia)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Refresh bitmap display
-                    if (g_vdxControls[15]) {
-                        InvalidateRect(g_vdxControls[15], nullptr, TRUE);
+        if (nmhdr->code == LVN_ITEMCHANGED &&
+            (nmhdr->idFrom == IDC_VDX_0x25_LIST || nmhdr->idFrom == IDC_VDX_0x20_LIST)) {
+            const auto *change = reinterpret_cast<NMLISTVIEW*>(lParam);
+            if ((change->uNewState & LVIS_SELECTED) && !(change->uOldState & LVIS_SELECTED)) {
+                LVITEMW item{};
+                item.mask = LVIF_PARAM;
+                item.iItem = change->iItem;
+                if (ListView_GetItem(nmhdr->hwndFrom, &item)) {
+                    auto found = std::find(g_frameChunks.begin(), g_frameChunks.end(), static_cast<size_t>(item.lParam));
+                    if (found != g_frameChunks.end()) {
+                        StopVDXPlayback(false);
+                        g_playbackFrame = static_cast<size_t>(found - g_frameChunks.begin());
+                        ShowVDXPlaybackFrame();
                     }
                 }
             }
             return 0;
         }
-        
-        // Handle 0x20 bitmap selection - reset to base frame
-        if (nmhdr->code == LVN_ITEMCHANGED && nmhdr->idFrom == IDC_VDX_0x20_LIST) {
-            NMLISTVIEW* pnmv = (NMLISTVIEW*)lParam;
-            if ((pnmv->uNewState & LVIS_SELECTED) && !(pnmv->uOldState & LVIS_SELECTED)) {
-                if (g_baseFrame.size() > 0) {
-                    // Reset to base frame and base palette
-                    g_bitmapData = g_baseFrame;
-                    g_currentPalette = g_basePalette;
-                    
-                    // Deselect any delta frame
-                    ListView_SetItemState(g_vdxControls[9], -1, 0, LVIS_SELECTED);
-                    
-                    // Refresh bitmap display
-                    if (g_vdxControls[15]) {
-                        InvalidateRect(g_vdxControls[15], nullptr, TRUE);
-                    }
-                }
-            }
-            return 0;
-        }
-        
+
         if (nmhdr->code == LVN_COLUMNCLICK) {
             NMLISTVIEW* pnmv = (NMLISTVIEW*)lParam;
             
@@ -1528,7 +1456,36 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             break;
         }
 
+        case IDC_VDX_ALPHA:
+            g_alphaMode = SendMessage(g_vdxPlaybackControls[5], BM_GETCHECK, 0, 0) == BST_CHECKED;
+            ShowVDXPlaybackFrame();
+            break;
+        case IDC_VDX_COLOR: {
+            HMENU menu = CreatePopupMenu();
+            const wchar_t *names[] = {L"Transparent", L"Magenta (#FF00FF)", L"Blue (#0000FF)", L"Green (#00FF00)"};
+            for (int i = 0; i < 4; ++i)
+                AppendMenuW(menu, MF_STRING | (i == g_alphaBackground ? MF_CHECKED : 0), i + 1, names[i]);
+            RECT rect{};
+            GetWindowRect(g_vdxPlaybackControls[6], &rect);
+            const int selected = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON,
+                rect.left, rect.bottom, 0, hwnd, nullptr);
+            DestroyMenu(menu);
+            if (selected) {
+                g_alphaBackground = selected - 1;
+                SetWindowTextW(g_vdxPlaybackControls[6], names[g_alphaBackground]);
+                InvalidateRect(g_vdxPlaybackControls[6], nullptr, TRUE);
+                ShowVDXPlaybackFrame();
+            }
+            break;
+        }
+        case IDC_VDX_SAVE_FRAME:
+            ExportVDX(hwnd, false);
+            break;
+        case IDC_VDX_DUMP:
+            ExportVDX(hwnd, true);
+            break;
         case IDC_VDX_PREVIOUS:
+            StopVDXPlayback(false);
             if (!g_playbackVDX.frameData.empty()) {
                 g_playbackFrame = g_playbackFrame == 0
                     ? g_playbackVDX.frameData.size() - 1 : g_playbackFrame - 1;
@@ -1537,6 +1494,7 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             break;
 
         case IDC_VDX_NEXT:
+            StopVDXPlayback(false);
             if (!g_playbackVDX.frameData.empty()) {
                 g_playbackFrame = (g_playbackFrame + 1) % g_playbackVDX.frameData.size();
                 ShowVDXPlaybackFrame();
@@ -1555,11 +1513,18 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                 if (g_playbackFrame + 1 >= g_playbackVDX.frameData.size())
                     g_playbackFrame = 0;
                 g_vdxPlaying = true;
-                if (g_playbackFrame == 0 && !g_playbackVDX.audioData.empty())
-                    wavPlay(std::span<const uint8_t>(g_playbackVDX.audioData));
-                else
-                    wavResume();
-                SetTimer(hwnd, VDX_PLAYBACK_TIMER, VDX_PLAYBACK_INTERVAL_MS, nullptr);
+                wavStop();
+                const auto &audio = g_playbackVDX.audioData;
+                const size_t offset = (std::min)(audio.size(), static_cast<size_t>(
+                    g_playbackFrame * 22050.0 / vdxPlaybackRate(g_playbackVDX)));
+                if (offset < audio.size()) {
+                    auto samples = std::make_shared<const std::vector<uint8_t>>(audio.begin() + offset, audio.end());
+                    wavPlay(samples, AudioPlaybackFormat{});
+                }
+                ShowVDXPlaybackFrame();
+                g_playbackStartFrame = g_playbackFrame;
+                g_playbackStartTick = GetTickCount64();
+                SetTimer(hwnd, VDX_PLAYBACK_TIMER, 10, nullptr);
                 SetWindowTextW(g_vdxPlaybackControls[1], L"Pause");
             }
             break;
@@ -1576,140 +1541,7 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             break;
         }
         
-        case IDC_VDX_DELTA_VIS_CHECK: {
-            // Toggle delta visualization
-            g_deltaVisualization = (SendMessage(g_vdxControls[16], BM_GETCHECK, 0, 0) == BST_CHECKED);
-            
-            // Re-render current selection if any
-            int selIdx = ListView_GetNextItem(g_vdxControls[9], -1, LVNI_SELECTED);
-            if (selIdx >= 0 && selIdx < (int)g_decompressedChunks.size() && g_baseFrame.size() > 0) {
-                // Reset to base frame AND base palette
-                g_bitmapData = g_baseFrame;
-                g_currentPalette = g_basePalette;
-                
-                // Apply all delta frames up to and including selected one
-                for (int i = 0; i <= selIdx; i++) {
-                    const auto& dc = g_decompressedChunks[i];
-                    if (dc.chunkType == 0x25 && !dc.data.empty()) {
-                        // First apply the delta normally
-                        getDeltaBitmapData(std::span<const uint8_t>(dc.data), 
-                            std::span<RGBColor>(g_currentPalette), 
-                            std::span<uint8_t>(g_bitmapData), 
-                            g_bitmapWidth);
-                        
-                        // If visualization enabled and this is the selected frame, highlight skipped tiles
-                        if (g_deltaVisualization && i == selIdx) {
-                            std::span<const uint8_t> buffer(dc.data);
-                            const uint16_t localPaletteSize = buffer[0] | (buffer[1] << 8);
-                            
-                            int tilesPerRow = g_bitmapWidth / 4;
-                            int numRows = g_bitmapHeight / 4;
-                            
-                            // Helper to paint a tile pink
-                            auto paintTilePink = [&](int tileX, int tileY) {
-                                for (int ty = 0; ty < 4; ty++) {
-                                    for (int tx = 0; tx < 4; tx++) {
-                                        int px = tileX * 4 + tx;
-                                        int py = tileY * 4 + ty;
-                                        size_t pixelIndex = (py * g_bitmapWidth + px) * 3;
-                                        if (pixelIndex + 2 < g_bitmapData.size()) {
-                                            g_bitmapData[pixelIndex] = 255;
-                                            g_bitmapData[pixelIndex + 1] = 0;
-                                            g_bitmapData[pixelIndex + 2] = 255;
-                                        }
-                                    }
-                                }
-                            };
-                            
-                            int xTile = 0, yTile = 0;
-                            for (size_t bufferIndex = localPaletteSize + 2; bufferIndex < buffer.size();) {
-                                const uint8_t opcode = buffer[bufferIndex++];
-                                
-                                if (opcode >= 0x62 && opcode <= 0x6B) {
-                                    int skipCount = opcode - 0x62;
-                                    for (int s = 0; s < skipCount; s++) {
-                                        if (xTile < tilesPerRow && yTile < numRows) {
-                                            paintTilePink(xTile, yTile);
-                                        }
-                                        xTile++;
-                                    }
-                                } else if (opcode == 0x61) {
-                                    // Fill remaining tiles on current row
-                                    while (xTile < tilesPerRow) {
-                                        if (yTile < numRows) {
-                                            paintTilePink(xTile, yTile);
-                                        }
-                                        xTile++;
-                                    }
-                                    yTile++;
-                                    xTile = 0;
-                                } else {
-                                    if (opcode <= 0x5F) {
-                                        xTile++;
-                                        bufferIndex += 2;
-                                    } else if (opcode == 0x60) {
-                                        xTile++;
-                                        bufferIndex += 16;
-                                    } else if (opcode >= 0x6C && opcode <= 0x75) {
-                                        int repeatCount = opcode - 0x6B;
-                                        xTile += repeatCount;
-                                        bufferIndex += 1;
-                                    } else if (opcode >= 0x76 && opcode <= 0x7F) {
-                                        int colorCount = opcode - 0x75;
-                                        xTile += colorCount;
-                                        bufferIndex += colorCount;
-                                    } else {
-                                        xTile++;
-                                        bufferIndex += 3;
-                                    }
-                                }
-                            }
-                            
-                            // Fill remaining tiles on current row
-                            while (xTile < tilesPerRow && yTile < numRows) {
-                                paintTilePink(xTile, yTile);
-                                xTile++;
-                            }
-                            // Fill all remaining rows
-                            yTile++;
-                            while (yTile < numRows) {
-                                for (xTile = 0; xTile < tilesPerRow; xTile++) {
-                                    paintTilePink(xTile, yTile);
-                                }
-                                yTile++;
-                            }
-                        }
-                    }
-                    // 0x00 chunks are duplicates - if this is the selected frame with visualization,
-                    // paint entire frame pink since nothing changed
-                    else if (dc.chunkType == 0x00 && g_deltaVisualization && i == selIdx) {
-                        int tilesPerRow = g_bitmapWidth / 4;
-                        int numRows = g_bitmapHeight / 4;
-                        for (int yTile = 0; yTile < numRows; yTile++) {
-                            for (int xTile = 0; xTile < tilesPerRow; xTile++) {
-                                for (int ty = 0; ty < 4; ty++) {
-                                    for (int tx = 0; tx < 4; tx++) {
-                                        int px = xTile * 4 + tx;
-                                        int py = yTile * 4 + ty;
-                                        size_t pixelIndex = (py * g_bitmapWidth + px) * 3;
-                                        if (pixelIndex + 2 < g_bitmapData.size()) {
-                                            g_bitmapData[pixelIndex] = 255;     // R
-                                            g_bitmapData[pixelIndex + 1] = 0;   // G
-                                            g_bitmapData[pixelIndex + 2] = 255; // B (fuchsia)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                if (g_vdxControls[15]) {
-                    InvalidateRect(g_vdxControls[15], nullptr, TRUE);
-                }
-            }
-            break;
-        }
+
         }
         return 0;
     }
@@ -1717,11 +1549,16 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
     case WM_TIMER:
         if (wParam == VDX_PLAYBACK_TIMER && g_vdxPlaying
             && !g_playbackVDX.frameData.empty()) {
-            ++g_playbackFrame;
-            if (g_playbackFrame >= g_playbackVDX.frameData.size())
-                StopVDXPlayback(true);
-            else
+            const size_t frame = g_playbackStartFrame + static_cast<size_t>(
+                (GetTickCount64() - g_playbackStartTick) * vdxPlaybackRate(g_playbackVDX) / 1000.0);
+            if (frame >= g_playbackVDX.frameData.size()) {
+                g_playbackFrame = g_playbackVDX.frameData.size() - 1;
+                StopVDXPlayback(false);
                 ShowVDXPlaybackFrame();
+            } else if (frame != g_playbackFrame) {
+                g_playbackFrame = frame;
+                ShowVDXPlaybackFrame();
+            }
             return 0;
         }
         break;
@@ -1749,11 +1586,13 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         g_vdxChunks.clear();
         g_currentVDXFile.clear();
         g_playbackVDX = {};
+        g_currentVDX = {};
+        g_frameChunks.clear();
+        g_bitmapData.clear();
         g_hasPalette = false;
         if (g_toolsFont) DeleteObject(g_toolsFont);
         if (g_toolsBoldFont) DeleteObject(g_toolsBoldFont);
         g_toolsFont = g_toolsBoldFont = nullptr;
-        g_fullscreenButton = nullptr;
         g_toolsFullscreen = false;
         g_dragSplit = -1;
         return 0;
@@ -2001,10 +1840,7 @@ static void CreateVDXInfoTab(HWND hwnd)
         LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
     
     // [16] Delta Visualization checkbox - below palette
-    g_vdxControls[16] = CreateWindowExW(0, L"BUTTON", L"Show unchanged",
-        WS_CHILD | BS_AUTOCHECKBOX,
-        10, 310, 128, 20, hwnd, (HMENU)IDC_VDX_DELTA_VIS_CHECK, hInst, nullptr);
-    SendMessage(g_vdxControls[16], WM_SETFONT, (WPARAM)hFont, TRUE);
+
     
     // [13] Status - at bottom of window
     g_vdxControls[13] = CreateWindowExW(0, L"STATIC", L"Select a VDX file or double-click an entry in Archive Info.",
@@ -2034,7 +1870,7 @@ static void CreateVDXInfoTab(HWND hwnd)
     // RIGHT COLUMN - Bitmap display (1:1)
     
     // [14] Bitmap label - renamed to just "Preview"
-    g_vdxControls[14] = CreateWindowExW(0, L"STATIC", L"Preview  |  Drag dividers to resize",
+    g_vdxControls[14] = CreateWindowExW(0, L"STATIC", L"Preview",
         WS_CHILD | SS_LEFT,
         360, 92, 200, 16, hwnd, (HMENU)IDC_VDX_BITMAP_LABEL, hInst, nullptr);
     SendMessage(g_vdxControls[14], WM_SETFONT, (WPARAM)hBoldFont, TRUE);
@@ -2061,9 +1897,19 @@ static void CreateVDXInfoTab(HWND hwnd)
     g_vdxPlaybackControls[4] = CreateWindowExW(0, L"STATIC", L"No decoded frames",
         WS_CHILD | SS_LEFT, 704, 445, 290, 18, hwnd,
         (HMENU)IDC_VDX_FRAME_STATUS, hInst, nullptr);
+    g_vdxPlaybackControls[5] = CreateWindowExW(0, L"BUTTON", L"Alpha Mode",
+        WS_CHILD | WS_TABSTOP | BS_AUTOCHECKBOX, 0,0,0,0, hwnd, (HMENU)IDC_VDX_ALPHA, hInst, nullptr);
+    g_vdxPlaybackControls[6] = CreateWindowExW(0, L"BUTTON", L"Alpha background",
+        WS_CHILD | WS_TABSTOP | BS_OWNERDRAW, 0,0,0,0, hwnd, (HMENU)IDC_VDX_COLOR, hInst, nullptr);
+    g_vdxPlaybackControls[7] = CreateWindowExW(0, L"BUTTON", L"Save Frame...",
+        WS_CHILD | WS_TABSTOP, 0,0,0,0, hwnd, (HMENU)IDC_VDX_SAVE_FRAME, hInst, nullptr);
+    g_vdxPlaybackControls[8] = CreateWindowExW(0, L"BUTTON", L"Dump PNGs...",
+        WS_CHILD | WS_TABSTOP, 0,0,0,0, hwnd, (HMENU)IDC_VDX_DUMP, hInst, nullptr);
     for (HWND control : g_vdxPlaybackControls)
         SendMessage(control, WM_SETFONT, (WPARAM)hFont, TRUE);
     
+    SendMessage(g_vdxPlaybackControls[5], BM_SETCHECK, g_alphaMode ? BST_CHECKED : BST_UNCHECKED, 0);
+
     // Setup columns for all ListViews
     LVCOLUMNW lvc = {};
     lvc.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
@@ -2173,7 +2019,7 @@ static void ShowTab(int tabIndex)
     case TAB_VDX_INFO:
         for (int i = 0; i < 17; i++) {
             if (g_vdxControls[i]) {
-                ShowWindow(g_vdxControls[i], SW_SHOW);
+                ShowWindow(g_vdxControls[i], i == 16 ? SW_HIDE : SW_SHOW);
                 BringWindowToTop(g_vdxControls[i]);
             }
         }
@@ -2319,12 +2165,10 @@ static void PopulateVDXInfoList(const std::string& filename)
     ListView_DeleteAllItems(hList0x25);
     ListView_DeleteAllItems(hList0x80);
     g_vdxChunks.clear();
-    g_decompressedChunks.clear();
     g_currentVDXFile = filename;
     g_hasPalette = false;
     memset(g_palette, 0, sizeof(g_palette));
     g_bitmapData.clear();
-    g_baseFrame.clear();
     g_bitmapWidth = 0;
     g_bitmapHeight = 0;
     
@@ -2425,16 +2269,12 @@ static void PopulateVDXInfoList(const std::string& filename)
                             g_currentPalette[i] = {g_palette[i*3], g_palette[i*3+1], g_palette[i*3+2]};
                         }
                         // Save base palette (never modified)
-                        g_basePalette = g_currentPalette;
                         
                         // Decode the full bitmap using getBitmapData
                         g_bitmapWidth = bitmapWidth;
                         g_bitmapHeight = bitmapHeight;
                         g_bitmapData.resize(static_cast<size_t>(bitmapWidth) * bitmapHeight * 3);
-                        g_baseFrame.resize(static_cast<size_t>(bitmapWidth) * bitmapHeight * 3);
                         getBitmapData(dataToRead, g_currentPalette, g_bitmapData);
-                        // Copy base frame for delta application
-                        g_baseFrame = g_bitmapData;
                     }
                 }
             } else if (chunk.chunkType == 0x25 || chunk.chunkType == 0x00) {
@@ -2442,20 +2282,7 @@ static void PopulateVDXInfoList(const std::string& filename)
                 targetList = hList0x25;
                 targetCount = &count0x25;
                 
-                // Store decompressed chunk data for later delta rendering
-                DecompressedChunk dc;
-                dc.chunkType = chunk.chunkType;
-                dc.chunkIndex = idx;
-                if (chunk.chunkType == 0x25 && chunk.data.size() > 0) {
-                    if (vdxChunkIsCompressed(chunk)) {
-                        dc.data.resize(chunk.dataSize * 20);
-                        size_t decompSize = lzssDecompress(chunk.data, dc.data, chunk.lengthMask, chunk.lengthBits);
-                        dc.data.resize(decompSize);
-                    } else {
-                        dc.data = std::vector<uint8_t>(chunk.data.begin(), chunk.data.end());
-                    }
-                }
-                g_decompressedChunks.push_back(std::move(dc));
+
             } else if (chunk.chunkType == 0x80) {
                 targetList = hList0x80;
                 targetCount = &count0x80;
@@ -2539,6 +2366,7 @@ static void PopulateVDXInfoList(const std::string& filename)
             "Loaded %zu chunks: %d bitmap, %d delta/dup, %d audio",
             vdx.chunks.size(), count0x20, count0x25, count0x80);
         SetWindowTextA(g_vdxControls[13], status);
+        ShowVDXPlaybackFrame();
     }
     catch (const std::exception& e) {
         char error[512];
@@ -2587,12 +2415,10 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
         ListView_DeleteAllItems(hList0x25);
         ListView_DeleteAllItems(hList0x80);
         g_vdxChunks.clear();
-        g_decompressedChunks.clear();
         g_currentVDXFile = entry.filename;
         g_hasPalette = false;
         memset(g_palette, 0, sizeof(g_palette));
         g_bitmapData.clear();
-        g_baseFrame.clear();
         g_bitmapWidth = 0;
         g_bitmapHeight = 0;
         
@@ -2670,36 +2496,19 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
                             g_currentPalette[i] = {g_palette[i*3], g_palette[i*3+1], g_palette[i*3+2]};
                         }
                         // Save base palette (never modified)
-                        g_basePalette = g_currentPalette;
                         
                         // Decode the full bitmap using getBitmapData
                         g_bitmapWidth = bitmapWidth;
                         g_bitmapHeight = bitmapHeight;
                         g_bitmapData.resize(static_cast<size_t>(bitmapWidth) * bitmapHeight * 3);
-                        g_baseFrame.resize(static_cast<size_t>(bitmapWidth) * bitmapHeight * 3);
                         getBitmapData(dataToRead, g_currentPalette, g_bitmapData);
-                        // Copy base frame for delta application
-                        g_baseFrame = g_bitmapData;
                     }
                 }
             } else if (chunk.chunkType == 0x25 || chunk.chunkType == 0x00) {
                 targetList = hList0x25;
                 targetCount = &count0x25;
                 
-                // Store decompressed chunk data for later delta rendering
-                DecompressedChunk dc;
-                dc.chunkType = chunk.chunkType;
-                dc.chunkIndex = idx;
-                if (chunk.chunkType == 0x25 && chunk.data.size() > 0) {
-                    if (vdxChunkIsCompressed(chunk)) {
-                        dc.data.resize(chunk.dataSize * 20);
-                        size_t decompSize = lzssDecompress(chunk.data, dc.data, chunk.lengthMask, chunk.lengthBits);
-                        dc.data.resize(decompSize);
-                    } else {
-                        dc.data = std::vector<uint8_t>(chunk.data.begin(), chunk.data.end());
-                    }
-                }
-                g_decompressedChunks.push_back(std::move(dc));
+
             } else if (chunk.chunkType == 0x80) {
                 targetList = hList0x80;
                 targetCount = &count0x80;
@@ -2770,6 +2579,7 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
             "Loaded %zu chunks from archive: %d bitmap, %d delta/dup, %d audio",
             vdx.chunks.size(), count0x20, count0x25, count0x80);
         SetWindowTextA(g_vdxControls[13], status);
+        ShowVDXPlaybackFrame();
     }
     catch (const std::exception& e) {
         char error[512];
