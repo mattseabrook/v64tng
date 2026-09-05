@@ -4,7 +4,8 @@
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
-// Tile map: storage buffer with uint8 wall types
+// Tile map: storage buffer with uint8 wall types + explored flags.
+// First mapWidth*mapHeight bytes are tiles, second half are fog-of-war flags.
 layout(std430, binding = 0) readonly buffer TileMap {
     uint data[];  // Packed bytes (4 tiles per uint)
 };
@@ -34,7 +35,7 @@ layout(push_constant) uniform RaycastConstants {
     uint supersample;        // Supersampling count
     float wallHeightUnits;   // Wall height in world units relative to width
     float measuredFPS;
-    float reserved;
+    float mapOverlayZoom;    // 0.0 = overlay off, >0 = zoom level
 } pc;
 
 //==============================================================================
@@ -59,6 +60,49 @@ uint getTile(ivec2 mapPos)
     // Extract byte
     uint shift = byteOffset * 8u;
     return (packedWord >> shift) & 0xFFu;
+}
+
+// Read explored flag from the second half of the tile map buffer
+uint getExplored(ivec2 mapPos)
+{
+    if (mapPos.x < 0 || mapPos.y < 0 ||
+        mapPos.x >= int(pc.mapWidth) || mapPos.y >= int(pc.mapHeight))
+        return 0u;
+    uint totalTiles = pc.mapWidth * pc.mapHeight;
+    uint byteIndex = totalTiles + uint(mapPos.y) * pc.mapWidth + uint(mapPos.x);
+    uint wordIndex = byteIndex >> 2;
+    uint byteOffset = byteIndex & 3u;
+    uint packedWord = data[wordIndex];
+    uint shift = byteOffset * 8u;
+    return (packedWord >> shift) & 0xFFu;
+}
+
+bool isSolidTileValue(uint tile)
+{
+    return (tile >= 1u && (tile < 0xF0u || tile > 0xF3u));
+}
+
+bool isExploredOpen(ivec2 mapPos)
+{
+    return getExplored(mapPos) != 0u && !isSolidTileValue(getTile(mapPos));
+}
+
+float angleDiff(float a, float b)
+{
+    float d = a - b;
+    while (d > 3.14159265) d -= 6.28318531;
+    while (d < -3.14159265) d += 6.28318531;
+    return d;
+}
+
+float pointSegmentDistance(vec2 p, vec2 a, vec2 b)
+{
+    vec2 ab = b - a;
+    float den = dot(ab, ab);
+    if (den <= 1e-6)
+        return length(p - a);
+    float t = clamp(dot(p - a, ab) / den, 0.0, 1.0);
+    return length(p - (a + t * ab));
 }
 
 //==============================================================================
@@ -300,6 +344,144 @@ vec3 shadePixel(uvec2 pixel, RayHit hit, float halfW, float halfH, float maxRadi
     return color;
 }
 
+//==============================================================================
+// Map Overlay
+//==============================================================================
+
+// Draw a centered top-down CAD-style map overlay with fog of war.
+// Zoom level controls magnification, centered on player.
+// Only explored cells are visible; wall edges drawn as clean lines.
+vec3 applyMapOverlay(vec3 sceneColor, uvec2 pixel)
+{
+    // Darken scene
+    vec3 color = sceneColor * 0.70;
+
+    float sw = float(pc.screenWidth);
+    float sh = float(pc.screenHeight);
+    float mw = float(pc.mapWidth);
+    float mh = float(pc.mapHeight);
+    float zoom = pc.mapOverlayZoom;
+
+    // Cell size: base fits map to ~70% of screen, then multiply by zoom
+    float maxDim = max(mw, mh);
+    float baseCellSize = (min(sw, sh) * 0.70) / maxDim;
+    float cellSize = baseCellSize * zoom;
+    cellSize = max(cellSize, 2.0);
+
+    // Center view on player position
+    float centerX = sw * 0.5;
+    float centerY = sh * 0.5;
+    float ox = centerX - pc.playerX * cellSize;
+    float oy = centerY - pc.playerY * cellSize;
+
+    // Map pixel to world cell coordinates
+    float wpx = (float(pixel.x) - ox) / cellSize;
+    float wpy = (float(pixel.y) - oy) / cellSize;
+
+    int cx = int(floor(wpx));
+    int cy = int(floor(wpy));
+
+    // Player position in screen space
+    float plyrX = centerX;
+    float plyrY = centerY;
+    float distToPlayer = length(vec2(float(pixel.x) - plyrX, float(pixel.y) - plyrY));
+
+    // Player marker: bright red dot
+    float playerRadius = cellSize * 0.35;
+    if (distToPlayer < playerRadius)
+    {
+        float t = (1.0 - distToPlayer / playerRadius) * 0.9;
+        color = mix(color, vec3(1.0, 0.25, 0.25), t);
+        return color;
+    }
+
+    // FOV cone span
+    float halfFovTan = tan(pc.playerFOV * 0.5 * pc.fovMul);
+    float fovHalf = atan(halfFovTan);
+
+    // Filled FOV cone. Keep this cheap; per-overlay-pixel ray casts destroy frame time.
+    vec2 target = vec2(wpx - pc.playerX, wpy - pc.playerY);
+    float targetDist = length(target);
+    float overlayRange = max(8.0, min(maxDim, 24.0));
+    if (targetDist > 0.001 && targetDist <= overlayRange)
+    {
+        float ang = atan(target.y, target.x);
+        float rel = abs(angleDiff(ang, pc.playerAngle));
+        if (rel <= fovHalf)
+        {
+            float fade = 1.0 - smoothstep(overlayRange * 0.65, overlayRange, targetDist);
+            color = mix(color, vec3(1.0, 0.20, 0.20), 0.22 * fade);
+        }
+    }
+
+    // Outside map bounds → return with just player/FOV drawn
+    if (cx < 0 || cy < 0 || cx >= int(pc.mapWidth) || cy >= int(pc.mapHeight))
+        return color;
+
+    uint tile = getTile(ivec2(cx, cy));
+    bool solid = isSolidTileValue(tile);
+    bool explored = getExplored(ivec2(cx, cy)) != 0u;
+
+    // Fog of war: skip unexplored cells, UNLESS they are solid and touch an explored cell (to bridge corners)
+    if (!explored)
+    {
+        if (!solid) return color;
+        bool nExp = false;
+        for (int dy = -1; dy <= 1; ++dy) {
+            for (int dx = -1; dx <= 1; ++dx) {
+                if ((dx != 0 || dy != 0) && isExploredOpen(ivec2(cx + dx, cy + dy))) nExp = true;
+            }
+        }
+        if (!nExp) return color;
+    }
+
+    // Center-stroke wall rendering via distance-to-segment tests.
+    // This removes corner dropouts when center lines fall between pixel columns.
+    bool drawLine = false;
+
+    if (solid)
+    {
+        vec2 c = vec2(ox + (float(cx) + 0.5) * cellSize,
+                  oy + (float(cy) + 0.5) * cellSize);
+        float halfSpan = cellSize * 0.5;
+        vec2 p = vec2(float(pixel.x) + 0.5, float(pixel.y) + 0.5);
+        float lineHalfW = 0.82;
+
+        // Neighbor checks for connecting lines
+        bool nConn = (cy > 0) ? isSolidTileValue(getTile(ivec2(cx, cy - 1))) : false;
+        bool sConn = (cy < int(pc.mapHeight) - 1) ? isSolidTileValue(getTile(ivec2(cx, cy + 1))) : false;
+        bool wConn = (cx > 0) ? isSolidTileValue(getTile(ivec2(cx - 1, cy))) : false;
+        bool eConn = (cx < int(pc.mapWidth) - 1) ? isSolidTileValue(getTile(ivec2(cx + 1, cy))) : false;
+
+        bool nVisible = isExploredOpen(ivec2(cx - 1, cy)) || isExploredOpen(ivec2(cx - 1, cy - 1)) ||
+                        isExploredOpen(ivec2(cx + 1, cy)) || isExploredOpen(ivec2(cx + 1, cy - 1));
+        bool sVisible = isExploredOpen(ivec2(cx - 1, cy)) || isExploredOpen(ivec2(cx - 1, cy + 1)) ||
+                        isExploredOpen(ivec2(cx + 1, cy)) || isExploredOpen(ivec2(cx + 1, cy + 1));
+        bool wVisible = isExploredOpen(ivec2(cx, cy - 1)) || isExploredOpen(ivec2(cx - 1, cy - 1)) ||
+                        isExploredOpen(ivec2(cx, cy + 1)) || isExploredOpen(ivec2(cx - 1, cy + 1));
+        bool eVisible = isExploredOpen(ivec2(cx, cy - 1)) || isExploredOpen(ivec2(cx + 1, cy - 1)) ||
+                        isExploredOpen(ivec2(cx, cy + 1)) || isExploredOpen(ivec2(cx + 1, cy + 1));
+
+        if (nConn && nVisible && pointSegmentDistance(p, c, c + vec2(0.0, -halfSpan)) <= lineHalfW) drawLine = true;
+        if (sConn && sVisible && pointSegmentDistance(p, c, c + vec2(0.0,  halfSpan)) <= lineHalfW) drawLine = true;
+        if (wConn && wVisible && pointSegmentDistance(p, c, c + vec2(-halfSpan, 0.0)) <= lineHalfW) drawLine = true;
+        if (eConn && eVisible && pointSegmentDistance(p, c, c + vec2( halfSpan, 0.0)) <= lineHalfW) drawLine = true;
+
+        bool isolatedVisible = isExploredOpen(ivec2(cx - 1, cy)) || isExploredOpen(ivec2(cx + 1, cy)) ||
+                               isExploredOpen(ivec2(cx, cy - 1)) || isExploredOpen(ivec2(cx, cy + 1));
+        if (!nConn && !sConn && !wConn && !eConn && isolatedVisible && length(p - c) <= lineHalfW)
+            drawLine = true;
+    }
+
+    if (drawLine)
+    {
+        // CAD blue-white line color
+        color = mix(color, vec3(0.6, 0.75, 0.9), 0.85);
+    }
+
+    return color;
+}
+
 vec3 applyFpsOverlay(vec3 sceneColor, uvec2 pixel)
 {
     const uint glyphs[13] = uint[13](
@@ -391,6 +573,10 @@ void main()
     hash ^= hash >> 16;
     float d = (float(hash & 1023u) / 1023.0 - 0.5) * (1.5 / 255.0);
     accumColor = clamp(accumColor + d, 0.0, 1.0);
+
+    // Apply map overlay if toggled
+    if (pc.mapOverlayZoom > 0.0)
+        accumColor = applyMapOverlay(accumColor, pixel);
     accumColor = applyFpsOverlay(accumColor, pixel);
     
     // Write output as RGBA (Vulkan will handle BGRA swizzle)

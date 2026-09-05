@@ -352,8 +352,9 @@ static void uploadRaycastBuffers(const TileMap &tileMap)
 	uint32_t mapHeight = static_cast<uint32_t>(tileMap.size());
 	uint32_t mapWidth = static_cast<uint32_t>(tileMap[0].size());
 
-	// Check if tile map needs (re)upload
-	bool tileMapCurrent = vkCtx.tileMapBuffer && vkCtx.lastMapWidth == mapWidth && vkCtx.lastMapHeight == mapHeight;
+	// Check if tile map needs (re)upload (also re-uploads when fog of war changes)
+	bool tileMapCurrent = vkCtx.tileMapBuffer && vkCtx.lastMapWidth == mapWidth && vkCtx.lastMapHeight == mapHeight &&
+		vkCtx.uploadedExploredRevision == state.raycast.exploredRevision;
 	const size_t edgeCount = static_cast<size_t>(mapWidth) * mapHeight * 4ull;
 	const VkDeviceSize edgeSize = static_cast<VkDeviceSize>(edgeCount * 3ull * sizeof(uint32_t));
 	if (tileMapCurrent && vkCtx.edgeOffsetsBuffer && vkCtx.edgeOffsetsBufferSize == edgeSize)
@@ -374,14 +375,19 @@ static void uploadRaycastBuffers(const TileMap &tileMap)
 			edgeTable[idx3 + 2] = static_cast<uint32_t>(e.direction < 0 ? 1u : 0u);
 		}
 	}
-	// Flatten tile map (only if needed)
+	// Flatten tile map + fog-of-war explored flags (only if needed).
+	// Layout: first mapWidth*mapHeight bytes = tiles, second half = explored flags.
 	std::vector<uint8_t> flatMap;
 	if (!tileMapCurrent)
 	{
-		flatMap.resize(mapWidth * mapHeight);
+		const size_t tileCount = static_cast<size_t>(mapWidth) * mapHeight;
+		flatMap.assign(tileCount * 2ull, 0);
 		for (uint32_t y = 0; y < mapHeight; y++)
 			for (uint32_t x = 0; x < mapWidth; x++)
 				flatMap[y * mapWidth + x] = tileMap[y][x];
+		if (state.raycast.exploredMap.size() == tileCount)
+			std::copy(state.raycast.exploredMap.begin(), state.raycast.exploredMap.end(),
+				flatMap.begin() + static_cast<ptrdiff_t>(tileCount));
 	}
 
 	// Begin a single command buffer for all uploads
@@ -405,6 +411,7 @@ static void uploadRaycastBuffers(const TileMap &tileMap)
 			cmdBuf, staging);
 		vkCtx.lastMapWidth = mapWidth;
 		vkCtx.lastMapHeight = mapHeight;
+		vkCtx.uploadedExploredRevision = state.raycast.exploredRevision;
 	}
 
 	// Record edge offsets upload
@@ -1190,6 +1197,9 @@ void renderFrameRaycastVkGPU()
 		renderFrameRaycastVk();
 		return;
 	}
+
+	// Keep fog-of-war exploration current before uploading the tile map
+	updateFogOfWar();
 	
 	const auto& tileMap = *state.raycast.map;
 	const RaycastPlayer& player = state.raycast.player;
@@ -1221,7 +1231,8 @@ void renderFrameRaycastVkGPU()
 		float fovMul;
 		uint32_t supersample;
 		float wallHeightUnits; // vertical scale of mortar/world vs width
-		float padding[2];
+		float measuredFPS;
+		float mapOverlayZoom;  // 0.0 = overlay off, >0 = zoom level
 	};
 	
 	RaycastConstants constants{};
@@ -1248,8 +1259,9 @@ void renderFrameRaycastVkGPU()
 		constants.supersample = std::min(constants.supersample, 2u);
 	// Vertical scale: 1 wall unit per 1024px (horizontal anisotropy handled in content/shader)
 	constants.wallHeightUnits = 1.0f;
-	constants.padding[0] = static_cast<float>(std::clamp(
+	constants.measuredFPS = static_cast<float>(std::clamp(
 		static_cast<int>(std::lround(state.frameTiming.measuredFPS)), 0, 999));
+	constants.mapOverlayZoom = state.raycast.showMapOverlay ? state.raycast.mapOverlayZoom : 0.0f;
 	
 	// Present frame with compute shader execution
 	uint32_t frame = vkCtx.currentFrame;

@@ -89,6 +89,11 @@ struct D2DContext
     UINT lastEdgeMapWidth = 0;
     UINT lastEdgeMapHeight = 0;
     UINT edgeOffsetsElementCount = 0;
+    // Tile map texture holds tiles in the top half and fog-of-war explored
+    // flags in the bottom half; revisions avoid redundant re-uploads.
+    uint64_t uploadedMapRevision = 0;
+    uint64_t uploadedExploredRevision = 0;
+    std::vector<uint8_t> tileMapUploadCache;
 
     // Megatexture edge-offset lookup buffer (SRV as R32_UINT array)
     Microsoft::WRL::ComPtr<ID3D11Buffer> edgeOffsetsBuffer;

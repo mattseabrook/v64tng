@@ -1,0 +1,10 @@
+--- src/game.cpp
++++ src/game.cpp
+@@ -459,6 +459,7 @@
+                     // since we already know we're safely past the physical display refresh limit above.
+             }
+     }
++
+     // Track render cadence from frame start time (not post-present time).
+     // Present blocks on v-sync; stamping after present double-counts that wait
+     // and can make 30 FPS menu playback run much slower.

@@ -985,72 +985,78 @@ void renderFrameRaycast()
 //
 static void updateRaycastTileMap(const TileMap& tileMap)
 {
-    UINT mapHeight = static_cast<UINT>(tileMap.size());
-    UINT mapWidth = static_cast<UINT>(tileMap[0].size());
-    
-    const bool mapCurrent = d2dCtx.tileMapTexture && d2dCtx.tileMapSRV &&
-                            d2dCtx.lastMapWidth == mapWidth && d2dCtx.lastMapHeight == mapHeight;
-    if (mapCurrent)
+    if (tileMap.empty() || tileMap[0].empty())
         return;
 
-    // Check if we need to recreate the texture
-    if (!d2dCtx.tileMapTexture || d2dCtx.lastMapWidth != mapWidth || d2dCtx.lastMapHeight != mapHeight)
+    UINT mapHeight = static_cast<UINT>(tileMap.size());
+    UINT mapWidth = static_cast<UINT>(tileMap[0].size());
+    const size_t tileCount = static_cast<size_t>(mapWidth) * mapHeight;
+    const bool needRecreate = (!d2dCtx.tileMapTexture || d2dCtx.lastMapWidth != mapWidth || d2dCtx.lastMapHeight != mapHeight);
+    if (!needRecreate &&
+        d2dCtx.uploadedMapRevision == state.raycast.mapRevision &&
+        d2dCtx.uploadedExploredRevision == state.raycast.exploredRevision)
+        return;
+
+    if (needRecreate)
     {
         d2dCtx.tileMapTexture.Reset();
         d2dCtx.tileMapSRV.Reset();
-        
-        // Create 2D texture for tile map (R8_UINT format)
+
+        // Double height: top half = tiles, bottom half = explored flags
         D3D11_TEXTURE2D_DESC texDesc = {};
         texDesc.Width = mapWidth;
-        texDesc.Height = mapHeight;
+        texDesc.Height = mapHeight * 2;
         texDesc.MipLevels = 1;
         texDesc.ArraySize = 1;
         texDesc.Format = DXGI_FORMAT_R8_UINT;
         texDesc.SampleDesc.Count = 1;
         texDesc.Usage = D3D11_USAGE_DEFAULT;
         texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-        
+
         HRESULT hr = d2dCtx.d3dDevice->CreateTexture2D(&texDesc, nullptr, d2dCtx.tileMapTexture.GetAddressOf());
         if (FAILED(hr))
             throw std::runtime_error("Failed to create tile map texture");
-        
-        // Create SRV
+
         D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
         srvDesc.Format = DXGI_FORMAT_R8_UINT;
         srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Texture2D.MipLevels = 1;
-        
+
         hr = d2dCtx.d3dDevice->CreateShaderResourceView(
             d2dCtx.tileMapTexture.Get(),
             &srvDesc,
             d2dCtx.tileMapSRV.GetAddressOf()
         );
-        
+
         if (FAILED(hr))
             throw std::runtime_error("Failed to create tile map SRV");
-        
+
         d2dCtx.lastMapWidth = mapWidth;
         d2dCtx.lastMapHeight = mapHeight;
     }
-    
-    // Upload tile data
-    std::vector<uint8_t> flatMap(mapWidth * mapHeight);
+
+    // Pack tile data + explored flags into combined buffer (double height)
+    auto& combinedMap = d2dCtx.tileMapUploadCache;
+    combinedMap.assign(tileCount * 2, 0);
     for (UINT y = 0; y < mapHeight; y++)
-    {
         for (UINT x = 0; x < mapWidth; x++)
-        {
-            flatMap[y * mapWidth + x] = tileMap[y][x];
-        }
-    }
-    
+            combinedMap[y * mapWidth + x] = tileMap[y][x];
+
+    // Copy explored flags into second half
+    if (state.raycast.exploredMap.size() == tileCount)
+        std::copy(state.raycast.exploredMap.begin(), state.raycast.exploredMap.end(),
+                  combinedMap.begin() + static_cast<ptrdiff_t>(tileCount));
+
     d2dCtx.d3dContext->UpdateSubresource(
         d2dCtx.tileMapTexture.Get(),
         0,
         nullptr,
-        flatMap.data(),
+        combinedMap.data(),
         mapWidth,
         0
     );
+    d2dCtx.uploadedMapRevision = state.raycast.mapRevision;
+    d2dCtx.uploadedExploredRevision = state.raycast.exploredRevision;
 }
 
 // Build or update edge offsets SRV buffer: ((y*mapWidth + x)*4 + side) -> triplet [offset,width,dir]
@@ -1136,6 +1142,9 @@ void renderFrameRaycastGPU()
         renderFrameRaycast();
         return;
     }
+
+    // Keep fog-of-war exploration current before uploading the tile map
+    updateFogOfWar();
     
     const auto& tileMap = *state.raycast.map;
     const RaycastPlayer& player = state.raycast.player;
@@ -1162,7 +1171,8 @@ void renderFrameRaycastGPU()
         float fovMul;
         uint32_t supersample;
         float wallHeightUnits; // vertical scale of mortar/world vs width
-        uint32_t padding[2];
+        uint32_t measuredFPS;
+        float mapOverlayZoom;  // 0.0 = overlay off, >0 = zoom level
     };
     
     RaycastConstants constants{};
@@ -1189,8 +1199,9 @@ void renderFrameRaycastGPU()
         constants.supersample = std::min(constants.supersample, 2u);
     // Vertical scale: 1 wall unit per 1024px (horizontal anisotropy handled in content/shader)
     constants.wallHeightUnits = 1.0f;
-    constants.padding[0] = static_cast<uint32_t>(std::clamp(
+    constants.measuredFPS = static_cast<uint32_t>(std::clamp(
         static_cast<int>(std::lround(state.frameTiming.measuredFPS)), 0, 999));
+    constants.mapOverlayZoom = state.raycast.showMapOverlay ? state.raycast.mapOverlayZoom : 0.0f;
     
     // Update constant buffer
     D3D11_MAPPED_SUBRESOURCE mapped;

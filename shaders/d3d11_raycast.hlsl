@@ -27,7 +27,7 @@ cbuffer RaycastConstants : register(b0)
     uint supersample;        // Supersampling count (1, 2, 4, etc.)
     float wallHeightUnits;   // Wall height in world units relative to width
     uint measuredFPS;
-    uint padding3;
+    float mapOverlayZoom;    // 0.0 = overlay off, >0 = zoom level
 };
 
 //==============================================================================
@@ -281,6 +281,183 @@ float3 shadePixel(uint2 pixel, RayHit hit, float halfW, float halfH, float maxRa
     return color;
 }
 
+//==============================================================================
+// Map Overlay
+//==============================================================================
+
+// Tile map helpers: the tile map texture is double height - top half holds
+// tile values, bottom half holds fog-of-war explored flags.
+uint getTile(int2 pos)
+{
+    if (pos.x < 0 || pos.y < 0 || pos.x >= (int)mapWidth || pos.y >= (int)mapHeight)
+        return 0xFF; // out of bounds = solid
+    return tileMap[pos];
+}
+
+uint getExplored(int2 pos)
+{
+    if (pos.x < 0 || pos.y < 0 || pos.x >= (int)mapWidth || pos.y >= (int)mapHeight)
+        return 0u;
+    return tileMap[int2(pos.x, pos.y + (int)mapHeight)];
+}
+
+bool isSolidWallTile(uint tile)
+{
+    return (tile >= 1u && (tile < 0xF0u || tile > 0xF3u));
+}
+
+bool isExploredOpen(int2 pos)
+{
+    return getExplored(pos) != 0u && !isSolidWallTile(getTile(pos));
+}
+
+float angleDiff(float a, float b)
+{
+    float d = a - b;
+    while (d > 3.14159265) d -= 6.28318531;
+    while (d < -3.14159265) d += 6.28318531;
+    return d;
+}
+
+float pointSegmentDistance(float2 p, float2 a, float2 b)
+{
+    float2 ab = b - a;
+    float den = dot(ab, ab);
+    if (den <= 1e-6)
+        return length(p - a);
+    float t = clamp(dot(p - a, ab) / den, 0.0, 1.0);
+    return length(p - (a + t * ab));
+}
+
+// Draw a centered top-down CAD-style map overlay with fog of war.
+// Zoom level controls magnification, centered on player.
+// Only explored cells are visible; wall edges drawn as clean lines.
+float3 applyMapOverlay(float3 sceneColor, uint2 pixel)
+{
+    float3 color = sceneColor * 0.70;
+
+    float sw = (float)screenWidth;
+    float sh = (float)screenHeight;
+    float mw = (float)mapWidth;
+    float mh = (float)mapHeight;
+    float zoom = mapOverlayZoom;
+
+    // Cell size: base fits map to ~70% of screen, then multiply by zoom
+    float maxDim = max(mw, mh);
+    float baseCellSize = (min(sw, sh) * 0.70) / maxDim;
+    float cellSize = baseCellSize * zoom;
+    cellSize = max(cellSize, 2.0);
+
+    // Center view on player position
+    float centerX = sw * 0.5;
+    float centerY = sh * 0.5;
+    float ox = centerX - playerX * cellSize;
+    float oy = centerY - playerY * cellSize;
+
+    // Map pixel to world cell coordinates
+    float wpx = ((float)pixel.x - ox) / cellSize;
+    float wpy = ((float)pixel.y - oy) / cellSize;
+
+    int cx = (int)floor(wpx);
+    int cy = (int)floor(wpy);
+
+    // Player position in screen space (always centered)
+    float plyrX = centerX;
+    float plyrY = centerY;
+    float distToPlayer = length(float2((float)pixel.x - plyrX, (float)pixel.y - plyrY));
+
+    // Player marker: bright red dot
+    float playerRadius = cellSize * 0.35;
+    if (distToPlayer < playerRadius)
+    {
+        float t = (1.0 - distToPlayer / playerRadius) * 0.9;
+        color = lerp(color, float3(1.0, 0.25, 0.25), t);
+        return color;
+    }
+
+    // FOV cone span
+    float halfFovTan = tan(playerFOV * 0.5 * fovMul);
+    float fovHalf = atan(halfFovTan);
+
+    // Filled FOV cone. Keep this cheap; per-overlay-pixel ray casts destroy frame time.
+    float2 target = float2(wpx - playerX, wpy - playerY);
+    float targetDist = length(target);
+    float overlayRange = max(8.0, min(maxDim, 24.0));
+    if (targetDist > 0.001 && targetDist <= overlayRange)
+    {
+        float ang = atan2(target.y, target.x);
+        float rel = abs(angleDiff(ang, playerAngle));
+        if (rel <= fovHalf)
+        {
+            float fade = 1.0 - smoothstep(overlayRange * 0.65, overlayRange, targetDist);
+            color = lerp(color, float3(1.0, 0.20, 0.20), 0.22 * fade);
+        }
+    }
+
+    // Outside map bounds
+    if (cx < 0 || cy < 0 || cx >= (int)mapWidth || cy >= (int)mapHeight)
+        return color;
+
+    uint tile = tileMap[int2(cx, cy)];
+    bool solid = isSolidWallTile(tile);
+    bool explored = getExplored(int2(cx, cy)) != 0u;
+
+    // Fog of war: skip unexplored cells, UNLESS they are solid and touch an explored cell (to bridge corners)
+    if (!explored)
+    {
+        if (!solid) return color;
+        bool nExp = false;
+        for (int dy = -1; dy <= 1; ++dy) {
+            for (int dx = -1; dx <= 1; ++dx) {
+                if ((dx != 0 || dy != 0) && isExploredOpen(int2(cx + dx, cy + dy))) nExp = true;
+            }
+        }
+        if (!nExp) return color;
+    }
+
+    // Center-stroke wall rendering via distance-to-segment tests.
+    // This removes corner dropouts when center lines fall between pixel columns.
+    bool drawLine = false;
+
+    if (solid)
+    {
+        float2 c = float2(ox + ((float)cx + 0.5) * cellSize,
+                  oy + ((float)cy + 0.5) * cellSize);
+        float halfSpan = cellSize * 0.5;
+        float2 p = float2((float)pixel.x + 0.5, (float)pixel.y + 0.5);
+        float lineHalfW = 0.82;
+
+        bool nConn = (cy > 0) ? isSolidWallTile(getTile(int2(cx, cy - 1))) : false;
+        bool sConn = (cy < (int)mapHeight - 1) ? isSolidWallTile(getTile(int2(cx, cy + 1))) : false;
+        bool wConn = (cx > 0) ? isSolidWallTile(getTile(int2(cx - 1, cy))) : false;
+        bool eConn = (cx < (int)mapWidth - 1) ? isSolidWallTile(getTile(int2(cx + 1, cy))) : false;
+
+        bool nVisible = isExploredOpen(int2(cx - 1, cy)) || isExploredOpen(int2(cx - 1, cy - 1)) ||
+                        isExploredOpen(int2(cx + 1, cy)) || isExploredOpen(int2(cx + 1, cy - 1));
+        bool sVisible = isExploredOpen(int2(cx - 1, cy)) || isExploredOpen(int2(cx - 1, cy + 1)) ||
+                        isExploredOpen(int2(cx + 1, cy)) || isExploredOpen(int2(cx + 1, cy + 1));
+        bool wVisible = isExploredOpen(int2(cx, cy - 1)) || isExploredOpen(int2(cx - 1, cy - 1)) ||
+                        isExploredOpen(int2(cx, cy + 1)) || isExploredOpen(int2(cx - 1, cy + 1));
+        bool eVisible = isExploredOpen(int2(cx, cy - 1)) || isExploredOpen(int2(cx + 1, cy - 1)) ||
+                        isExploredOpen(int2(cx, cy + 1)) || isExploredOpen(int2(cx + 1, cy + 1));
+
+        if (nConn && nVisible && pointSegmentDistance(p, c, c + float2(0.0, -halfSpan)) <= lineHalfW) drawLine = true;
+        if (sConn && sVisible && pointSegmentDistance(p, c, c + float2(0.0,  halfSpan)) <= lineHalfW) drawLine = true;
+        if (wConn && wVisible && pointSegmentDistance(p, c, c + float2(-halfSpan, 0.0)) <= lineHalfW) drawLine = true;
+        if (eConn && eVisible && pointSegmentDistance(p, c, c + float2( halfSpan, 0.0)) <= lineHalfW) drawLine = true;
+
+        bool isolatedVisible = isExploredOpen(int2(cx - 1, cy)) || isExploredOpen(int2(cx + 1, cy)) ||
+                               isExploredOpen(int2(cx, cy - 1)) || isExploredOpen(int2(cx, cy + 1));
+        if (!nConn && !sConn && !wConn && !eConn && isolatedVisible && length(p - c) <= lineHalfW)
+            drawLine = true;
+    }
+
+    if (drawLine)
+        color = lerp(color, float3(0.6, 0.75, 0.9), 0.85);
+
+    return color;
+}
+
 uint fpsGlyphPattern(uint glyph)
 {
     if (glyph == 0) return 0x7b6f; if (glyph == 1) return 0x749a;
@@ -379,6 +556,10 @@ void main(uint3 DTid : SV_DispatchThreadID)
     hash ^= hash >> 16;
     float d = ((hash & 1023u) / 1023.0 - 0.5) * (1.5 / 255.0);
     accumColor = saturate(accumColor + d);
+
+    // Apply map overlay if toggled
+    if (mapOverlayZoom > 0.0)
+        accumColor = applyMapOverlay(accumColor, pixel);
     accumColor = applyFpsOverlay(accumColor, pixel);
     
     // Write output as BGRA (DirectX convention)

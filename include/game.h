@@ -168,6 +168,11 @@ struct GameState
 	struct
 	{
 		bool enabled = false;
+		bool showMapOverlay = false;
+		float mapOverlayZoom = 4.0f;					// 1.0 = fit whole map, higher = zoomed in
+		std::vector<uint8_t> exploredMap;				// fog of war (1 = explored, 0 = hidden)
+		uint64_t mapRevision = 0;						// bumped when the map pointer/data changes
+		uint64_t exploredRevision = 0;					// bumped when exploredMap changes
 		RaycastPlayer player = {
 			0.0f, 0.0f,		// Starting position
 			0.0f,			// Initial angle

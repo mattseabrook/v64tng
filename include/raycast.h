@@ -86,5 +86,6 @@ void raycastKeyUp(WPARAM key);
 void resetRaycastInput();
 void updateRaycasterMovement();
 void initRaycaster();
+void updateFogOfWar();
 
 #endif // RAYCAST_H

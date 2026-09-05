@@ -1,0 +1,594 @@
+// game.cpp
+
+#include <iostream>
+#include <unordered_map>
+#include <unordered_set>
+#include <string>
+#include <string_view>
+#include <ranges>
+#include <algorithm>
+#include <chrono>
+#include <thread>
+#include <sstream>
+#include <filesystem>
+#include <fstream>
+
+#include "game.h"
+#include "window.h"
+#include "music.h"
+#include "audio.h"
+#include "config.h"
+#include "raycast.h"
+#include "basement.h"
+#include "pvx.h"
+#include "d2d.h"
+#include "vulkan.h"
+
+//
+// Debug logging macro - writes to DebugView/debugger output
+//
+#ifdef _WIN32
+#define DBG_LOG(msg) OutputDebugStringA("[Phantom] " msg "\n")
+#define DBG_LOGF(fmt, ...) do { char _dbg_buf[512]; snprintf(_dbg_buf, sizeof(_dbg_buf), "[Phantom] " fmt "\n", __VA_ARGS__); OutputDebugStringA(_dbg_buf); } while(0)
+#else
+#define DBG_LOG(msg) ((void)0)
+#define DBG_LOGF(fmt, ...) ((void)0)
+#endif
+
+// Global game state
+GameState state;
+
+//=====================================================
+
+//
+// Lookup map for views - uses transparent hash for string_view lookups without allocation
+//
+struct StringHash {
+    using is_transparent = void;
+    size_t operator()(std::string_view sv) const { return std::hash<std::string_view>{}(sv); }
+    size_t operator()(const std::string& s) const { return std::hash<std::string_view>{}(s); }
+};
+std::unordered_map<std::string, const View *, StringHash, std::equal_to<>> view_map;
+
+//
+// Lookup table for named actions
+//
+static std::unordered_map<std::string, std::function<void()>> action_map = {
+	{"raycast", initRaycaster}};
+
+////////////////////////////////////////////////////////////////////////
+// Utility Functions
+////////////////////////////////////////////////////////////////////////
+
+//
+// Builds the view map from predefined view groups
+//
+void buildViewMap() { /* no-op - view system not used */ }
+
+//
+// Retrieves the current view based on the current_view string
+// Uses string_view for zero-allocation lookups via transparent hash
+//
+const View *getView(std::string_view current_view)
+{
+	auto it = view_map.find(current_view);
+	return (it != view_map.end()) ? it->second : nullptr;
+}
+
+//
+// Parse animation token (room:view;mods)
+//
+static std::tuple<std::string, std::string, bool, std::string> parseToken(std::string_view token)
+{
+	std::string room, view, action;
+	bool is_static = false;
+
+	if (auto colon = token.find(':'); colon != std::string_view::npos)
+	{
+		room = token.substr(0, colon);
+		token.remove_prefix(colon + 1);
+	}
+
+	if (auto semi = token.find(';'); semi != std::string_view::npos)
+	{
+		action = std::string(token.substr(semi + 1));
+		is_static = action.find("static") != std::string_view::npos;
+		token = token.substr(0, semi);
+	}
+
+	view = token;
+	return {room, view, is_static, action};
+}
+
+//
+// Setup PVX and view
+//
+static void setupView(const std::string &view_name, bool is_static, auto now)
+{
+	state.view = getView(view_name);
+	if (!state.view)
+		throw std::runtime_error("View not found: " + view_name);
+
+	state.currentPVX = &getOrLoadPVX(view_name + ".pvx");
+	state.animation.totalFrames = state.currentPVX->frameData.size();
+	state.currentFrameIndex = is_static ? (state.animation.totalFrames ? state.animation.totalFrames - 1 : 0) : 0;
+	state.animation.isPlaying = !is_static && state.animation.totalFrames > 0;
+	state.animation.lastFrameTime = now;
+	state.previous_view = state.current_view;
+	state.frameTiming.dirtyFrame = true;
+}
+
+static void unloadCurrentPVXIfLoaded()
+{
+	if (!state.currentPVX)
+		return;
+
+	const std::string key = state.currentPVX->filename;
+	state.currentPVX = nullptr;
+	unloadPVX(key);
+}
+
+static void unloadTransientPVXIfLoaded()
+{
+	if (state.transientPVX)
+	{
+		const std::string key = state.transientPVX->filename;
+		state.transientPVX = nullptr;
+		unloadPVX(key);
+		return;
+	}
+
+	if (!state.transient_animation_name.empty())
+		unloadPVX(state.transient_animation_name + ".pvx");
+}
+
+/*
+===============================================================================
+Function Name: viewHandler
+
+Description:
+		- Renders a frame if enough time has passed since the last render.
+		- If `force` is true, it will render immediately regardless of timing.
+		- Handles transient animations and view changes.
+===============================================================================
+*/
+void viewHandler()
+{
+	// Handle menu mode
+	if (state.menu.enabled)
+	{
+		auto now = std::chrono::steady_clock::now();
+		
+			// Update menu background animation (streaming on-demand).
+			// FPS comes from the PVX header; stream loops internally at EOF.
+			const double menuFPS = static_cast<double>((std::max)(1, pvxMenuGetFPS()));
+
+			// Keep the global render cadence in sync with the active content.
+			// This prevents desync if the default (24) was never overwritten
+			// or got restored by a previous pvxPlay() save/restore cycle.
+			state.frameTiming.currentFPS = menuFPS;
+
+			const auto menuFrameDuration = state.menu.animation.getFrameDuration(menuFPS);
+			if (pvxMenuIsOpen() && state.menu.animation.isPlaying)
+			{
+				// If we've fallen very far behind (minimized, stall, etc.),
+				// resync the clock to "almost now" so we don't burst through
+				// 8 old frames trying to catch up.
+				if (now - state.menu.animation.lastFrameTime > menuFrameDuration * 8)
+					state.menu.animation.lastFrameTime = now - menuFrameDuration;
+
+				// Consume frames that are DUE, but only advance the clock
+				// for frames we actually got from the queue.  The old code
+				// advanced the clock unconditionally, so when the decode
+				// thread was starved (queue empty) the video appeared to
+				// "speed up" once frames became available again — the clock
+				// had run ahead and those frames were permanently skipped.
+				const std::vector<uint8_t>* newestFrame = nullptr;
+				int framesConsumed = 0;
+				while (now - state.menu.animation.lastFrameTime >= menuFrameDuration && framesConsumed < 8)
+				{
+					const std::vector<uint8_t>* nextMenuFrame = pvxMenuNextFrame();
+					if (!nextMenuFrame)
+						break;  // Queue empty — stop advancing clock
+					newestFrame = nextMenuFrame;
+					state.menu.animation.lastFrameTime += menuFrameDuration;
+					++framesConsumed;
+				}
+
+				if (newestFrame)
+				{
+					state.menu.currentFrame = newestFrame;
+					state.frameTiming.dirtyFrame = true;
+				}
+			}
+		
+		// Handle menu item clicks
+		if (state.menu.itemClicked)
+		{
+			state.menu.itemClicked = false;
+			
+			switch (state.menu.selectedItem)
+			{
+			case 0: // NEW GAME
+				MessageBoxA(nullptr, "new game", "Menu", MB_ICONINFORMATION | MB_OK);
+				break;
+			case 1: // MULTIPLAYER
+				MessageBoxA(nullptr, "multiplayer", "Menu", MB_ICONINFORMATION | MB_OK);
+				break;
+			case 2: // OPTIONS
+				MessageBoxA(nullptr, "options", "Menu", MB_ICONINFORMATION | MB_OK);
+				break;
+			case 3: // EXIT
+				// Use same cleanup as File->Exit menu
+				save_config("config.json");
+				::PostQuitMessage(0);
+				break;
+			}
+		}
+		
+		return;
+	}
+
+	if (state.raycast.enabled)
+	{
+		updateRaycasterMovement();
+		return;
+	}
+
+	auto now = std::chrono::steady_clock::now();
+
+	// Handle transient animations (load/unload symmetric to main view)
+	if (!state.transient_animation_name.empty() && state.transient_animation.isPlaying)
+	{
+		state.transientPVX = &getOrLoadPVX(state.transient_animation_name + ".pvx"); // Load transients
+		if (!state.transient_animation.totalFrames)
+			state.transient_animation.totalFrames = state.transientPVX->frameData.size();
+
+		if (now - state.transient_animation.lastFrameTime >= state.transient_animation.getFrameDuration(state.frameTiming.currentFPS))
+		{
+			if (++state.transient_frame_index >= state.transient_animation.totalFrames)
+			{
+				state.transient_animation.isPlaying = false;
+				state.transient_frame_index = state.transient_animation.totalFrames - 1;
+				// Music playback disabled in PVX transition (retain call placeholder)
+				// if (!state.current_song.empty()) xmiPlay(state.current_song, false);
+
+				unloadTransientPVXIfLoaded();
+				state.transient_animation_name.clear();
+				state.frameTiming.dirtyFrame = true; // Ensure re-render after transient
+
+				// Refresh view to restore hotspots without restarting animation
+				auto [room, view, is_static, action] = parseToken(state.current_view);
+				state.view = getView(view);
+				if (!state.view)
+				{
+					throw std::runtime_error("View not found after transient: " + view);
+				}
+				// Ensure animation is stopped to allow hotspot interaction
+				state.animation.isPlaying = false;
+			}
+			else
+			{
+				state.transient_animation.lastFrameTime += state.transient_animation.getFrameDuration(state.frameTiming.currentFPS);
+				state.frameTiming.dirtyFrame = true;
+			}
+		}
+		return;
+	}
+
+	// Load new view/sequence
+	if (state.current_view != state.previous_view || state.animation_sequence.empty())
+	{
+		// Clear and parse sequence
+		state.animation_sequence.clear();
+		std::string_view seq{state.current_view};
+		for (size_t pos = 0; pos < seq.size();)
+		{
+			size_t next = seq.find(',', pos);
+			auto part = seq.substr(pos, next == std::string_view::npos ? seq.size() - pos : next - pos);
+			if (!part.empty())
+				state.animation_sequence.emplace_back(part);
+			if (next == std::string_view::npos)
+				break;
+			pos = next + 1;
+		}
+		state.animation_queue_index = 0;
+
+		// Setup first token
+		if (!state.animation_sequence.empty())
+		{
+			auto [room, view, is_static, action] = parseToken(state.animation_sequence[0]);
+			if (!room.empty() && state.current_room != room)
+			{
+				unloadCurrentPVXIfLoaded();
+				unloadTransientPVXIfLoaded();
+				state.current_room = room;
+				state.previous_room = room;
+				state.animation.reset();
+			}
+			state.current_view = view;
+			setupView(view, is_static, now);
+			state.pending_action = nullptr;
+			if (!action.empty())
+			{
+				if (auto it = action_map.find(action); it != action_map.end())
+					state.pending_action = it->second;
+			}
+
+			// If this is a single static view, complete the setup to prevent reloads
+			if (state.animation_queue_index == 0 && state.animation_sequence.size() == 1 && is_static)
+			{
+				// Sequence complete for static
+				auto [_, view_complete, __, ___] = parseToken(state.animation_sequence.back());
+				state.current_view = view_complete + ";static";
+				state.previous_view = state.current_view;
+				state.animation_sequence.clear();
+				state.animation_queue_index = 0;
+				// No additional setup needed
+			}
+		}
+	}
+
+	// Update animation
+	if (state.animation.isPlaying && state.currentPVX &&
+		now - state.animation.lastFrameTime >= state.animation.getFrameDuration(state.frameTiming.currentFPS))
+	{
+		if (++state.currentFrameIndex >= state.animation.totalFrames)
+		{
+			state.animation.isPlaying = false;
+			state.currentFrameIndex = state.animation.totalFrames - 1;
+
+			if (state.pending_action)
+			{
+				auto action = std::move(state.pending_action);
+				state.pending_action = nullptr;
+				action();
+				if (state.raycast.enabled)
+					return;
+			}
+
+			if (state.animation_queue_index < state.animation_sequence.size() - 1)
+			{
+				// Next in sequence
+				auto [room, view, is_static, action] = parseToken(state.animation_sequence[++state.animation_queue_index]);
+				if (!room.empty() && state.current_room != room)
+				{
+					unloadCurrentPVXIfLoaded();
+					unloadTransientPVXIfLoaded();
+					state.current_room = room;
+					state.previous_room = room;
+					state.animation.reset();
+				}
+				// Unload previous PVX before loading next
+				unloadCurrentPVXIfLoaded();
+				state.current_view = view;
+				setupView(view, is_static, now);
+				state.pending_action = nullptr;
+				if (!action.empty())
+				{
+					if (auto it = action_map.find(action); it != action_map.end())
+						state.pending_action = it->second;
+				}
+			}
+			else
+			{
+				// Sequence complete
+				auto [_, view, __, ___] = parseToken(state.animation_sequence.back());
+				state.current_view = view + ";static";
+				state.previous_view = state.current_view;
+
+				// Unload previous sequence PVX files (if not current)
+				for (size_t i = 0; i < state.animation_sequence.size() - 1; ++i)
+				{
+					auto [room_i, view_i, is_static_i, action_i] = parseToken(state.animation_sequence[i]);
+					if (view_i != view)
+						unloadPVX(view_i + ".pvx"); // Safe if not loaded
+				}
+
+				state.animation_sequence.clear();
+				state.animation_queue_index = 0;
+				setupView(view, true, now);
+			}
+		}
+		else
+		{
+			state.animation.lastFrameTime += state.animation.getFrameDuration(state.frameTiming.currentFPS);
+			state.frameTiming.dirtyFrame = true;
+		}
+	}
+}
+
+/*
+===============================================================================
+Function Name: maybeRenderFrame
+
+Description:
+		- Renders a frame if enough time has passed since the last render.
+		- If `force` is true, it will render immediately regardless of timing.
+
+Parameters:
+		- force: If true, forces a render regardless of timing.
+		  If false, waits for the appropriate frame duration.
+===============================================================================
+*/
+void maybeRenderFrame(bool force)
+{
+	using namespace std::chrono;
+
+	// Derive render cadence from the ACTIVE content's FPS, not a stale global.
+	// Menu playback reads from the PVX header; pvxPlay sets its own cadence;
+	// everything else falls back to state.frameTiming.currentFPS.
+	double activeFPS = state.frameTiming.currentFPS;
+	if (state.menu.enabled && pvxMenuIsOpen())
+		activeFPS = static_cast<double>((std::max)(1, pvxMenuGetFPS()));
+
+	auto frameDuration = microseconds(
+		static_cast<long long>(1000000.0 / activeFPS));
+    int refreshRate = getDisplayRefreshRate();
+    double capFPS = static_cast<double>((std::max)(1, refreshRate));
+    auto minDuration = microseconds(static_cast<long long>(1000000.0 / capFPS));
+
+    auto now = steady_clock::now();
+    auto timeSinceLast = now - state.frameTiming.lastRenderTime;
+
+    if (!force)
+    {
+            if (timeSinceLast < minDuration)
+            {
+                    // We are faster than the physical display refresh rate.
+                    // We MUST yield to prevent GPU spam and tearing, even if dirty.
+                    auto remaining = duration_cast<milliseconds>(minDuration - timeSinceLast);
+                    DWORD waitMs = static_cast<DWORD>((std::max)(remaining.count(), static_cast<long long>(0)));
+                    MsgWaitForMultipleObjects(0, nullptr, FALSE, waitMs, QS_ALLINPUT);
+                    return;
+            }
+
+            if (timeSinceLast < frameDuration)
+            {
+                    // Not dirty yet? Wait until the content's native frame duration passes.
+                    if (!state.frameTiming.dirtyFrame)
+                    {
+                            auto remaining = duration_cast<milliseconds>(frameDuration - timeSinceLast);
+                            DWORD waitMs = static_cast<DWORD>((std::max)(remaining.count(), static_cast<long long>(0)));
+                            MsgWaitForMultipleObjects(0, nullptr, FALSE, waitMs, QS_ALLINPUT);
+                            return;
+                    }
+                    // Dirty UI/input updates (e.g. mouse movement) can bypass the native content cadence
+                    // since we already know we're safely past the physical display refresh limit above.
+            }
+	// Track render cadence from frame start time (not post-present time).
+	// Present blocks on v-sync; stamping after present double-counts that wait
+	// and can make 30 FPS menu playback run much slower.
+	const auto renderStart = steady_clock::now();
+	renderFrame();
+	state.frameTiming.lastRenderTime = renderStart;
+	state.frameTiming.dirtyFrame = false;
+}
+
+/*
+===============================================================================
+Function Name: init
+
+Description:
+		- Initializes the game environment.
+		- Sets up the window, loads views, and plays intro videos.
+		- Starts the main game loop.
+		- Cleans up resources on exit.
+===============================================================================
+*/
+void init()
+{
+	DBG_LOG("init() entered");
+	
+#ifdef _WIN32
+	DBG_LOG("Setting thread priority...");
+	timeBeginPeriod(1);
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
+	SetPriorityClass(GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS);
+	DBG_LOG("Thread priority set");
+#endif
+
+	try
+	{
+		DBG_LOG("Calling initWindow()...");
+		initWindow();
+		DBG_LOG("initWindow() returned successfully");
+
+		// Intro PVX then go to main menu
+		if (!state.raycast.enabled && !state.menu.enabled)
+		{
+			DBG_LOG("Playing intro PVX: lakeshore.pvx");
+			pvxPlay("lakeshore.pvx");
+			DBG_LOG("Intro PVX finished");
+			
+			// Initialize main menu with streaming
+			DBG_LOG("Initializing main menu...");
+			state.menu.enabled = true;
+			DBG_LOG("Opening menu.pvx for streaming...");
+			if (!pvxMenuOpen("menu.pvx"))
+			{
+				MessageBoxA(nullptr, "Failed to open menu.pvx", "Error", MB_ICONERROR | MB_OK);
+				return;
+			}
+			DBG_LOG("menu.pvx opened for streaming");
+			const int menuFPS = (std::max)(1, pvxMenuGetFPS());
+			state.menu.animation.totalFrames = 0; // Unknown in streaming mode (no startup pre-scan).
+			DBG_LOGF("Menu stream opened at %d FPS", menuFPS);
+			state.menu.animation.isPlaying = true;
+			state.menu.animation.lastFrameTime = std::chrono::steady_clock::now();
+			state.menu.currentFrameIndex = 0;
+			state.frameTiming.currentFPS = static_cast<double>(menuFPS);
+			
+				// Zero-copy: point to decoded frame buffer. If prefetch queue is
+				// temporarily empty, fall back to current decoded frame.
+				state.menu.currentFrame = pvxMenuNextFrame();
+				if (!state.menu.currentFrame)
+					state.menu.currentFrame = pvxMenuCurrentFrame();
+				d2dCtx.forceFullUpdate = true;
+				vkCtx.forceFullUpdate = true;
+			
+			state.frameTiming.dirtyFrame = true;
+			DBG_LOG("Main menu initialized");
+		}
+
+		DBG_LOG("Calling viewHandler()...");
+		viewHandler();
+		DBG_LOG("Calling maybeRenderFrame(true)...");
+		maybeRenderFrame(true);
+		DBG_LOG("Initial render complete");
+	}
+	catch (const std::exception& e)
+	{
+		DBG_LOGF("EXCEPTION in init(): %s", e.what());
+#ifdef _WIN32
+		MessageBoxA(nullptr, e.what(), "Phantom Engine Error", MB_ICONERROR | MB_OK);
+#endif
+		return;
+	}
+	catch (...)
+	{
+		DBG_LOG("UNKNOWN EXCEPTION in init()");
+#ifdef _WIN32
+		MessageBoxA(nullptr, "Unknown error during initialization", "Phantom Engine Error", MB_ICONERROR | MB_OK);
+#endif
+		return;
+	}
+
+	state.previous_room = state.current_room;
+	state.ui.enabled = true;
+	DBG_LOG("Entering main game loop...");
+
+	bool running = true;
+	while (running)
+	{
+		running = processEvents();
+		viewHandler();
+		maybeRenderFrame();
+	}
+	
+	DBG_LOG("Main loop exited, saving config...");
+	save_config("config.json");
+
+	//
+	// Cleanup
+	//
+
+	// Music
+	state.music_playing = false;
+	if (state.music_thread.joinable())
+	{
+		state.music_thread.join();
+	}
+
+	// PCM
+	wavStop();
+	pvxMenuClose();
+
+	// Resources
+	cleanupWindow();
+#ifdef _WIN32
+	timeEndPeriod(1);
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
+	SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
+#endif
+}

@@ -1,0 +1,953 @@
+#version 450
+// Vulkan Compute Shader for GPU-Accelerated Raycasting
+// Implements DDA algorithm entirely on GPU for maximum parallelism
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+// Tile map: storage buffer with uint8 wall types + explored flags
+layout(std430, binding = 0) buffer TileMap {
+    uint data[];  // Packed bytes (4 tiles per uint)
+};
+
+// Output: BGRA8 image
+layout(binding = 1, rgba8) uniform writeonly image2D outputImage;
+
+// Megatexture edge data: triplets [offset,width,dirFlag] as linear array
+layout(std430, binding = 2) readonly buffer EdgeData {
+    uint data2[];
+};
+
+// Megatexture tiles uploaded as a 2D array image: layer = tile index.
+layout(binding = 3) uniform sampler2DArray megatexTex;
+
+// Per-pixel wall depth in camera-forward units, packed as uint depth.
+layout(binding = 4, r32ui) uniform uimage2D depthImage;
+
+// Per-frame constants
+layout(push_constant) uniform RaycastConstants {
+    float playerX;
+    float playerY;
+    float playerAngle;
+    float playerFOV;
+    uint screenWidth;
+    uint screenHeight;
+    uint mapWidth;
+    uint mapHeight;
+    float visualScale;       // Distance shrink factor (typically 3.0)
+    float torchRange;        // Light falloff range
+    float falloffMul;        // Radial falloff multiplier
+    float fovMul;            // FOV adjustment multiplier
+    uint supersample;        // Supersampling count
+    float wallHeightUnits;   // Wall height in world units relative to width
+    uint useMegatexture;     // 1 if megatexture mortar lines should render
+    float mapOverlayZoom;    // 0.0 = overlay off, >0 = zoom level
+    uint ceilingColorPacked;
+    uint floorColorPacked;
+    uint wallColorPacked;
+    uint wallLineColorPacked;
+    uint renderFlags;
+    float ambientLight;
+    float lightX;
+    float lightY;
+    float lightZ;
+    uint reserved0;
+    uint reserved1;
+    uint reserved2;
+} pc;
+
+const uint RAYCAST_FLAG_FLAT_CEILING = 0x1u;
+const uint RAYCAST_FLAG_FLAT_FLOOR = 0x2u;
+const uint RAYCAST_FLAG_MODEL_LIGHT = 0x4u;
+const uint RAYCAST_FLAG_BLACK_BOUNDARY_WALLS = 0x8u;
+
+float sceneLightFactor(vec3 world)
+{
+    vec3 lightPos = vec3(pc.lightX, pc.lightY, pc.lightZ);
+    float dist = distance(world, lightPos);
+    float normalized = clamp(1.0 - dist / max(pc.torchRange, 0.001), 0.0, 1.0);
+    float boosted = normalized * normalized;
+    return clamp(pc.ambientLight + (1.0 - pc.ambientLight) * boosted, pc.ambientLight, 1.0);
+}
+
+bool projectScreenPixelToPlane(uvec2 pixel, float yf, float halfH, float halfFovTan, float planeZ, out vec3 world)
+{
+    float deltaY = halfH - yf;
+    if (abs(deltaY) < 0.001)
+        return false;
+
+    float relY = ((planeZ - 0.55) * float(pc.screenHeight) * pc.visualScale) / (deltaY * max(halfFovTan, 0.001));
+    if (isnan(relY) || isinf(relY) || relY <= 0.0)
+        return false;
+
+    float camX = 2.0 * ((float(pixel.x) + 0.5) / float(pc.screenWidth)) - 1.0;
+    float relX = camX * halfFovTan * relY;
+    float sinA = sin(pc.playerAngle);
+    float cosA = cos(pc.playerAngle);
+
+    world = vec3(pc.playerX + relX * sinA + relY * cosA,
+                 pc.playerY - relX * cosA + relY * sinA,
+                 planeZ);
+    return !any(isnan(world)) && !any(isinf(world));
+}
+
+vec2 screenRayDirection(uvec2 pixel, float halfFovTan)
+{
+    float camX = 2.0 * ((float(pixel.x) + 0.5) / float(pc.screenWidth)) - 1.0;
+    float viewX = camX * halfFovTan;
+    float angle = pc.playerAngle + atan(viewX);
+    return vec2(cos(angle), sin(angle));
+}
+
+vec3 unpackColor(uint packed)
+{
+    return vec3(
+        float(packed & 0xFFu),
+        float((packed >> 8u) & 0xFFu),
+        float((packed >> 16u) & 0xFFu)) / 255.0;
+}
+
+//==============================================================================
+// Tile Map Access
+//==============================================================================
+
+uint getTile(ivec2 mapPos)
+{
+    // Bounds check
+    if (mapPos.x < 0 || mapPos.y < 0 || 
+        mapPos.x >= int(pc.mapWidth) || mapPos.y >= int(pc.mapHeight))
+        return 0xFF;  // Out of bounds = solid wall
+    
+    // Calculate byte index in map
+    uint byteIndex = uint(mapPos.y) * pc.mapWidth + uint(mapPos.x);
+    
+    // Load packed uint (4 bytes per word)
+    uint wordIndex = byteIndex >> 2;
+    uint byteOffset = byteIndex & 3u;
+    uint packedWord = data[wordIndex];
+    
+    // Extract byte
+    uint shift = byteOffset * 8u;
+    return (packedWord >> shift) & 0xFFu;
+}
+
+bool isSolidTileValue(uint tile)
+{
+    return (tile >= 1u && (tile < 0xF0u || tile > 0xF3u));
+}
+
+bool isSolidBlackWallTile(uint tile)
+{
+    return tile == 0xFEu;
+}
+
+bool isBoundaryCell(ivec2 cell)
+{
+    return cell.x == 0 || cell.y == 0 ||
+           cell.x == int(pc.mapWidth) - 1 ||
+           cell.y == int(pc.mapHeight) - 1;
+}
+
+bool isSolidBlackWall(ivec2 cell, uint tile)
+{
+    if (isSolidBlackWallTile(tile))
+        return true;
+    return (pc.renderFlags & RAYCAST_FLAG_BLACK_BOUNDARY_WALLS) != 0u &&
+           isSolidTileValue(tile) &&
+           isBoundaryCell(cell);
+}
+
+bool getSameSideNeighborCell(ivec2 cell, int side, bool lowEdge, out ivec2 neighbor)
+{
+    if (side == 0 || side == 2)
+        neighbor = cell + (lowEdge ? ivec2(-1, 0) : ivec2(1, 0));
+    else if (side == 1 || side == 3)
+        neighbor = cell + (lowEdge ? ivec2(0, -1) : ivec2(0, 1));
+    else
+        return false;
+    return true;
+}
+
+bool hasMegatextureEdge(ivec2 cell, int side)
+{
+    if (pc.useMegatexture == 0u)
+        return false;
+    if (cell.x < 0 || cell.y < 0 || cell.x >= int(pc.mapWidth) || cell.y >= int(pc.mapHeight) || side < 0 || side > 3)
+        return false;
+
+    uint edgeIndex = (uint(cell.y) * pc.mapWidth + uint(cell.x)) * 4u + uint(side);
+    return data2[edgeIndex * 3u + 1u] != 0u;
+}
+
+vec4 sampleMegatextureRaw(ivec2 cell, int side, float u, float v)
+{
+    if (pc.useMegatexture == 0u)
+        return vec4(0.0);
+
+    ivec3 megatexSize = textureSize(megatexTex, 0);
+    uint tileWidth = uint(max(megatexSize.x, 0));
+    uint tileHeight = uint(max(megatexSize.y, 0));
+    uint tileCount = uint(max(megatexSize.z, 0));
+    if (tileWidth == 0u || tileHeight == 0u || tileCount == 0u)
+        return vec4(0.0);
+
+    if (cell.x < 0 || cell.y < 0 || cell.x >= int(pc.mapWidth) || cell.y >= int(pc.mapHeight) || side < 0 || side > 3)
+        return vec4(0.0);
+
+    uint edgeIndex = (uint(cell.y) * pc.mapWidth + uint(cell.x)) * 4u + uint(side);
+    uint edgeBase = edgeIndex * 3u;
+    uint edgeOffset = data2[edgeBase + 0u];
+    uint edgeWidth = data2[edgeBase + 1u];
+    uint edgeFlip = data2[edgeBase + 2u];
+    if (edgeWidth == 0u)
+        return vec4(0.0);
+
+    u = clamp(u, 0.0, 1.0);
+    if (edgeFlip != 0u)
+        u = 1.0 - u;
+
+    uint localU = uint(clamp(int(u * float(max(1u, edgeWidth - 1u))), 0, int(edgeWidth - 1u)));
+    uint pixelU = edgeOffset + localU;
+    uint pixelV = uint(clamp(int(clamp(v, 0.0, 1.0) * float(max(1u, tileHeight - 1u))), 0, int(tileHeight - 1u)));
+    uint tileIndex = pixelU / tileWidth;
+    if (tileIndex >= tileCount)
+        return vec4(0.0);
+
+    return texelFetch(megatexTex,
+        ivec3(int(pixelU % tileWidth), int(pixelV), int(tileIndex)),
+        0);
+}
+
+vec4 sampleMegatexture(ivec2 cell, int side, float u, float v)
+{
+    return sampleMegatextureRaw(cell, side, u, v);
+}
+
+vec4 unpackMegatexSample(uint packed)
+{
+    return vec4(
+        float((packed >> 0u) & 0xFFu),
+        float((packed >> 8u) & 0xFFu),
+        float((packed >> 16u) & 0xFFu),
+        float((packed >> 24u) & 0xFFu)) / 255.0;
+}
+
+// Read explored flag from the second half of the tile map buffer
+uint getExplored(ivec2 mapPos)
+{
+    if (mapPos.x < 0 || mapPos.y < 0 ||
+        mapPos.x >= int(pc.mapWidth) || mapPos.y >= int(pc.mapHeight))
+        return 0u;
+    uint totalTiles = pc.mapWidth * pc.mapHeight;
+    uint byteIndex = totalTiles + uint(mapPos.y) * pc.mapWidth + uint(mapPos.x);
+    uint wordIndex = byteIndex >> 2;
+    uint byteOffset = byteIndex & 3u;
+    uint packedWord = data[wordIndex];
+    uint shift = byteOffset * 8u;
+    return (packedWord >> shift) & 0xFFu;
+}
+
+bool isExploredOpen(ivec2 mapPos)
+{
+    return getExplored(mapPos) != 0u && !isSolidTileValue(getTile(mapPos));
+}
+
+bool isSolidWallInBounds(ivec2 mapPos)
+{
+    if (mapPos.x < 0 || mapPos.y < 0 ||
+        mapPos.x >= int(pc.mapWidth) || mapPos.y >= int(pc.mapHeight))
+        return false;
+    return isSolidTileValue(getTile(mapPos));
+}
+
+void setExplored(ivec2 mapPos)
+{
+    if (mapPos.x < 0 || mapPos.y < 0 ||
+        mapPos.x >= int(pc.mapWidth) || mapPos.y >= int(pc.mapHeight))
+        return;
+
+    uint totalTiles = pc.mapWidth * pc.mapHeight;
+    uint byteIndex = totalTiles + uint(mapPos.y) * pc.mapWidth + uint(mapPos.x);
+    uint wordIndex = byteIndex >> 2;
+    uint byteOffset = byteIndex & 3u;
+    uint shift = byteOffset * 8u;
+    uint mask = 0xFFu << shift;
+
+    // Atomically set explored byte to 1 while preserving neighbors in the packed word.
+    uint oldWord;
+    uint newWord;
+    do {
+        oldWord = data[wordIndex];
+        newWord = (oldWord & ~mask) | (1u << shift);
+    } while (atomicCompSwap(data[wordIndex], oldWord, newWord) != oldWord);
+}
+
+void updateFogOfWarGPU(uvec2 pixel)
+{
+    if (pixel.y != 0u)
+        return;
+
+    const uint NUM_RAYS = max(1u, pc.screenWidth);
+    const float MAX_DIST = 50.0;
+    if (pixel.x >= NUM_RAYS)
+        return;
+
+    vec2 player = vec2(pc.playerX, pc.playerY);
+    ivec2 pCell = ivec2(floor(player));
+    setExplored(pCell);
+
+    float camX = 2.0 * ((float(pixel.x) + 0.5) / float(NUM_RAYS)) - 1.0;
+    float halfFovTan = tan(pc.playerFOV * 0.5 * pc.fovMul);
+    float viewX = camX * halfFovTan;
+    float angle = pc.playerAngle + atan(viewX);
+    vec2 dir = vec2(cos(angle), sin(angle));
+
+    ivec2 mapPos = ivec2(floor(player));
+    vec2 deltaDist = vec2(
+        (dir.x == 0.0) ? 1e30 : abs(1.0 / dir.x),
+        (dir.y == 0.0) ? 1e30 : abs(1.0 / dir.y));
+    ivec2 step;
+    vec2 sideDist;
+
+    if (dir.x < 0.0) { step.x = -1; sideDist.x = (player.x - float(mapPos.x)) * deltaDist.x; }
+    else             { step.x =  1; sideDist.x = (float(mapPos.x) + 1.0 - player.x) * deltaDist.x; }
+    if (dir.y < 0.0) { step.y = -1; sideDist.y = (player.y - float(mapPos.y)) * deltaDist.y; }
+    else             { step.y =  1; sideDist.y = (float(mapPos.y) + 1.0 - player.y) * deltaDist.y; }
+
+    for (int i = 0; i < 200; ++i)
+    {
+        if (sideDist.x < sideDist.y)
+        {
+            sideDist.x += deltaDist.x;
+            mapPos.x += step.x;
+        }
+        else
+        {
+            sideDist.y += deltaDist.y;
+            mapPos.y += step.y;
+        }
+
+        if (mapPos.x < 0 || mapPos.y < 0 || mapPos.x >= int(pc.mapWidth) || mapPos.y >= int(pc.mapHeight))
+            break;
+
+        float dist = min(sideDist.x, sideDist.y);
+        if (dist > MAX_DIST)
+            break;
+
+        if (isSolidTileValue(getTile(mapPos)))
+            break;
+
+        setExplored(mapPos);
+    }
+}
+
+//==============================================================================
+// DDA Raycasting
+//==============================================================================
+
+struct RayHit
+{
+    float distance;
+    int side;  // 0 = vertical wall, 1 = horizontal wall
+    bool hitWall;  // true if hit actual wall, false if just reached far distance
+    ivec2 cell;       // map cell at hit
+    int cardinalSide; // 0=N,1=E,2=S,3=W
+    float wallX;      // [0..1] along wall
+    float cosCorr;    // cosine correction for FOV projection (set by caller)
+};
+
+RayHit castRay(vec2 pos, vec2 rayDir)
+{
+    // DDA initialization
+    ivec2 mapPos = ivec2(floor(pos));
+    vec2 deltaDist = abs(1.0 / rayDir);
+    ivec2 step;
+    vec2 sideDist;
+    
+    // Calculate step direction and initial side distances
+    if (rayDir.x < 0.0)
+    {
+        step.x = -1;
+        sideDist.x = (pos.x - float(mapPos.x)) * deltaDist.x;
+    }
+    else
+    {
+        step.x = 1;
+        sideDist.x = (float(mapPos.x) + 1.0 - pos.x) * deltaDist.x;
+    }
+    
+    if (rayDir.y < 0.0)
+    {
+        step.y = -1;
+        sideDist.y = (pos.y - float(mapPos.y)) * deltaDist.y;
+    }
+    else
+    {
+        step.y = 1;
+        sideDist.y = (float(mapPos.y) + 1.0 - pos.y) * deltaDist.y;
+    }
+    
+    // DDA loop - bounded to prevent infinite loops
+    int side = 0;
+    const int MAX_STEPS = clamp(int(pc.mapWidth + pc.mapHeight) + 64, 64, 4096);
+    
+    for (int i = 0; i < MAX_STEPS; i++)
+    {
+        // Step to next grid cell
+        if (sideDist.x < sideDist.y)
+        {
+            sideDist.x += deltaDist.x;
+            mapPos.x += step.x;
+            side = 0;
+        }
+        else
+        {
+            sideDist.y += deltaDist.y;
+            mapPos.y += step.y;
+            side = 1;
+        }
+        
+        // Sample tile
+        uint tile = getTile(mapPos);
+        
+        // Out of bounds - return distance traveled, no wall hit
+        if (tile == 0xFF)
+        {
+            float dist = side == 0 ? (sideDist.x - deltaDist.x) : (sideDist.y - deltaDist.y);
+            RayHit r; r.distance = dist; r.side = side; r.hitWall = false; r.cell = mapPos; r.cardinalSide = 0; r.wallX = 0.0; r.cosCorr = 1.0; return r;
+        }
+        
+        // Check for walls (0x01-0xEF, excluding player markers 0xF0-0xF3)
+        if (tile >= 1u && (tile < 0xF0u || tile > 0xF3u))
+        {
+            // Hit wall - calculate distance
+            float dist = side == 0 ? (sideDist.x - deltaDist.x) : (sideDist.y - deltaDist.y);
+            RayHit r; r.distance = dist; r.side = side; r.hitWall = true; r.cell = mapPos;
+            float wx = (side == 0) ? (pos.y + dist * rayDir.y) : (pos.x + dist * rayDir.x);
+            wx -= floor(wx);
+            r.wallX = wx;
+            int cardinal;
+            if (side == 0) { cardinal = (step.x > 0) ? 3 : 1; } else { cardinal = (step.y > 0) ? 0 : 2; }
+            r.cardinalSide = cardinal;
+            r.cosCorr = 1.0;
+            return r;
+        }
+    }
+    
+    // Max steps reached - return distance traveled, no wall hit
+    float dist = side == 0 ? (sideDist.x - deltaDist.x) : (sideDist.y - deltaDist.y);
+    RayHit r; r.distance = dist; r.side = side; r.hitWall = false; r.cell = mapPos; r.cardinalSide = 0; r.wallX = 0.0; r.cosCorr = 1.0; return r;
+}
+
+//==============================================================================
+// Shading & Lighting
+//==============================================================================
+
+// Detect visible corner edge at cell boundary (inside & outside corners).
+// Returns true when the wall face does NOT continue into the neighbor cell
+// at the same plane visible to the player.
+bool isCornerEdge(RayHit hit, float threshold)
+{
+    float wx = hit.wallX;
+    if (wx > threshold && wx < 1.0 - threshold)
+        return false;
+
+    // Neighbor offset along face + player-side offset
+    ivec2 nOff, pOff;
+    if (hit.cardinalSide == 0)      { nOff = (wx < threshold) ? ivec2(-1,0) : ivec2(1,0); pOff = ivec2(0,-1); }
+    else if (hit.cardinalSide == 1) { nOff = (wx < threshold) ? ivec2(0,-1) : ivec2(0,1); pOff = ivec2(1,0);  }
+    else if (hit.cardinalSide == 2) { nOff = (wx < threshold) ? ivec2(-1,0) : ivec2(1,0); pOff = ivec2(0,1);  }
+    else                            { nOff = (wx < threshold) ? ivec2(0,-1) : ivec2(0,1); pOff = ivec2(-1,0); }
+
+    ivec2 neighbor = hit.cell + nOff;
+    bool neighborHasFace = isSolidTileValue(getTile(neighbor))
+                        && !isSolidTileValue(getTile(neighbor + pOff));
+    return !neighborHasFace;
+}
+
+// Only concave inside corners should receive the soft AO band.
+bool isInsideCornerAtEdge(ivec2 cell, int cardinalSide, bool lowEdge)
+{
+    ivec2 nOff, pOff;
+    if (cardinalSide == 0)      { nOff = lowEdge ? ivec2(-1,0) : ivec2(1,0); pOff = ivec2(0,-1); }
+    else if (cardinalSide == 1) { nOff = lowEdge ? ivec2(0,-1) : ivec2(0,1); pOff = ivec2(1,0);  }
+    else if (cardinalSide == 2) { nOff = lowEdge ? ivec2(-1,0) : ivec2(1,0); pOff = ivec2(0,1);  }
+    else                        { nOff = lowEdge ? ivec2(0,-1) : ivec2(0,1); pOff = ivec2(-1,0);  }
+
+    if (isSolidWallInBounds(cell + pOff))
+        return false;
+
+    float tangentPlayer = (cardinalSide == 0 || cardinalSide == 2) ? pc.playerX : pc.playerY;
+    float cornerCoord = (cardinalSide == 0 || cardinalSide == 2)
+        ? float(lowEdge ? cell.x : cell.x + 1)
+        : float(lowEdge ? cell.y : cell.y + 1);
+    if (lowEdge ? (tangentPlayer < cornerCoord) : (tangentPlayer > cornerCoord))
+        return false;
+
+    ivec2 neighbor = cell + nOff;
+    return isSolidWallInBounds(neighbor)
+        && isSolidWallInBounds(neighbor + pOff);
+}
+
+bool isVisibleCornerSeamAtEdge(ivec2 cell, int cardinalSide, bool lowEdge)
+{
+    ivec2 nOff, pOff;
+    if (cardinalSide == 0)      { nOff = lowEdge ? ivec2(-1,0) : ivec2(1,0); pOff = ivec2(0,-1); }
+    else if (cardinalSide == 1) { nOff = lowEdge ? ivec2(0,-1) : ivec2(0,1); pOff = ivec2(1,0);  }
+    else if (cardinalSide == 2) { nOff = lowEdge ? ivec2(-1,0) : ivec2(1,0); pOff = ivec2(0,1);  }
+    else                        { nOff = lowEdge ? ivec2(0,-1) : ivec2(0,1); pOff = ivec2(-1,0);  }
+
+    ivec2 neighbor = cell + nOff;
+    bool neighborHasFace = isSolidTileValue(getTile(neighbor))
+                        && !isSolidTileValue(getTile(neighbor + pOff));
+    return !neighborHasFace;
+}
+
+float cornerAO(RayHit hit, float width)
+{
+    width = clamp(width, 0.02, 0.50);
+    const float strength = 0.22;
+    float u = clamp(hit.wallX, 0.0, 1.0);
+
+    bool corner0 = isInsideCornerAtEdge(hit.cell, hit.cardinalSide, true)
+                && isVisibleCornerSeamAtEdge(hit.cell, hit.cardinalSide, true);
+    bool corner1 = isInsideCornerAtEdge(hit.cell, hit.cardinalSide, false)
+                && isVisibleCornerSeamAtEdge(hit.cell, hit.cardinalSide, false);
+
+    float t0 = u / width;
+    float t1 = (1.0 - u) / width;
+    float edge0 = (corner0 && t0 < 1.0) ? exp2(-4.0 * t0 * t0) : 0.0;
+    float edge1 = (corner1 && t1 < 1.0) ? exp2(-4.0 * t1 * t1) : 0.0;
+    float ao = min(1.0, max(edge0, edge1));
+    return clamp(1.0 - ao * strength, 0.45, 1.0);
+}
+
+float angleDiff(float a, float b)
+{
+    float d = a - b;
+    while (d > 3.14159265) d -= 6.28318531;
+    while (d < -3.14159265) d += 6.28318531;
+    return d;
+}
+
+float pointSegmentDistance(vec2 p, vec2 a, vec2 b)
+{
+    vec2 ab = b - a;
+    float den = dot(ab, ab);
+    if (den <= 1e-6)
+        return length(p - a);
+    float t = clamp(dot(p - a, ab) / den, 0.0, 1.0);
+    return length(p - (a + t * ab));
+}
+
+vec3 shadePixel(uvec2 pixel, RayHit hit, float halfW, float halfH, float maxRadius)
+{
+    // Pixel Y position (center of pixel)
+    float yf = float(pixel.y) + 0.5;
+    
+    // Radial screen-space vignette
+    float dx = float(pixel.x) - halfW;
+    float dy = yf - halfH;
+    float screenDist = sqrt(dx * dx + dy * dy);
+    bool modelLight = (pc.renderFlags & RAYCAST_FLAG_MODEL_LIGHT) != 0u;
+    float screenFactor = modelLight ? 1.0 : max(0.0, 1.0 - (screenDist / maxRadius) * pc.falloffMul);
+    
+    // Ceiling gradient
+    bool flatCeiling = (pc.renderFlags & RAYCAST_FLAG_FLAT_CEILING) != 0u;
+    float ceilingShade = flatCeiling ? 1.0 : clamp(1.0 - yf / halfH, 0.0, 1.0);
+    vec3 ceilingColor = unpackColor(pc.ceilingColorPacked) * ceilingShade;
+    
+    // Floor gradient
+    float floorRatio = (yf - halfH) / halfH;
+    floorRatio = clamp(floorRatio, 0.0, 1.0);
+    bool flatFloor = (pc.renderFlags & RAYCAST_FLAG_FLAT_FLOOR) != 0u;
+    float floorShade = flatFloor ? 1.0 : floorRatio;
+    vec3 floorColor = unpackColor(pc.floorColorPacked) * floorShade;
+    
+    // If no wall hit, just render floor/ceiling
+    vec3 color;
+    if (!hit.hitWall)
+    {
+        color = (yf < halfH) ? ceilingColor : floorColor;
+    }
+    else
+    {
+        // Hit a wall - calculate wall rendering
+        float perpWallDist = max(hit.distance * hit.cosCorr / pc.visualScale, 0.01);
+        float halfFovTan = tan(pc.playerFOV * 0.5 * pc.fovMul);
+        float lineHeight = float(pc.screenHeight) * max(pc.wallHeightUnits, 0.001) / (perpWallDist * halfFovTan);
+        float drawStart = halfH - lineHeight / 2.0;
+        float drawEnd = halfH + lineHeight / 2.0;
+        uint hitTile = getTile(hit.cell);
+        bool solidBlackWall = isSolidBlackWall(hit.cell, hitTile);
+        
+        // Base wall color: UNIFORM across all orientations (NO lighting yet)
+        vec3 baseWall = solidBlackWall ? vec3(0.0) : unpackColor(pc.wallColorPacked);
+        vec3 rayCeilingColor = solidBlackWall ? vec3(0.0) : ceilingColor;
+
+        // Determine pixel color: ceiling, wall, or floor
+        if (yf < drawStart)
+        {
+            // Ceiling
+            color = rayCeilingColor;
+        }
+        else if (yf > drawEnd)
+        {
+            // Floor
+            color = floorColor;
+        }
+        else
+        {
+            bool useMegatexture = pc.useMegatexture != 0u && !solidBlackWall;
+            float projectedUnitPixels = max(lineHeight / max(pc.wallHeightUnits, 0.001), 1.0);
+            float cornerThreshold = clamp(1.0 / projectedUnitPixels, 0.00075, 0.02);
+            float aoFactor = cornerAO(hit, 0.35);
+            bool cornerLine = !solidBlackWall && isCornerEdge(hit, cornerThreshold);
+            float seamDistance = min(hit.wallX, 1.0 - hit.wallX);
+            float seamCoverage = cornerLine
+                ? 1.0 - smoothstep(0.0, cornerThreshold, seamDistance)
+                : 0.0;
+            float seamOpacity = seamCoverage * (useMegatexture ? 0.72 : 1.0);
+            float v = clamp((yf - drawStart) / max(drawEnd - drawStart, 1.0), 0.0, 1.0);
+
+            if (yf < drawStart + 1.0)
+            {
+                float lightFactor = max(0.05, 1.0 - hit.distance / pc.torchRange);
+                if (modelLight)
+                    lightFactor = 1.0;
+                vec4 texel = sampleMegatexture(hit.cell, hit.cardinalSide, hit.wallX, v);
+                vec3 wallColor = useMegatexture ? mix(baseWall, texel.rgb, texel.a) : baseWall;
+                wallColor = mix(wallColor, unpackColor(pc.wallLineColorPacked), seamOpacity);
+                vec3 litWall = wallColor * lightFactor * aoFactor;
+                float weight = clamp(yf - drawStart, 0.0, 1.0);
+                color = mix(rayCeilingColor, litWall, weight);
+            }
+            else if (yf > drawEnd - 1.0)
+            {
+                float lightFactor = max(0.05, 1.0 - hit.distance / pc.torchRange);
+                if (modelLight)
+                    lightFactor = 1.0;
+                vec4 texel = sampleMegatexture(hit.cell, hit.cardinalSide, hit.wallX, v);
+                vec3 wallColor = useMegatexture ? mix(baseWall, texel.rgb, texel.a) : baseWall;
+                wallColor = mix(wallColor, unpackColor(pc.wallLineColorPacked), seamOpacity);
+                vec3 litWall = wallColor * lightFactor * aoFactor;
+                float weight = clamp(drawEnd - yf, 0.0, 1.0);
+                color = mix(floorColor, litWall, weight);
+            }
+            else
+            {
+                vec4 texel = sampleMegatexture(hit.cell, hit.cardinalSide, hit.wallX, v);
+                vec3 wallColor = useMegatexture ? mix(baseWall, texel.rgb, texel.a) : baseWall;
+                wallColor = mix(wallColor, unpackColor(pc.wallLineColorPacked), seamOpacity);
+                float lightFactor = modelLight ? 1.0 : max(0.05, 1.0 - hit.distance / pc.torchRange);
+                color = wallColor * lightFactor * aoFactor;
+            }
+        }
+    }
+
+    if (modelLight)
+    {
+        float halfFovTan = tan(pc.playerFOV * 0.5 * pc.fovMul);
+        vec3 shadedPoint;
+        bool hasPoint = false;
+        if (!hit.hitWall)
+        {
+            float planeZ = (yf >= halfH) ? 0.0 : pc.wallHeightUnits;
+            hasPoint = projectScreenPixelToPlane(pixel, yf, halfH, halfFovTan, planeZ, shadedPoint);
+        }
+        else
+        {
+            float perpWallDist = max(hit.distance * hit.cosCorr / pc.visualScale, 0.01);
+            float lineHeight = float(pc.screenHeight) * max(pc.wallHeightUnits, 0.001) / (perpWallDist * halfFovTan);
+            float drawStart = halfH - lineHeight / 2.0;
+            float drawEnd = halfH + lineHeight / 2.0;
+            if (yf < drawStart)
+                hasPoint = projectScreenPixelToPlane(pixel, yf, halfH, halfFovTan, pc.wallHeightUnits, shadedPoint);
+            else if (yf > drawEnd)
+                hasPoint = projectScreenPixelToPlane(pixel, yf, halfH, halfFovTan, 0.0, shadedPoint);
+            else
+            {
+                float v = clamp((yf - drawStart) / max(drawEnd - drawStart, 1.0), 0.0, 1.0);
+                vec2 rayDir = screenRayDirection(pixel, halfFovTan);
+                shadedPoint = vec3(pc.playerX + rayDir.x * hit.distance,
+                                   pc.playerY + rayDir.y * hit.distance,
+                                   (1.0 - v) * pc.wallHeightUnits);
+                hasPoint = true;
+            }
+        }
+        color *= hasPoint ? sceneLightFactor(shadedPoint) : pc.ambientLight;
+    }
+    
+    // Apply screen vignette
+    color *= screenFactor;
+    
+    return color;
+}
+
+uint packDepth(float depth)
+{
+    return uint(clamp(depth * 65536.0, 0.0, 4294967294.0));
+}
+
+uint wallDepthForPixel(uvec2 pixel, RayHit hit)
+{
+    if (!hit.hitWall)
+        return 0xFFFFFFFFu;
+
+    float yf = float(pixel.y) + 0.5;
+    float halfH = float(pc.screenHeight) * 0.5;
+    float halfFovTan = tan(pc.playerFOV * 0.5 * pc.fovMul);
+    float perpWallDist = max(hit.distance * hit.cosCorr / pc.visualScale, 0.01);
+    float lineHeight = float(pc.screenHeight) * max(pc.wallHeightUnits, 0.001) / (perpWallDist * halfFovTan);
+    float drawStart = halfH - lineHeight / 2.0;
+    float drawEnd = halfH + lineHeight / 2.0;
+    if (yf < drawStart || yf > drawEnd)
+        return 0xFFFFFFFFu;
+
+    return packDepth(hit.distance * hit.cosCorr);
+}
+
+//==============================================================================
+// Map Overlay
+//==============================================================================
+
+// Draw a centered top-down CAD-style map overlay with fog of war.
+// Zoom level controls magnification, centered on player.
+// Only explored cells are visible; wall edges drawn as clean lines.
+vec3 applyMapOverlay(vec3 sceneColor, uvec2 pixel)
+{
+    // Darken scene
+    vec3 color = sceneColor * 0.70;
+
+    float sw = float(pc.screenWidth);
+    float sh = float(pc.screenHeight);
+    float mw = float(pc.mapWidth);
+    float mh = float(pc.mapHeight);
+    float zoom = pc.mapOverlayZoom;
+
+    // Cell size: base fits map to ~70% of screen, then multiply by zoom
+    float maxDim = max(mw, mh);
+    float baseCellSize = (min(sw, sh) * 0.70) / maxDim;
+    float cellSize = baseCellSize * zoom;
+    cellSize = max(cellSize, 2.0);
+
+    // Center view on player position
+    float centerX = sw * 0.5;
+    float centerY = sh * 0.5;
+    float ox = centerX - pc.playerX * cellSize;
+    float oy = centerY - pc.playerY * cellSize;
+
+    // Map pixel to world cell coordinates
+    float wpx = (float(pixel.x) - ox) / cellSize;
+    float wpy = (float(pixel.y) - oy) / cellSize;
+
+    int cx = int(floor(wpx));
+    int cy = int(floor(wpy));
+
+    // Player position in screen space
+    float plyrX = centerX;
+    float plyrY = centerY;
+    float distToPlayer = length(vec2(float(pixel.x) - plyrX, float(pixel.y) - plyrY));
+
+    // Player marker: bright green dot
+    float playerRadius = cellSize * 0.35;
+    if (distToPlayer < playerRadius)
+    {
+        float t = (1.0 - distToPlayer / playerRadius) * 0.9;
+        color = mix(color, vec3(1.0, 0.25, 0.25), t);
+        return color;
+    }
+
+    // FOV cone span
+    float halfFovTan = tan(pc.playerFOV * 0.5 * pc.fovMul);
+    float fovHalf = atan(halfFovTan);
+
+    // Filled FOV cone. Keep this cheap; per-overlay-pixel ray casts destroy frame time.
+    vec2 target = vec2(wpx - pc.playerX, wpy - pc.playerY);
+    float targetDist = length(target);
+    float overlayRange = max(8.0, min(maxDim, 24.0));
+    if (targetDist > 0.001 && targetDist <= overlayRange)
+    {
+        float ang = atan(target.y, target.x);
+        float rel = abs(angleDiff(ang, pc.playerAngle));
+        if (rel <= fovHalf)
+        {
+            float fade = 1.0 - smoothstep(overlayRange * 0.65, overlayRange, targetDist);
+            color = mix(color, vec3(1.0, 0.20, 0.20), 0.22 * fade);
+        }
+    }
+
+    // Outside map bounds → return with just player/FOV drawn
+    if (cx < 0 || cy < 0 || cx >= int(pc.mapWidth) || cy >= int(pc.mapHeight))
+        return color;
+
+    uint tile = getTile(ivec2(cx, cy));
+    bool solid = isSolidTileValue(tile);
+    bool explored = getExplored(ivec2(cx, cy)) != 0u;
+
+    // Fog of war: skip unexplored cells, UNLESS they are solid and touch an explored cell (to bridge corners)
+    if (!explored)
+    {
+        if (!solid) return color;
+        bool nExp = false;
+        for (int dy = -1; dy <= 1; ++dy) {
+            for (int dx = -1; dx <= 1; ++dx) {
+                if ((dx != 0 || dy != 0) && isExploredOpen(ivec2(cx + dx, cy + dy))) nExp = true;
+            }
+        }
+        if (!nExp) return color;
+    }
+
+    // Center-stroke wall rendering via distance-to-segment tests.
+    // This removes corner dropouts when center lines fall between pixel columns.
+    bool drawLine = false;
+
+    if (solid)
+    {
+        vec2 c = vec2(ox + (float(cx) + 0.5) * cellSize,
+                  oy + (float(cy) + 0.5) * cellSize);
+        float halfSpan = cellSize * 0.5;
+        vec2 p = vec2(float(pixel.x) + 0.5, float(pixel.y) + 0.5);
+        float lineHalfW = 0.82;
+
+        // Neighbor checks for connecting lines
+        bool nConn = (cy > 0) ? isSolidTileValue(getTile(ivec2(cx, cy - 1))) : false;
+        bool sConn = (cy < int(pc.mapHeight) - 1) ? isSolidTileValue(getTile(ivec2(cx, cy + 1))) : false;
+        bool wConn = (cx > 0) ? isSolidTileValue(getTile(ivec2(cx - 1, cy))) : false;
+        bool eConn = (cx < int(pc.mapWidth) - 1) ? isSolidTileValue(getTile(ivec2(cx + 1, cy))) : false;
+
+        bool nVisible = isExploredOpen(ivec2(cx - 1, cy)) || isExploredOpen(ivec2(cx - 1, cy - 1)) ||
+                        isExploredOpen(ivec2(cx + 1, cy)) || isExploredOpen(ivec2(cx + 1, cy - 1));
+        bool sVisible = isExploredOpen(ivec2(cx - 1, cy)) || isExploredOpen(ivec2(cx - 1, cy + 1)) ||
+                        isExploredOpen(ivec2(cx + 1, cy)) || isExploredOpen(ivec2(cx + 1, cy + 1));
+        bool wVisible = isExploredOpen(ivec2(cx, cy - 1)) || isExploredOpen(ivec2(cx - 1, cy - 1)) ||
+                        isExploredOpen(ivec2(cx, cy + 1)) || isExploredOpen(ivec2(cx - 1, cy + 1));
+        bool eVisible = isExploredOpen(ivec2(cx, cy - 1)) || isExploredOpen(ivec2(cx + 1, cy - 1)) ||
+                        isExploredOpen(ivec2(cx, cy + 1)) || isExploredOpen(ivec2(cx + 1, cy + 1));
+
+        if (nConn && nVisible && pointSegmentDistance(p, c, c + vec2(0.0, -halfSpan)) <= lineHalfW) drawLine = true;
+        if (sConn && sVisible && pointSegmentDistance(p, c, c + vec2(0.0,  halfSpan)) <= lineHalfW) drawLine = true;
+        if (wConn && wVisible && pointSegmentDistance(p, c, c + vec2(-halfSpan, 0.0)) <= lineHalfW) drawLine = true;
+        if (eConn && eVisible && pointSegmentDistance(p, c, c + vec2( halfSpan, 0.0)) <= lineHalfW) drawLine = true;
+
+        bool isolatedVisible = isExploredOpen(ivec2(cx - 1, cy)) || isExploredOpen(ivec2(cx + 1, cy)) ||
+                               isExploredOpen(ivec2(cx, cy - 1)) || isExploredOpen(ivec2(cx, cy + 1));
+        if (!nConn && !sConn && !wConn && !eConn && isolatedVisible && length(p - c) <= lineHalfW)
+            drawLine = true;
+    }
+
+    if (drawLine)
+    {
+        // CAD blue-white line color
+        color = mix(color, vec3(0.6, 0.75, 0.9), 0.85);
+    }
+
+    return color;
+}
+
+vec3 applyFpsOverlay(vec3 sceneColor, uvec2 pixel)
+{
+    const uint glyphs[13] = uint[13](
+        0x7b6fu, 0x749au, 0x73e7u, 0x79e7u, 0x49edu,
+        0x79cfu, 0x7bcfu, 0x4927u, 0x7befu, 0x79efu,
+        0x12cfu, 0x12ebu, 0x79cfu);
+    uint fps = min(pc.reserved1, 999u);
+    uint scale = pc.screenWidth >= 1200u ? 3u : 2u;
+    uint advance = 4u * scale;
+    uint textWidth = 7u * advance - scale;
+    uint startX = pc.screenWidth > textWidth + 10u ? pc.screenWidth - textWidth - 10u : 4u;
+    uint startY = 8u;
+
+    if (pixel.x + 4u >= startX && pixel.x < startX + textWidth + 4u &&
+        pixel.y + 3u >= startY && pixel.y < startY + 5u * scale + 3u)
+        sceneColor *= 0.25;
+
+    if (pixel.x < startX || pixel.y < startY || pixel.y >= startY + 5u * scale)
+        return sceneColor;
+    uint localX = pixel.x - startX;
+    uint character = localX / advance;
+    if (character >= 7u || (localX % advance) >= 3u * scale)
+        return sceneColor;
+
+    int glyph = -1;
+    if (character == 0u) glyph = 10;
+    else if (character == 1u) glyph = 11;
+    else if (character == 2u) glyph = 12;
+    else if (character == 4u && fps >= 100u) glyph = int(fps / 100u);
+    else if (character == 5u && fps >= 10u) glyph = int((fps / 10u) % 10u);
+    else if (character == 6u) glyph = int(fps % 10u);
+    if (glyph < 0)
+        return sceneColor;
+
+    uint gx = (localX % advance) / scale;
+    uint gy = (pixel.y - startY) / scale;
+    uint bit = gy * 3u + gx;
+    return (glyphs[glyph] & (1u << bit)) != 0u ? vec3(1.0) : sceneColor;
+}
+
+//==============================================================================
+// Main Compute Shader
+//==============================================================================
+
+void main()
+{
+    uvec2 pixel = gl_GlobalInvocationID.xy;
+    
+    // Bounds check
+    if (pixel.x >= pc.screenWidth || pixel.y >= pc.screenHeight)
+        return;
+
+    // One invocation per screen column updates visibility in parallel.  Doing
+    // this on the CPU before every Vulkan frame was a measurable megatexture
+    // frame-time regression.
+    updateFogOfWarGPU(pixel);
+
+    // Precompute common values
+    float halfW = float(pc.screenWidth) * 0.5;
+    float halfH = float(pc.screenHeight) * 0.5;
+    float maxRadius = sqrt(halfW * halfW + halfH * halfH);
+    
+    // Accumulate color for supersampling
+    vec3 accumColor = vec3(0.0);
+    uint wallDepth = 0xFFFFFFFFu;
+    
+    for (uint sampleIdx = 0u; sampleIdx < pc.supersample; sampleIdx++)
+    {
+        // Camera X coordinate with sub-pixel offset for supersampling
+        float camX = 2.0 * (float(pixel.x) + (float(sampleIdx) + 0.5) / float(pc.supersample)) / float(pc.screenWidth) - 1.0;
+        
+        // Tangent-based angle mapping for proper 3D rectilinear perspective
+        float halfFovTan = tan(pc.playerFOV * 0.5 * pc.fovMul);
+        float viewX = camX * halfFovTan;
+        float rayAngle = pc.playerAngle + atan(viewX);
+        // Cosine correction: cos(atan(viewX)) = 1/sqrt(1+viewX^2)
+        float cosCorr = 1.0 / sqrt(1.0 + viewX * viewX);
+        vec2 rayDir = vec2(cos(rayAngle), sin(rayAngle));
+        
+        // Cast ray
+        RayHit hit = castRay(vec2(pc.playerX, pc.playerY), rayDir);
+        hit.cosCorr = cosCorr;
+        wallDepth = min(wallDepth, wallDepthForPixel(pixel, hit));
+        
+        // Shade pixel
+        vec3 color = shadePixel(pixel, hit, halfW, halfH, maxRadius);
+        accumColor += color;
+    }
+    
+    // Average samples
+    accumColor /= float(pc.supersample);
+    
+    // Add a touch of dithering to reduce visible banding on smooth gradients
+    // Cheap hash from pixel coords -> [0,1)
+    float h = fract(sin(dot(vec2(pixel), vec2(12.9898, 78.233))) * 43758.5453);
+    float d = (h - 0.5) * (1.5 / 255.0); // +/- ~1.5 LSBs
+    accumColor = clamp(accumColor + d, 0.0, 1.0);
+
+    // Apply map overlay if toggled
+    if (pc.mapOverlayZoom > 0.0)
+        accumColor = applyMapOverlay(accumColor, pixel);
+    accumColor = applyFpsOverlay(accumColor, pixel);
+    
+    // Write output as RGBA (Vulkan will handle BGRA swizzle)
+    imageStore(outputImage, ivec2(pixel), vec4(accumColor, 1.0));
+    imageStore(depthImage, ivec2(pixel), uvec4(wallDepth, 0u, 0u, 0u));
+}

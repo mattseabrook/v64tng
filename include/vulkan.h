@@ -69,6 +69,9 @@ struct VulkanContext
     VkDeviceSize tileMapBufferSize{};
     uint32_t lastMapWidth = 0;
     uint32_t lastMapHeight = 0;
+    // Buffer holds tiles + fog-of-war explored flags (double the tile data);
+    // revision tracking avoids redundant re-uploads.
+    uint64_t uploadedExploredRevision = 0;
 
     // Megatexture edge-offset lookup (mapWidth*mapHeight*4 entries of uint32)
     VkBuffer edgeOffsetsBuffer{};

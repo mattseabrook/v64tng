@@ -40,6 +40,18 @@ struct RaycastConfig
 };
 static RaycastConfig g_rayConfig;
 
+// Tile classification shared by the fog-of-war and map overlay code.
+// 0xF0-0xF3 are player-start markers (walkable), everything >= 0x01 else is solid.
+static inline bool isPlayerStartTile(uint8_t tile)
+{
+    return tile >= 0xF0 && tile <= 0xF3;
+}
+
+static inline bool isSolidTile(uint8_t tile)
+{
+    return tile >= 0x01 && !isPlayerStartTile(tile);
+}
+
 struct RaycastVerticalGradientLut
 {
     std::vector<std::array<uint8_t, 3>> ceiling;
@@ -682,6 +694,9 @@ void renderRaycastView(const TileMap &tileMap,
     // Cache config values once per frame (not per pixel)
     cacheConfigValues();
     updateVerticalGradientLut(h);
+
+    // Update fog of war for the CPU render path
+    updateFogOfWar();
     
     int ss = g_rayConfig.supersample;
     const uint64_t pixelCount =
@@ -704,8 +719,8 @@ void renderRaycastView(const TileMap &tileMap,
     });
     
     drawCrosshair(fb, pitch, w, h);
-    drawMeasuredFpsOverlay(fb, pitch, w, h);
     renderMapOverlay(fb, pitch, w, h);
+    drawMeasuredFpsOverlay(fb, pitch, w, h);
 
     // Lightweight overlay via window title (avoids console/files)
 #ifdef _WIN32
@@ -926,6 +941,130 @@ void updateRaycasterMovement()
     }
 }
 
+void updateFogOfWar()
+{
+    if (!state.raycast.map || state.raycast.map->empty())
+        return;
+    const TileMap &m = *state.raycast.map;
+    const int mapH = static_cast<int>(m.size());
+    const int mapW = static_cast<int>(m[0].size());
+    const size_t total = static_cast<size_t>(mapW) * static_cast<size_t>(mapH);
+    bool exploredChanged = false;
+    if (state.raycast.exploredMap.size() != total)
+    {
+        state.raycast.exploredMap.assign(total, 0);
+        exploredChanged = true;
+    }
+
+    auto &explored = state.raycast.exploredMap;
+    const float px = state.raycast.player.x;
+    const float py = state.raycast.player.y;
+
+    struct FogPose
+    {
+        const TileMap *map = nullptr;
+        uint64_t mapRevision = 0;
+        float x = 0.0f;
+        float y = 0.0f;
+        float angle = 0.0f;
+        float fov = 0.0f;
+        float fovMul = 0.0f;
+        bool valid = false;
+    };
+    static FogPose lastPose;
+    const auto poseUnchanged = [&]() {
+        constexpr float epsilon = 0.0001f;
+        return lastPose.valid &&
+               lastPose.map == state.raycast.map &&
+               lastPose.mapRevision == state.raycast.mapRevision &&
+               std::abs(lastPose.x - px) < epsilon &&
+               std::abs(lastPose.y - py) < epsilon &&
+               std::abs(lastPose.angle - state.raycast.player.angle) < epsilon &&
+               std::abs(lastPose.fov - state.raycast.player.fov) < epsilon &&
+               std::abs(lastPose.fovMul - g_rayConfig.fovMul) < epsilon;
+    };
+    if (!exploredChanged && poseUnchanged())
+        return;
+    lastPose = {state.raycast.map, state.raycast.mapRevision, px, py,
+                state.raycast.player.angle, state.raycast.player.fov,
+                g_rayConfig.fovMul, true};
+
+    // Mark the player's cell as explored
+    int pcx = static_cast<int>(px);
+    int pcy = static_cast<int>(py);
+    if (pcx >= 0 && pcx < mapW && pcy >= 0 && pcy < mapH)
+    {
+        uint8_t &cell = explored[static_cast<size_t>(pcy) * static_cast<size_t>(mapW) + static_cast<size_t>(pcx)];
+        exploredChanged |= cell == 0;
+        cell = 1;
+    }
+
+    // Match exploration to the rendered camera frustum instead of 360-degree reveal.
+    const int NUM_RAYS = std::clamp(state.ui.width / 4, 128, 384);
+    constexpr float MAX_DIST = 50.0f;
+    const float halfFovTan = std::tan(state.raycast.player.fov * 0.5f * g_rayConfig.fovMul);
+    const float forwardX = std::cos(state.raycast.player.angle);
+    const float forwardY = std::sin(state.raycast.player.angle);
+    const float rightX = -forwardY;
+    const float rightY = forwardX;
+    for (int r = 0; r < NUM_RAYS; ++r)
+    {
+        float camX = 2.0f * ((static_cast<float>(r) + 0.5f) / static_cast<float>(NUM_RAYS)) - 1.0f;
+        float viewX = camX * halfFovTan;
+        const float invLength = 1.0f / std::sqrt(1.0f + viewX * viewX);
+        const float dirX = (forwardX + rightX * viewX) * invLength;
+        const float dirY = (forwardY + rightY * viewX) * invLength;
+
+        // DDA setup
+        int mapX = static_cast<int>(std::floor(px));
+        int mapY = static_cast<int>(std::floor(py));
+        float deltaDistX = (dirX == 0.0f) ? 1e30f : std::abs(1.0f / dirX);
+        float deltaDistY = (dirY == 0.0f) ? 1e30f : std::abs(1.0f / dirY);
+        int stepX, stepY;
+        float sideDistX, sideDistY;
+
+        if (dirX < 0.0f) { stepX = -1; sideDistX = (px - mapX) * deltaDistX; }
+        else             { stepX =  1; sideDistX = (mapX + 1.0f - px) * deltaDistX; }
+        if (dirY < 0.0f) { stepY = -1; sideDistY = (py - mapY) * deltaDistY; }
+        else             { stepY =  1; sideDistY = (mapY + 1.0f - py) * deltaDistY; }
+
+        // Step through cells
+        for (int step = 0; step < 200; ++step)
+        {
+            if (sideDistX < sideDistY)
+            {
+                sideDistX += deltaDistX;
+                mapX += stepX;
+            }
+            else
+            {
+                sideDistY += deltaDistY;
+                mapY += stepY;
+            }
+
+            // Bounds check
+            if (mapX < 0 || mapX >= mapW || mapY < 0 || mapY >= mapH)
+                break;
+
+            // Distance check
+            float dist = std::min(sideDistX, sideDistY);
+            if (dist > MAX_DIST)
+                break;
+
+            uint8_t tile = m[static_cast<size_t>(mapY)][static_cast<size_t>(mapX)];
+            if (isSolidTile(tile))
+                break;
+
+            // Only walkable/view-through cells become explored state.
+            uint8_t &cell = explored[static_cast<size_t>(mapY) * static_cast<size_t>(mapW) + static_cast<size_t>(mapX)];
+            exploredChanged |= cell == 0;
+            cell = 1;
+        }
+    }
+    if (exploredChanged)
+        ++state.raycast.exploredRevision;
+}
+
 /*
 ===============================================================================
 Function Name: initRaycaster
@@ -939,6 +1078,7 @@ void initRaycaster()
 {
     state.raycast.enabled = true;
     state.raycast.map = &basementMap;
+    ++state.raycast.mapRevision;
     state.frameTiming.currentFPS =
         static_cast<double>(std::max(1, getDisplayRefreshRate()));
     float fovDeg = config.contains("raycastFov") ? static_cast<float>(config["raycastFov"]) : 90.0f;
@@ -965,6 +1105,14 @@ void initRaycaster()
 #ifdef _WIN32
         MessageBoxA(nullptr, "No player start position found in the map!", "Error", MB_ICONERROR | MB_OK);
 #endif
+    }
+
+    // Initialize fog-of-war explored map
+    if (!basementMap.empty() && !basementMap[0].empty())
+    {
+        const size_t total = basementMap.size() * basementMap[0].size();
+        state.raycast.exploredMap.assign(total, 0);
+        ++state.raycast.exploredRevision;
     }
 
     state.animation.reset();

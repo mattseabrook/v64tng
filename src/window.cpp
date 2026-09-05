@@ -347,6 +347,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_MOUSEMOVE:
 		return HandleMouseMove(lParam);
 	case WM_MOUSEWHEEL:
+		if (state.raycast.enabled && state.raycast.showMapOverlay)
+		{
+			const int wheelDelta = GET_WHEEL_DELTA_WPARAM(wParam);
+			const float zoomStep = 0.3f;
+			if (wheelDelta > 0)
+				state.raycast.mapOverlayZoom = std::min(state.raycast.mapOverlayZoom + zoomStep, 12.0f);
+			else if (wheelDelta < 0)
+				state.raycast.mapOverlayZoom = std::max(state.raycast.mapOverlayZoom - zoomStep, 1.0f);
+			state.frameTiming.dirtyFrame = true;
+			return 0;
+		}
 		if (gameConsoleMouseWheel(GET_WHEEL_DELTA_WPARAM(wParam)))
 			return 0;
 		break;
@@ -397,7 +408,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		if (state.raycast.enabled)
 		{
 			if (wParam == 'M' || wParam == 'm')
-				g_mapOverlayVisible ? CloseMapOverlay() : OpenMapOverlay(hwnd);
+			{
+				// Ignore auto-repeat so holding M cannot flicker the overlay
+				if ((lParam & (1LL << 30)) == 0)
+					g_mapOverlayVisible ? CloseMapOverlay() : OpenMapOverlay(hwnd);
+			}
 			else
 				raycastKeyDown(wParam);
 		}

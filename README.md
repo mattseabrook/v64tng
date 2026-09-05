@@ -1,6 +1,6 @@
 # v64tng
 
-Current release: **1.0.20260904.26**
+Current release: **1.0.20260904.28**
 
 [![v64tng build](https://img.shields.io/badge/v64tng%20build-passing-2ea44f?logo=github)](build.sh)
 [![V.EXE NASM rebuild](https://img.shields.io/badge/V.EXE%20NASM%20rebuild-passing-2ea44f?logo=nasm)](disassembly/V)
