@@ -382,7 +382,7 @@ service_vdx_audio_and_wait_for_pacing:
     %endif
     times 10 - ($ - %%insn_00406f2f) db 0
     %%insn_00406f39:
-    call 0x409d64 ; 00406F39 E8262E0000
+    call service_vdx_read_ring ; 00406F39 E8262E0000
     %if ($ - %%insn_00406f39) > 5
         %error "LONG_00406F39"
     %endif
@@ -511,7 +511,7 @@ service_vdx_audio_and_wait_for_pacing:
     %endif
     times 5 - ($ - %%insn_00406f8c) db 0
     %%insn_00406f91:
-    call 0x409d64 ; 00406F91 E8CE2D0000
+    call service_vdx_read_ring ; 00406F91 E8CE2D0000
     %if ($ - %%insn_00406f91) > 5
         %error "LONG_00406F91"
     %endif

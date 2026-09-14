@@ -2331,7 +2331,7 @@ decode_vdx_bitmap_still:
     %endif
     times 6 - ($ - %%insn_0040b167) db 0
     %%insn_0040b16d:
-    call 0x40aa45 ; 0040B16D E8D3F8FFFF
+    call fade_in_vdx_palette_rgb ; 0040B16D E8D3F8FFFF
     %if ($ - %%insn_0040b16d) > 5
         %error "LONG_0040B16D"
     %endif

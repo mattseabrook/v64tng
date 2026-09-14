@@ -462,7 +462,11 @@ void extractPNG(std::string_view filename, bool raw)
 		else
 		{
 			std::println("Writing: {}", outPath.replace_extension(".png").string());
-			savePNG(outPath.replace_extension(".png").string(), frameData, vdx.width, vdx.height);
+			if (vdx.frameIndices.at(i) && !vdx.frameIndices.at(i)->empty())
+                savePNG(outPath.replace_extension(".png").string(), *vdx.frameIndices.at(i),
+                    vdx.width, vdx.height, false, vdx.framePalettes.at(i));
+            else
+                savePNG(outPath.replace_extension(".png").string(), frameData, vdx.width, vdx.height);
 		}
 		++frameNum;
 	}
@@ -558,61 +562,6 @@ Parameters:
 	- height: height of the image
 ===============================================================================
 */
-void savePNG(const std::string &filename, const std::vector<uint8_t> &imageData, int width, int height, bool hasAlpha)
-{
-	FILE *fp;
-	if (fopen_s(&fp, filename.c_str(), "wb") || !fp)
-		throw std::runtime_error("Failed to open " + filename);
-
-	png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-	if (!png_ptr)
-	{
-		fclose(fp);
-		throw std::runtime_error("png_create_write_struct");
-	}
-
-	png_infop info_ptr = png_create_info_struct(png_ptr);
-	if (!info_ptr)
-	{
-		fclose(fp);
-		png_destroy_write_struct(&png_ptr, nullptr);
-		throw std::runtime_error("png_create_info_struct");
-	}
-
-	if (setjmp(png_jmpbuf(png_ptr)))
-	{
-		fclose(fp);
-		png_destroy_write_struct(&png_ptr, &info_ptr);
-		throw std::runtime_error("libpng error");
-	}
-
-	png_init_io(png_ptr, fp);
-
-	// Allow very large images (libpng defaults to 1,000,000 max on each axis)
-#ifdef PNG_USER_LIMITS_SUPPORTED
-	// Set generous limits to accommodate megatexture dimensions
-	png_set_user_limits(png_ptr, 0x7fffffffU, 0x7fffffffU);
-#endif
-
-	const int colorType = hasAlpha ? PNG_COLOR_TYPE_RGBA : PNG_COLOR_TYPE_RGB;
-	const int bytesPerPixel = hasAlpha ? 4 : 3;
-
-	png_set_IHDR(png_ptr, info_ptr, static_cast<png_uint_32>(width), static_cast<png_uint_32>(height),
-				 8, colorType, PNG_INTERLACE_NONE,
-				 PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
-
-	png_write_info(png_ptr, info_ptr);
-
-	std::vector<png_bytep> rows(height);
-	for (int y = 0; y < height; ++y)
-		rows[y] = const_cast<uint8_t *>(&imageData[y * width * bytesPerPixel]);
-
-	png_write_image(png_ptr, rows.data());
-	png_write_end(png_ptr, nullptr);
-
-	fclose(fp);
-	png_destroy_write_struct(&png_ptr, &info_ptr);
-}
 
 /*
 ===============================================================================

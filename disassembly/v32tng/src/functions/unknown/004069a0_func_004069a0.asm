@@ -50,7 +50,7 @@ func_004069a0:
     %endif
     times 5 - ($ - %%insn_004069b8) db 0
     %%insn_004069bd:
-    call 0x40d470 ; 004069BD E8AE6A0000
+    call fill_memory_bytes ; 004069BD E8AE6A0000
     %if ($ - %%insn_004069bd) > 5
         %error "LONG_004069BD"
     %endif

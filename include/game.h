@@ -256,11 +256,18 @@ void maybeRenderFrame(bool force = false);
 std::span<const uint8_t> presentationPixels(const VDXFile *vdx, size_t frameIndex);
 void startNewGame();
 void grvKeyInput(char c);
+void grvConsoleSolve();
+bool raycastIntroActive();
+const std::vector<uint32_t> &raycastEntityPixels();
+void compositeRaycastIntro(uint8_t *bgra, int pitch, int width, int height);
 bool initializeGrvMainMenu();
 bool grvInputActive();
 bool grvPointerClick(int x, int y);
 uint8_t grvPointerCursor(int x, int y);
 bool grvEscapeAction();
 void init();
+
+// Fade the currently presented first VDX still before advancing playback.
+void fadeInGrvPalette();
 
 #endif // GAME_H

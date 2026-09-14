@@ -7,7 +7,7 @@
     %%fragment_start:
 grv_compare_indirect_and_jump:
     %%insn_042b1:
-    call 0x400a ; 042B1 E856FD
+    call grv_read_variable_operand ; 042B1 E856FD
     %if ($ - %%insn_042b1) > 3
         %error "LONG_042B1"
     %endif

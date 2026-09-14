@@ -1,8 +1,12 @@
 # v64tng
 
-Current release: **1.0.20260904.28**
+Current release: **1.0.20260914.3**
 
 Recent changes in this build:
+
+- GRV palette fades now reproduce the retail Windows RGB progression and
+  66 ms timing: first-still fade-in and ordered fade-out with foreground clear.
+  Saved backgrounds and source palettes survive the transition.
 
 - VDX Tools provides Alpha Mode, transparent/chroma backgrounds, single-frame
   PNG export, and numbered PNG sequence export. Bitmap and palette inspection
@@ -18,7 +22,7 @@ Recent changes in this build:
 [![v64tng build](https://img.shields.io/badge/v64tng%20build-passing-2ea44f?logo=github)](build.sh)
 [![V.EXE NASM rebuild](https://img.shields.io/badge/V.EXE%20NASM%20rebuild-passing-2ea44f?logo=nasm)](disassembly/V)
 [![v32tng.exe NASM rebuild](https://img.shields.io/badge/v32tng.exe%20NASM%20rebuild-passing-2ea44f?logo=nasm)](disassembly/v32tng)
-[![semantic disassembly](https://img.shields.io/badge/semantic%20disassembly-19.8%25-7c3aed)](#semantic-disassembly-progress)
+[![semantic disassembly](https://img.shields.io/badge/semantic%20disassembly-28.6%25-7c3aed)](#semantic-disassembly-progress)
 [![source byte coverage](https://img.shields.io/badge/source%20byte%20coverage-100%25-2ea44f)](#semantic-disassembly-progress)
 [![License](https://img.shields.io/badge/license-see%20LICENSE-64748b?logo=github)](LICENSE)
 
@@ -26,12 +30,12 @@ Recent changes in this build:
 
 | Original executable | Verified semantic roles | Provisional roles remaining | Semantic completeness | Lossless source-byte coverage |
 |---|---:|---:|---:|---:|
-| [`V.EXE` 1.30`](disassembly/V) | 58 / 261 | 203 | **22.2%** | 101,624 / 101,624 bytes (**100%**) |
-| [`v32tng.exe` 1.02b1](disassembly/v32tng) | 60 / 336 | 276 | **17.9%** | 144,896 / 144,896 bytes (**100%**) |
-| **Combined** | **118 / 597** | **479** | **19.8%** | **246,520 / 246,520 bytes (100%)** |
+| [`V.EXE` 1.30`](disassembly/V) | 81 / 261 | 180 | **31.0%** | 101,624 / 101,624 bytes (**100%**) |
+| [`v32tng.exe` 1.02b1](disassembly/v32tng) | 90 / 336 | 246 | **26.8%** | 144,896 / 144,896 bytes (**100%**) |
+| **Combined** | **171 / 597** | **426** | **28.6%** | **246,520 / 246,520 bytes (100%)** |
 
 Across both permanent disassemblies, **33,236 machine instructions** are
-decoded and **118 analyzer-discovered function entries have evidence-backed
+decoded and **171 analyzer-discovered function entries have evidence-backed
 semantic roles**. Semantic completeness is calculated as verified roles divided
 by provisional analyzer function entries. It is intentionally distinct from
 mechanical source coverage: every executable byte is already represented in
@@ -271,7 +275,29 @@ preview and is saved as actual PNG alpha. This extracts encoded delta writes,
 with no automatic actor segmentation: rewritten background tiles remain, still frames are
 fully opaque, and duplicate or palette-only frames are empty in Alpha Mode.
 
+**Brush** beside Alpha Mode enables alpha and pauses playback. Click or hold
+left-drag over missing areas to reveal the fully decoded frame's original RGB.
+The size button selects a square brush of 1, 4, 8, 16, or 32 source pixels.
+Right-click/drag marks pixels as background; Shift-right-drag restores the
+original delta mask at the brush location;
+**Reset Brush** clears all corrections on the current frame. Corrections stay
+with their individual frames while navigating the clip and are included in
+both PNG export actions when Alpha Mode is on. Masks autosave after each stroke,
+after Reset Brush, and once per second during painting. Reopening the same clip
+reloads its edits, including when opened from a GJD archive. Projects live in
+`.\ActorMasks\<content-key>\`: a source VDX snapshot plus
+versioned `.vdxmask` files containing complete masks and editable overrides.
+The status bar shows the save location. A save failure retains edits in memory
+and blocks changing clips or closing Tools until saving succeeds.
+See [mask project format and actor recovery design](docs/ACTOR_MASK_PROJECTS.md).
+Choose the transparent background for RGBA samples. Brushing restores opacity;
+it does not remove background colour already blended into the source actor.
+
 **Save Frame...** exports the displayed frame at its native resolution.
+With Alpha Mode off, indexed VDX frames are saved as indexed PNGs preserving
+all 256 palette entries and the exact pixel indices. Transparent RGBA exports
+preserve original RGB beneath transparent pixels as well. PNG writing performs
+no quantization, gamma conversion, resizing, or alpha premultiplication.
 **Dump PNGs...** asks for a parent folder and creates a folder named after the
 VDX, containing `00000.png`, `00001.png`, and so on, including duplicate frames
 to preserve sequence timing. Choose a new destination if that folder already
@@ -1103,7 +1129,7 @@ include the opcode byte; `V` sizes are shown as short/long where useful.
 | -- | ---------------- | -------- | ---: | ---------------------- |
 | `20` | `DEC` | `V dst` | 2/3 | Decrements a byte variable with wraparound. |
 | `21` | `STRCMP_NE_JMP_INDIRECT` | `V selector, C...END, A16 target` | variable | Reads `n=variables[selector]`; if `n>9`, subtracts 7; reads a start index from `variables[0x19+n]`; compares there and jumps on mismatch. |
-| `22` | `COPY_BG_TO_FG` | — | 1 | Copies the complete background buffer to the foreground buffer. |
+| `22` | `COPY_BG_TO_FG` (historical name) | — | 1 | Win32 copies display rows 80–399 into the saved background; the historical name reverses the native direction. |
 | `23` | `STRCMP_EQ_JMP` | `V start, C...END, A16 target` | variable | Compares consecutive variables and jumps only when every byte matches. |
 | `24` | `MOV` | `V dst, U16 src` | 4/5 | `variables[dst] = variables[src]`. |
 | `25` | `ADD` | `V dst, U16 src` | 4/5 | Adds `variables[src]` to `variables[dst]` modulo 256. |
@@ -1291,8 +1317,12 @@ surface rather than silently advancing over unknown behavior:
 | Input | Local hotspot declaration order precedes the four persistent edge declarations; the no-hit cursor candidate is style 5 and `v[0x91] == 1` preserves the `0x8000` style bit |
 
 Presentation commands remain ordered alongside VIDEOREF operations.
-`COPY_BG_TO_FG` (`22h`) restores the full 640×320 background band,
-historically named `COPY_RECT_TO_BG` (`37h`) restores an indexed background
+Native Win32 opcode `22h` snapshots the full 640×320 display band into the saved
+background (despite its historical `COPY_BG_TO_FG` name); the DOS helper
+at `02591h` similarly snapshots display through conventional scratch into XMS.
+The current v64tng `GrvCopyBackgroundCommand` still implements the opposite
+copy direction; reconciling its buffer ownership is outstanding fidelity work.
+The historically named `COPY_RECT_TO_BG` (`37h`) restores an indexed background
 rectangle into the foreground, `PRINTSTRING` (`3Ah`) draws the real
 `SPHINX.FNT` indexed glyphs in the top band, and retail
 `PALETTE_MERGE_ONCE` (`49h`) preserves precisely the palette indices used by
@@ -1322,8 +1352,10 @@ recorded at `K.GRV:0062` in the source listing; the verified swap commit is
 
 Library trace `20260825-223925` verifies the telescope reveal sequence. Each
 accepted letter changes exactly one of `v[01Ah]` through `v[02Dh]`, runs its
-station and letter overlays, restores the full background with `22h`, then
-uses `37h` to reveal only that letter's rectangle. Only the twentieth accepted
+station and letter overlays, executes the full-band snapshot `22h`, then
+uses `37h` to reveal only that letter's rectangle. The `22h` copy direction was corrected
+by executing the native memory-copy helper; opcode trace PCs alone do not
+establish source/destination direction. Only the twentieth accepted
 letter reaches `LI.GRV:082C` and sets `v[0F5h]` to `49`. This also fixes the
 earlier v64tng behavior where the first `T` exposed the complete answer.
 

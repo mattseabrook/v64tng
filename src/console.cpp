@@ -399,6 +399,9 @@ void commandHelp()
 	consoleLog("CONSOLE", "      The .VDX suffix is optional.");
 	consoleLog("CONSOLE", "      Example: PLAY INTRO/rolmid");
 	consoleLog("CONSOLE", "");
+	consoleLog("CONSOLE", "  SOLVE");
+	consoleLog("CONSOLE", "      Run the active puzzle success sequence (console only).");
+	consoleLog("CONSOLE", "");
 	consoleLog("CONSOLE", "  CONSOLE KEYS");
 	consoleLog("CONSOLE", "      ~          open/close console");
 	consoleLog("CONSOLE", "      Up/Down    command history");
@@ -421,6 +424,23 @@ void executeCommand(std::string command)
 		commandHelp();
 	else if (verb == "LIST")
 		commandList(argument);
+	else if (verb == "SOLVE")
+	{
+		if (!argument.empty())
+			consoleLog("CONSOLE", "usage: SOLVE");
+		else
+		{
+			console.busy = true;
+			console.active = false;
+			setOverlayVisible(false);
+			try { grvConsoleSolve(); }
+			catch (const std::exception &error)
+			{
+				consoleLogf("CONSOLE", "solve playback failed: {}", error.what());
+			}
+			console.busy = false;
+		}
+	}
 	else if (verb == "PLAY")
 		commandPlay(argument);
 	else

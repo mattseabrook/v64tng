@@ -46,7 +46,7 @@ draw_centered_grv_string_0040a430:
     %endif
     times 1 - ($ - %%insn_0040a43d) db 0
     %%insn_0040a43e:
-    call 0x40d470 ; 0040A43E E82D300000
+    call fill_memory_bytes ; 0040A43E E82D300000
     %if ($ - %%insn_0040a43e) > 5
         %error "LONG_0040A43E"
     %endif
@@ -82,7 +82,7 @@ draw_centered_grv_string_0040a430:
     %endif
     times 1 - ($ - %%insn_0040a453) db 0
     %%insn_0040a454:
-    call 0x40d470 ; 0040A454 E817300000
+    call fill_memory_bytes ; 0040A454 E817300000
     %if ($ - %%insn_0040a454) > 5
         %error "LONG_0040A454"
     %endif
@@ -989,7 +989,7 @@ draw_centered_grv_string_0040a430:
     %endif
     times 1 - ($ - %%insn_0040a677) db 0
     %%insn_0040a678:
-    call 0x40ca10 ; 0040A678 E893230000
+    call copy_memory_overlap_safe ; 0040A678 E893230000
     %if ($ - %%insn_0040a678) > 5
         %error "LONG_0040A678"
     %endif
@@ -1092,7 +1092,7 @@ draw_centered_grv_string_0040a430:
     %endif
     times 1 - ($ - %%insn_0040a6ad) db 0
     %%insn_0040a6ae:
-    call 0x40ca10 ; 0040A6AE E85D230000
+    call copy_memory_overlap_safe ; 0040A6AE E85D230000
     %if ($ - %%insn_0040a6ae) > 5
         %error "LONG_0040A6AE"
     %endif

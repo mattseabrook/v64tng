@@ -242,7 +242,7 @@ func_0378f:
     %endif
     times 3 - ($ - %%insn_03802) db 0
     %%insn_03805:
-    call 0x4ff6 ; 03805 E8EE17
+    call compare_ascii_strings_case_insensitive ; 03805 E8EE17
     %if ($ - %%insn_03805) > 3
         %error "LONG_03805"
     %endif

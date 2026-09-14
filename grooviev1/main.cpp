@@ -102,6 +102,8 @@ static void printUsage()
         << "grooviev1 - standalone VDX encoder (0x20/0x25/0x00/0x80)\n\n"
         << "Commands:\n"
         << "  encode         Encode image sequence to VDX (default when no subcommand is given)\n"
+        << "  extract-indexed INPUT.vdx OUT_DIR   Export lossless IDX/PAL frames\n"
+        << "  encode-indexed INPUT_DIR OUTPUT.vdx Encode lossless indexed sequence\n"
         << "  archive-pack   Pack loose files into .GJD and generate matching .RL\n"
         << "  archive-list   List entries from an .RL/.GJD pair\n"
         << "  archive-unpack Extract entries from an .RL/.GJD pair\n\n"
@@ -953,86 +955,16 @@ static void emitGeneric2Color(std::vector<uint8_t> &out,
             map |= 1;
     }
 
+    // Generic maps are recognized by a first byte >= 0x80. Complementing
+    // the map and swapping colours preserves every pixel while disambiguating.
+    if ((map & 0x80) == 0) {
+        map = static_cast<uint16_t>(~map);
+        std::swap(c0, c1);
+    }
     out.push_back(static_cast<uint8_t>(map & 0xFF));
     out.push_back(static_cast<uint8_t>((map >> 8) & 0xFF));
     out.push_back(c1);
     out.push_back(c0);
-}
-
-static bool chooseBestPairForMap(const std::array<uint8_t, 16> &tile,
-                                 const std::unordered_map<uint16_t, uint8_t> &mapToOpcode,
-                                 uint8_t &outOpcode,
-                                 uint8_t &outC0,
-                                 uint8_t &outC1)
-{
-    std::map<uint8_t, int> freq;
-    for (uint8_t c : tile)
-        freq[c]++;
-
-    std::vector<uint8_t> colors;
-    colors.reserve(freq.size());
-    for (const auto &[c, _] : freq)
-        colors.push_back(c);
-
-    std::sort(colors.begin(), colors.end(), [&](uint8_t a, uint8_t b) {
-        return freq[a] > freq[b];
-    });
-
-    if (colors.size() <= 2)
-        return false;
-
-    const size_t limit = std::min<size_t>(6, colors.size());
-
-    int bestErr = std::numeric_limits<int>::max();
-    uint8_t bestOp = 0;
-    uint8_t bestA = colors[0];
-    uint8_t bestB = colors[0];
-
-    for (size_t ia = 0; ia < limit; ++ia)
-    {
-        for (size_t ib = 0; ib < limit; ++ib)
-        {
-            if (ia == ib)
-                continue;
-            const uint8_t c0 = colors[ia];
-            const uint8_t c1 = colors[ib];
-
-            for (int op = 0; op <= 0x5F; ++op)
-            {
-                const uint16_t map = readLE16(&kMapField[static_cast<size_t>(op) * 2]);
-                int err = 0;
-                for (int i = 0; i < 16; ++i)
-                {
-                    const uint8_t expected = (map & (0x8000u >> i)) ? c1 : c0;
-                    if (tile[i] != expected)
-                        ++err;
-                }
-                if (err < bestErr)
-                {
-                    bestErr = err;
-                    bestOp = static_cast<uint8_t>(op);
-                    bestA = c0;
-                    bestB = c1;
-                    if (err == 0)
-                        break;
-                }
-            }
-            if (bestErr == 0)
-                break;
-        }
-        if (bestErr == 0)
-            break;
-    }
-
-    if (bestErr <= 2)
-    {
-        outOpcode = bestOp;
-        outC0 = bestA;
-        outC1 = bestB;
-        return true;
-    }
-
-    return false;
 }
 
 static void emitTile(std::vector<uint8_t> &out,
@@ -1087,18 +1019,7 @@ static void emitTile(std::vector<uint8_t> &out,
         return;
     }
 
-    uint8_t op = 0;
-    uint8_t c0 = 0;
-    uint8_t c1 = 0;
-    if (chooseBestPairForMap(tile, mapToOpcode, op, c0, c1))
-    {
-        out.push_back(op);
-        out.push_back(c1);
-        out.push_back(c0);
-        stats.opMap++;
-        return;
-    }
-
+    // Three or more indices require the lossless sixteen-index opcode.
     out.push_back(0x60);
     for (int i = 0; i < 16; ++i)
         out.push_back(tile[i]);
@@ -1195,11 +1116,10 @@ static std::vector<uint8_t> encodeDeltaImageOps(const std::vector<uint8_t> &prev
             ++tx;
         }
 
-        if (ty + 1 < tilesY)
-        {
-            out.push_back(0x61);
-            stats.op61++;
-        }
+        // DOS V.EXE advances to its end-of-frame row-table sentinel only
+        // through 0x61 (1000:121D -> 10B8/10BF). Terminate the LAST row too.
+        out.push_back(0x61);
+        stats.op61++;
     }
 
     return out;
@@ -2315,7 +2235,8 @@ static void applyDelta0x25(const std::vector<uint8_t> &data,
                            std::vector<RGB> &palette,
                            std::vector<uint8_t> &frame,
                            int width,
-                           int height)
+                           int height,
+                           bool requireFinalRowAdvance = false)
 {
     if (data.size() < 2)
         throw std::runtime_error("Validation: truncated 0x25 chunk");
@@ -2445,6 +2366,8 @@ static void applyDelta0x25(const std::vector<uint8_t> &data,
 
     if (yTile > tilesY)
         throw std::runtime_error("Validation: delta decode overflow");
+    if (requireFinalRowAdvance && (yTile != tilesY || xTile != 0))
+        throw std::runtime_error("Validation: delta missing final 0x61 row advance required by DOS V.EXE");
 }
 
 static void validateVisualBlocks(const std::vector<Block> &visualBlocks,
@@ -2468,7 +2391,7 @@ static void validateVisualBlocks(const std::vector<Block> &visualBlocks,
         {
             if (frame.empty())
                 throw std::runtime_error("Validation: 0x25 before 0x20");
-            applyDelta0x25(b.data, palette, frame, width, height);
+            applyDelta0x25(b.data, palette, frame, width, height, true);
             decoded.push_back(frame);
         }
         else if (b.type == 0x00)
@@ -2503,6 +2426,8 @@ static void validateVisualBlocks(const std::vector<Block> &visualBlocks,
         throw std::runtime_error("Validation failed: " + std::to_string(badFrames) + " frame(s), " + std::to_string(badPixels) + " pixel(s) differ");
 }
 
+#include "indexed_commands.h"
+
 int main(int argc, char **argv)
 {
     try
@@ -2510,6 +2435,12 @@ int main(int argc, char **argv)
         if (argc >= 2)
         {
             const std::string command = argv[1];
+            if (command == "extract-indexed" || command == "encode-indexed") {
+                if (argc != 4) throw std::runtime_error("Usage: extract-indexed INPUT.vdx OUTPUT_DIR | encode-indexed INPUT_DIR OUTPUT.vdx");
+                if (command == "extract-indexed") extractIndexed(argv[2], argv[3]);
+                else encodeIndexed(argv[2], argv[3]);
+                return 0;
+            }
             if (command == "archive-pack")
             {
                 archivePackCommand(argc, argv);
@@ -2633,7 +2564,7 @@ int main(int argc, char **argv)
             const auto curIndexed = rgbToIndexed(qualityFrames[i], nextPalette);
             indexedFrames.push_back(curIndexed);
 
-            if (curIndexed == indexedFrames[i - 1])
+            if (curIndexed == indexedFrames[i - 1] && localPal.size() == 2)
             {
                 visualBlocks.push_back(Block{0x00, {}});
             }

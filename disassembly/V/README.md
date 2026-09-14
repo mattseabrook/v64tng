@@ -44,8 +44,8 @@ The project has complete mechanical source coverage:
 This is not yet complete semantic recovery. Ghidra's 261 function boundaries
 are analyzer findings, not original object-module boundaries. Some bytes now
 classified as data may prove to be code, and some functions may later be
-split, joined, or grouped. Of the 261 entries, 58 currently have verified
-semantic roles and 203 retain neutral address-based names.
+split, joined, or grouped. Of the 261 entries, 81 currently have verified
+semantic roles and 180 retain neutral address-based names.
 
 Exact coverage and the complete function address map are maintained later in
 this README. This file is the public, monolithic research record for the DOS
@@ -260,8 +260,8 @@ understanding.
 | Function-body instructions decoded | 12,484 |
 | Instructions requiring exact `db` encoding fallback | 1,620 |
 | Bytes in encoding fallbacks | 3,477 |
-| Verified semantic function roles | 58 |
-| Unidentified/provisionally bounded functions | 203 |
+| Verified semantic function roles | 81 |
+| Unidentified/provisionally bounded functions | 180 |
 | Analyzed function/gap span end | `0892Ch` |
 | Non-function bytes in the load image | 69,332 |
 
@@ -294,19 +294,19 @@ Owned ranges are inclusive linear offsets into the unpacked load image.
 | `0030E` | `1000:030e` | verified-role | `decode_vdx_stream` | `FUN_1000_030e` | `0030E–00382`<br>`00385–0038D`<br>`00390–0039B`<br>`0039E–0040C` | [`src/functions/vdx/decode_vdx_stream.asm`](src/functions/vdx/decode_vdx_stream.asm) |
 | `0040D` | `1000:040d` | verified-role | `apply_vdx_delta_palette` | `FUN_1000_040d` | `0040D–00475` | [`src/functions/vdx/apply_vdx_delta_palette.asm`](src/functions/vdx/apply_vdx_delta_palette.asm) |
 | `00476` | `1000:0476` | verified-role | `load_vdx_still_palette` | `FUN_1000_0476` | `00476–00500` | [`src/functions/vdx/load_vdx_still_palette.asm`](src/functions/vdx/load_vdx_still_palette.asm) |
-| `00501` | `1000:0501` | unidentified | `func_00501` | `FUN_1000_0501` | `00501–00586` | [`src/functions/unknown/00501_func_00501.asm`](src/functions/unknown/00501_func_00501.asm) |
+| `00501` | `1000:0501` | verified-role | `upload_vdx_palette_or_black` | `FUN_1000_0501` | `00501–00586` | [`src/functions/vdx/upload_vdx_palette_or_black.asm`](src/functions/vdx/upload_vdx_palette_or_black.asm) |
 | `00587` | `1000:0587` | verified-role | `decode_vdx_bitmap_still` | `FUN_1000_0587` | `00587–005E6`<br>`005E9–00C49`<br>`00C4C–00F32` | [`src/functions/vdx/decode_vdx_bitmap_still.asm`](src/functions/vdx/decode_vdx_bitmap_still.asm) |
-| `00F33` | `1000:0f33` | unidentified | `func_00f33` | `FUN_1000_0f33` | `00F33–00FC5` | [`src/functions/unknown/00f33_func_00f33.asm`](src/functions/unknown/00f33_func_00f33.asm) |
-| `00FC6` | `1000:0fc6` | unidentified | `func_00fc6` | `FUN_1000_0fc6` | `00FC6–01059` | [`src/functions/unknown/00fc6_func_00fc6.asm`](src/functions/unknown/00fc6_func_00fc6.asm) |
+| `00F33` | `1000:0f33` | verified-role | `fade_in_vdx_palette_rgb` | `FUN_1000_0f33` | `00F33–00FC5` | [`src/functions/vdx/fade_in_vdx_palette_rgb.asm`](src/functions/vdx/fade_in_vdx_palette_rgb.asm) |
+| `00FC6` | `1000:0fc6` | verified-role | `fade_out_vdx_palette_rgb_and_clear` | `FUN_1000_0fc6` | `00FC6–01059` | [`src/functions/vdx/fade_out_vdx_palette_rgb_and_clear.asm`](src/functions/vdx/fade_out_vdx_palette_rgb_and_clear.asm) |
 | `0105A` | `1000:105a` | verified-role | `decode_vdx_delta_frame` | `FUN_1000_105a` | `0105A–01216`<br>`01218–01234`<br>`01236–0127C`<br>`0127E–012BC`<br>`012C1–01396`<br>`01398–0168E`<br>`01691–0169A`<br>`0169C–01ED2`<br>`01ED5–01FE6`<br>`01FE8–0205C`<br>`0205E–0207A`<br>`0207C–0210A`<br>`0210C–02174`<br>`02178–02180`<br>`02182–02218`<br>`02260–02288`<br>`0228A–022A6`<br>`022A8–022E0`<br>`022E2–02303`<br>`02306–0230E` | [`src/functions/vdx/decode_vdx_delta_frame.asm`](src/functions/vdx/decode_vdx_delta_frame.asm) |
 | `0230F` | `1000:230f` | unidentified | `func_0230f` | `FUN_1000_230f` | `0230F–02369` | [`src/functions/unknown/0230f_func_0230f.asm`](src/functions/unknown/0230f_func_0230f.asm) |
 | `0236A` | `1000:236a` | verified-role | `decompress_vdx_lzss` | `FUN_1000_236a` | `0236A–023A4` | [`src/functions/vdx/decompress_vdx_lzss.asm`](src/functions/vdx/decompress_vdx_lzss.asm) |
 | `023A5` | `1000:23a5` | verified-role | `copy_background_rectangle_to_foreground` | `FUN_1000_23a5` | `023A5–02590` | [`src/functions/vdx/copy_background_rectangle_to_foreground.asm`](src/functions/vdx/copy_background_rectangle_to_foreground.asm) |
-| `02591` | `1000:2591` | verified-role | `copy_background_to_foreground` | `FUN_1000_2591` | `02591–026E4` | [`src/functions/vdx/copy_background_to_foreground.asm`](src/functions/vdx/copy_background_to_foreground.asm) |
+| `02591` | `1000:2591` | verified-role | `snapshot_display_to_xms_background` | `FUN_1000_2591` | `02591–026E4` | [`src/functions/vdx/snapshot_display_to_xms_background.asm`](src/functions/vdx/snapshot_display_to_xms_background.asm) |
 | `026E5` | `1000:26e5` | unidentified | `func_026e5` | `FUN_1000_26e5` | `026E5–0276C` | [`src/functions/unknown/026e5_func_026e5.asm`](src/functions/unknown/026e5_func_026e5.asm) |
 | `0276D` | `1000:276d` | palette-use scanner for one-shot still-palette merge | `mark_used_background_palette_entries` | `FUN_1000_276d` | `0276D–02821` | [`src/functions/vdx/mark_used_background_palette_entries.asm`](src/functions/vdx/mark_used_background_palette_entries.asm) |
 | `02822` | `1000:2822` | unidentified | `func_02822` | `FUN_1000_2822` | `02822–0285C` | [`src/functions/unknown/02822_func_02822.asm`](src/functions/unknown/02822_func_02822.asm) |
-| `0285D` | `1000:285d` | unidentified | `func_0285d` | `FUN_1000_285d` | `0285D–02895` | [`src/functions/unknown/0285d_func_0285d.asm`](src/functions/unknown/0285d_func_0285d.asm) |
+| `0285D` | `1000:285d` | verified-role | `clear_indexed_display_memory` | `FUN_1000_285d` | `0285D–02895` | [`src/functions/platform/clear_indexed_display_memory.asm`](src/functions/platform/clear_indexed_display_memory.asm) |
 | `02896` | `1000:2896` | unidentified | `func_02896` | `FUN_1000_2896` | `02896–028AC` | [`src/functions/unknown/02896_func_02896.asm`](src/functions/unknown/02896_func_02896.asm) |
 | `028AD` | `1000:28ad` | unidentified | `func_028ad` | `FUN_1000_28ad` | `028AD–028D8`<br>`028DB–0292E`<br>`02931–0293A` | [`src/functions/unknown/028ad_func_028ad.asm`](src/functions/unknown/028ad_func_028ad.asm) |
 | `0293B` | `1000:293b` | unidentified | `func_0293b` | `FUN_1000_293b` | `0293B–02992`<br>`02995–02996` | [`src/functions/unknown/0293b_func_0293b.asm`](src/functions/unknown/0293b_func_0293b.asm) |
@@ -350,41 +350,41 @@ Owned ranges are inclusive linear offsets into the unpacked load image.
 | `03F23` | `1000:3f23` | verified-role | `grv_save_game` | `FUN_1000_3f23` | `03F23–03F76` | [`src/functions/savegame/grv_save_game.asm`](src/functions/savegame/grv_save_game.asm) |
 | `03F77` | `1000:3f77` | unidentified | `func_03f77` | `FUN_1000_3f77` | `03F77–03FC3` | [`src/functions/unknown/03f77_func_03f77.asm`](src/functions/unknown/03f77_func_03f77.asm) |
 | `03FC4` | `1000:3fc4` | verified-role | `grv_load_game` | `FUN_1000_3fc4` | `03FC4–04000` | [`src/functions/savegame/grv_load_game.asm`](src/functions/savegame/grv_load_game.asm) |
-| `04001` | `1000:4001` | unidentified | `func_04001` | `FUN_1000_4001` | `04001–04003` | [`src/functions/unknown/04001_func_04001.asm`](src/functions/unknown/04001_func_04001.asm) |
-| `04004` | `1000:4004` | unidentified | `func_04004` | `FUN_1000_4004` | `04004–04009` | [`src/functions/unknown/04004_func_04004.asm`](src/functions/unknown/04004_func_04004.asm) |
-| `0400A` | `1000:400a` | unidentified | `func_0400a` | `FUN_1000_400a` | `0400A–04015` | [`src/functions/unknown/0400a_func_0400a.asm`](src/functions/unknown/0400a_func_0400a.asm) |
-| `04016` | `1000:4016` | unidentified | `func_04016` | `FUN_1000_4016` | `04016–04086` | [`src/functions/unknown/04016_func_04016.asm`](src/functions/unknown/04016_func_04016.asm) |
-| `04087` | `1000:4087` | unidentified | `func_04087` | `FUN_1000_4087` | `04087–0409A` | [`src/functions/unknown/04087_func_04087.asm`](src/functions/unknown/04087_func_04087.asm) |
+| `04001` | `1000:4001` | verified-role | `grv_jump_absolute` | `FUN_1000_4001` | `04001–04003` | [`src/functions/grv/grv_jump_absolute.asm`](src/functions/grv/grv_jump_absolute.asm) |
+| `04004` | `1000:4004` | verified-role | `grv_store_word_operand_d9fd` | `FUN_1000_4004` | `04004–04009` | [`src/functions/grv/grv_store_word_operand_d9fd.asm`](src/functions/grv/grv_store_word_operand_d9fd.asm) |
+| `0400A` | `1000:400a` | verified-role | `grv_read_variable_operand` | `FUN_1000_400a` | `0400A–04015` | [`src/functions/grv/grv_read_variable_operand.asm`](src/functions/grv/grv_read_variable_operand.asm) |
+| `04016` | `1000:4016` | verified-role | `grv_decode_sequence_element` | `FUN_1000_4016` | `04016–04086` | [`src/functions/grv/grv_decode_sequence_element.asm`](src/functions/grv/grv_decode_sequence_element.asm) |
+| `04087` | `1000:4087` | verified-role | `grv_load_sequence` | `FUN_1000_4087` | `04087–0409A` | [`src/functions/grv/grv_load_sequence.asm`](src/functions/grv/grv_load_sequence.asm) |
 | `0409B` | `1000:409b` | verified-role | `grv_swap_variables` | `FUN_1000_409b` | `0409B–040B1` | [`src/functions/grv/grv_swap_variables.asm`](src/functions/grv/grv_swap_variables.asm) |
 | `040B2` | `1000:40b2` | verified-role | `grv_move_variable` | `FUN_1000_40b2` | `040B2–040C6` | [`src/functions/grv/grv_move_variable.asm`](src/functions/grv/grv_move_variable.asm) |
-| `040C7` | `1000:40c7` | unidentified | `func_040c7` | `FUN_1000_40c7` | `040C7–040DE` | [`src/functions/unknown/040c7_func_040c7.asm`](src/functions/unknown/040c7_func_040c7.asm) |
-| `040DF` | `1000:40df` | unidentified | `func_040df` | `FUN_1000_40df` | `040DF–040F6` | [`src/functions/unknown/040df_func_040df.asm`](src/functions/unknown/040df_func_040df.asm) |
-| `040F7` | `1000:40f7` | unidentified | `func_040f7` | `FUN_1000_40f7` | `040F7–04102` | [`src/functions/unknown/040f7_func_040f7.asm`](src/functions/unknown/040f7_func_040f7.asm) |
+| `040C7` | `1000:40c7` | verified-role | `grv_add_variable` | `FUN_1000_40c7` | `040C7–040DE` | [`src/functions/grv/grv_add_variable.asm`](src/functions/grv/grv_add_variable.asm) |
+| `040DF` | `1000:40df` | verified-role | `grv_subtract_variable` | `FUN_1000_40df` | `040DF–040F6` | [`src/functions/grv/grv_subtract_variable.asm`](src/functions/grv/grv_subtract_variable.asm) |
+| `040F7` | `1000:40f7` | verified-role | `grv_increment_variable` | `FUN_1000_40f7` | `040F7–04102` | [`src/functions/grv/grv_increment_variable.asm`](src/functions/grv/grv_increment_variable.asm) |
 | `04103` | `1000:4103` | verified-role | `grv_decrement_variable` | `FUN_1000_4103` | `04103–0410E` | [`src/functions/grv/grv_decrement_variable.asm`](src/functions/grv/grv_decrement_variable.asm) |
 | `0410F` | `1000:410f` | verified-role | `grv_grid_swap` | `FUN_1000_410f` | `0410F–041A3` | [`src/functions/grv/grv_grid_swap.asm`](src/functions/grv/grv_grid_swap.asm) |
 | `041A4` | `1000:41a4` | verified-role | `grv_random` | `FUN_1000_41a4` | `041A4–041CA` | [`src/functions/grv/grv_random.asm`](src/functions/grv/grv_random.asm) |
-| `041CB` | `1000:41cb` | unidentified | `func_041cb` | `FUN_1000_41cb` | `041CB–041DE` | [`src/functions/unknown/041cb_func_041cb.asm`](src/functions/unknown/041cb_func_041cb.asm) |
+| `041CB` | `1000:41cb` | verified-role | `grv_reduce_variable_above_divisor` | `FUN_1000_41cb` | `041CB–041DE` | [`src/functions/grv/grv_reduce_variable_above_divisor.asm`](src/functions/grv/grv_reduce_variable_above_divisor.asm) |
 | `041DF` | `1000:41df` | verified-role | `grv_xor_obfuscate_variables` | `FUN_1000_41df` | `041DF–041F7` | [`src/functions/grv/grv_xor_obfuscate_variables.asm`](src/functions/grv/grv_xor_obfuscate_variables.asm) |
-| `041F8` | `1000:41f8` | unidentified | `func_041f8` | `FUN_1000_41f8` | `041F8–0421D` | [`src/functions/unknown/041f8_func_041f8.asm`](src/functions/unknown/041f8_func_041f8.asm) |
-| `0421E` | `1000:421e` | unidentified | `func_0421e` | `FUN_1000_421e` | `0421E–04243` | [`src/functions/unknown/0421e_func_0421e.asm`](src/functions/unknown/0421e_func_0421e.asm) |
+| `041F8` | `1000:41f8` | verified-role | `grv_branch_sequence_not_equal` | `FUN_1000_41f8` | `041F8–0421D` | [`src/functions/grv/grv_branch_sequence_not_equal.asm`](src/functions/grv/grv_branch_sequence_not_equal.asm) |
+| `0421E` | `1000:421e` | verified-role | `grv_branch_sequence_any_greater` | `FUN_1000_421e` | `0421E–04243` | [`src/functions/grv/grv_branch_sequence_any_greater.asm`](src/functions/grv/grv_branch_sequence_any_greater.asm) |
 | `04244` | `1000:4244` | verified-role | `grv_char_less_jump` | `FUN_1000_4244` | `04244–04269` | [`src/functions/grv/grv_char_less_jump.asm`](src/functions/grv/grv_char_less_jump.asm) |
 | `0426A` | `1000:426a` | verified-role | `grv_jump_if_indirect_not_equal` | `FUN_1000_426a` | `0426A–04291` | [`src/functions/grv/grv_jump_if_indirect_not_equal.asm`](src/functions/grv/grv_jump_if_indirect_not_equal.asm) |
 | `04292` | `1000:4292` | verified-role | `grv_load_string_indirect` | `FUN_1000_4292` | `04292–042B0` | [`src/functions/grv/grv_load_string_indirect.asm`](src/functions/grv/grv_load_string_indirect.asm) |
 | `042B1` | `1000:42b1` | verified-role | `grv_compare_indirect_and_jump` | `FUN_1000_42b1` | `042B1–042CA` | [`src/functions/grv/grv_compare_indirect_and_jump.asm`](src/functions/grv/grv_compare_indirect_and_jump.asm) |
-| `042CB` | `1000:42cb` | unidentified | `func_042cb` | `FUN_1000_42cb` | `042CB–042F0` | [`src/functions/unknown/042cb_func_042cb.asm`](src/functions/unknown/042cb_func_042cb.asm) |
-| `042F1` | `1000:42f1` | unidentified | `func_042f1` | `FUN_1000_42f1` | `042F1–04326` | [`src/functions/unknown/042f1_func_042f1.asm`](src/functions/unknown/042f1_func_042f1.asm) |
-| `04327` | `1000:4327` | unidentified | `func_04327` | `FUN_1000_4327` | `04327–0432A` | [`src/functions/unknown/04327_func_04327.asm`](src/functions/unknown/04327_func_04327.asm) |
+| `042CB` | `1000:42cb` | verified-role | `grv_branch_sequence_equal` | `FUN_1000_42cb` | `042CB–042F0` | [`src/functions/grv/grv_branch_sequence_equal.asm`](src/functions/grv/grv_branch_sequence_equal.asm) |
+| `042F1` | `1000:42f1` | verified-role | `advance_grv_random_state` | `FUN_1000_42f1` | `042F1–04326` | [`src/functions/grv/advance_grv_random_state.asm`](src/functions/grv/advance_grv_random_state.asm) |
+| `04327` | `1000:4327` | verified-role | `advance_grv_random_state_far` | `FUN_1000_4327` | `04327–0432A` | [`src/functions/grv/advance_grv_random_state_far.asm`](src/functions/grv/advance_grv_random_state_far.asm) |
 | `0432B` | `1000:432b` | verified-role | `grv_play_transition_video_ref` | `FUN_1000_432b` | `0432B–04374` | [`src/functions/grv/grv_play_transition_video_ref.asm`](src/functions/grv/grv_play_transition_video_ref.asm) |
 | `04375` | `1000:4375` | unidentified | `func_04375` | `FUN_1000_4375` | `04375–043C8` | [`src/functions/unknown/04375_func_04375.asm`](src/functions/unknown/04375_func_04375.asm) |
 | `043C9` | `1000:43c9` | unidentified | `func_043c9` | `FUN_1000_43c9` | `043C9–043D1` | [`src/functions/unknown/043c9_func_043c9.asm`](src/functions/unknown/043c9_func_043c9.asm) |
 | `043D2` | `1000:43d2` | verified-role | `grv_play_video_name` | `FUN_1000_43d2` | `043D2–04405` | [`src/functions/grv/grv_play_video_name.asm`](src/functions/grv/grv_play_video_name.asm) |
 | `04406` | `1000:4406` | unidentified | `func_04406` | `FUN_1000_4406` | `04406–04439` | [`src/functions/unknown/04406_func_04406.asm`](src/functions/unknown/04406_func_04406.asm) |
 | `0443A` | `1000:443a` | unidentified | `func_0443a` | `FUN_1000_443a` | `0443A–04449` | [`src/functions/unknown/0443a_func_0443a.asm`](src/functions/unknown/0443a_func_0443a.asm) |
-| `0444A` | `1000:444a` | unidentified | `func_0444a` | `FUN_1000_444a` | `0444A–04450` | [`src/functions/unknown/0444a_func_0444a.asm`](src/functions/unknown/0444a_func_0444a.asm) |
+| `0444A` | `1000:444a` | verified-role | `grv_set_background_song` | `FUN_1000_444a` | `0444A–04450` | [`src/functions/grv/grv_set_background_song.asm`](src/functions/grv/grv_set_background_song.asm) |
 | `04451` | `1000:4451` | verified-role | `grv_sleep` | `FUN_1000_4451` | `04451–04460` | [`src/functions/grv/grv_sleep.asm`](src/functions/grv/grv_sleep.asm) |
-| `04461` | `1000:4461` | unidentified | `func_04461` | `FUN_1000_4461` | `04461–0447A` | [`src/functions/unknown/04461_func_04461.asm`](src/functions/unknown/04461_func_04461.asm) |
+| `04461` | `1000:4461` | verified-role | `grv_call_absolute` | `FUN_1000_4461` | `04461–0447A` | [`src/functions/grv/grv_call_absolute.asm`](src/functions/grv/grv_call_absolute.asm) |
 | `0447B` | `1000:447b` | verified-role | `run_grv_input_loop` | `FUN_1000_447b` | `0447B–046F4` | [`src/functions/grv/run_grv_input_loop.asm`](src/functions/grv/run_grv_input_loop.asm) |
-| `046F5` | `1000:46f5` | unidentified | `func_046f5` | `FUN_1000_46f5` | `046F5–0470F` | [`src/functions/unknown/046f5_func_046f5.asm`](src/functions/unknown/046f5_func_046f5.asm) |
+| `046F5` | `1000:46f5` | verified-role | `replay_grv_background_song` | `FUN_1000_46f5` | `046F5–0470F` | [`src/functions/grv/replay_grv_background_song.asm`](src/functions/grv/replay_grv_background_song.asm) |
 | `04710` | `1000:4710` | unidentified | `func_04710` | `FUN_1000_4710` | `04710–04728` | [`src/functions/unknown/04710_func_04710.asm`](src/functions/unknown/04710_func_04710.asm) |
 | `04729` | `1000:4729` | verified-role | `match_grv_key_action` | `FUN_1000_4729` | `04729–04753` | [`src/functions/grv/match_grv_key_action.asm`](src/functions/grv/match_grv_key_action.asm) |
 | `04754` | `1000:4754` | unidentified | `func_04754` | `FUN_1000_4754` | `04754–0475D` | [`src/functions/unknown/04754_func_04754.asm`](src/functions/unknown/04754_func_04754.asm) |
@@ -413,8 +413,8 @@ Owned ranges are inclusive linear offsets into the unpacked load image.
 | `04E1F` | `1000:4e1f` | unidentified | `func_04e1f` | `FUN_1000_4e1f` | `04E1F–04EAD` | [`src/functions/unknown/04e1f_func_04e1f.asm`](src/functions/unknown/04e1f_func_04e1f.asm) |
 | `04EAE` | `1000:4eae` | unidentified | `func_04eae` | `FUN_1000_4eae` | `04EAE–04FC6` | [`src/functions/unknown/04eae_func_04eae.asm`](src/functions/unknown/04eae_func_04eae.asm) |
 | `04FC7` | `1000:4fc7` | unidentified | `func_04fc7` | `FUN_1000_4fc7` | `04FC7–04FEA` | [`src/functions/unknown/04fc7_func_04fc7.asm`](src/functions/unknown/04fc7_func_04fc7.asm) |
-| `04FEB` | `1000:4feb` | unidentified | `func_04feb` | `FUN_1000_4feb` | `04FEB–04FF5` | [`src/functions/unknown/04feb_func_04feb.asm`](src/functions/unknown/04feb_func_04feb.asm) |
-| `04FF6` | `1000:4ff6` | unidentified | `func_04ff6` | `FUN_1000_4ff6` | `04FF6–0500F` | [`src/functions/unknown/04ff6_func_04ff6.asm`](src/functions/unknown/04ff6_func_04ff6.asm) |
+| `04FEB` | `1000:4feb` | verified-role | `ascii_lowercase_al` | `FUN_1000_4feb` | `04FEB–04FF5` | [`src/functions/runtime/ascii_lowercase_al.asm`](src/functions/runtime/ascii_lowercase_al.asm) |
+| `04FF6` | `1000:4ff6` | verified-role | `compare_ascii_strings_case_insensitive` | `FUN_1000_4ff6` | `04FF6–0500F` | [`src/functions/runtime/compare_ascii_strings_case_insensitive.asm`](src/functions/runtime/compare_ascii_strings_case_insensitive.asm) |
 | `05010` | `1000:5010` | unidentified | `func_05010` | `FUN_1000_5010` | `05010–05017` | [`src/functions/unknown/05010_func_05010.asm`](src/functions/unknown/05010_func_05010.asm) |
 | `05018` | `1000:5018` | unidentified | `func_05018` | `FUN_1000_5018` | `05018–05056` | [`src/functions/unknown/05018_func_05018.asm`](src/functions/unknown/05018_func_05018.asm) |
 | `05057` | `1000:5057` | unidentified | `func_05057` | `FUN_1000_5057` | `05057–0518F`<br>`05192–0519B`<br>`0519E–051A3`<br>`051A6–051AB`<br>`051AE–051C4` | [`src/functions/unknown/05057_func_05057.asm`](src/functions/unknown/05057_func_05057.asm) |

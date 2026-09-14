@@ -354,7 +354,7 @@ v32_window_procedure:
     %endif
     times 1 - ($ - %%insn_0040902c) db 0
     %%insn_0040902d:
-    call 0x406a48 ; 0040902D E816DAFFFF
+    call enqueue_key_input ; 0040902D E816DAFFFF
     %if ($ - %%insn_0040902d) > 5
         %error "LONG_0040902D"
     %endif
@@ -662,7 +662,7 @@ v32_window_procedure:
     %endif
     times 1 - ($ - %%insn_00409101) db 0
     %%insn_00409102:
-    call 0x40ca10 ; 00409102 E809390000
+    call copy_memory_overlap_safe ; 00409102 E809390000
     %if ($ - %%insn_00409102) > 5
         %error "LONG_00409102"
     %endif
@@ -782,7 +782,7 @@ v32_window_procedure:
     %endif
     times 1 - ($ - %%insn_00409162) db 0
     %%insn_00409163:
-    call 0x40ca10 ; 00409163 E8A8380000
+    call copy_memory_overlap_safe ; 00409163 E8A8380000
     %if ($ - %%insn_00409163) > 5
         %error "LONG_00409163"
     %endif

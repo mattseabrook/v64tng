@@ -147,7 +147,7 @@ func_00408d24:
     %endif
     times 1 - ($ - %%insn_00408d84) db 0
     %%insn_00408d85:
-    call 0x40a39f ; 00408D85 E815160000
+    call get_cached_resource_block_and_increment_uses ; 00408D85 E815160000
     %if ($ - %%insn_00408d85) > 5
         %error "LONG_00408D85"
     %endif
@@ -171,7 +171,7 @@ func_00408d24:
     %endif
     times 5 - ($ - %%insn_00408d8e) db 0
     %%insn_00408d93:
-    call 0x40ca10 ; 00408D93 E8783C0000
+    call copy_memory_overlap_safe ; 00408D93 E8783C0000
     %if ($ - %%insn_00408d93) > 5
         %error "LONG_00408D93"
     %endif

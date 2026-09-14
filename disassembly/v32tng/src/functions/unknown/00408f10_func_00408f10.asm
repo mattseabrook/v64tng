@@ -26,7 +26,7 @@ func_00408f10:
     %endif
     times 5 - ($ - %%insn_00408f18) db 0
     %%insn_00408f1d:
-    call 0x40136e ; 00408F1D E84C84FFFF
+    call release_grv_buffers_and_archive_handles ; 00408F1D E84C84FFFF
     %if ($ - %%insn_00408f1d) > 5
         %error "LONG_00408F1D"
     %endif
@@ -38,7 +38,7 @@ func_00408f10:
     %endif
     times 5 - ($ - %%insn_00408f22) db 0
     %%insn_00408f27:
-    call 0x409ab6 ; 00408F27 E88A0B0000
+    call free_resource_cache_and_stream_ring ; 00408F27 E88A0B0000
     %if ($ - %%insn_00408f27) > 5
         %error "LONG_00408F27"
     %endif

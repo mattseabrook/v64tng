@@ -35,8 +35,7 @@ struct RaycastConfig
     float falloffMul = 0.85f;
     float fovMul = 1.0f;
     int supersample = 1;
-    float baseTorchRange = 20.0f;
-    bool megatexture = false; // default OFF: flat-shaded walls; enable via raycastMegatexture=true
+    float baseTorchRange = 6.0f;
 };
 static RaycastConfig g_rayConfig;
 
@@ -52,46 +51,68 @@ static inline bool isSolidTile(uint8_t tile)
     return tile >= 0x01 && !isPlayerStartTile(tile);
 }
 
-struct RaycastVerticalGradientLut
+static float smoothstep(float a, float b, float x)
 {
-    std::vector<std::array<uint8_t, 3>> ceiling;
-    std::vector<std::array<uint8_t, 3>> floor;
-};
-static RaycastVerticalGradientLut g_verticalGradientLut;
-
-static void updateVerticalGradientLut(int screenHeight)
+    const float t = std::clamp((x-a)/(b-a),0.0f,1.0f);
+    return t*t*(3.0f-2.0f*t);
+}
+// Continuous world-space floor: no repeated tile or map-sized allocation.
+// Irregular foundation stones, recessed mortar, concrete mottling and chips.
+static float floorHash(float x, float y)
 {
-    if (screenHeight <= 0)
-        return;
-
-    // Cache by screen height to avoid recomputing every frame.
-    static int cachedScreenHeight = 0;
-    if (screenHeight == cachedScreenHeight)
-        return;
-    cachedScreenHeight = screenHeight;
-
-    g_verticalGradientLut.ceiling.resize(
-        static_cast<size_t>(screenHeight));
-    g_verticalGradientLut.floor.resize(
-        static_cast<size_t>(screenHeight));
-    const float halfHeight = static_cast<float>(screenHeight) * 0.5f;
-
-    for (int y = 0; y < screenHeight; ++y)
+    uint32_t h = uint32_t(int(x)) * 374761393u + uint32_t(int(y)) * 668265263u + 1937u;
+    h = (h ^ (h >> 13u)) * 1274126177u;
+    return float(h ^ (h >> 16u)) / 4294967295.0f;
+}
+static float floorNoise(float x, float y)
+{
+    float ix = std::floor(x), iy = std::floor(y);
+    float u = x - ix, v = y - iy;
+    u = u*u*(3.0f-2.0f*u); v = v*v*(3.0f-2.0f*v);
+    return std::lerp(std::lerp(floorHash(ix,iy), floorHash(ix+1.0f,iy),u),
+                std::lerp(floorHash(ix,iy+1.0f), floorHash(ix+1.0f,iy+1.0f),u),v);
+}
+static float foundationStone(float x, float y, float footprint)
+{
+    float wx = x*1.7f + 0.22f*floorNoise(x*3.0f,y*3.0f);
+    float wy = y*1.7f + 0.22f*floorNoise(x*3.0f+37.0f,y*3.0f+19.0f);
+    float ix = std::floor(wx), iy = std::floor(wy);
+    float first = 100.0f, second = 100.0f, stone = 0.5f;
+    for (int j=-1; j<=1; ++j)
+    for (int i=-1; i<=1; ++i)
     {
-        const float yf = static_cast<float>(y) + 0.5f;
-        const float ceilingFactor =
-            std::clamp(1.0f - yf / halfHeight, 0.0f, 1.0f);
-        const float floorFactor =
-            std::clamp((yf - halfHeight) / halfHeight, 0.0f, 1.0f);
-        g_verticalGradientLut.ceiling[static_cast<size_t>(y)] = {
-            static_cast<uint8_t>(120.0f * ceilingFactor),
-            static_cast<uint8_t>(120.0f * ceilingFactor),
-            static_cast<uint8_t>(120.0f * ceilingFactor)};
-        g_verticalGradientLut.floor[static_cast<size_t>(y)] = {
-            static_cast<uint8_t>(90.0f * floorFactor),
-            static_cast<uint8_t>(70.0f * floorFactor),
-            static_cast<uint8_t>(50.0f * floorFactor)};
+        float cx = ix+float(i), cy = iy+float(j);
+        float seed = floorHash(cx,cy);
+        float dx = wx-cx-0.15f-0.7f*seed;
+        float dy = wy-cy-0.15f-0.7f*floorHash(cx+71.0f,cy-43.0f);
+        float d = dx*dx+dy*dy;
+        if (d < first) { second=first; first=d; stone=seed; }
+        else { second=std::min(second,d); }
     }
+    float ridge = std::sqrt(second)-std::sqrt(first);
+    float aa = std::max(0.008f,footprint*1.7f);
+    float mortar = 1.0f-smoothstep(0.025f,0.025f+aa,ridge);
+    float detail = 1.0f-smoothstep(0.015f,0.09f,footprint);
+    float chips = smoothstep(0.68f,0.86f,floorNoise(x*43.0f,y*43.0f))*detail;
+    float grain = (floorNoise(x*95.0f,y*95.0f)-0.5f)*detail;
+    float grey = 106.0f + (stone-0.5f)*12.0f
+        + (floorNoise(x*4.0f,y*4.0f)-0.5f)*18.0f + grain*9.0f - chips*23.0f;
+    // Suppress subpixel seams at distance to keep the floor from shimmering.
+    mortar *= 1.0f-smoothstep(0.08f,0.3f,footprint);
+    return (106.0f+0.9f*(std::lerp(grey,65.0f,mortar)-106.0f))/255.0f;
+}
+static float quietFloor(float x, float y, float footprint)
+{
+    // Concrete mottling and scattered flecks, without stone cells or mortar.
+    float detail = 1.0f-smoothstep(0.015f,0.09f,footprint);
+    float grain = floorNoise(x*9.0f,y*9.0f)-0.5f;
+    float flecks = smoothstep(0.72f,0.9f,floorNoise(x*43.0f,y*43.0f))*detail;
+    return (106.0f+grain*4.0f-flecks*5.0f)/255.0f;
+}
+
+static float basementLight(float distance, float range)
+{
+    return 0.65f*(1.0f-smoothstep(range*0.55f,range,distance)) / (1.0f+0.035f*distance);
 }
 
 // Persistent thread pool to avoid thread creation overhead per frame
@@ -286,10 +307,7 @@ static void cacheConfigValues()
         ? static_cast<float>(config["raycastFovMul"]) : 1.0f;
     g_rayConfig.supersample = std::clamp(config.contains("raycastSupersample")
         ? config["raycastSupersample"].get<int>() : 1, 1, 8);
-    g_rayConfig.baseTorchRange = 20.0f;
-    // Megatexture is opt-in and defaults OFF (classic flat-shaded walls).
-    g_rayConfig.megatexture = config.contains("raycastMegatexture")
-        ? config["raycastMegatexture"].get<bool>() : false;
+    g_rayConfig.baseTorchRange = 6.0f;
 }
 
 // Normalize angle to [0, 2π) using std::fmod (branchless)
@@ -438,6 +456,7 @@ RaycastHit castRay(const TileMap &tileMap,
 // Render a column with vertical smoothing
 void accumulateColumn(int x,
                       const RaycastHit &hit,
+                      float rayDirX, float rayDirY,
                       int screenH,
                       float halfW,
                       float halfH,
@@ -455,9 +474,7 @@ void accumulateColumn(int x,
     float perpWallDist = 0.0f;
     float drawStart = 0.0f;
     float drawEnd = 0.0f;
-    uint8_t wallR = 0, wallG = 0, wallB = 0;
     float lightFactor = 1.0f;
-    const WallEdge* wallEdge = nullptr;
     
     if (hit.hitWall)
     {
@@ -471,13 +488,36 @@ void accumulateColumn(int x,
         drawStart = halfH - lineHeight / 2.0f;
         drawEnd = halfH + lineHeight / 2.0f;
 
-        lightFactor = std::max(0.0f, 1.0f - hit.distance / torchRange);
-        wallEdge = findWallEdge(hit.mapX, hit.mapY, hit.side);
+        lightFactor = basementLight(hit.distance, torchRange);
 
-    // Initialize fallback wall color
-    wallR = static_cast<uint8_t>(120.0f * lightFactor);
-    wallG = static_cast<uint8_t>(120.0f * lightFactor);
-    wallB = static_cast<uint8_t>(120.0f * lightFactor);
+    }
+
+    bool cornerLine = false;
+    if (hit.hitWall)
+    {
+        const bool vertical = (hit.side & 1) != 0;
+        const int endpoint = hit.wallX < 0.5f ? 0 : 1;
+        const int vx = hit.mapX+(vertical ? (hit.side == 1 ? 1 : 0) : endpoint);
+        const int vy = hit.mapY+(vertical ? endpoint : (hit.side == 2 ? 1 : 0));
+        const auto &map = *state.raycast.map;
+        auto solid = [&](int cx,int cy) {
+            return cx < 0 || cy < 0 || cy >= int(map.size()) || cx >= int(map[0].size())
+                || isSolidTile(map[cy][cx]);
+        };
+        const bool a=solid(vx-1,vy-1), b=solid(vx,vy-1), c=solid(vx-1,vy), d=solid(vx,vy);
+        const int count=int(a)+int(b)+int(c)+int(d);
+        if (count == 1 || count == 3 || (count == 2 && a == d))
+        {
+            const float dx=float(vx)-state.raycast.player.x, dy=float(vy)-state.raycast.player.y;
+            const float angle=state.raycast.player.angle;
+            const float depth=dx*std::cos(angle)+dy*std::sin(angle);
+            const float side=-dx*std::sin(angle)+dy*std::cos(angle);
+            if (depth > 0.001f)
+            {
+                const float projected=halfW+halfW*side/(depth*std::tan(state.raycast.player.fov*0.5f*g_rayConfig.fovMul));
+                cornerLine=std::floor(projected) == float(x);
+            }
+        }
     }
 
     for (int y = 0; y < screenH; ++y)
@@ -489,14 +529,22 @@ void accumulateColumn(int x,
         // Use cached falloff value (was previously shadowed and read from config per-pixel)
         float screenFactor = std::max(0.0f, 1.0f - (screenDist / maxRadius) * falloffMul);
 
-        const auto &ceiling =
-            g_verticalGradientLut.ceiling[static_cast<size_t>(y)];
-        const auto &floor =
-            g_verticalGradientLut.floor[static_cast<size_t>(y)];
-        const float ceilingShade = static_cast<float>(ceiling[0]);
-        const uint8_t floorR = floor[0];
-        const uint8_t floorG = floor[1];
-        const uint8_t floorB = floor[2];
+        const float planeDistance = halfH*visualScale /
+            (std::max(std::abs(yf-halfH),0.5f) *
+             std::max(std::tan(state.raycast.player.fov*0.5f*g_rayConfig.fovMul),0.001f)*hit.cosCorr);
+        const float planeLight = basementLight(planeDistance,torchRange);
+        const float ceilingR = 35.0f*planeLight;
+        const float ceilingG = 28.0f*planeLight;
+        const float ceilingB = 42.0f*planeLight;
+        float floorGrey = 0.0f;
+        if (yf > halfH && planeLight > 0.0f && (!hit.hitWall || yf >= drawEnd-1.0f))
+        {
+            const float wx = state.raycast.player.x+rayDirX*planeDistance;
+            const float wy = state.raycast.player.y+rayDirY*planeDistance;
+            floorGrey = 255.0f*quietFloor(wx,wy,planeDistance/std::max(yf-halfH,1.0f))*planeLight;
+        }
+        const uint8_t floorR = static_cast<uint8_t>(floorGrey);
+        const uint8_t floorG = floorR, floorB = floorR;
 
         uint8_t rr, gg, bb;
 
@@ -506,9 +554,9 @@ void accumulateColumn(int x,
             if (yf < halfH)
             {
                 // Ceiling
-                rr = static_cast<uint8_t>(ceilingShade);
-                gg = rr;
-                bb = rr;
+                rr = static_cast<uint8_t>(ceilingR);
+                gg = static_cast<uint8_t>(ceilingG);
+                bb = static_cast<uint8_t>(ceilingB);
             }
             else
             {
@@ -521,9 +569,9 @@ void accumulateColumn(int x,
         else if (yf < drawStart)
         {
             // Pure ceiling
-            rr = static_cast<uint8_t>(ceilingShade);
-            gg = rr;
-            bb = rr;
+            rr = static_cast<uint8_t>(ceilingR);
+            gg = static_cast<uint8_t>(ceilingG);
+            bb = static_cast<uint8_t>(ceilingB);
         }
         else if (yf > drawEnd)
         {
@@ -534,46 +582,33 @@ void accumulateColumn(int x,
         }
         else
         {
-            // Wall with per-pixel megatexture sampling and edge blending
+            // Wall with procedural foundation stone and edge blending
             float weight = 1.0f;
             
-            // Compute per-pixel wall color from megatexture
+            // Compute per-pixel foundation stone color
             // Map screen y to [0..1] along the wall segment
             float v = (yf - drawStart) / std::max(1.0f, (drawEnd - drawStart));
             v = std::max(0.0f, std::min(1.0f, v));
 
-            uint8_t wallR_px = wallR, wallG_px = wallG, wallB_px = wallB; // defaults
-            const float baseColor = 120.0f;
-
-            if (g_rayConfig.megatexture)
-            {
-                uint32_t texSample = sampleMegatextureEdge(wallEdge, hit.wallX, v);
-                uint8_t texR = (texSample >> 0) & 0xFF;
-                uint8_t texG = (texSample >> 8) & 0xFF;
-                uint8_t texB = (texSample >> 16) & 0xFF;
-                uint8_t texA = (texSample >> 24) & 0xFF;
-
-                if (texA > 0)
-                {
-                    float alpha = texA / 255.0f;
-                    wallR_px = static_cast<uint8_t>((texR * alpha + baseColor * (1.0f - alpha)) * lightFactor);
-                    wallG_px = static_cast<uint8_t>((texG * alpha + baseColor * (1.0f - alpha)) * lightFactor);
-                    wallB_px = static_cast<uint8_t>((texB * alpha + baseColor * (1.0f - alpha)) * lightFactor);
-                }
-                else
-                {
-                    wallR_px = static_cast<uint8_t>(baseColor * lightFactor);
-                    wallG_px = static_cast<uint8_t>(baseColor * lightFactor);
-                    wallB_px = static_cast<uint8_t>(baseColor * lightFactor);
-                }
-            }
+            const bool vertical = (hit.side & 1) != 0;
+            const float wx = vertical ? float(hit.mapX)+(hit.side == 1 ? 1.0f : 0.0f)
+                : float(hit.mapX)+hit.wallX;
+            const float wy = vertical ? float(hit.mapY)+hit.wallX
+                : float(hit.mapY)+(hit.side == 2 ? 1.0f : 0.0f);
+            const float u = wx+wy; // Identical on both faces of every corner.
+            const float height = 2.0f*visualScale;
+            const float footprint = std::max(height/std::max(1.0f,drawEnd-drawStart),
+                hit.distance*std::tan(state.raycast.player.fov*0.5f*g_rayConfig.fovMul)/halfW);
+            const uint8_t wallR_px = (*state.raycast.map)[hit.mapY][hit.mapX] == 0xfe ? 0 : static_cast<uint8_t>(
+                (cornerLine ? 88.0f : 255.0f*foundationStone(u,v*height,footprint))*lightFactor);
+            const uint8_t wallG_px = wallR_px, wallB_px = wallR_px;
             if (yf < drawStart + 1.0f)
             {
                 weight = (yf - drawStart) / 1.0f; // Blend over 1 pixel
                 weight = std::max(0.0f, std::min(weight, 1.0f));
-                rr = static_cast<uint8_t>((1.0f - weight) * ceilingShade + weight * wallR_px);
-                gg = static_cast<uint8_t>((1.0f - weight) * ceilingShade + weight * wallG_px);
-                bb = static_cast<uint8_t>((1.0f - weight) * ceilingShade + weight * wallB_px);
+                rr = static_cast<uint8_t>((1.0f - weight) * ceilingR + weight * wallR_px);
+                gg = static_cast<uint8_t>((1.0f - weight) * ceilingG + weight * wallG_px);
+                bb = static_cast<uint8_t>((1.0f - weight) * ceilingB + weight * wallB_px);
             }
             else if (yf > drawEnd - 1.0f)
             {
@@ -638,7 +673,7 @@ void renderChunk(const TileMap &tileMap,
     const float halfHeight = screenHeight * 0.5f;
     const float maxRadius = std::sqrt(halfWidth * halfWidth + halfHeight * halfHeight);
     // Use cached config values
-    const float torchRange = g_rayConfig.baseTorchRange * g_rayConfig.visualScale;
+    const float torchRange = g_rayConfig.baseTorchRange;
     const float fovMul = g_rayConfig.fovMul;
     const float fov = state.raycast.player.fov;
 
@@ -668,7 +703,7 @@ void renderChunk(const TileMap &tileMap,
             float rayDirY = std::sin(rayAngle);
             RaycastHit hit = castRay(tileMap, player.x, player.y, rayDirX, rayDirY);
             hit.cosCorr = 1.0f / std::sqrt(1.0f + viewX * viewX);
-            accumulateColumn(x, hit, screenHeight, halfWidth, halfHeight, maxRadius, torchRange, accumR, accumG, accumB);
+            accumulateColumn(x, hit, rayDirX, rayDirY, screenHeight, halfWidth, halfHeight, maxRadius, torchRange, accumR, accumG, accumB);
         }
         // No mutex needed - each thread writes to distinct columns, no overlap
         const float invSS = 1.0f / supersample;
@@ -693,7 +728,6 @@ void renderRaycastView(const TileMap &tileMap,
 {
     // Cache config values once per frame (not per pixel)
     cacheConfigValues();
-    updateVerticalGradientLut(h);
 
     // Update fog of war for the CPU render path
     updateFogOfWar();
@@ -718,6 +752,7 @@ void renderRaycastView(const TileMap &tileMap,
         renderChunk(tileMap, p, fb, pitch, w, h, ss, s, e);
     });
     
+    compositeRaycastIntro(fb, pitch, w, h);
     drawCrosshair(fb, pitch, w, h);
     renderMapOverlay(fb, pitch, w, h);
     drawMeasuredFpsOverlay(fb, pitch, w, h);
@@ -1001,7 +1036,7 @@ void updateFogOfWar()
 
     // Match exploration to the rendered camera frustum instead of 360-degree reveal.
     const int NUM_RAYS = std::clamp(state.ui.width / 4, 128, 384);
-    constexpr float MAX_DIST = 50.0f;
+    const float MAX_DIST = g_rayConfig.baseTorchRange;
     const float halfFovTan = std::tan(state.raycast.player.fov * 0.5f * g_rayConfig.fovMul);
     const float forwardX = std::cos(state.raycast.player.angle);
     const float forwardY = std::sin(state.raycast.player.angle);
@@ -1077,7 +1112,10 @@ Description:
 void initRaycaster()
 {
     state.raycast.enabled = true;
-    state.raycast.map = &basementMap;
+    // Own mutable scene tiles for runtime edits; preserve the authored map.
+    static TileMap runtimeMap;
+    runtimeMap = basementMap;
+    state.raycast.map = &runtimeMap;
     ++state.raycast.mapRevision;
     state.frameTiming.currentFPS =
         static_cast<double>(std::max(1, getDisplayRefreshRate()));
@@ -1087,18 +1125,10 @@ void initRaycaster()
     // Hide the OS cursor in raycast mode to avoid visible system pointer
     ShowCursor(FALSE);
 
-    // Megatexture is opt-in (raycastMegatexture=true). Edges are needed by the
-    // GPU renderers regardless; the heavy .mtx tile set only loads when the
-    // CPU renderer will actually sample it.
+    // Keep edge metadata for the existing renderer bindings. Wall pixels are
+    // procedural on all paths; no MTX archive needs to be loaded.
     if (megatex.edges.empty())
-    {
         analyzeMapEdges(basementMap);
-    }
-    if (g_rayConfig.megatexture && !megatex.loaded)
-    {
-        // Try current working dir MTX as a generic fallback
-        loadMTX("megatexture.mtx");
-    }
 
     if (!initializePlayerFromMap(*state.raycast.map, state.raycast.player))
     {
@@ -1106,6 +1136,13 @@ void initRaycaster()
         MessageBoxA(nullptr, "No player start position found in the map!", "Error", MB_ICONERROR | MB_OK);
 #endif
     }
+
+    // Seal the cell immediately behind the authored start with an unlit wall.
+    const int backX = int(state.raycast.player.x)-int(std::round(std::cos(state.raycast.player.angle)));
+    const int backY = int(state.raycast.player.y)-int(std::round(std::sin(state.raycast.player.angle)));
+    if (backY >= 0 && backY < int(basementMap.size()) && backX >= 0 &&
+        backX < int(basementMap[backY].size()))
+        runtimeMap[backY][backX] = 0xfe;
 
     // Initialize fog-of-war explored map
     if (!basementMap.empty() && !basementMap[0].empty())

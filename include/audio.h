@@ -66,3 +66,9 @@ void redbookStop();
 [[nodiscard]] bool redbookIsActive();
 void audioShutdown();
 void applyPcmRuntimeSettings();
+
+// Mono, unsigned 8-bit / 22050 Hz actor PCM; listener-relative world units.
+void wavPlaySpatial(std::shared_ptr<std::vector<uint8_t>> audioData);
+void setPcmSpatialPosition(float right, float forward, bool occluded);
+
+void wavPlayAsync(std::shared_ptr<std::vector<uint8_t>> audioData);

@@ -7,7 +7,7 @@
     %%fragment_start:
 grv_load_string_indirect:
     %%insn_04292:
-    call 0x400a ; 04292 E875FD
+    call grv_read_variable_operand ; 04292 E875FD
     %if ($ - %%insn_04292) > 3
         %error "LONG_04292"
     %endif
@@ -39,7 +39,7 @@ grv_load_string_indirect:
     times 3 - ($ - %%insn_0429f) db 0
     db 0x03, 0xD8 ; 042A2 03D8 | add bx,ax | encoding preserved
     %%insn_042a4:
-    call 0x4016 ; 042A4 E86FFD
+    call grv_decode_sequence_element ; 042A4 E86FFD
     %if ($ - %%insn_042a4) > 3
         %error "LONG_042A4"
     %endif

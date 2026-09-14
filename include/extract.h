@@ -4,6 +4,8 @@
 #define EXTRACT_H
 
 #include <string>
+#include <span>
+#include "bitmap.h"
 
 #include <png.h>
 
@@ -26,6 +28,7 @@ void extractVDX(const std::string_view &filename);
 void extractCursors(const std::string_view &robFilename);
 void extractPNG(std::string_view filename, bool raw);
 void savePNG(const std::string &filename, const std::vector<uint8_t> &imageData, int width, int height, bool hasAlpha = false);
+void savePNG(const std::string &filename, const std::vector<uint8_t> &imageData, int width, int height, bool hasAlpha, std::span<const RGBColor> palette);
 std::vector<uint8_t> loadPNG(const std::string& filename, int& width, int& height);
 void saveWAV(const std::string &filename, const std::vector<uint8_t> &audioData);
 void createVideoFromImages(const std::string &filenameParam);

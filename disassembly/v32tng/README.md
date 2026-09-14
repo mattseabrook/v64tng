@@ -33,8 +33,8 @@ The project has complete mechanical source coverage:
 This is not yet complete semantic recovery. Ghidra's function ownership is
 provisional and does not reveal the original Visual C++ object-module layout.
 Some explicit data may later prove to be code, jump tables, inline constants,
-or alignment. Sixty entries currently have verified semantic roles; the
-other 276 retain neutral address-based names.
+or alignment. Ninety entries currently have verified semantic roles; the
+other 246 retain neutral address-based names.
 
 Exact coverage and the complete function address map are maintained later in
 this README. This file is the public, monolithic research record for the
@@ -236,7 +236,7 @@ satisfies GETCD. If it creates one, the returned object includes the exact
 
 Library trace `20260825-223925` resolves the historical `COPY_RECT_TO_BG`
 mnemonic semantically. At `LI.GRV:0645` through `0820`, every accepted
-telescope letter first restores the full saved background with opcode `22h`,
+telescope letter first snapshots the displayed band into the saved background with opcode `22h`,
 plays the selected-letter overlays, and then opcode `37h` copies only that
 letter's saved-background rectangle into the displayed foreground. The
 `0040A7AA` helper confirms source `[004212D0]`, destination `[0042133C]`, a
@@ -331,8 +331,8 @@ understanding.
 | Function-body instructions decoded | 25,181 |
 | Instructions requiring exact `db` encoding fallback | 1,992 |
 | Bytes in encoding fallbacks | 4,159 |
-| Verified semantic function roles | 60 |
-| Unidentified/provisionally bounded functions | 276 |
+| Verified semantic function roles | 90 |
+| Unidentified/provisionally bounded functions | 246 |
 | Non-function PE file bytes | 63,737 |
 
 All headers, section padding, code gaps, `.rdata`, `.data`, imports, resources,
@@ -353,19 +353,19 @@ Owned ranges are inclusive PE virtual-address ranges.
 
 | PE virtual entry | Status | Working name | Analyzer symbol | Owned ranges | Source |
 |---:|---|---|---|---|---|
-| `00401000` | unidentified | `func_00401000` | `FUN_00401000` | `00401000–00401160` | [`src/functions/unknown/00401000_func_00401000.asm`](src/functions/unknown/00401000_func_00401000.asm) |
-| `00401161` | unidentified | `func_00401161` | `FUN_00401161` | `00401161–004011A2` | [`src/functions/unknown/00401161_func_00401161.asm`](src/functions/unknown/00401161_func_00401161.asm) |
+| `00401000` | verified-role | `load_rl_indexes_and_initialize_resource_flags` | `FUN_00401000` | `00401000–00401160` | [`src/functions/resource_io/load_rl_indexes_and_initialize_resource_flags.asm`](src/functions/resource_io/load_rl_indexes_and_initialize_resource_flags.asm) |
+| `00401161` | verified-role | `free_rl_index_buffers` | `FUN_00401161` | `00401161–004011A2` | [`src/functions/resource_io/free_rl_index_buffers.asm`](src/functions/resource_io/free_rl_index_buffers.asm) |
 | `004011A3` | verified-role | `load_grv_script_file` | `FUN_004011a3` | `004011A3–00401201` | [`src/functions/grv/load_grv_script_file.asm`](src/functions/grv/load_grv_script_file.asm) |
 | `00401202` | verified-role | `initialize_grv_runtime_and_load_script` | `FUN_00401202` | `00401202–0040136D` | [`src/functions/grv/initialize_grv_runtime_and_load_script.asm`](src/functions/grv/initialize_grv_runtime_and_load_script.asm) |
-| `0040136E` | unidentified | `func_0040136e` | `FUN_0040136e` | `0040136E–00401448` | [`src/functions/unknown/0040136e_func_0040136e.asm`](src/functions/unknown/0040136e_func_0040136e.asm) |
+| `0040136E` | verified-role | `release_grv_buffers_and_archive_handles` | `FUN_0040136e` | `0040136E–00401448` | [`src/functions/grv/release_grv_buffers_and_archive_handles.asm`](src/functions/grv/release_grv_buffers_and_archive_handles.asm) |
 | `00401449` | verified-role | `grv_read_u8` | `FUN_00401449` | `00401449–00401472` | [`src/functions/grv/grv_read_u8.asm`](src/functions/grv/grv_read_u8.asm) |
 | `00401473` | verified-role | `grv_read_u16_le` | `FUN_00401473` | `00401473–004014CA` | [`src/functions/grv/grv_read_u16_le.asm`](src/functions/grv/grv_read_u16_le.asm) |
 | `004014CB` | verified-role | `grv_read_u32_le` | `FUN_004014cb` | `004014CB–00401571` | [`src/functions/grv/grv_read_u32_le.asm`](src/functions/grv/grv_read_u32_le.asm) |
-| `00401572` | unidentified | `func_00401572` | `FUN_00401572` | `00401572–004015BE` | [`src/functions/unknown/00401572_func_00401572.asm`](src/functions/unknown/00401572_func_00401572.asm) |
-| `004015BF` | unidentified | `func_004015bf` | `FUN_004015bf` | `004015BF–004015E5` | [`src/functions/unknown/004015bf_func_004015bf.asm`](src/functions/unknown/004015bf_func_004015bf.asm) |
-| `004015E6` | unidentified | `func_004015e6` | `FUN_004015e6` | `004015E6–0040179A` | [`src/functions/unknown/004015e6_func_004015e6.asm`](src/functions/unknown/004015e6_func_004015e6.asm) |
-| `0040179B` | unidentified | `func_0040179b` | `FUN_0040179b` | `0040179B–004017ED` | [`src/functions/unknown/0040179b_func_0040179b.asm`](src/functions/unknown/0040179b_func_0040179b.asm) |
-| `004017EE` | unidentified | `func_004017ee` | `FUN_004017ee` | `004017EE–00401832` | [`src/functions/unknown/004017ee_func_004017ee.asm`](src/functions/unknown/004017ee_func_004017ee.asm) |
+| `00401572` | verified-role | `grv_random_below_limit` | `FUN_00401572` | `00401572–004015BE` | [`src/functions/grv/grv_random_below_limit.asm`](src/functions/grv/grv_random_below_limit.asm) |
+| `004015BF` | verified-role | `sleep_until_multimedia_deadline` | `FUN_004015bf` | `004015BF–004015E5` | [`src/functions/runtime/sleep_until_multimedia_deadline.asm`](src/functions/runtime/sleep_until_multimedia_deadline.asm) |
+| `004015E6` | verified-role | `grv_decode_sequence_element` | `FUN_004015e6` | `004015E6–0040179A` | [`src/functions/grv/grv_decode_sequence_element.asm`](src/functions/grv/grv_decode_sequence_element.asm) |
+| `0040179B` | verified-role | `grv_read_variable_value` | `FUN_0040179b` | `0040179B–004017ED` | [`src/functions/grv/grv_read_variable_value.asm`](src/functions/grv/grv_read_variable_value.asm) |
+| `004017EE` | verified-role | `grv_read_variable_operand` | `FUN_004017ee` | `004017EE–00401832` | [`src/functions/grv/grv_read_variable_operand.asm`](src/functions/grv/grv_read_variable_operand.asm) |
 | `00401833` | verified-role | `resolve_interpolated_grv_video_resource` | `FUN_00401833` | `00401833–00401BB2` | [`src/functions/grv/resolve_interpolated_grv_video_resource.asm`](src/functions/grv/resolve_interpolated_grv_video_resource.asm) |
 | `00401BB3` | verified-role | `open_first_drive_letter_path` | `FUN_00401bb3` | `00401BB3–00401BFC` | [`src/functions/resource_io/open_first_drive_letter_path.asm`](src/functions/resource_io/open_first_drive_letter_path.asm) |
 | `00401BFD` | verified-role | `play_drive_scanned_loose_vdx` | `FUN_00401bfd` | `00401BFD–00401C54` | [`src/functions/vdx/play_drive_scanned_loose_vdx.asm`](src/functions/vdx/play_drive_scanned_loose_vdx.asm) |
@@ -414,15 +414,15 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `004069A0` | unidentified | `func_004069a0` | `FUN_004069a0` | `004069A0–004069C6` | [`src/functions/unknown/004069a0_func_004069a0.asm`](src/functions/unknown/004069a0_func_004069a0.asm) |
 | `004069C7` | unidentified | `func_004069c7` | `FUN_004069c7` | `004069C7–004069E4` | [`src/functions/unknown/004069c7_func_004069c7.asm`](src/functions/unknown/004069c7_func_004069c7.asm) |
 | `004069E5` | verified-role | `dequeue_key_input` | `FUN_004069e5` | `004069E5–00406A47` | [`src/functions/input/dequeue_key_input.asm`](src/functions/input/dequeue_key_input.asm) |
-| `00406A48` | unidentified | `func_00406a48` | `FUN_00406a48` | `00406A48–00406AAE` | [`src/functions/unknown/00406a48_func_00406a48.asm`](src/functions/unknown/00406a48_func_00406a48.asm) |
-| `00406AB0` | unidentified | `func_00406ab0` | `FUN_00406ab0` | `00406AB0–00406AE8` | [`src/functions/unknown/00406ab0_func_00406ab0.asm`](src/functions/unknown/00406ab0_func_00406ab0.asm) |
-| `00406AE9` | unidentified | `func_00406ae9` | `FUN_00406ae9` | `00406AE9–00406B13` | [`src/functions/unknown/00406ae9_func_00406ae9.asm`](src/functions/unknown/00406ae9_func_00406ae9.asm) |
-| `00406B14` | unidentified | `func_00406b14` | `FUN_00406b14` | `00406B14–00406D15` | [`src/functions/unknown/00406b14_func_00406b14.asm`](src/functions/unknown/00406b14_func_00406b14.asm) |
+| `00406A48` | verified-role | `enqueue_key_input` | `FUN_00406a48` | `00406A48–00406AAE` | [`src/functions/input/enqueue_key_input.asm`](src/functions/input/enqueue_key_input.asm) |
+| `00406AB0` | verified-role | `seed_grv_random_state` | `FUN_00406ab0` | `00406AB0–00406AE8` | [`src/functions/grv/seed_grv_random_state.asm`](src/functions/grv/seed_grv_random_state.asm) |
+| `00406AE9` | verified-role | `read_grv_random_state` | `FUN_00406ae9` | `00406AE9–00406B13` | [`src/functions/grv/read_grv_random_state.asm`](src/functions/grv/read_grv_random_state.asm) |
+| `00406B14` | verified-role | `advance_grv_random_state` | `FUN_00406b14` | `00406B14–00406D15` | [`src/functions/grv/advance_grv_random_state.asm`](src/functions/grv/advance_grv_random_state.asm) |
 | `00406D16` | unidentified | `func_00406d16` | `FUN_00406d16` | `00406D16–00406D39` | [`src/functions/unknown/00406d16_func_00406d16.asm`](src/functions/unknown/00406d16_func_00406d16.asm) |
 | `00406D40` | verified-role | `initialize_vdx_pacing_deadline` | `FUN_00406d40` | `00406D40–00406D8D` | [`src/functions/vdx/initialize_vdx_pacing_deadline.asm`](src/functions/vdx/initialize_vdx_pacing_deadline.asm) |
-| `00406D8E` | unidentified | `func_00406d8e` | `FUN_00406d8e` | `00406D8E–00406E27` | [`src/functions/unknown/00406d8e_func_00406d8e.asm`](src/functions/unknown/00406d8e_func_00406d8e.asm) |
+| `00406D8E` | verified-role | `append_vdx_pcm_to_ring_buffer` | `FUN_00406d8e` | `00406D8E–00406E27` | [`src/functions/audio/append_vdx_pcm_to_ring_buffer.asm`](src/functions/audio/append_vdx_pcm_to_ring_buffer.asm) |
 | `00406E28` | verified-role | `service_vdx_audio_and_wait_for_pacing` | `FUN_00406e28` | `00406E28–00406FAD` | [`src/functions/vdx/service_vdx_audio_and_wait_for_pacing.asm`](src/functions/vdx/service_vdx_audio_and_wait_for_pacing.asm) |
-| `00406FAE` | unidentified | `func_00406fae` | `FUN_00406fae` | `00406FAE–00407048` | [`src/functions/unknown/00406fae_func_00406fae.asm`](src/functions/unknown/00406fae_func_00406fae.asm) |
+| `00406FAE` | verified-role | `wait_sample_buffer_boundary_and_reset` | `FUN_00406fae` | `00406FAE–00407048` | [`src/functions/audio/wait_sample_buffer_boundary_and_reset.asm`](src/functions/audio/wait_sample_buffer_boundary_and_reset.asm) |
 | `00407049` | verified-role | `play_selected_midi_sequence` | `FUN_00407049` | `00407049–0040709E` | [`src/functions/audio/play_selected_midi_sequence.asm`](src/functions/audio/play_selected_midi_sequence.asm) |
 | `0040709F` | verified-role | `create_midi_sequence_from_resource` | `FUN_0040709f` | `0040709F–0040712B` | [`src/functions/audio/create_midi_sequence_from_resource.asm`](src/functions/audio/create_midi_sequence_from_resource.asm) |
 | `0040712C` | verified-role | `end_active_midi_sequence` | `FUN_0040712c` | `0040712C–00407145` | [`src/functions/audio/end_active_midi_sequence.asm`](src/functions/audio/end_active_midi_sequence.asm) |
@@ -479,24 +479,24 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `00409760` | unidentified | `func_00409760` | `FUN_00409760` | `00409760–0040977A` | [`src/functions/unknown/00409760_func_00409760.asm`](src/functions/unknown/00409760_func_00409760.asm) |
 | `0040977B` | verified-role | `winmain` | `FUN_0040977b` | `0040977B–0040984F` | [`src/functions/runtime/winmain.asm`](src/functions/runtime/winmain.asm) |
 | `00409850` | verified-role | `setup_window_and_runtime` | `FUN_00409850` | `00409850–00409A88` | [`src/functions/runtime/setup_window_and_runtime.asm`](src/functions/runtime/setup_window_and_runtime.asm) |
-| `00409A90` | verified-role | `init_game_state` | `FUN_00409a90` | `00409A90–00409AB5` | [`src/functions/runtime/init_game_state.asm`](src/functions/runtime/init_game_state.asm) |
-| `00409AB6` | unidentified | `func_00409ab6` | `FUN_00409ab6` | `00409AB6–00409B1C` | [`src/functions/unknown/00409ab6_func_00409ab6.asm`](src/functions/unknown/00409ab6_func_00409ab6.asm) |
-| `00409B1D` | unidentified | `func_00409b1d` | `FUN_00409b1d` | `00409B1D–00409C7A`<br>`00409C98–00409D1D` | [`src/functions/unknown/00409b1d_func_00409b1d.asm`](src/functions/unknown/00409b1d_func_00409b1d.asm) |
-| `00409D1E` | unidentified | `func_00409d1e` | `FUN_00409d1e` | `00409D1E–00409D54` | [`src/functions/unknown/00409d1e_func_00409d1e.asm`](src/functions/unknown/00409d1e_func_00409d1e.asm) |
-| `00409D55` | unidentified | `func_00409d55` | `FUN_00409d55` | `00409D55–00409D63` | [`src/functions/unknown/00409d55_func_00409d55.asm`](src/functions/unknown/00409d55_func_00409d55.asm) |
-| `00409D64` | unidentified | `func_00409d64` | `FUN_00409d64` | `00409D64–00409E16`<br>`00409E34–00409E84` | [`src/functions/unknown/00409d64_func_00409d64.asm`](src/functions/unknown/00409d64_func_00409d64.asm) |
-| `00409E85` | unidentified | `func_00409e85` | `FUN_00409e85` | `00409E85–00409F09` | [`src/functions/unknown/00409e85_func_00409e85.asm`](src/functions/unknown/00409e85_func_00409e85.asm) |
-| `00409F0A` | unidentified | `func_00409f0a` | `FUN_00409f0a` | `00409F0A–00409F19` | [`src/functions/unknown/00409f0a_func_00409f0a.asm`](src/functions/unknown/00409f0a_func_00409f0a.asm) |
-| `00409F1A` | unidentified | `func_00409f1a` | `FUN_00409f1a` | `00409F1A–0040A231`<br>`0040A24F–0040A29E` | [`src/functions/unknown/00409f1a_func_00409f1a.asm`](src/functions/unknown/00409f1a_func_00409f1a.asm) |
-| `0040A29F` | unidentified | `func_0040a29f` | `FUN_0040a29f` | `0040A29F–0040A39E` | [`src/functions/unknown/0040a29f_func_0040a29f.asm`](src/functions/unknown/0040a29f_func_0040a29f.asm) |
-| `0040A39F` | unidentified | `func_0040a39f` | `FUN_0040a39f` | `0040A39F–0040A3ED` | [`src/functions/unknown/0040a39f_func_0040a39f.asm`](src/functions/unknown/0040a39f_func_0040a39f.asm) |
-| `0040A3EE` | unidentified | `func_0040a3ee` | `FUN_0040a3ee` | `0040A3EE–0040A420` | [`src/functions/unknown/0040a3ee_func_0040a3ee.asm`](src/functions/unknown/0040a3ee_func_0040a3ee.asm) |
+| `00409A90` | verified-role | `allocate_vdx_ring_and_spill` | `FUN_00409a90` | `00409A90–00409AB5` | [`src/functions/resource_io/allocate_vdx_ring_and_spill.asm`](src/functions/resource_io/allocate_vdx_ring_and_spill.asm) |
+| `00409AB6` | verified-role | `free_resource_cache_and_stream_ring` | `FUN_00409ab6` | `00409AB6–00409B1C` | [`src/functions/resource_io/free_resource_cache_and_stream_ring.asm`](src/functions/resource_io/free_resource_cache_and_stream_ring.asm) |
+| `00409B1D` | verified-role | `initialize_vdx_buffered_reader` | `FUN_00409b1d` | `00409B1D–00409C7A`<br>`00409C98–00409D1D` | [`src/functions/resource_io/initialize_vdx_buffered_reader.asm`](src/functions/resource_io/initialize_vdx_buffered_reader.asm) |
+| `00409D1E` | verified-role | `resume_deferred_vdx_read` | `FUN_00409d1e` | `00409D1E–00409D54` | [`src/functions/resource_io/resume_deferred_vdx_read.asm`](src/functions/resource_io/resume_deferred_vdx_read.asm) |
+| `00409D55` | verified-role | `disable_vdx_read_refills` | `FUN_00409d55` | `00409D55–00409D63` | [`src/functions/resource_io/disable_vdx_read_refills.asm`](src/functions/resource_io/disable_vdx_read_refills.asm) |
+| `00409D64` | verified-role | `service_vdx_read_ring` | `FUN_00409d64` | `00409D64–00409E16`<br>`00409E34–00409E84` | [`src/functions/resource_io/service_vdx_read_ring.asm`](src/functions/resource_io/service_vdx_read_ring.asm) |
+| `00409E85` | verified-role | `consume_vdx_ring_span` | `FUN_00409e85` | `00409E85–00409F09` | [`src/functions/resource_io/consume_vdx_ring_span.asm`](src/functions/resource_io/consume_vdx_ring_span.asm) |
+| `00409F0A` | verified-role | `clear_resource_cache_flag` | `FUN_00409f0a` | `00409F0A–00409F19` | [`src/functions/resource_io/clear_resource_cache_flag.asm`](src/functions/resource_io/clear_resource_cache_flag.asm) |
+| `00409F1A` | verified-role | `cache_resource_prefix` | `FUN_00409f1a` | `00409F1A–0040A231`<br>`0040A24F–0040A29E` | [`src/functions/resource_io/cache_resource_prefix.asm`](src/functions/resource_io/cache_resource_prefix.asm) |
+| `0040A29F` | verified-role | `evict_least_used_resource_blocks` | `FUN_0040a29f` | `0040A29F–0040A39E` | [`src/functions/resource_io/evict_least_used_resource_blocks.asm`](src/functions/resource_io/evict_least_used_resource_blocks.asm) |
+| `0040A39F` | verified-role | `get_cached_resource_block_and_increment_uses` | `FUN_0040a39f` | `0040A39F–0040A3ED` | [`src/functions/resource_io/get_cached_resource_block_and_increment_uses.asm`](src/functions/resource_io/get_cached_resource_block_and_increment_uses.asm) |
+| `0040A3EE` | verified-role | `seek_to_cached_resource_offset` | `FUN_0040a3ee` | `0040A3EE–0040A420` | [`src/functions/resource_io/seek_to_cached_resource_offset.asm`](src/functions/resource_io/seek_to_cached_resource_offset.asm) |
 | `0040A430` | centered SPHINX.FNT GRV string renderer | `draw_centered_grv_string_0040a430` | `FUN_0040a430` | `0040A430–0040A739` | [`src/functions/grv/draw_centered_grv_string_0040a430.asm`](src/functions/grv/draw_centered_grv_string_0040a430.asm) |
-| `0040A73A` | unidentified | `func_0040a73a` | `FUN_0040a73a` | `0040A73A–0040A785` | [`src/functions/unknown/0040a73a_func_0040a73a.asm`](src/functions/unknown/0040a73a_func_0040a73a.asm) |
-| `0040A786` | full VDX background-to-foreground copy | `copy_background_to_foreground_0040a786` | `FUN_0040a786` | `0040A786–0040A7A9` | [`src/functions/vdx/copy_background_to_foreground_0040a786.asm`](src/functions/vdx/copy_background_to_foreground_0040a786.asm) |
+| `0040A73A` | verified-role | `clear_grv_top_bar` | `FUN_0040a73a` | `0040A73A–0040A785` | [`src/functions/grv/clear_grv_top_bar.asm`](src/functions/grv/clear_grv_top_bar.asm) |
+| `0040A786` | display-band snapshot to saved background | `snapshot_display_band_to_saved_background` | `FUN_0040a786` | `0040A786–0040A7A9` | [`src/functions/vdx/snapshot_display_band_to_saved_background.asm`](src/functions/vdx/snapshot_display_band_to_saved_background.asm) |
 | `0040A7AA` | rectangle VDX background-to-foreground copy | `copy_background_rectangle_to_foreground_0040a7aa` | `FUN_0040a7aa` | `0040A7AA–0040A84A` | [`src/functions/vdx/copy_background_rectangle_to_foreground_0040a7aa.asm`](src/functions/vdx/copy_background_rectangle_to_foreground_0040a7aa.asm) |
-| `0040A84B` | unidentified | `func_0040a84b` | `FUN_0040a84b` | `0040A84B–0040AA44` | [`src/functions/unknown/0040a84b_func_0040a84b.asm`](src/functions/unknown/0040a84b_func_0040a84b.asm) |
-| `0040AA45` | unidentified | `func_0040aa45` | `FUN_0040aa45` | `0040AA45–0040AB83` | [`src/functions/unknown/0040aa45_func_0040aa45.asm`](src/functions/unknown/0040aa45_func_0040aa45.asm) |
+| `0040A84B` | verified-role | `fade_out_vdx_palette_rgb_and_clear` | `FUN_0040a84b` | `0040A84B–0040AA44` | [`src/functions/vdx/fade_out_vdx_palette_rgb_and_clear.asm`](src/functions/vdx/fade_out_vdx_palette_rgb_and_clear.asm) |
+| `0040AA45` | verified-role | `fade_in_vdx_palette_rgb` | `FUN_0040aa45` | `0040AA45–0040AB83` | [`src/functions/vdx/fade_in_vdx_palette_rgb.asm`](src/functions/vdx/fade_in_vdx_palette_rgb.asm) |
 | `0040AB84` | verified-role | `decode_vdx_bitmap_still` | `FUN_0040ab84` | `0040AB84–0040B197` | [`src/functions/vdx/decode_vdx_bitmap_still.asm`](src/functions/vdx/decode_vdx_bitmap_still.asm) |
 | `0040B198` | verified-role | `decode_vdx_delta_frame` | `FUN_0040b198` | `0040B198–0040BFF3` | [`src/functions/vdx/decode_vdx_delta_frame.asm`](src/functions/vdx/decode_vdx_delta_frame.asm) |
 | `0040BFF4` | unidentified | `func_0040bff4` | `FUN_0040bff4` | `0040BFF4–0040C0BA` | [`src/functions/unknown/0040bff4_func_0040bff4.asm`](src/functions/unknown/0040bff4_func_0040bff4.asm) |
@@ -513,7 +513,7 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `0040C7C3` | unidentified | `func_0040c7c3` | `FUN_0040c7c3` | `0040C7C3–0040C7EB` | [`src/functions/unknown/0040c7c3_func_0040c7c3.asm`](src/functions/unknown/0040c7c3_func_0040c7c3.asm) |
 | `0040C996` | unidentified | `func_0040c996` | `DirectDrawCreate` | `0040C996–0040C99B` | [`src/functions/unknown/0040c996_func_0040c996.asm`](src/functions/unknown/0040c996_func_0040c996.asm) |
 | `0040C9A0` | unidentified | `func_0040c9a0` | `FUN_0040c9a0` | `0040C9A0–0040CA07` | [`src/functions/unknown/0040c9a0_func_0040c9a0.asm`](src/functions/unknown/0040c9a0_func_0040c9a0.asm) |
-| `0040CA10` | unidentified | `func_0040ca10` | `FUN_0040ca10` | `0040CA10–0040CA6A`<br>`0040CA6C–0040CA72`<br>`0040CA80–0040CAA8`<br>`0040CAAC–0040CACE`<br>`0040CAD0–0040CAE8`<br>`0040CB0C–0040CB55`<br>`0040CB68–0040CB6E`<br>`0040CB70–0040CB7A`<br>`0040CB7C–0040CB8C`<br>`0040CB90–0040CBA6`<br>`0040CBA8–0040CBCD`<br>`0040CBD0–0040CBD8`<br>`0040CBDC–0040CBFA`<br>`0040CC08–0040CC24`<br>`0040CC28–0040CC4E`<br>`0040CC50–0040CC80`<br>`0040CCA4–0040CCED`<br>`0040CD00–0040CD06`<br>`0040CD08–0040CD14`<br>`0040CD18–0040CD2A`<br>`0040CD2C–0040CD44` | [`src/functions/unknown/0040ca10_func_0040ca10.asm`](src/functions/unknown/0040ca10_func_0040ca10.asm) |
+| `0040CA10` | verified-role | `copy_memory_overlap_safe` | `FUN_0040ca10` | `0040CA10–0040CA6A`<br>`0040CA6C–0040CA72`<br>`0040CA80–0040CAA8`<br>`0040CAAC–0040CACE`<br>`0040CAD0–0040CAE8`<br>`0040CB0C–0040CB55`<br>`0040CB68–0040CB6E`<br>`0040CB70–0040CB7A`<br>`0040CB7C–0040CB8C`<br>`0040CB90–0040CBA6`<br>`0040CBA8–0040CBCD`<br>`0040CBD0–0040CBD8`<br>`0040CBDC–0040CBFA`<br>`0040CC08–0040CC24`<br>`0040CC28–0040CC4E`<br>`0040CC50–0040CC80`<br>`0040CCA4–0040CCED`<br>`0040CD00–0040CD06`<br>`0040CD08–0040CD14`<br>`0040CD18–0040CD2A`<br>`0040CD2C–0040CD44` | [`src/functions/runtime/copy_memory_overlap_safe.asm`](src/functions/runtime/copy_memory_overlap_safe.asm) |
 | `0040CD50` | unidentified | `func_0040cd50` | `FUN_0040cd50` | `0040CD50–0040CDB7` | [`src/functions/unknown/0040cd50_func_0040cd50.asm`](src/functions/unknown/0040cd50_func_0040cd50.asm) |
 | `0040CDC0` | unidentified | `func_0040cdc0` | `FUN_0040cdc0` | `0040CDC0–0040CDD3` | [`src/functions/unknown/0040cdc0_func_0040cdc0.asm`](src/functions/unknown/0040cdc0_func_0040cdc0.asm) |
 | `0040CDE0` | unidentified | `func_0040cde0` | `FUN_0040cde0` | `0040CDE0–0040CE23` | [`src/functions/unknown/0040cde0_func_0040cde0.asm`](src/functions/unknown/0040cde0_func_0040cde0.asm) |
@@ -529,7 +529,7 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `0040D1B0` | unidentified | `func_0040d1b0` | `FUN_0040d1b0` | `0040D1B0–0040D2EB` | [`src/functions/unknown/0040d1b0_func_0040d1b0.asm`](src/functions/unknown/0040d1b0_func_0040d1b0.asm) |
 | `0040D2F0` | unidentified | `func_0040d2f0` | `FUN_0040d2f0` | `0040D2F0–0040D3BF` | [`src/functions/unknown/0040d2f0_func_0040d2f0.asm`](src/functions/unknown/0040d2f0_func_0040d2f0.asm) |
 | `0040D3C0` | unidentified | `func_0040d3c0` | `FUN_0040d3c0` | `0040D3C0–0040D463` | [`src/functions/unknown/0040d3c0_func_0040d3c0.asm`](src/functions/unknown/0040d3c0_func_0040d3c0.asm) |
-| `0040D470` | unidentified | `func_0040d470` | `_memset` | `0040D470–0040D4C7` | [`src/functions/unknown/0040d470_func_0040d470.asm`](src/functions/unknown/0040d470_func_0040d470.asm) |
+| `0040D470` | verified-role | `fill_memory_bytes` | `_memset` | `0040D470–0040D4C7` | [`src/functions/runtime/fill_memory_bytes.asm`](src/functions/runtime/fill_memory_bytes.asm) |
 | `0040D4D0` | unidentified | `func_0040d4d0` | `_strlen` | `0040D4D0–0040D54A` | [`src/functions/unknown/0040d4d0_func_0040d4d0.asm`](src/functions/unknown/0040d4d0_func_0040d4d0.asm) |
 | `0040D550` | unidentified | `func_0040d550` | `FUN_0040d550` | `0040D550–0040D5B7` | [`src/functions/unknown/0040d550_func_0040d550.asm`](src/functions/unknown/0040d550_func_0040d550.asm) |
 | `0040D5C0` | unidentified | `func_0040d5c0` | `FUN_0040d5c0` | `0040D5C0–0040D5EF` | [`src/functions/unknown/0040d5c0_func_0040d5c0.asm`](src/functions/unknown/0040d5c0_func_0040d5c0.asm) |

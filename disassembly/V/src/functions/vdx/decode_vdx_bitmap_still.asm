@@ -242,7 +242,7 @@ decode_vdx_bitmap_still:
     %endif
     times 2 - ($ - %%insn_005fe) db 0
     %%insn_00600:
-    call 0x501 ; 00600 E8FEFE
+    call upload_vdx_palette_or_black ; 00600 E8FEFE
     %if ($ - %%insn_00600) > 3
         %error "LONG_00600"
     %endif
@@ -1220,7 +1220,7 @@ decode_vdx_bitmap_still:
     %endif
     times 2 - ($ - %%insn_00841) db 0
     %%insn_00843:
-    call 0x501 ; 00843 E8BBFC
+    call upload_vdx_palette_or_black ; 00843 E8BBFC
     %if ($ - %%insn_00843) > 3
         %error "LONG_00843"
     %endif
@@ -1238,7 +1238,7 @@ decode_vdx_bitmap_still:
     %endif
     times 2 - ($ - %%insn_0084c) db 0
     %%insn_0084e:
-    call 0xf33 ; 0084E E8E206
+    call fade_in_vdx_palette_rgb ; 0084E E8E206
     %if ($ - %%insn_0084e) > 3
         %error "LONG_0084E"
     %endif
@@ -2996,7 +2996,7 @@ decode_vdx_bitmap_still:
     %endif
     times 2 - ($ - %%insn_00c61) db 0
     %%insn_00c63:
-    call 0x501 ; 00C63 E89BF8
+    call upload_vdx_palette_or_black ; 00C63 E89BF8
     %if ($ - %%insn_00c63) > 3
         %error "LONG_00C63"
     %endif
@@ -3635,7 +3635,7 @@ decode_vdx_bitmap_still:
     %endif
     times 2 - ($ - %%insn_00dc2) db 0
     %%insn_00dc4:
-    call 0x501 ; 00DC4 E83AF7
+    call upload_vdx_palette_or_black ; 00DC4 E83AF7
     %if ($ - %%insn_00dc4) > 3
         %error "LONG_00DC4"
     %endif
@@ -3653,7 +3653,7 @@ decode_vdx_bitmap_still:
     %endif
     times 2 - ($ - %%insn_00dcd) db 0
     %%insn_00dcf:
-    call 0xf33 ; 00DCF E86101
+    call fade_in_vdx_palette_rgb ; 00DCF E86101
     %if ($ - %%insn_00dcf) > 3
         %error "LONG_00DCF"
     %endif

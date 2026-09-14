@@ -50,7 +50,7 @@ func_05235:
     %endif
     times 3 - ($ - %%insn_0524f) db 0
     %%insn_05252:
-    call 0x4ff6 ; 05252 E8A1FD
+    call compare_ascii_strings_case_insensitive ; 05252 E8A1FD
     %if ($ - %%insn_05252) > 3
         %error "LONG_05252"
     %endif
@@ -104,7 +104,7 @@ func_05235:
     %endif
     times 3 - ($ - %%insn_0526e) db 0
     %%insn_05271:
-    call 0x4ff6 ; 05271 E882FD
+    call compare_ascii_strings_case_insensitive ; 05271 E882FD
     %if ($ - %%insn_05271) > 3
         %error "LONG_05271"
     %endif
@@ -134,7 +134,7 @@ func_05235:
     %endif
     times 3 - ($ - %%insn_05281) db 0
     %%insn_05284:
-    call 0x4ff6 ; 05284 E86FFD
+    call compare_ascii_strings_case_insensitive ; 05284 E86FFD
     %if ($ - %%insn_05284) > 3
         %error "LONG_05284"
     %endif
@@ -164,7 +164,7 @@ func_05235:
     %endif
     times 3 - ($ - %%insn_05294) db 0
     %%insn_05297:
-    call 0x4ff6 ; 05297 E85CFD
+    call compare_ascii_strings_case_insensitive ; 05297 E85CFD
     %if ($ - %%insn_05297) > 3
         %error "LONG_05297"
     %endif
@@ -188,7 +188,7 @@ func_05235:
     %endif
     times 3 - ($ - %%insn_052a1) db 0
     %%insn_052a4:
-    call 0x4ff6 ; 052A4 E84FFD
+    call compare_ascii_strings_case_insensitive ; 052A4 E84FFD
     %if ($ - %%insn_052a4) > 3
         %error "LONG_052A4"
     %endif
@@ -363,7 +363,7 @@ func_05235:
     %endif
     times 3 - ($ - %%insn_052ec) db 0
     %%insn_052ef:
-    call 0x4ff6 ; 052EF E804FD
+    call compare_ascii_strings_case_insensitive ; 052EF E804FD
     %if ($ - %%insn_052ef) > 3
         %error "LONG_052EF"
     %endif
@@ -430,7 +430,7 @@ func_05235:
     %endif
     times 3 - ($ - %%insn_0530d) db 0
     %%insn_05310:
-    call 0x4ff6 ; 05310 E8E3FC
+    call compare_ascii_strings_case_insensitive ; 05310 E8E3FC
     %if ($ - %%insn_05310) > 3
         %error "LONG_05310"
     %endif
@@ -497,7 +497,7 @@ func_05235:
     %endif
     times 3 - ($ - %%insn_0532e) db 0
     %%insn_05331:
-    call 0x4ff6 ; 05331 E8C2FC
+    call compare_ascii_strings_case_insensitive ; 05331 E8C2FC
     %if ($ - %%insn_05331) > 3
         %error "LONG_05331"
     %endif

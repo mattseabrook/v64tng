@@ -1064,30 +1064,16 @@ static void updateRaycastEdgeOffsets(const TileMap& tileMap)
 {
     UINT mapHeight = static_cast<UINT>(tileMap.size());
     UINT mapWidth = static_cast<UINT>(tileMap[0].size());
-	if (d2dCtx.edgeOffsetsBuffer && d2dCtx.edgeOffsetsSRV &&
-		d2dCtx.lastEdgeMapWidth == mapWidth && d2dCtx.lastEdgeMapHeight == mapHeight)
-		return;
-
-    const size_t count = static_cast<size_t>(mapWidth) * mapHeight * 4ull;
-    // Store triplets: [offset,width,dirFlag] for each edge entry
-    std::vector<uint32_t> table(count * 3ull, 0u);
-
-    for (const auto& e : megatex.edges)
-    {
-        if (e.cellX < 0 || e.cellY < 0) continue;
-        if (e.cellX >= static_cast<int>(mapWidth) || e.cellY >= static_cast<int>(mapHeight)) continue;
-        size_t idx = (static_cast<size_t>(e.cellY) * mapWidth + static_cast<size_t>(e.cellX)) * 4ull + static_cast<size_t>(e.side & 3);
-        size_t idx3 = idx * 3ull;
-        if (idx3 + 2 < table.size()) {
-            table[idx3 + 0] = static_cast<uint32_t>(e.xOffsetPixels);
-            table[idx3 + 1] = static_cast<uint32_t>(std::max(1, e.pixelWidth));
-            table[idx3 + 2] = static_cast<uint32_t>(e.direction < 0 ? 1u : 0u);
-        }
-    }
+    static bool previouslyActive=false;
+    const bool active=raycastIntroActive();
+    if (!active && !previouslyActive && d2dCtx.edgeOffsetsBuffer && d2dCtx.edgeOffsetsSRV)
+        return;
+    previouslyActive=active;
+    const auto &table=raycastEntityPixels();
 
     // Recreate buffer if size changed or not created
     size_t byteSize = table.size() * sizeof(uint32_t);
-    const UINT elementCount = static_cast<UINT>(count * 3ull);
+    const UINT elementCount = static_cast<UINT>(table.size());
     bool needRecreate = !d2dCtx.edgeOffsetsBuffer || !d2dCtx.edgeOffsetsSRV ||
                         d2dCtx.edgeOffsetsElementCount != elementCount;
     if (needRecreate)
@@ -1185,8 +1171,8 @@ void renderFrameRaycastGPU()
     constants.mapWidth = static_cast<uint32_t>(tileMap[0].size());
     constants.mapHeight = static_cast<uint32_t>(tileMap.size());
     constants.visualScale = config.contains("raycastScale") ? config["raycastScale"].get<float>() : 3.0f;
-    float baseTorchRange = 20.0f;
-    constants.torchRange = baseTorchRange * constants.visualScale;
+    float baseTorchRange = 6.0f;
+    constants.torchRange = baseTorchRange;
     constants.falloffMul = config.contains("raycastFalloffMul") ? config["raycastFalloffMul"].get<float>() : 0.85f;
     constants.fovMul = config.contains("raycastFovMul") ? config["raycastFovMul"].get<float>() : 1.0f;
     constants.supersample = std::clamp(config.contains("raycastSupersample") ? config["raycastSupersample"].get<uint32_t>() : 1u, 1u, 8u);

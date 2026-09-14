@@ -194,7 +194,7 @@ func_05379:
     %endif
     times 3 - ($ - %%insn_053d2) db 0
     %%insn_053d5:
-    call 0x4ff6 ; 053D5 E81EFC
+    call compare_ascii_strings_case_insensitive ; 053D5 E81EFC
     %if ($ - %%insn_053d5) > 3
         %error "LONG_053D5"
     %endif
@@ -261,7 +261,7 @@ func_05379:
     %endif
     times 3 - ($ - %%insn_053f3) db 0
     %%insn_053f6:
-    call 0x4ff6 ; 053F6 E8FDFB
+    call compare_ascii_strings_case_insensitive ; 053F6 E8FDFB
     %if ($ - %%insn_053f6) > 3
         %error "LONG_053F6"
     %endif
@@ -328,7 +328,7 @@ func_05379:
     %endif
     times 3 - ($ - %%insn_05414) db 0
     %%insn_05417:
-    call 0x4ff6 ; 05417 E8DCFB
+    call compare_ascii_strings_case_insensitive ; 05417 E8DCFB
     %if ($ - %%insn_05417) > 3
         %error "LONG_05417"
     %endif
@@ -395,7 +395,7 @@ func_05379:
     %endif
     times 3 - ($ - %%insn_05435) db 0
     %%insn_05438:
-    call 0x4ff6 ; 05438 E8BBFB
+    call compare_ascii_strings_case_insensitive ; 05438 E8BBFB
     %if ($ - %%insn_05438) > 3
         %error "LONG_05438"
     %endif

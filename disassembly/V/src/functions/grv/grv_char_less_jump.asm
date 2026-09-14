@@ -7,7 +7,7 @@
     %%fragment_start:
 grv_char_less_jump:
     %%insn_04244:
-    call 0x400a ; 04244 E8C3FD
+    call grv_read_variable_operand ; 04244 E8C3FD
     %if ($ - %%insn_04244) > 3
         %error "LONG_04244"
     %endif
@@ -21,7 +21,7 @@ grv_char_less_jump:
     db 0x03, 0xD8 ; 0424A 03D8 | add bx,ax | encoding preserved
     db 0x33, 0xD2 ; 0424C 33D2 | xor dx,dx | encoding preserved
     %%insn_0424e:
-    call 0x4016 ; 0424E E8C5FD
+    call grv_decode_sequence_element ; 0424E E8C5FD
     %if ($ - %%insn_0424e) > 3
         %error "LONG_0424E"
     %endif

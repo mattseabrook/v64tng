@@ -404,7 +404,7 @@ func_00407c29:
     %endif
     times 1 - ($ - %%insn_00407d41) db 0
     %%insn_00407d42:
-    call 0x40d470 ; 00407D42 E829570000
+    call fill_memory_bytes ; 00407D42 E829570000
     %if ($ - %%insn_00407d42) > 5
         %error "LONG_00407D42"
     %endif

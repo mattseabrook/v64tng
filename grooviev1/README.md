@@ -161,3 +161,57 @@ grooviev1.exe \
   --wav ./audio.wav \
   --lower-intermediate-quality 6
 ```
+
+## Lossless source-material round trip
+
+For extracted game frames, use the indexed route below. The ordinary RGB/WIC
+encoder rebuilds palettes; it cannot preserve original palette-slot identities.
+This route encodes independently from PNG indices and palettes, without the
+original VDX, original opcodes or compression tokens. PNGs must remain opaque
+indexed images with all 256 palette entries. Pillow is required for `frames.py`.
+
+From the repository root, after building:
+
+```bash
+python3 grooviev1/frames.py extract input.vdx test/frames
+python3 grooviev1/frames.py encode test/frames test/reencoded.vdx
+python3 grooviev1/frames.py compare input.vdx test/reencoded.vdx --report test/comparison.json
+```
+
+Use `--tool PATH` before the subcommand to select `grooviev1.exe` on Windows.
+Extraction creates native-resolution indexed PNGs, `sequence.json` (geometry,
+frame rate and count), and `raw/` containing `.idx` (one byte per pixel), `.pal`
+(256 RGB triples), and `.rgb` (RGB24). All are row-major/top-down. Encoding reads
+only the PNGs and sequence metadata, so deleting `raw/` does not affect encoding.
+No PNG is quantized or resized by this route. Output paths must be new.
+
+The C++ commands `extract-indexed INPUT.vdx OUT_DIR` and
+`encode-indexed INPUT_DIR OUTPUT.vdx` operate directly on `.idx`/`.pal` plus
+`sequence.txt` (`width height fps frame_count`). Encoding validates every frame's
+indices and all palette entries. Palette-only changes emit real `0x25` chunks;
+identical indices and palettes emit `0x00`. The first frame must be representable
+by two indices per 4×4 tile or encoding fails instead of silently losing pixels.
+Three-or-more-colour delta tiles use the lossless `0x60` representation.
+Every delta row, including the final row, ends with `0x61`: DOS V.EXE uses
+that last advance to reach its end-of-frame sentinel. Encoder validation rejects
+streams that omit it even if a payload-length-bounded decoder renders them.
+
+This is visual sequence encoding: it preserves frame count, dimensions, frame
+rate, indices and palettes. It does not preserve audio, arbitrary header bytes,
+original chunk boundaries/types beyond those needed for the frames, or identical
+compressed bytes. An extracted VDX remains the source archive for those details.
+
+### Independent decoder and PNG export cross-check
+
+```bash
+g++ grooviev1/verify_lossless.cpp src/bitmap.cpp src/delta.cpp src/lzss.cpp src/png_write.cpp \
+  -Iinclude $(pkg-config --cflags --libs libpng) -std=c++23 -O2 \
+  -o grooviev1/build/verify_lossless
+grooviev1/build/verify_lossless test/reencoded.vdx test/frames/raw test/core_png
+python3 grooviev1/check_png_exports.py test/frames/raw test/core_png
+```
+
+This uses v64tng's actual bitmap/delta implementations and production PNG writer,
+then checks indexed, RGB and RGBA PNGs with Pillow (including hidden RGB under
+zero alpha). It does not run the game. See [the f_1bc results](../docs/F_1BC_LOSSLESS.md)
+for the first source-material comparison and assembly references.

@@ -122,7 +122,7 @@ func_048c9:
     %endif
     times 2 - ($ - %%insn_04901) db 0
     %%insn_04903:
-    call 0x4feb ; 04903 E8E506
+    call ascii_lowercase_al ; 04903 E8E506
     %if ($ - %%insn_04903) > 3
         %error "LONG_04903"
     %endif

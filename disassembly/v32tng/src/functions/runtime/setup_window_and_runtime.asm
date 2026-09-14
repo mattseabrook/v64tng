@@ -714,7 +714,7 @@ setup_window_and_runtime:
     %endif
     times 1 - ($ - %%insn_00409a13) db 0
     %%insn_00409a14:
-    call 0x40d470 ; 00409A14 E8573A0000
+    call fill_memory_bytes ; 00409A14 E8573A0000
     %if ($ - %%insn_00409a14) > 5
         %error "LONG_00409A14"
     %endif

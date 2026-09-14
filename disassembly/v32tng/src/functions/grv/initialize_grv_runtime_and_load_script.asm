@@ -158,7 +158,7 @@ initialize_grv_runtime_and_load_script:
     %endif
     times 10 - ($ - %%insn_004012e0) db 0
     %%insn_004012ea:
-    call 0x401000 ; 004012EA E811FDFFFF
+    call load_rl_indexes_and_initialize_resource_flags ; 004012EA E811FDFFFF
     %if ($ - %%insn_004012ea) > 5
         %error "LONG_004012EA"
     %endif

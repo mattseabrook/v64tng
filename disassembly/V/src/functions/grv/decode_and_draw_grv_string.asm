@@ -20,7 +20,7 @@ decode_and_draw_grv_string:
     %endif
     times 3 - ($ - %%insn_05484) db 0
     %%insn_05487:
-    call 0x4016 ; 05487 E88CEB
+    call grv_decode_sequence_element ; 05487 E88CEB
     %if ($ - %%insn_05487) > 3
         %error "LONG_05487"
     %endif

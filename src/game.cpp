@@ -14,6 +14,9 @@
 #include <future>
 #include <utility>
 #include <cstring>
+#include <cmath>
+#include <bit>
+#include <numbers>
 #include <type_traits>
 #include <unordered_set>
 
@@ -26,6 +29,7 @@
 #include "raycast.h"
 #include "assets.h"
 #include "grv_runtime.h"
+#include "grv_palette_fade.h"
 #include "console.h"
 
 #ifdef _WIN32
@@ -44,11 +48,227 @@ static bool grvVideoPlayback = false;
 static bool grvHoldBlackFrame = false;
 static uint8_t grvPresentationLevel = 0xff;
 static std::vector<uint8_t> grvFadedPresentationFrame;
+static std::vector<uint8_t> grvPaletteFadeFrame;
+static bool grvPaletteFadeActive = false;
 static bool previousGrvVideoWasForegroundStill = false;
 static bool optionalVielogoPlayed = false;
 static uint8_t activeRedbookSelection = 0;
 static bool raycasterMenuOpen = false;
 static bool grvGameMenuOpen = false;
+static unsigned grvTransitionDepth = 0;
+struct GhostTexture
+{
+    int width = 0, height = 0;
+    std::vector<uint8_t> rgba;
+};
+struct GhostAsset
+{
+    std::vector<GhostTexture> frames;
+    std::shared_ptr<std::vector<uint8_t>> pcm;
+    double fps = 15.0;
+};
+struct GhostEntity
+{
+    std::optional<GhostAsset> asset;
+    std::future<GhostAsset> preparation;
+    bool queued = false, active = false;
+    float x = 0, y = 0;
+    double elapsed = 0;
+    std::optional<std::chrono::steady_clock::time_point> speechEnded;
+    std::chrono::steady_clock::time_point updated;
+};
+static GhostEntity ghostEntity;
+
+static GhostAsset prepareGhostAsset()
+{
+    auto loaded = loadSingleVDX("MC", "m_ghostb");
+    if (!loaded) throw std::runtime_error(loaded.error());
+    if (!loaded->parsed) parseVDXChunks(*loaded);
+    GhostAsset result;
+    result.fps = loaded->frameRate ? double(loaded->frameRate) : 15.0;
+    result.pcm = std::make_shared<std::vector<uint8_t>>(std::move(loaded->audioData));
+    if (loaded->frameIndices.empty()) throw std::runtime_error("Ghost has no indexed frames");
+    const auto &plate = *loaded->frameIndices.front();
+    const int width = loaded->width, height = loaded->height;
+    if (width <= 0 || height <= 0 || plate.size() != size_t(width)*height)
+        throw std::runtime_error("Invalid ghost bitmap size");
+    // Extract actor support relative to the VDX's initial room plate. Crop
+    // each frame so camera zoom in the movie is not a second world movement.
+    for (size_t frame=0; frame<loaded->frameData.size(); ++frame)
+    {
+        const auto &indices = *loaded->frameIndices.at(frame);
+        const auto &rgb = *loaded->frameData[frame];
+        if (indices.size() != plate.size() || rgb.size() != plate.size()*3)
+            throw std::runtime_error("Invalid ghost frame size");
+        int left=width, top=height, right=-1, bottom=-1;
+        for (int y=0; y<height; ++y)
+        for (int x=0; x<width; ++x)
+        {
+            const size_t p=size_t(y)*width+x;
+            if (indices[p] == plate[p]) continue;
+            left=(std::min)(left,x); right=(std::max)(right,x);
+            top=(std::min)(top,y); bottom=(std::max)(bottom,y);
+        }
+        GhostTexture texture;
+        if (right >= left)
+        {
+            texture.width=right-left+1; texture.height=bottom-top+1;
+            texture.rgba.resize(size_t(texture.width)*texture.height*4);
+            for (int y=top; y<=bottom; ++y)
+            for (int x=left; x<=right; ++x)
+            {
+                const size_t p=size_t(y)*width+x;
+                const size_t q=(size_t(y-top)*texture.width+x-left)*4;
+                std::copy_n(rgb.data()+p*3,3,texture.rgba.data()+q);
+                texture.rgba[q+3]=indices[p] == plate[p] ? 0 : 255;
+            }
+        }
+        result.frames.push_back(std::move(texture));
+    }
+    // Only prepared textures, PCM and timing survive; no VDX player state.
+    return result;
+}
+
+static void updateGhostSpatialAudio()
+{
+    const auto &p=state.raycast.player;
+    const float dx=ghostEntity.x-p.x, dy=ghostEntity.y-p.y;
+    const float distance=std::hypot(dx,dy);
+    const auto hit=castRay(*state.raycast.map,p.x,p.y,
+        dx/(std::max)(distance,0.001f),dy/(std::max)(distance,0.001f));
+    setPcmSpatialPosition(-dx*std::sin(p.angle)+dy*std::cos(p.angle),
+        dx*std::cos(p.angle)+dy*std::sin(p.angle),hit.distance+0.1f<distance);
+}
+
+static void updateRaycastGhost()
+{
+    auto &g=ghostEntity;
+    const auto now=std::chrono::steady_clock::now();
+    if (g.queued && !state.pcm_playing && !g.speechEnded) g.speechEnded=now;
+    if (g.preparation.valid() && g.preparation.wait_for(std::chrono::seconds(0))==std::future_status::ready)
+    {
+        try { g.asset=g.preparation.get(); }
+        catch (const std::exception &error)
+        {
+            consoleLogf("ENGINE","Ghost preparation: {}",error.what());
+            g.queued=false;
+        }
+    }
+    if (g.queued && g.asset && g.speechEnded && now-*g.speechEnded >= std::chrono::seconds(1)
+        && !state.pcm_playing && !gameConsoleActive())
+    {
+        const auto &p=state.raycast.player;
+        constexpr float quarterTurn=std::numbers::pi_v<float>*0.5f;
+        const float axis=std::round(p.angle/quarterTurn)*quarterTurn;
+        // Wait for the player's own view to align, never turn or teleport them.
+        if (std::abs(std::remainder(p.angle-axis,2.0f*std::numbers::pi_v<float>)) <= 0.26f)
+        {
+            bool clear=true;
+            for (float offset : {-0.18f,0.0f,0.18f})
+            {
+                const auto hit=castRay(*state.raycast.map,p.x,p.y,
+                    std::cos(p.angle+offset),std::sin(p.angle+offset));
+                if (hit.distance<3.5f) clear=false;
+            }
+            if (clear)
+            {
+                g.x=p.x+std::cos(axis)*3.0f; g.y=p.y+std::sin(axis)*3.0f;
+                g.queued=false; g.active=true; g.elapsed=0; g.updated=now;
+                updateGhostSpatialAudio();
+                wavPlaySpatial(g.asset->pcm);
+            }
+        }
+    }
+    if (!g.active || !g.asset) return;
+    const double dt=std::chrono::duration<double>(now-g.updated).count();
+    g.updated=now; g.elapsed+=dt;
+    const float dx=state.raycast.player.x-g.x, dy=state.raycast.player.y-g.y;
+    const float distance=std::hypot(dx,dy);
+    if (distance>0.85f)
+    {
+        const float move=(std::min)(float((std::min)(dt,0.1)*0.35),distance-0.85f);
+        const auto hit=castRay(*state.raycast.map,g.x,g.y,dx/distance,dy/distance);
+        if (hit.distance>move+0.25f) { g.x+=dx/distance*move; g.y+=dy/distance*move; }
+    }
+    updateGhostSpatialAudio();
+    const double animationDuration=g.asset->frames.size()/(std::max)(g.asset->fps,1.0);
+    const double audioDuration=g.asset->pcm->size()/22050.0;
+    if (g.elapsed >= (std::max)(animationDuration,audioDuration)) g.active=false;
+}
+
+// Prepared world sprites never own input, currentVDX or the game animation
+// clock. GPU renderers consume the packed texture; CPU uses the same asset.
+bool raycastIntroActive() { return ghostEntity.active; }
+
+// Packed sprite header + RGBA pixels use the now-unused edge lookup binding.
+// Stable capacity avoids reallocating GPU buffers for differently cropped frames.
+const std::vector<uint32_t> &raycastEntityPixels()
+{
+    static std::vector<uint32_t> words(8+640*480,0);
+    static const GhostTexture *previous=nullptr;
+    words[0]=0;
+    const auto &g=ghostEntity;
+    if (!g.active || !g.asset) { previous=nullptr; return words; }
+    const size_t frame=size_t(g.elapsed*(std::max)(g.asset->fps,1.0));
+    if (frame>=g.asset->frames.size()) return words;
+    const auto &texture=g.asset->frames[frame];
+    if (!texture.width || !texture.height) return words;
+    const size_t pixels=size_t(texture.width)*texture.height;
+    if (words.size()<8+pixels) words.resize(8+pixels);
+    if (previous!=&texture)
+    {
+        for (size_t i=0;i<pixels;++i)
+        {
+            const auto *p=texture.rgba.data()+i*4;
+            words[8+i]=uint32_t(p[0])|(uint32_t(p[1])<<8)|(uint32_t(p[2])<<16)|(uint32_t(p[3])<<24);
+        }
+        previous=&texture;
+    }
+    words[0]=1; words[1]=texture.width; words[2]=texture.height;
+    words[3]=std::bit_cast<uint32_t>(g.x); words[4]=std::bit_cast<uint32_t>(g.y);
+    return words;
+}
+
+void compositeRaycastIntro(uint8_t *bgra, int pitch, int width, int height)
+{
+    const auto &g=ghostEntity;
+    if (!g.active || !g.asset || !state.raycast.map) return;
+    const size_t frame=size_t(g.elapsed*(std::max)(g.asset->fps,1.0));
+    if (frame>=g.asset->frames.size()) return;
+    const auto &texture=g.asset->frames[frame];
+    if (!texture.width || !texture.height) return;
+    const auto &p=state.raycast.player;
+    const float dx=g.x-p.x, dy=g.y-p.y;
+    const float depth=dx*std::cos(p.angle)+dy*std::sin(p.angle);
+    if (depth<=0.1f) return;
+    const float side=-dx*std::sin(p.angle)+dy*std::cos(p.angle);
+    const float tangent=std::tan(p.fov*0.5f*config.value("raycastFovMul",1.0f));
+    const float focalX=width*0.5f/tangent, focalY=height*0.5f/tangent;
+    const float spriteHeight=focalY*3.8f/depth;
+    const float spriteWidth=focalX*3.8f*float(texture.width)/texture.height/depth;
+    const float left=width*0.5f+side*focalX/depth-spriteWidth*0.5f;
+    const float bottom=height*0.5f+focalY*config.value("raycastScale",3.0f)/depth;
+    const float top=bottom-spriteHeight;
+    const int x0=(std::max)(0,int(std::floor(left))), x1=(std::min)(width,int(std::ceil(left+spriteWidth)));
+    const int y0=(std::max)(0,int(std::floor(top))), y1=(std::min)(height,int(std::ceil(bottom)));
+    for (int x=x0; x<x1; ++x)
+    {
+        const float camera=(2.0f*(x+0.5f)/width-1.0f)*tangent;
+        const float angle=p.angle+std::atan(camera);
+        const auto wall=castRay(*state.raycast.map,p.x,p.y,std::cos(angle),std::sin(angle));
+        if (wall.hitWall && wall.distance/std::sqrt(1.0f+camera*camera)<depth) continue;
+        const int sx=std::clamp(int((x+0.5f-left)/spriteWidth*texture.width),0,texture.width-1);
+        for (int y=y0; y<y1; ++y)
+        {
+            const int sy=std::clamp(int((y+0.5f-top)/spriteHeight*texture.height),0,texture.height-1);
+            const auto *src=texture.rgba.data()+(size_t(sy)*texture.width+sx)*4;
+            if (!src[3]) continue;
+            auto *dst=bgra+size_t(y)*pitch+x*4;
+            dst[0]=src[2]; dst[1]=src[1]; dst[2]=src[0];
+        }
+    }
+}
+
 struct PreparedGrvVideo
 {
 	std::unique_ptr<VDXFile> file;
@@ -266,6 +486,8 @@ std::span<const uint8_t> applyGrvPresentationLevel(
 
 std::span<const uint8_t> presentationPixels(const VDXFile *vdx, size_t frameIndex)
 {
+	if (!grvPaletteFadeFrame.empty())
+		return grvPaletteFadeFrame;
 	if (grvHoldBlackFrame && !grvVideoPlayback)
 	{
 		static const std::vector<uint8_t> blackFrame(
@@ -310,6 +532,62 @@ std::span<const uint8_t> presentationPixels(const VDXFile *vdx, size_t frameInde
 			source.data() + sourceTop * rowBytes, copyRows * rowBytes);
 	}
 	return applyGrvPresentationLevel(state.composedPresentationFrame);
+}
+
+// Both renderers obtain the same immutable-source fade through presentationPixels.
+// Pump messages in short slices while holding the VDX frame and command order.
+static void runGrvPaletteFade(bool fadeIn)
+{
+	const auto pixels = presentationPixels(state.currentVDX.get(), state.currentFrameIndex);
+	const std::vector<uint8_t> source(pixels.begin(), pixels.end());
+	struct FadeScope
+	{
+		FadeScope() { grvPaletteFadeActive = true; }
+		~FadeScope()
+		{
+			grvPaletteFadeFrame.clear();
+			grvPaletteFadeActive = false;
+		}
+	} fadeScope;
+	grvPaletteFadeFrame.resize(source.size());
+	const auto started = std::chrono::steady_clock::now();
+	unsigned previousTick = grvPaletteFadeTicks + 1;
+	while (!g_quitRequested)
+	{
+		const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+			std::chrono::steady_clock::now() - started).count();
+		const unsigned tick = static_cast<unsigned>((std::min)(
+			elapsed / grvPaletteFadeTickMs, static_cast<decltype(elapsed)>(grvPaletteFadeTicks)));
+		if (tick != previousTick)
+		{
+			scaleGrvPaletteFade(source, grvPaletteFadeFrame, fadeIn, tick);
+			state.frameTiming.dirtyFrame = true;
+			maybeRenderFrame(true);
+			previousTick = tick;
+		}
+		if (tick == grvPaletteFadeTicks || !processEvents())
+			break;
+		std::this_thread::sleep_for(std::chrono::milliseconds(2));
+	}
+}
+
+void fadeInGrvPalette()
+{
+	runGrvPaletteFade(true);
+}
+
+static void fadeOutGrvPaletteAndClear()
+{
+	runGrvPaletteFade(false);
+	// Retail [0042133C] is the 640x480 foreground, not saved background
+	// [004212D0]. Keep the background and source palette for later copies.
+	state.grvForegroundIndices.assign(kCanvasWidth * kCanvasHeight, 0);
+	state.grvForegroundFrame.assign(kCanvasWidth * kCanvasHeight * kPixelBytes, 0);
+	state.grvForegroundActive = true;
+	grvHoldBlackFrame = true;
+	state.frameTiming.dirtyFrame = true;
+	if (!g_quitRequested)
+		maybeRenderFrame(true);
 }
 
 struct GrvPreloadState
@@ -485,6 +763,8 @@ static PreparedGrvVideos preloadGrvTransition(
 						right - left);
 				}
 			}
+			else if constexpr (std::is_same_v<T, GrvPaletteFadeOutCommand>)
+				decodeState.foregroundBandIndices.assign(kVideoHeight * kCanvasWidth, 0);
 			else if constexpr (std::is_same_v<T, GrvPaletteMergeOnceCommand>)
 				decodeState.paletteMergeOnce = true;
 		}, command);
@@ -614,6 +894,7 @@ void viewHandler()
 	if (state.raycast.enabled)
 	{
 		updateRaycasterMovement();
+		updateRaycastGhost();
 		return;
 	}
 
@@ -1213,8 +1494,37 @@ static void fadeGrateTraversalToBlack()
 	maybeRenderFrame(true);
 }
 
+// Called only for the two native intro commands following mg_thru in
+// the current MAZE.GRV transition. Navigation videos remain replaced.
+// Prepare the apparition once at its script cue. Stauf PCM uses the audio
+// worker; ghost textures and PCM are extracted before the entity can spawn.
+static void playRaycastIntroVideo(const GrvVideoCommand &command)
+{
+    if (command.ref==0x3c57)
+    {
+        ghostEntity.queued=true;
+        ghostEntity.speechEnded.reset();
+        ghostEntity.preparation=std::async(std::launch::async,prepareGhostAsset);
+        return;
+    }
+    const auto resource=grvRuntime->resolve(command.ref);
+    if (!resource) return;
+    try
+    {
+        auto loaded=loadSingleVDX(std::string(resource->archive),resource->stem());
+        if (!loaded) { consoleLog("ENGINE",loaded.error()); return; }
+        if (!loaded->parsed) parseVDXChunks(*loaded);
+        if (!loaded->audioData.empty())
+            wavPlayAsync(std::make_shared<std::vector<uint8_t>>(std::move(loaded->audioData)));
+    }
+    catch (const std::exception &error) { consoleLog("ENGINE",error.what()); }
+}
+
 static void enterRaycasterAfterGrate()
 {
+	ghostEntity.queued=false;
+	ghostEntity.active=false;
+	ghostEntity.speechEnded.reset();
 	consoleLog("ENGINE",
 		"GRATE solved: mg_thru.vdx complete; fading into raycaster basement");
 	fadeGrateTraversalToBlack();
@@ -1246,19 +1556,33 @@ static void applyGrvTransition(
 	bool synchronizeMusicWithFirstVideo,
 	std::future<PreparedGrvVideos> *preloadFuture)
 {
+	struct TransitionScope
+	{
+		TransitionScope() { ++grvTransitionDepth; }
+		~TransitionScope() { --grvTransitionDepth; }
+	} transitionScope;
 	// VIDEOREF blocks the outer loop, so update the mix before any dialogue
 	// starts (including LOADGAME directly from the title screen).
 	syncSceneMusicMix();
 	consoleLogf("ENGINE", "apply GRV transition commands={} videos={} ended={}",
 		transition.commands.size(), transition.videos.size(), transition.ended);
 	bool preparedMusicReleased = false;
+	bool basementIntro = false;
 	std::optional<PreparedGrvVideos> preloadedVideos;
 	bool preloadFailed = false;
 	size_t videoIndex = 0;
 	auto apply = [&](const GrvPresentationCommand &command)
 	{
-		if (g_quitRequested || state.raycast.enabled)
+		if (g_quitRequested)
 			return;
+		if (state.raycast.enabled)
+		{
+			if (basementIntro)
+				if (const auto *video = std::get_if<GrvVideoCommand>(&command);
+					video && (video->ref == 0x5037 || video->ref == 0x3c57))
+					playRaycastIntroVideo(*video);
+			return;
+		}
 		std::visit([&](const auto &value)
 		{
 			using T = std::decay_t<decltype(value)>;
@@ -1295,7 +1619,10 @@ static void applyGrvTransition(
 					if (releaseMusic)
 						preparedMusicReleased = true;
 					if (grateRaycasterHandoff && !g_quitRequested)
+					{
 						enterRaycasterAfterGrate();
+						basementIntro = state.raycast.enabled;
+					}
 				}
 			}
 			else if constexpr (std::is_same_v<T, GrvCopyBackgroundCommand>)
@@ -1304,6 +1631,8 @@ static void applyGrvTransition(
 				copyGrvBackgroundRectangleToForeground(value);
 			else if constexpr (std::is_same_v<T, GrvPrintCommand>)
 				printGrvString(value);
+			else if constexpr (std::is_same_v<T, GrvPaletteFadeOutCommand>)
+				fadeOutGrvPaletteAndClear();
 			else if constexpr (std::is_same_v<T, GrvSleepCommand>)
 			{
 				maybeRenderFrame(true);
@@ -1543,6 +1872,8 @@ uint8_t grvPointerCursor(int x, int y)
 
 bool grvPointerClick(int x, int y)
 {
+	if (grvPaletteFadeActive)
+		return true;
 	consoleLogf("INPUT", "left click client=({}, {}) GRV-active={}", x, y,
 		grvRuntime.has_value());
 	if (!grvRuntime)
@@ -1583,6 +1914,9 @@ bool grvPointerClick(int x, int y)
 
 bool grvEscapeAction()
 {
+	if (grvPaletteFadeActive)
+		return true;
+
 	// Input can arrive before the outer loop synchronizes a script transition.
 	syncSceneMusicMix();
 	if (grvGameMenuOpen)
@@ -1704,8 +2038,31 @@ Description:
 		- This includes the boot-menu cheat and in-game save-name editor.
 ===============================================================================
 */
+void grvConsoleSolve()
+{
+	if (!grvRuntime || state.raycast.enabled || grvGameMenuOpen)
+	{
+		consoleLog("CONSOLE", "No active puzzle to solve");
+		return;
+	}
+	if (grvTransitionDepth)
+	{
+		consoleLog("CONSOLE", "Wait for the current sequence to finish, then type SOLVE");
+		return;
+	}
+	const auto transition = grvRuntime->solvePuzzle();
+	if (!transition)
+	{
+		consoleLogf("CONSOLE", "solve: {}", transition.error());
+		return;
+	}
+	applyGrvTransition(*transition);
+}
+
 void grvKeyInput(char c)
 {
+	if (grvPaletteFadeActive)
+		return;
 	if (grvRuntime)
 	{
 		const auto transition = grvRuntime->handleKey(static_cast<uint8_t>(c));

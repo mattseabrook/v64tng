@@ -9,7 +9,8 @@
 // A still writes every pixel. A duplicate writes none. Palette-only changes
 // do not turn inherited background pixels into foreground pixels.
 inline std::vector<uint8_t> vdxFrameRGBA(const VDXFile &vdx, size_t frame,
-    const VDXChunk &chunk, bool alphaMode, int background)
+    const VDXChunk &chunk, bool alphaMode, int background,
+    std::span<const uint8_t> restoredPixels = {})
 {
     const auto &rgb = *vdx.frameData.at(frame);
     std::vector<uint8_t> mask(rgb.size() / 3, 255);
@@ -30,12 +31,18 @@ inline std::vector<uint8_t> vdxFrameRGBA(const VDXFile &vdx, size_t frame,
                 throw std::runtime_error("Invalid delta while extracting alpha");
         }
     }
+    if (alphaMode && restoredPixels.size() == mask.size()) {
+        for (size_t p = 0; p < mask.size(); ++p) {
+            if (restoredPixels[p] == 255) mask[p] = 255;
+            else if (restoredPixels[p] == 1) mask[p] = 0;
+        }
+    }
     constexpr uint8_t colors[4][3] = {{0,0,0}, {255,0,255}, {0,0,255}, {0,255,0}};
     background = std::clamp(background, 0, 3);
     std::vector<uint8_t> rgba(mask.size() * 4);
     for (size_t p = 0; p < mask.size(); ++p) {
         for (size_t c = 0; c < 3; ++c)
-            rgba[p * 4 + c] = mask[p] ? rgb[p * 3 + c] : colors[background][c];
+            rgba[p * 4 + c] = (mask[p] || background == 0) ? rgb[p * 3 + c] : colors[background][c];
         rgba[p * 4 + 3] = mask[p] || background != 0 ? 255 : 0;
     }
     return rgba;

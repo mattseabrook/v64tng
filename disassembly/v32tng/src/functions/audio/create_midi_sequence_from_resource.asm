@@ -87,7 +87,7 @@ create_midi_sequence_from_resource:
     %endif
     times 1 - ($ - %%insn_004070ca) db 0
     %%insn_004070cb:
-    call 0x40ca10 ; 004070CB E840590000
+    call copy_memory_overlap_safe ; 004070CB E840590000
     %if ($ - %%insn_004070cb) > 5
         %error "LONG_004070CB"
     %endif

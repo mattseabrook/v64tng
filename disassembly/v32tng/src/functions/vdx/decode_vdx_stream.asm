@@ -157,13 +157,13 @@ decode_vdx_stream:
     %endif
     times 2 - ($ - %%insn_0040c2b2) db 0
     %%insn_0040c2b4:
-    call 0x409d1e ; 0040C2B4 E865DAFFFF
+    call resume_deferred_vdx_read ; 0040C2B4 E865DAFFFF
     %if ($ - %%insn_0040c2b4) > 5
         %error "LONG_0040C2B4"
     %endif
     times 5 - ($ - %%insn_0040c2b4) db 0
     %%insn_0040c2b9:
-    call 0x409d64 ; 0040C2B9 E8A6DAFFFF
+    call service_vdx_read_ring ; 0040C2B9 E8A6DAFFFF
     %if ($ - %%insn_0040c2b9) > 5
         %error "LONG_0040C2B9"
     %endif
@@ -229,7 +229,7 @@ decode_vdx_stream:
     %endif
     times 1 - ($ - %%insn_0040c2dd) db 0
     %%insn_0040c2de:
-    call 0x409e85 ; 0040C2DE E8A2DBFFFF
+    call consume_vdx_ring_span ; 0040C2DE E8A2DBFFFF
     %if ($ - %%insn_0040c2de) > 5
         %error "LONG_0040C2DE"
     %endif
@@ -301,7 +301,7 @@ decode_vdx_stream:
     %endif
     times 1 - ($ - %%insn_0040c2fe) db 0
     %%insn_0040c2ff:
-    call 0x40ca10 ; 0040C2FF E80C070000
+    call copy_memory_overlap_safe ; 0040C2FF E80C070000
     %if ($ - %%insn_0040c2ff) > 5
         %error "LONG_0040C2FF"
     %endif
@@ -1346,7 +1346,7 @@ vdx_chunk_dispatch:
     %endif
     times 1 - ($ - %%insn_0040c592) db 0
     %%insn_0040c593:
-    call 0x406d8e ; 0040C593 E8F6A7FFFF
+    call append_vdx_pcm_to_ring_buffer ; 0040C593 E8F6A7FFFF
     %if ($ - %%insn_0040c593) > 5
         %error "LONG_0040C593"
     %endif
@@ -1551,7 +1551,7 @@ vdx_timed_no_change_hold:
     %endif
     times 1 - ($ - %%insn_0040c5fd) db 0
     %%insn_0040c5fe:
-    call 0x40ca10 ; 0040C5FE E80D040000
+    call copy_memory_overlap_safe ; 0040C5FE E80D040000
     %if ($ - %%insn_0040c5fe) > 5
         %error "LONG_0040C5FE"
     %endif

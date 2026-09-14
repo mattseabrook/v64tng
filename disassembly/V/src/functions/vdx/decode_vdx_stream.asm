@@ -463,7 +463,7 @@ decode_vdx_stream:
     %endif
     times 2 - ($ - %%insn_003f0) db 0
     %%insn_003f2:
-    call 0x46f5 ; 003F2 E80043
+    call replay_grv_background_song ; 003F2 E80043
     %if ($ - %%insn_003f2) > 3
         %error "LONG_003F2"
     %endif

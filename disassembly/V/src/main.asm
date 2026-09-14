@@ -18,19 +18,19 @@ bits 16
 %include "src/functions/vdx/decode_vdx_stream.asm"
 %include "src/functions/vdx/apply_vdx_delta_palette.asm"
 %include "src/functions/vdx/load_vdx_still_palette.asm"
-%include "src/functions/unknown/00501_func_00501.asm"
+%include "src/functions/vdx/upload_vdx_palette_or_black.asm"
 %include "src/functions/vdx/decode_vdx_bitmap_still.asm"
-%include "src/functions/unknown/00f33_func_00f33.asm"
-%include "src/functions/unknown/00fc6_func_00fc6.asm"
+%include "src/functions/vdx/fade_in_vdx_palette_rgb.asm"
+%include "src/functions/vdx/fade_out_vdx_palette_rgb_and_clear.asm"
 %include "src/functions/vdx/decode_vdx_delta_frame.asm"
 %include "src/functions/unknown/0230f_func_0230f.asm"
 %include "src/functions/vdx/decompress_vdx_lzss.asm"
 %include "src/functions/vdx/copy_background_rectangle_to_foreground.asm"
-%include "src/functions/vdx/copy_background_to_foreground.asm"
+%include "src/functions/vdx/snapshot_display_to_xms_background.asm"
 %include "src/functions/unknown/026e5_func_026e5.asm"
 %include "src/functions/vdx/mark_used_background_palette_entries.asm"
 %include "src/functions/unknown/02822_func_02822.asm"
-%include "src/functions/unknown/0285d_func_0285d.asm"
+%include "src/functions/platform/clear_indexed_display_memory.asm"
 %include "src/functions/unknown/02896_func_02896.asm"
 %include "src/functions/unknown/028ad_func_028ad.asm"
 %include "src/functions/unknown/0293b_func_0293b.asm"
@@ -74,41 +74,41 @@ bits 16
 %include "src/functions/savegame/grv_save_game.asm"
 %include "src/functions/unknown/03f77_func_03f77.asm"
 %include "src/functions/savegame/grv_load_game.asm"
-%include "src/functions/unknown/04001_func_04001.asm"
-%include "src/functions/unknown/04004_func_04004.asm"
-%include "src/functions/unknown/0400a_func_0400a.asm"
-%include "src/functions/unknown/04016_func_04016.asm"
-%include "src/functions/unknown/04087_func_04087.asm"
+%include "src/functions/grv/grv_jump_absolute.asm"
+%include "src/functions/grv/grv_store_word_operand_d9fd.asm"
+%include "src/functions/grv/grv_read_variable_operand.asm"
+%include "src/functions/grv/grv_decode_sequence_element.asm"
+%include "src/functions/grv/grv_load_sequence.asm"
 %include "src/functions/grv/grv_swap_variables.asm"
 %include "src/functions/grv/grv_move_variable.asm"
-%include "src/functions/unknown/040c7_func_040c7.asm"
-%include "src/functions/unknown/040df_func_040df.asm"
-%include "src/functions/unknown/040f7_func_040f7.asm"
+%include "src/functions/grv/grv_add_variable.asm"
+%include "src/functions/grv/grv_subtract_variable.asm"
+%include "src/functions/grv/grv_increment_variable.asm"
 %include "src/functions/grv/grv_decrement_variable.asm"
 %include "src/functions/grv/grv_grid_swap.asm"
 %include "src/functions/grv/grv_random.asm"
-%include "src/functions/unknown/041cb_func_041cb.asm"
+%include "src/functions/grv/grv_reduce_variable_above_divisor.asm"
 %include "src/functions/grv/grv_xor_obfuscate_variables.asm"
-%include "src/functions/unknown/041f8_func_041f8.asm"
-%include "src/functions/unknown/0421e_func_0421e.asm"
+%include "src/functions/grv/grv_branch_sequence_not_equal.asm"
+%include "src/functions/grv/grv_branch_sequence_any_greater.asm"
 %include "src/functions/grv/grv_char_less_jump.asm"
 %include "src/functions/grv/grv_jump_if_indirect_not_equal.asm"
 %include "src/functions/grv/grv_load_string_indirect.asm"
 %include "src/functions/grv/grv_compare_indirect_and_jump.asm"
-%include "src/functions/unknown/042cb_func_042cb.asm"
-%include "src/functions/unknown/042f1_func_042f1.asm"
-%include "src/functions/unknown/04327_func_04327.asm"
+%include "src/functions/grv/grv_branch_sequence_equal.asm"
+%include "src/functions/grv/advance_grv_random_state.asm"
+%include "src/functions/grv/advance_grv_random_state_far.asm"
 %include "src/functions/grv/grv_play_transition_video_ref.asm"
 %include "src/functions/unknown/04375_func_04375.asm"
 %include "src/functions/unknown/043c9_func_043c9.asm"
 %include "src/functions/grv/grv_play_video_name.asm"
 %include "src/functions/unknown/04406_func_04406.asm"
 %include "src/functions/unknown/0443a_func_0443a.asm"
-%include "src/functions/unknown/0444a_func_0444a.asm"
+%include "src/functions/grv/grv_set_background_song.asm"
 %include "src/functions/grv/grv_sleep.asm"
-%include "src/functions/unknown/04461_func_04461.asm"
+%include "src/functions/grv/grv_call_absolute.asm"
 %include "src/functions/grv/run_grv_input_loop.asm"
-%include "src/functions/unknown/046f5_func_046f5.asm"
+%include "src/functions/grv/replay_grv_background_song.asm"
 %include "src/functions/unknown/04710_func_04710.asm"
 %include "src/functions/grv/match_grv_key_action.asm"
 %include "src/functions/unknown/04754_func_04754.asm"
@@ -137,8 +137,8 @@ bits 16
 %include "src/functions/unknown/04e1f_func_04e1f.asm"
 %include "src/functions/unknown/04eae_func_04eae.asm"
 %include "src/functions/unknown/04fc7_func_04fc7.asm"
-%include "src/functions/unknown/04feb_func_04feb.asm"
-%include "src/functions/unknown/04ff6_func_04ff6.asm"
+%include "src/functions/runtime/ascii_lowercase_al.asm"
+%include "src/functions/runtime/compare_ascii_strings_case_insensitive.asm"
 %include "src/functions/unknown/05010_func_05010.asm"
 %include "src/functions/unknown/05018_func_05018.asm"
 %include "src/functions/unknown/05057_func_05057.asm"
@@ -464,7 +464,7 @@ load_image_start:
     ; 00476..00500 function
     emit_load_vdx_still_palette_part_00
     ; 00501..00586 function
-    emit_func_00501_part_00
+    emit_upload_vdx_palette_or_black_part_00
     ; 00587..005E6 function
     emit_decode_vdx_bitmap_still_part_00
     ; 005E7..005E8 gap
@@ -476,9 +476,9 @@ load_image_start:
     ; 00C4C..00F32 function
     emit_decode_vdx_bitmap_still_part_02
     ; 00F33..00FC5 function
-    emit_func_00f33_part_00
+    emit_fade_in_vdx_palette_rgb_part_00
     ; 00FC6..01059 function
-    emit_func_00fc6_part_00
+    emit_fade_out_vdx_palette_rgb_and_clear_part_00
     ; 0105A..01216 function
     emit_decode_vdx_delta_frame_part_00
     ; 01217..01217 gap
@@ -564,7 +564,7 @@ load_image_start:
     ; 023A5..02590 function
     emit_copy_background_rectangle_to_foreground_part_00
     ; 02591..026E4 function
-    emit_copy_background_to_foreground_part_00
+    emit_snapshot_display_to_xms_background_part_00
     ; 026E5..0276C function
     emit_func_026e5_part_00
     ; 0276D..02821 function
@@ -572,7 +572,7 @@ load_image_start:
     ; 02822..0285C function
     emit_func_02822_part_00
     ; 0285D..02895 function
-    emit_func_0285d_part_00
+    emit_clear_indexed_display_memory_part_00
     ; 02896..028AC function
     emit_func_02896_part_00
     ; 028AD..028D8 function
@@ -708,25 +708,25 @@ load_image_start:
     ; 03FC4..04000 function
     emit_grv_load_game_part_00
     ; 04001..04003 function
-    emit_func_04001_part_00
+    emit_grv_jump_absolute_part_00
     ; 04004..04009 function
-    emit_func_04004_part_00
+    emit_grv_store_word_operand_d9fd_part_00
     ; 0400A..04015 function
-    emit_func_0400a_part_00
+    emit_grv_read_variable_operand_part_00
     ; 04016..04086 function
-    emit_func_04016_part_00
+    emit_grv_decode_sequence_element_part_00
     ; 04087..0409A function
-    emit_func_04087_part_00
+    emit_grv_load_sequence_part_00
     ; 0409B..040B1 function
     emit_grv_swap_variables_part_00
     ; 040B2..040C6 function
     emit_grv_move_variable_part_00
     ; 040C7..040DE function
-    emit_func_040c7_part_00
+    emit_grv_add_variable_part_00
     ; 040DF..040F6 function
-    emit_func_040df_part_00
+    emit_grv_subtract_variable_part_00
     ; 040F7..04102 function
-    emit_func_040f7_part_00
+    emit_grv_increment_variable_part_00
     ; 04103..0410E function
     emit_grv_decrement_variable_part_00
     ; 0410F..041A3 function
@@ -734,13 +734,13 @@ load_image_start:
     ; 041A4..041CA function
     emit_grv_random_part_00
     ; 041CB..041DE function
-    emit_func_041cb_part_00
+    emit_grv_reduce_variable_above_divisor_part_00
     ; 041DF..041F7 function
     emit_grv_xor_obfuscate_variables_part_00
     ; 041F8..0421D function
-    emit_func_041f8_part_00
+    emit_grv_branch_sequence_not_equal_part_00
     ; 0421E..04243 function
-    emit_func_0421e_part_00
+    emit_grv_branch_sequence_any_greater_part_00
     ; 04244..04269 function
     emit_grv_char_less_jump_part_00
     ; 0426A..04291 function
@@ -750,11 +750,11 @@ load_image_start:
     ; 042B1..042CA function
     emit_grv_compare_indirect_and_jump_part_00
     ; 042CB..042F0 function
-    emit_func_042cb_part_00
+    emit_grv_branch_sequence_equal_part_00
     ; 042F1..04326 function
-    emit_func_042f1_part_00
+    emit_advance_grv_random_state_part_00
     ; 04327..0432A function
-    emit_func_04327_part_00
+    emit_advance_grv_random_state_far_part_00
     ; 0432B..04374 function
     emit_grv_play_transition_video_ref_part_00
     ; 04375..043C8 function
@@ -768,15 +768,15 @@ load_image_start:
     ; 0443A..04449 function
     emit_func_0443a_part_00
     ; 0444A..04450 function
-    emit_func_0444a_part_00
+    emit_grv_set_background_song_part_00
     ; 04451..04460 function
     emit_grv_sleep_part_00
     ; 04461..0447A function
-    emit_func_04461_part_00
+    emit_grv_call_absolute_part_00
     ; 0447B..046F4 function
     emit_run_grv_input_loop_part_00
     ; 046F5..0470F function
-    emit_func_046f5_part_00
+    emit_replay_grv_background_song_part_00
     ; 04710..04728 function
     emit_func_04710_part_00
     ; 04729..04753 function
@@ -848,9 +848,9 @@ load_image_start:
     ; 04FC7..04FEA function
     emit_func_04fc7_part_00
     ; 04FEB..04FF5 function
-    emit_func_04feb_part_00
+    emit_ascii_lowercase_al_part_00
     ; 04FF6..0500F function
-    emit_func_04ff6_part_00
+    emit_compare_ascii_strings_case_insensitive_part_00
     ; 05010..05017 function
     emit_func_05010_part_00
     ; 05018..05056 function

@@ -533,7 +533,7 @@ select_grv_video_resource:
     %endif
     times 1 - ($ - %%insn_00401e85) db 0
     %%insn_00401e86:
-    call 0x409f1a ; 00401E86 E88F800000
+    call cache_resource_prefix ; 00401E86 E88F800000
     %if ($ - %%insn_00401e86) > 5
         %error "LONG_00401E86"
     %endif

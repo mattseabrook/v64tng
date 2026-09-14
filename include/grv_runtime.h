@@ -94,6 +94,7 @@ struct GrvPlayCdCommand
 
 struct GrvCopyBackgroundCommand {};
 struct GrvPaletteMergeOnceCommand {};
+struct GrvPaletteFadeOutCommand {};
 
 using GrvPresentationCommand = std::variant<
 	GrvVideoCommand,
@@ -104,7 +105,8 @@ using GrvPresentationCommand = std::variant<
 	GrvPlaySongCommand,
 	GrvSetBackgroundSongCommand,
 	GrvPlayCdCommand,
-	GrvPaletteMergeOnceCommand>;
+	GrvPaletteMergeOnceCommand,
+	GrvPaletteFadeOutCommand>;
 
 struct GrvTransition
 {
@@ -145,6 +147,8 @@ public:
 	[[nodiscard]] std::expected<GrvTransition, std::string> follow(uint16_t target);
 	[[nodiscard]] std::expected<std::optional<GrvTransition>, std::string>
 		handleKey(uint8_t key);
+	// Development command; invoked only by the tilde console.
+	[[nodiscard]] std::expected<GrvTransition, std::string> solvePuzzle();
 	[[nodiscard]] std::optional<GrvResource> resolve(uint16_t ref) const;
 	[[nodiscard]] uint16_t activeLoop() const { return activeLoop_; }
 	// True while a room script runs as a LOADSCRIPT child of SCRIPT.GRV —

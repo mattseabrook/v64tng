@@ -20,7 +20,7 @@ func_00406d16:
     %endif
     times 1 - ($ - %%insn_00406d19) db 0
     %%insn_00406d1a:
-    call 0x406b14 ; 00406D1A E8F5FDFFFF
+    call advance_grv_random_state ; 00406D1A E8F5FDFFFF
     %if ($ - %%insn_00406d1a) > 5
         %error "LONG_00406D1A"
     %endif
@@ -39,7 +39,7 @@ func_00406d16:
     %endif
     times 3 - ($ - %%insn_00406d28) db 0
     %%insn_00406d2b:
-    call 0x406b14 ; 00406D2B E8E4FDFFFF
+    call advance_grv_random_state ; 00406D2B E8E4FDFFFF
     %if ($ - %%insn_00406d2b) > 5
         %error "LONG_00406D2B"
     %endif

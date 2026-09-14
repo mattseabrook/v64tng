@@ -37,7 +37,7 @@ grv_random:
     %endif
     times 1 - ($ - %%insn_041b1) db 0
     %%insn_041b2:
-    call 0x400a ; 041B2 E855FE
+    call grv_read_variable_operand ; 041B2 E855FE
     %if ($ - %%insn_041b2) > 3
         %error "LONG_041B2"
     %endif
@@ -56,7 +56,7 @@ grv_random:
     %endif
     times 1 - ($ - %%insn_041ba) db 0
     %%insn_041bb:
-    call 0x42f1 ; 041BB E83301
+    call advance_grv_random_state ; 041BB E83301
     %if ($ - %%insn_041bb) > 3
         %error "LONG_041BB"
     %endif

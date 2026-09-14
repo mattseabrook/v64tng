@@ -187,7 +187,7 @@ copy_background_rectangle_to_foreground_0040a7aa:
     %endif
     times 1 - ($ - %%insn_0040a804) db 0
     %%insn_0040a805:
-    call 0x40ca10 ; 0040A805 E806220000
+    call copy_memory_overlap_safe ; 0040A805 E806220000
     %if ($ - %%insn_0040a805) > 5
         %error "LONG_0040A805"
     %endif

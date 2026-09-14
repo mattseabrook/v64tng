@@ -775,11 +775,19 @@ static void vdxPlayInternal(
 	state.frameTiming.currentFPS = vdxPlaybackRate(
 		*vdxToUse,
 		streamDecoder ? streamDecoder->totalFrames : vdxToUse->frameData.size());
-	if (!vdxToUse->audioData.empty())
+	const bool fadeFirstStill = (vdxToUse->playbackFlags & (1u << 9)) != 0 &&
+		(vdxToUse->playbackFlags & ((1u << 5) | (1u << 7))) == 0;
+	auto startAudio = [&]
 	{
-		auto audioOwner = std::make_shared<std::vector<uint8_t>>(std::move(vdxToUse->audioData));
-		wavPlay(audioOwner);
-	}
+		if (!g_quitRequested && !vdxToUse->audioData.empty())
+		{
+			auto audioOwner = std::make_shared<std::vector<uint8_t>>(
+				std::move(vdxToUse->audioData));
+			wavPlay(audioOwner);
+		}
+	};
+	if (!fadeFirstStill)
+		startAudio();
 
 	// Temporarily set currentVDX for rendering (non-owning during playback)
 	auto savedVDX = std::move(state.currentVDX); // save ownership
@@ -803,11 +811,20 @@ static void vdxPlayInternal(
 		musicStartPrepared();
 		state.animation.lastFrameTime = std::chrono::steady_clock::now();
 	}
+	// Opcode 03h fades the first decoded still, before subsequent frames/PCM.
+	// BF5/BF7 skip that still and must not fade an inherited background.
+	if (fadeFirstStill)
+	{
+		fadeInGrvPalette();
+		startAudio();
+		state.animation.lastFrameTime = std::chrono::steady_clock::now();
+	}
 	// Present the first frame immediately before processing queued window messages.
-	maybeRenderFrame(true);
+	if (!g_quitRequested)
+		maybeRenderFrame(true);
 
 	// Playback loop
-	bool playing = true;
+	bool playing = !g_quitRequested;
 	bool skipped = false;
 	size_t displayedFrames = 1;
 	while (playing)

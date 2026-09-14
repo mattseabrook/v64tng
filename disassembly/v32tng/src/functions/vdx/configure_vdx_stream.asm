@@ -237,7 +237,7 @@ configure_vdx_stream:
     %endif
     times 1 - ($ - %%insn_0040c256) db 0
     %%insn_0040c257:
-    call 0x409b1d ; 0040C257 E8C1D8FFFF
+    call initialize_vdx_buffered_reader ; 0040C257 E8C1D8FFFF
     %if ($ - %%insn_0040c257) > 5
         %error "LONG_0040C257"
     %endif

@@ -191,7 +191,7 @@ run_grv_vm:
     %endif
     times 2 - ($ - %%insn_03b18) db 0
     %%insn_03b1a:
-    call 0x4461 ; 03B1A E84409
+    call grv_call_absolute ; 03B1A E84409
     %if ($ - %%insn_03b1a) > 3
         %error "LONG_03B1A"
     %endif
@@ -239,7 +239,7 @@ run_grv_vm:
     %endif
     times 2 - ($ - %%insn_03b2c) db 0
     %%insn_03b2e:
-    call 0x4001 ; 03B2E E8D004
+    call grv_jump_absolute ; 03B2E E8D004
     %if ($ - %%insn_03b2e) > 3
         %error "LONG_03B2E"
     %endif
@@ -311,7 +311,7 @@ run_grv_vm:
     %endif
     times 2 - ($ - %%insn_03b4d) db 0
     %%insn_03b4f:
-    call 0x444a ; 03B4F E8F808
+    call grv_set_background_song ; 03B4F E8F808
     %if ($ - %%insn_03b4f) > 3
         %error "LONG_03B4F"
     %endif
@@ -383,7 +383,7 @@ run_grv_vm:
     %endif
     times 2 - ($ - %%insn_03b6e) db 0
     %%insn_03b70:
-    call 0xfc6 ; 03B70 E853D4
+    call fade_out_vdx_palette_rgb_and_clear ; 03B70 E853D4
     %if ($ - %%insn_03b70) > 3
         %error "LONG_03B70"
     %endif
@@ -458,7 +458,7 @@ grv_opcode_video_flag6_on:
     %endif
     times 2 - ($ - %%insn_03b92) db 0
     %%insn_03b94:
-    call 0x4004 ; 03B94 E86D04
+    call grv_store_word_operand_d9fd ; 03B94 E86D04
     %if ($ - %%insn_03b94) > 3
         %error "LONG_03B94"
     %endif
@@ -482,7 +482,7 @@ grv_opcode_video_flag6_on:
     %endif
     times 2 - ($ - %%insn_03b9c) db 0
     %%insn_03b9e:
-    call 0x4087 ; 03B9E E8E604
+    call grv_load_sequence ; 03B9E E8E604
     %if ($ - %%insn_03b9e) > 3
         %error "LONG_03B9E"
     %endif
@@ -554,7 +554,7 @@ grv_opcode_video_flag6_on:
     %endif
     times 2 - ($ - %%insn_03bba) db 0
     %%insn_03bbc:
-    call 0x41cb ; 03BBC E80C06
+    call grv_reduce_variable_above_divisor ; 03BBC E80C06
     %if ($ - %%insn_03bbc) > 3
         %error "LONG_03BBC"
     %endif
@@ -602,7 +602,7 @@ grv_opcode_video_flag6_on:
     %endif
     times 2 - ($ - %%insn_03bce) db 0
     %%insn_03bd0:
-    call 0x41f8 ; 03BD0 E82506
+    call grv_branch_sequence_not_equal ; 03BD0 E82506
     %if ($ - %%insn_03bd0) > 3
         %error "LONG_03BD0"
     %endif
@@ -650,7 +650,7 @@ grv_opcode_video_flag6_on:
     %endif
     times 2 - ($ - %%insn_03be2) db 0
     %%insn_03be4:
-    call 0x40f7 ; 03BE4 E81005
+    call grv_increment_variable ; 03BE4 E81005
     %if ($ - %%insn_03be4) > 3
         %error "LONG_03BE4"
     %endif
@@ -844,7 +844,7 @@ grv_opcode_video_flag6_on:
     %endif
     times 2 - ($ - %%insn_03c36) db 0
     %%insn_03c38:
-    call 0x2591 ; 03C38 E856E9
+    call snapshot_display_to_xms_background ; 03C38 E856E9
     %if ($ - %%insn_03c38) > 3
         %error "LONG_03C38"
     %endif
@@ -868,7 +868,7 @@ grv_opcode_video_flag6_on:
     %endif
     times 2 - ($ - %%insn_03c40) db 0
     %%insn_03c42:
-    call 0x42cb ; 03C42 E88606
+    call grv_branch_sequence_equal ; 03C42 E88606
     %if ($ - %%insn_03c42) > 3
         %error "LONG_03C42"
     %endif
@@ -892,7 +892,7 @@ grv_opcode_video_flag6_on:
     %endif
     times 2 - ($ - %%insn_03c4a) db 0
     %%insn_03c4c:
-    call 0x421e ; 03C4C E8CF05
+    call grv_branch_sequence_any_greater ; 03C4C E8CF05
     %if ($ - %%insn_03c4c) > 3
         %error "LONG_03C4C"
     %endif
@@ -1036,7 +1036,7 @@ grv_opcode_video_flag6_on:
     %endif
     times 2 - ($ - %%insn_03c86) db 0
     %%insn_03c88:
-    call 0x40c7 ; 03C88 E83C04
+    call grv_add_variable ; 03C88 E83C04
     %if ($ - %%insn_03c88) > 3
         %error "LONG_03C88"
     %endif
@@ -1060,7 +1060,7 @@ grv_opcode_video_flag6_on:
     %endif
     times 2 - ($ - %%insn_03c90) db 0
     %%insn_03c92:
-    call 0x40df ; 03C92 E84A04
+    call grv_subtract_variable ; 03C92 E84A04
     %if ($ - %%insn_03c92) > 3
         %error "LONG_03C92"
     %endif

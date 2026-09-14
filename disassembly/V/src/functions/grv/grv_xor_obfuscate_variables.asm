@@ -7,7 +7,7 @@
     %%fragment_start:
 grv_xor_obfuscate_variables:
     %%insn_041df:
-    call 0x400a ; 041DF E828FE
+    call grv_read_variable_operand ; 041DF E828FE
     %if ($ - %%insn_041df) > 3
         %error "LONG_041DF"
     %endif

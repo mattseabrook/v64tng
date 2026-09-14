@@ -74,7 +74,7 @@ func_05018:
     %endif
     times 2 - ($ - %%insn_05030) db 0
     %%insn_05032:
-    call 0x4feb ; 05032 E8B6FF
+    call ascii_lowercase_al ; 05032 E8B6FF
     %if ($ - %%insn_05032) > 3
         %error "LONG_05032"
     %endif

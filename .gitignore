@@ -50,3 +50,8 @@ examples/
 # Python analysis caches
 __pycache__/
 *.pyc
+
+# Local mask projects and lossless source-material comparisons
+/ActorMasks/
+/grooviev1/test_f_1bc/
+/grooviev1/build/verify_lossless

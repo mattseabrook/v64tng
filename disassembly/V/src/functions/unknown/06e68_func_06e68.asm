@@ -19,7 +19,7 @@ func_06e68:
     %endif
     times 1 - ($ - %%insn_06e69) db 0
     %%insn_06e6a:
-    call 0x4327 ; 06E6A E8BAD4
+    call advance_grv_random_state_far ; 06E6A E8BAD4
     %if ($ - %%insn_06e6a) > 3
         %error "LONG_06E6A"
     %endif

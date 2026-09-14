@@ -39,6 +39,30 @@ static std::atomic<bool> g_redbookStopRequested{false};
 static std::atomic<bool> g_redbookPlaying{false};
 static std::thread g_redbookThread;
 
+static std::atomic<float> g_spatialLeft{1.0f}, g_spatialRight{1.0f}, g_spatialRear{0.0f};
+static void wavPlayImpl(std::shared_ptr<const std::vector<uint8_t>> audioData,
+    const AudioPlaybackFormat &format, bool spatial, bool waitForStart = true);
+
+void setPcmSpatialPosition(float right, float forward, bool occluded)
+{
+    const float distance = std::sqrt(right*right+forward*forward);
+    const float pan = std::clamp(right/std::max(distance,0.01f),-1.0f,1.0f);
+    const float gain = (occluded ? 0.3f : 1.0f)/(1.0f+0.16f*distance*distance);
+    g_spatialLeft.store(gain*std::sqrt(0.5f*(1.0f-pan)),std::memory_order_relaxed);
+    g_spatialRight.store(gain*std::sqrt(0.5f*(1.0f+pan)),std::memory_order_relaxed);
+    g_spatialRear.store(std::clamp(-forward/std::max(distance,0.01f),0.0f,1.0f),std::memory_order_relaxed);
+}
+
+void wavPlayAsync(std::shared_ptr<std::vector<uint8_t>> audioData)
+{
+    wavPlayImpl(std::move(audioData), AudioPlaybackFormat{22050,1,8}, false, false);
+}
+
+void wavPlaySpatial(std::shared_ptr<std::vector<uint8_t>> audioData)
+{
+    wavPlayImpl(std::move(audioData), AudioPlaybackFormat{22050,1,8}, true);
+}
+
 // Synchronization for A/V sync - audio signals when playback actually starts
 static std::mutex g_audioStartMutex;
 static std::condition_variable g_audioStartCV;
@@ -331,6 +355,12 @@ void wavPlay(std::shared_ptr<std::vector<uint8_t>> audioData)
 
 void wavPlay(std::shared_ptr<const std::vector<uint8_t>> audioData, const AudioPlaybackFormat& format)
 {
+    wavPlayImpl(std::move(audioData), format, false);
+}
+
+static void wavPlayImpl(std::shared_ptr<const std::vector<uint8_t>> audioData,
+    const AudioPlaybackFormat &format, bool spatial, bool waitForStart)
+{
     bool pcmEnabled = config.value("pcmEnabled", true);
     int pcmVolume = config.value("pcmVolume", 100);
 	if (!pcmEnabled || !audioData || audioData->empty())
@@ -359,7 +389,7 @@ void wavPlay(std::shared_ptr<const std::vector<uint8_t>> audioData, const AudioP
         ResetEvent(g_audioStopEvent);
 #endif
 
-    state.pcm_thread = std::thread([audioData = std::move(audioData), format]() mutable
+    state.pcm_thread = std::thread([audioData = std::move(audioData), format, spatial]() mutable
                                    {
 #ifdef _WIN32
                                        MmcssScope mmcss;
@@ -387,6 +417,7 @@ void wavPlay(std::shared_ptr<const std::vector<uint8_t>> audioData, const AudioP
                                        double sourceFramePosition = 0.0;
                                        const double sourceStep = static_cast<double>(format.sampleRate) / static_cast<double>(session.outputSampleRate);
 
+                                       float rearFiltered = 0.0f;
                                        auto renderFrames = [&](BYTE* dst, UINT32 frameCount) -> bool
                                        {
                                            int16_t* out = reinterpret_cast<int16_t*>(dst);
@@ -409,9 +440,17 @@ void wavPlay(std::shared_ptr<const std::vector<uint8_t>> audioData, const AudioP
 
                                                const float volume =
                                                    g_pcmRuntimeVolume.load(std::memory_order_relaxed);
-                                               const float left = (left0 + (left1 - left0) * frac) * volume;
-                                               const float right = (right0 + (right1 - right0) * frac) * volume;
+                                               float left = (left0 + (left1 - left0) * frac) * volume;
+                                               float right = (right0 + (right1 - right0) * frac) * volume;
 
+                                               if (spatial)
+                                               {
+                                                   const float mono = (left+right)*0.5f;
+                                                   const float rear = g_spatialRear.load(std::memory_order_relaxed);
+                                                   rearFiltered += (0.65f-0.53f*rear)*(mono-rearFiltered);
+                                                   left = rearFiltered*g_spatialLeft.load(std::memory_order_relaxed);
+                                                   right = rearFiltered*g_spatialRight.load(std::memory_order_relaxed);
+                                               }
                                                out[frame * 2u + 0u] = static_cast<int16_t>(std::clamp(left * 32767.0f, -32768.0f, 32767.0f));
                                                out[frame * 2u + 1u] = static_cast<int16_t>(std::clamp(right * 32767.0f, -32768.0f, 32767.0f));
                                                sourceFramePosition += sourceStep;
@@ -520,7 +559,8 @@ void wavPlay(std::shared_ptr<const std::vector<uint8_t>> audioData, const AudioP
                                    });
 
     // Wait for audio to actually start playing (or fail) for proper A/V sync
-    // Timeout after 500ms to avoid hanging if something goes wrong
+    // Spatial sources start asynchronously; the game loop remains free.
+    if (waitForStart && !spatial)
     {
         std::unique_lock<std::mutex> lock(g_audioStartMutex);
         g_audioStartCV.wait_for(lock, std::chrono::milliseconds(500), [] {

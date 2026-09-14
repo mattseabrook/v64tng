@@ -1011,7 +1011,7 @@ run_grv_input_loop:
     %endif
     times 2 - ($ - %%insn_04650) db 0
     %%insn_04652:
-    call 0x41f8 ; 04652 E8A3FB
+    call grv_branch_sequence_not_equal ; 04652 E8A3FB
     %if ($ - %%insn_04652) > 3
         %error "LONG_04652"
     %endif
@@ -1035,7 +1035,7 @@ run_grv_input_loop:
     %endif
     times 2 - ($ - %%insn_04659) db 0
     %%insn_0465b:
-    call 0x4001 ; 0465B E8A3F9
+    call grv_jump_absolute ; 0465B E8A3F9
     %if ($ - %%insn_0465b) > 3
         %error "LONG_0465B"
     %endif
@@ -1059,7 +1059,7 @@ run_grv_input_loop:
     %endif
     times 2 - ($ - %%insn_04662) db 0
     %%insn_04664:
-    call 0x42cb ; 04664 E864FC
+    call grv_branch_sequence_equal ; 04664 E864FC
     %if ($ - %%insn_04664) > 3
         %error "LONG_04664"
     %endif
@@ -1083,7 +1083,7 @@ run_grv_input_loop:
     %endif
     times 2 - ($ - %%insn_0466b) db 0
     %%insn_0466d:
-    call 0x421e ; 0466D E8AEFB
+    call grv_branch_sequence_any_greater ; 0466D E8AEFB
     %if ($ - %%insn_0466d) > 3
         %error "LONG_0466D"
     %endif

@@ -7,7 +7,7 @@
     %%fragment_start:
 grv_move_variable:
     %%insn_040b2:
-    call 0x400a ; 040B2 E855FF
+    call grv_read_variable_operand ; 040B2 E855FF
     %if ($ - %%insn_040b2) > 3
         %error "LONG_040B2"
     %endif

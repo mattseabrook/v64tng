@@ -7,7 +7,7 @@
     %%fragment_start:
 grv_swap_variables:
     %%insn_0409b:
-    call 0x400a ; 0409B E86CFF
+    call grv_read_variable_operand ; 0409B E86CFF
     %if ($ - %%insn_0409b) > 3
         %error "LONG_0409B"
     %endif

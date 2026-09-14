@@ -7,7 +7,7 @@
     %%fragment_start:
 grv_decrement_variable:
     %%insn_04103:
-    call 0x400a ; 04103 E804FF
+    call grv_read_variable_operand ; 04103 E804FF
     %if ($ - %%insn_04103) > 3
         %error "LONG_04103"
     %endif

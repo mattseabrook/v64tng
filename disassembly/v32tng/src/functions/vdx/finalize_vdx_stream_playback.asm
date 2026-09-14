@@ -191,7 +191,7 @@ finalize_vdx_stream_playback:
     %endif
     times 6 - ($ - %%insn_0040c72c) db 0
     %%insn_0040c732:
-    call 0x406fae ; 0040C732 E877A8FFFF
+    call wait_sample_buffer_boundary_and_reset ; 0040C732 E877A8FFFF
     %if ($ - %%insn_0040c732) > 5
         %error "LONG_0040C732"
     %endif
@@ -263,7 +263,7 @@ finalize_vdx_stream_playback:
     %endif
     times 10 - ($ - %%insn_0040c763) db 0
     %%insn_0040c76d:
-    call 0x409d55 ; 0040C76D E8E3D5FFFF
+    call disable_vdx_read_refills ; 0040C76D E8E3D5FFFF
     %if ($ - %%insn_0040c76d) > 5
         %error "LONG_0040C76D"
     %endif

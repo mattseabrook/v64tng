@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <cwctype>
 #include <set>
+#include <map>
+#include <cstdlib>
 #include <stdexcept>
 
 #include <windows.h>
@@ -30,6 +32,7 @@
 #include "bitmap.h"
 #include "delta.h"
 #include "vdx_alpha.h"
+#include "vdx_mask_project.h"
 
 #pragma comment(lib, "comctl32.lib")
 
@@ -41,8 +44,6 @@ static HWND g_toolsWindow = nullptr;
 
 // Current state
 static int g_currentTab = 0;
-static std::vector<RLEntry> g_currentRLEntries;
-static std::string g_currentRLFile;
 static std::string g_currentGJDFile;  // Track current GJD for VDX loading
 
 // Whole-install asset browser state. This is deliberately T7G-only: it
@@ -56,12 +57,8 @@ struct AssetCatalogEntry {
 };
 static std::vector<AssetCatalogEntry> g_assetCatalog;
 static std::filesystem::path g_assetFolder;
-static int g_assetSortColumn = 0;
-static bool g_assetSortAscending = true;
 
 // Sorting state for Archive Info
-static int g_archiveSortColumn = -1;
-static bool g_archiveSortAscending = true;
 
 // Sorting state for VDX Info
 static int g_vdxSortColumn = -1;
@@ -89,13 +86,32 @@ static constexpr UINT_PTR VDX_PLAYBACK_TIMER = 0x564458;
 static std::vector<size_t> g_frameChunks;
 static bool g_alphaMode = false;
 static int g_alphaBackground = 0;
+static bool g_alphaBrush = false;
+static int g_alphaBrushSize = 8;
+// Per-frame overrides: 0 inherits the write mask, 1 excludes, 255 includes.
+static std::map<size_t, std::vector<uint8_t>> g_alphaRestored;
+static bool g_alphaStroke = false;
+static bool g_alphaErase = false;
+static bool g_alphaRevert = false;
+static vdxmask::Project g_maskProject;
+static std::set<size_t> g_maskDirty;
+static bool g_maskSaveErrorShown = false;
+static constexpr UINT_PTR VDX_MASK_SAVE_TIMER = 0x4d41534b;
+static POINT g_alphaLastPoint{-1, -1};
+static size_t g_alphaStrokeFrame = 0;
+
+static std::span<const uint8_t> RestoredVDXPixels(size_t frame)
+{
+    const auto it = g_alphaRestored.find(frame);
+    return it == g_alphaRestored.end() ? std::span<const uint8_t>{}
+        : std::span<const uint8_t>(it->second);
+}
 
 // Tab indices
 enum TabIndex {
     TAB_ASSET_BROWSER = 0,
-    TAB_ARCHIVE_INFO = 1,
-    TAB_VDX_INFO = 2,
-    TAB_CURSORS = 3
+    TAB_VDX_INFO = 1,
+    TAB_CURSORS = 2
 };
 
 // Control IDs
@@ -108,12 +124,7 @@ enum ControlID {
     IDC_ASSET_FILTER_EDIT = 1004,
     IDC_ASSET_LIST = 1005,
     IDC_ASSET_STATUS = 1006,
-    
-    // Archive Info tab
-    IDC_ARCHIVE_FILE_EDIT = 1010,
-    IDC_ARCHIVE_BROWSE_BTN = 1011,
-    IDC_ARCHIVE_LIST = 1012,
-    IDC_ARCHIVE_STATUS = 1013,
+    IDC_ASSET_TREE = 1007, IDC_ASSET_PREVIEW = 1008,
     
     // VDX Info tab - redesigned compact layout with palette
     IDC_VDX_FILE_EDIT = 1020,
@@ -139,6 +150,7 @@ enum ControlID {
     IDC_VDX_NEXT = 1043,
     IDC_VDX_FRAME_STATUS = 1044,
     IDC_VDX_ALPHA, IDC_VDX_COLOR, IDC_VDX_SAVE_FRAME, IDC_VDX_DUMP,
+    IDC_VDX_BRUSH, IDC_VDX_BRUSH_SIZE, IDC_VDX_BRUSH_RESET,
     
     // Cursors tab
     IDC_CURSOR_STATUS = 1040,
@@ -147,14 +159,13 @@ enum ControlID {
 
 // Tab controls
 static HWND g_hTab = nullptr;
-static HWND g_assetControls[6] = {0};  // folder edit, browse, filter label/edit, list, status
-static HWND g_archiveControls[4] = {0};  // edit, browse btn, listview, status
+static HWND g_assetControls[8] = {0};  // folder, browse, filter label/edit, values, status, tree, preview
 // VDX controls: [0]=edit, [1]=browse, [2]=header info, [3]=0x20 label, [4]=0x20 info,
 //               [5]=0x20 list, [6]=palette label, [7]=palette, [8]=0x25 label, [9]=0x25 list, 
 //               [10]=0x80 label, [11]=0x80 info, [12]=0x80 list, [13]=status,
 //               [14]=bitmap label, [15]=bitmap display, [16]=delta vis checkbox
 static HWND g_vdxControls[17] = {0};
-static HWND g_vdxPlaybackControls[9] = {nullptr};
+static HWND g_vdxPlaybackControls[12] = {nullptr};
 static HWND g_cursorControls[2] = {0};    // status, extract btn
 static HWND g_currentVDXSortList = nullptr;  // Track which VDX list is being sorted
 
@@ -176,7 +187,6 @@ static LRESULT CALLBACK BitmapWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 static void CreateTabs(HWND hwnd);
 static void SwitchTab(int tabIndex);
 static void CreateAssetBrowserTab(HWND hwnd);
-static void CreateArchiveInfoTab(HWND hwnd);
 static void CreateVDXInfoTab(HWND hwnd);
 static void CreateCursorsTab(HWND hwnd);
 static void HideAllTabs();
@@ -187,12 +197,10 @@ static void LoadAssetCatalog(const std::filesystem::path& folder);
 static void PopulateAssetList();
 static void OpenCatalogAsset(size_t index);
 static void SaveCatalogAsset(HWND owner, size_t index);
-static void PopulateArchiveList(const std::string& filename);
 static void PopulateVDXInfoList(const std::string& filename);
 static void PopulateVDXFromArchive(const RLEntry& entry);
 static std::wstring FormatOffset(size_t offset);
 static std::wstring FormatSize(size_t size);
-static int CALLBACK ArchiveListCompare(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort);
 static int CALLBACK VDXListCompare(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort);
 static void CheckROBFile();
 static void PrepareVDXPlayback(std::string_view filename, std::span<const uint8_t> bytes);
@@ -211,9 +219,9 @@ struct ToolSplit {
     bool vertical = false;
     float ratio = 0.5f;
 };
-static std::array<ToolSplit, 4> g_toolSplits{{
+static std::array<ToolSplit, 5> g_toolSplits{{
     {{}, {}, true, .43f}, {{}, {}, false, .24f},
-    {{}, {}, false, .76f}, {{}, {}, true, .40f}
+    {{}, {}, false, .76f}, {{}, {}, true, .40f}, {{}, {}, true, .30f}
 }};
 static int g_dragSplit = -1;
 static int ToolPx(int value) { return MulDiv(value, g_toolsDpi, 96); }
@@ -249,7 +257,7 @@ static void ApplyToolsFont(HWND hwnd)
     HFONT oldFont = g_toolsFont, oldBold = g_toolsBoldFont;
     static UINT previousDpi = 96;
     const UINT columnDpi = oldFont ? previousDpi : 96;
-    for (HWND list : {g_assetControls[4], g_archiveControls[2],
+    for (HWND list : {g_assetControls[4],
             g_vdxControls[5], g_vdxControls[9], g_vdxControls[12]}) {
         const int count = Header_GetItemCount(ListView_GetHeader(list));
         for (int i = 0; i < count; ++i) {
@@ -306,12 +314,10 @@ static void LayoutTools(HWND hwnd)
     };
     fileRow(g_assetControls[0], g_assetControls[1], ToolPx(112));
     move(g_assetControls[2], pad, top + row + gap, ToolPx(42), row);
-    move(g_assetControls[3], pad + ToolPx(46), top + row + gap, width - ToolPx(46), row);
-    move(g_assetControls[4], pad, top + 2 * (row + gap), width, bottom - top - 2 * (row + gap) - gap);
+    move(g_assetControls[3], pad + ToolPx(46), top + row + gap, width - ToolPx(206), row);
+    move(g_assetControls[7], rc.right - pad - ToolPx(154), top + row + gap, ToolPx(154), row);
+
     move(g_assetControls[5], pad, bottom, width, label);
-    fileRow(g_archiveControls[0], g_archiveControls[1], ToolPx(80));
-    move(g_archiveControls[2], pad, top + row + gap, width, bottom - top - row - 2 * gap);
-    move(g_archiveControls[3], pad, bottom, width, label);
     move(g_cursorControls[0], pad, top, width, 2 * row);
     move(g_cursorControls[1], pad, top + 2 * row + gap, ToolPx(132), row);
     fileRow(g_vdxControls[0], g_vdxControls[1], ToolPx(80));
@@ -332,6 +338,10 @@ static void LayoutTools(HWND hwnd)
         else { s.hit.top = position; s.hit.bottom = position + gap; }
         return position;
     };
+    const int assetTop = top + 2 * (row + gap);
+    const int assetDivider = split(4, {pad, assetTop, rc.right - pad, bottom - gap}, ToolPx(180), ToolPx(320));
+    move(g_assetControls[6], pad, assetTop, assetDivider - pad, bottom - gap - assetTop);
+    move(g_assetControls[4], assetDivider + gap, assetTop, rc.right - pad - assetDivider - gap, bottom - gap - assetTop);
     const int divider = split(0, {pad, y, rc.right - pad, end}, ToolPx(320), ToolPx(280));
     const int leftWidth = divider - pad, rightX = divider + gap;
     const int rightWidth = rc.right - pad - rightX;
@@ -353,6 +363,10 @@ static void LayoutTools(HWND hwnd)
     move(g_vdxControls[14], rightX, y, ToolPx(58), row);
     move(g_vdxPlaybackControls[5], rightX + ToolPx(60), y, ToolPx(108), row);
     move(g_vdxPlaybackControls[6], rightX + ToolPx(170), y, row, row);
+    const int brushX = rightX + ToolPx(170) + row + gap;
+    move(g_vdxPlaybackControls[9], brushX, y, ToolPx(58), row);
+    move(g_vdxPlaybackControls[10], brushX + ToolPx(62), y, ToolPx(62), row);
+    move(g_vdxPlaybackControls[11], brushX + ToolPx(128), y, ToolPx(90), row);
     move(g_vdxControls[15], rightX, y + row + gap, rightWidth, end - y - label - 3 * row - 3 * gap);
     const int buttonWidth = (std::min)(ToolPx(78), (rightWidth - 3 * gap) / 4);
     for (int i = 0; i < 4; ++i)
@@ -368,13 +382,47 @@ static void LayoutTools(HWND hwnd)
 
 static int HitToolSplit(HWND hwnd)
 {
-    if (g_currentTab != TAB_VDX_INFO) return -1;
+    if (g_currentTab != TAB_VDX_INFO && g_currentTab != TAB_ASSET_BROWSER) return -1;
     POINT point{};
     GetCursorPos(&point);
     ScreenToClient(hwnd, &point);
     for (int i = 0; i < static_cast<int>(g_toolSplits.size()); ++i)
-        if (PtInRect(&g_toolSplits[i].hit, point)) return i;
+        if ((g_currentTab == TAB_ASSET_BROWSER ? i == 4 : i < 4) &&
+            PtInRect(&g_toolSplits[i].hit, point)) return i;
     return -1;
+}
+
+static bool SaveVDXMaskProject()
+{
+    if (g_maskDirty.empty()) return true;
+    try {
+        while (!g_maskDirty.empty()) {
+            const size_t frame = *g_maskDirty.begin();
+            auto edits = RestoredVDXPixels(frame);
+            std::vector<uint8_t> empty;
+            if (edits.empty()) {
+                empty.resize(size_t(g_playbackVDX.width) * g_playbackVDX.height);
+                edits = empty;
+            }
+            const auto rgba = vdxFrameRGBA(g_playbackVDX, frame,
+                g_currentVDX.chunks.at(g_frameChunks.at(frame)), true, 0, edits);
+            std::vector<uint8_t> support(rgba.size() / 4);
+            for (size_t p = 0; p < support.size(); ++p) support[p] = rgba[p * 4 + 3];
+            g_maskProject.save(frame, g_frameChunks.at(frame), edits, support);
+            g_maskDirty.erase(frame);
+        }
+        g_maskSaveErrorShown = false;
+        const auto message = L"Mask autosaved: " + g_maskProject.folder.wstring();
+        SetWindowTextW(g_vdxControls[13], message.c_str());
+        return true;
+    } catch (const std::exception &error) {
+        SetWindowTextW(g_vdxControls[13], L"MASK NOT SAVED. Edits remain in memory; fix the save error before changing clips or closing.");
+        if (!g_maskSaveErrorShown) {
+            g_maskSaveErrorShown = true;
+            MessageBoxA(g_toolsWindow, error.what(), "Mask autosave failed", MB_OK | MB_ICONERROR);
+        }
+        return false;
+    }
 }
 
 static void ShowVDXPlaybackFrame()
@@ -385,7 +433,7 @@ static void ShowVDXPlaybackFrame()
     if (!frame || frame->empty())
         return;
     const auto rgba = vdxFrameRGBA(g_playbackVDX, g_playbackFrame,
-        g_currentVDX.chunks.at(g_frameChunks.at(g_playbackFrame)), g_alphaMode, g_alphaBackground);
+        g_currentVDX.chunks.at(g_frameChunks.at(g_playbackFrame)), g_alphaMode, g_alphaBackground, RestoredVDXPixels(g_playbackFrame));
     g_bitmapData.resize(frame->size());
     for (size_t p = 0; p < rgba.size() / 4; ++p) {
         const size_t x = p % g_playbackVDX.width, y = p / g_playbackVDX.width;
@@ -397,8 +445,9 @@ static void ShowVDXPlaybackFrame()
     g_bitmapHeight = g_playbackVDX.height;
     if (g_vdxControls[15])
         InvalidateRect(g_vdxControls[15], nullptr, FALSE);
-    const std::wstring label = std::format(L"Frame {} / {}",
-        g_playbackFrame + 1, g_playbackVDX.frameData.size());
+    const std::wstring label = std::format(L"Frame {} / {}{}",
+        g_playbackFrame + 1, g_playbackVDX.frameData.size(),
+        g_alphaRestored.contains(g_playbackFrame) ? L" - edited mask" : L"");
     SetWindowTextW(g_vdxPlaybackControls[4], label.c_str());
 }
 
@@ -420,6 +469,11 @@ static void PrepareVDXPlayback(std::string_view filename, std::span<const uint8_
     StopVDXPlayback(false);
     g_frameChunks.clear();
     g_bitmapData.clear();
+    g_alphaRestored.clear();
+    g_maskProject = {};
+    g_maskDirty.clear();
+    g_maskSaveErrorShown = false;
+    g_alphaStroke = false;
     g_playbackVDX = {};
     g_playbackVDX = parseVDXFile(filename, bytes);
     parseVDXChunks(g_playbackVDX);
@@ -436,6 +490,15 @@ static void PrepareVDXPlayback(std::string_view filename, std::span<const uint8_
     if (g_frameChunks.size() != g_playbackVDX.frameData.size())
         throw std::runtime_error("VDX frame/chunk count mismatch");
     g_playbackFrame = 0;
+    try {
+        g_maskProject.open(filename, bytes, g_playbackVDX.width,
+            g_playbackVDX.height, g_playbackVDX.frameData.size());
+        g_maskProject.load(g_alphaRestored);
+    } catch (const std::exception &error) {
+        g_maskProject.initialized = false;
+        MessageBoxA(g_toolsWindow, error.what(), "Cannot load mask project; painting disabled", MB_OK | MB_ICONERROR);
+    }
+    SetTimer(g_toolsWindow, VDX_MASK_SAVE_TIMER, 1000, nullptr);
     ShowVDXPlaybackFrame();
 }
 
@@ -508,7 +571,7 @@ void ShowToolsWindow(HWND hParent)
     // Initialize common controls
     INITCOMMONCONTROLSEX icc = {};
     icc.dwSize = sizeof(icc);
-    icc.dwICC = ICC_TAB_CLASSES | ICC_LISTVIEW_CLASSES | ICC_STANDARD_CLASSES;
+    icc.dwICC = ICC_TAB_CLASSES | ICC_TREEVIEW_CLASSES | ICC_LISTVIEW_CLASSES | ICC_STANDARD_CLASSES;
     InitCommonControlsEx(&icc);
     
     HINSTANCE hInstance = GetModuleHandle(nullptr);
@@ -622,8 +685,14 @@ static std::filesystem::path OpenFolderDialog(HWND hwnd)
 
 static void SaveVDXFrame(const std::filesystem::path &path, size_t frame)
 {
+    if (!g_alphaMode && g_playbackVDX.frameIndices.at(frame) &&
+        !g_playbackVDX.frameIndices.at(frame)->empty()) {
+        savePNG(path.string(), *g_playbackVDX.frameIndices.at(frame),
+            g_playbackVDX.width, g_playbackVDX.height, false, g_playbackVDX.framePalettes.at(frame));
+        return;
+    }
     const auto rgba = vdxFrameRGBA(g_playbackVDX, frame,
-        g_currentVDX.chunks.at(g_frameChunks.at(frame)), g_alphaMode, g_alphaBackground);
+        g_currentVDX.chunks.at(g_frameChunks.at(frame)), g_alphaMode, g_alphaBackground, RestoredVDXPixels(frame));
     savePNG(path.string(), rgba, g_playbackVDX.width, g_playbackVDX.height, true);
 }
 
@@ -705,69 +774,20 @@ static std::filesystem::path FindSiblingWithExtension(
 Function: PopulateAssetList
 ===============================================================================
 */
-static void PopulateAssetList()
-{
-    HWND list = g_assetControls[4];
-    if (!list)
-        return;
 
-    wchar_t rawFilter[256] = {};
-    GetWindowTextW(g_assetControls[3], rawFilter, static_cast<int>(std::size(rawFilter)));
-    std::wstring filter(rawFilter);
-    std::transform(filter.begin(), filter.end(), filter.begin(),
-        [](wchar_t ch) { return static_cast<wchar_t>(std::towlower(ch)); });
-
-    ListView_DeleteAllItems(list);
-    int visibleCount = 0;
-    for (size_t catalogIndex = 0; catalogIndex < g_assetCatalog.size(); ++catalogIndex) {
-        const AssetCatalogEntry& asset = g_assetCatalog[catalogIndex];
-        std::wstring name(asset.name.begin(), asset.name.end());
-        std::wstring archive(asset.archive.begin(), asset.archive.end());
-        std::wstring haystack = name + L" " + archive;
-        std::transform(haystack.begin(), haystack.end(), haystack.begin(),
-            [](wchar_t ch) { return static_cast<wchar_t>(std::towlower(ch)); });
-        if (!filter.empty() && haystack.find(filter) == std::wstring::npos)
-            continue;
-
-        LVITEMW item = {};
-        item.mask = LVIF_TEXT | LVIF_PARAM;
-        item.iItem = visibleCount;
-        item.lParam = static_cast<LPARAM>(catalogIndex);
-        item.pszText = name.data();
-        ListView_InsertItem(list, &item);
-
-        ListView_SetItemText(list, visibleCount, 1, archive.data());
-        std::filesystem::path resourcePath(asset.name);
-        std::wstring type = resourcePath.extension().wstring();
-        if (type.empty())
-            type = L"(none)";
-        ListView_SetItemText(list, visibleCount, 2, type.data());
-        std::wstring offset = FormatOffset(asset.entry.offset);
-        std::wstring size = FormatSize(asset.entry.length);
-        ListView_SetItemText(list, visibleCount, 3, offset.data());
-        ListView_SetItemText(list, visibleCount, 4, size.data());
-        ++visibleCount;
-    }
-
-    std::set<std::string> archives;
-    for (const AssetCatalogEntry& asset : g_assetCatalog)
-        archives.insert(LowerAscii(asset.archive));
-    wchar_t status[256];
-    swprintf(status, std::size(status), L"%d of %zu assets shown from %zu RL/GJD archives.",
-        visibleCount, g_assetCatalog.size(), archives.size());
-    SetWindowTextW(g_assetControls[5], status);
-}
 
 /*
 ===============================================================================
 Function: LoadAssetCatalog
 ===============================================================================
 */
+#include "tools_asset_tree.inl"
+
 static void LoadAssetCatalog(const std::filesystem::path& folder)
 {
+    ClearAssetTree();
     g_assetCatalog.clear();
     g_assetFolder.clear();
-    ListView_DeleteAllItems(g_assetControls[4]);
 
     try {
         if (folder.empty() || !std::filesystem::is_directory(folder))
@@ -810,8 +830,6 @@ static void LoadAssetCatalog(const std::filesystem::path& folder)
         setAssetRoot(folder);
         g_assetFolder = assetRoot();
         SetWindowTextW(g_assetControls[0], g_assetFolder.wstring().c_str());
-        g_assetSortColumn = 0;
-        g_assetSortAscending = true;
         std::stable_sort(g_assetCatalog.begin(), g_assetCatalog.end(),
             [](const AssetCatalogEntry& a, const AssetCatalogEntry& b) {
                 const std::string aName = LowerAscii(a.name);
@@ -984,6 +1002,45 @@ static LRESULT CALLBACK PaletteWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
 
+// Map through the same centered, aspect-preserving rectangle used for drawing.
+static bool VDXBrushPoint(HWND hwnd, LPARAM lParam, POINT &point)
+{
+    if (g_bitmapWidth <= 0 || g_bitmapHeight <= 0) return false;
+    RECT rc{};
+    GetClientRect(hwnd, &rc);
+    const double scale = (std::min)(double(rc.right) / g_bitmapWidth,
+        double(rc.bottom) / g_bitmapHeight);
+    const int width = (std::max)(1, int(g_bitmapWidth * scale));
+    const int height = (std::max)(1, int(g_bitmapHeight * scale));
+    const int x = static_cast<short>(LOWORD(lParam)) - (rc.right - width) / 2;
+    const int y = static_cast<short>(HIWORD(lParam)) - (rc.bottom - height) / 2;
+    if (x < 0 || y < 0 || x >= width || y >= height) return false;
+    point = {x * g_bitmapWidth / width, y * g_bitmapHeight / height};
+    return true;
+}
+
+static void PaintVDXBrush(POINT point)
+{
+    auto &mask = g_alphaRestored[g_playbackFrame];
+    if (mask.empty()) mask.resize(size_t(g_bitmapWidth) * g_bitmapHeight);
+    if (g_alphaLastPoint.x < 0) g_alphaLastPoint = point;
+    const int dx = point.x - g_alphaLastPoint.x, dy = point.y - g_alphaLastPoint.y;
+    const int steps = (std::max)(1, (std::max)(std::abs(dx), std::abs(dy)));
+    // Interpolate in source pixels so fast mouse movements leave no gaps.
+    for (int step = 0; step <= steps; ++step) {
+        const int cx = g_alphaLastPoint.x + dx * step / steps;
+        const int cy = g_alphaLastPoint.y + dy * step / steps;
+        const int radius = g_alphaBrushSize / 2;
+        for (int y = cy - radius; y < cy - radius + g_alphaBrushSize; ++y)
+            for (int x = cx - radius; x < cx - radius + g_alphaBrushSize; ++x)
+                if (x >= 0 && y >= 0 && x < g_bitmapWidth && y < g_bitmapHeight)
+                    mask[size_t(y) * g_bitmapWidth + x] = g_alphaRevert ? 0 : (g_alphaErase ? 1 : 255);
+    }
+    g_alphaLastPoint = point;
+    g_maskDirty.insert(g_playbackFrame);
+    ShowVDXPlaybackFrame();
+}
+
 /*
 ===============================================================================
 Function: BitmapWndProc - Custom control to display 0x20 bitmap at 1:1 scale
@@ -992,6 +1049,55 @@ Function: BitmapWndProc - Custom control to display 0x20 bitmap at 1:1 scale
 static LRESULT CALLBACK BitmapWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg) {
+    case WM_SETCURSOR:
+        if (g_alphaBrush && g_alphaMode) {
+            SetCursor(LoadCursor(nullptr, IDC_CROSS));
+            return TRUE;
+        }
+        break;
+    case WM_LBUTTONDOWN:
+    case WM_RBUTTONDOWN: {
+        POINT point{};
+        if (!g_alphaBrush || !g_alphaMode || !g_maskProject.initialized || g_playbackVDX.frameData.empty() ||
+            !VDXBrushPoint(hwnd, lParam, point)) break;
+        StopVDXPlayback(false);
+        g_alphaStroke = true;
+        g_alphaErase = msg == WM_RBUTTONDOWN;
+        g_alphaRevert = g_alphaErase && (wParam & MK_SHIFT);
+        g_alphaStrokeFrame = g_playbackFrame;
+        g_alphaLastPoint = {-1, -1};
+        SetCapture(hwnd);
+        PaintVDXBrush(point);
+        return 0;
+    }
+    case WM_MOUSEMOVE:
+        if (g_alphaStroke && GetCapture() == hwnd) {
+            POINT point{};
+            if (g_alphaMode && g_alphaBrush && g_alphaStrokeFrame == g_playbackFrame &&
+                VDXBrushPoint(hwnd, lParam, point))
+                PaintVDXBrush(point);
+            else
+                g_alphaLastPoint = {-1, -1};
+            return 0;
+        }
+        break;
+    case WM_LBUTTONUP:
+    case WM_RBUTTONUP:
+        if (g_alphaStroke) {
+            g_alphaStroke = false;
+            if (GetCapture() == hwnd) ReleaseCapture();
+            SaveVDXMaskProject();
+            return 0;
+        }
+        break;
+    case WM_CANCELMODE:
+        if (GetCapture() == hwnd) ReleaseCapture();
+        [[fallthrough]];
+    case WM_CAPTURECHANGED:
+        g_alphaStroke = false;
+        g_alphaLastPoint = {-1, -1};
+        SaveVDXMaskProject();
+        return 0;
     case WM_PAINT: {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hwnd, &ps);
@@ -1052,7 +1158,6 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         pauseCursorTimer();
         CreateTabs(hwnd);
         CreateAssetBrowserTab(hwnd);
-        CreateArchiveInfoTab(hwnd);
         CreateVDXInfoTab(hwnd);
         CreateCursorsTab(hwnd);
         g_toolsDpi = GetDpiForWindow(hwnd);
@@ -1103,7 +1208,7 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
     case WM_LBUTTONDBLCLK: {
         const int hit = HitToolSplit(hwnd);
         if (hit >= 0) {
-            constexpr float defaults[] = {.43f, .24f, .76f, .40f};
+            constexpr float defaults[] = {.43f, .24f, .76f, .40f, .30f};
             g_toolSplits[hit].ratio = defaults[hit];
             LayoutTools(hwnd);
         }
@@ -1189,181 +1294,14 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             return 0;
         }
 
-        // Double-click a cataloged T7G VDX to inspect its decoded frames.
-        if (nmhdr->code == NM_DBLCLK && nmhdr->idFrom == IDC_ASSET_LIST) {
-            const int selected = ListView_GetNextItem(g_assetControls[4], -1, LVNI_SELECTED);
-            if (selected >= 0) {
-                LVITEMW item = {};
-                item.mask = LVIF_PARAM;
-                item.iItem = selected;
-                if (ListView_GetItem(g_assetControls[4], &item))
-                    OpenCatalogAsset(static_cast<size_t>(item.lParam));
-            }
+        if (nmhdr->idFrom == IDC_ASSET_TREE) {
+            return HandleAssetTreeNotify(hwnd, nmhdr);
+        }
+        if (nmhdr->idFrom == IDC_ASSET_LIST && nmhdr->code == NM_RCLICK) {
+            CopyAssetValue(hwnd);
             return 0;
         }
 
-        if (nmhdr->code == NM_RCLICK && nmhdr->idFrom == IDC_ASSET_LIST) {
-            const int selected =
-                ListView_GetNextItem(g_assetControls[4], -1, LVNI_SELECTED);
-            if (selected >= 0) {
-                LVITEMW item = {};
-                item.mask = LVIF_PARAM;
-                item.iItem = selected;
-                if (ListView_GetItem(g_assetControls[4], &item)) {
-                    const size_t catalogIndex = static_cast<size_t>(item.lParam);
-                    if (catalogIndex < g_assetCatalog.size()) {
-                        const bool isVDX = LowerAscii(std::filesystem::path(
-                            g_assetCatalog[catalogIndex].name).extension().string()) == ".vdx";
-                        POINT point{};
-                        GetCursorPos(&point);
-                        HMENU menu = CreatePopupMenu();
-                        AppendMenuW(menu, MF_STRING, 1,
-                            isVDX ? L"Open in VDX Info..." : L"Inspect (VDX only)...");
-                        AppendMenuW(menu, MF_STRING, 2,
-                            isVDX ? L"Save VDX As..." : L"Save Resource As...");
-                        const int command = TrackPopupMenu(menu,
-                            TPM_RETURNCMD | TPM_RIGHTBUTTON, point.x, point.y,
-                            0, hwnd, nullptr);
-                        DestroyMenu(menu);
-                        if (command == 1)
-                            OpenCatalogAsset(catalogIndex);
-                        else if (command == 2)
-                            SaveCatalogAsset(hwnd, catalogIndex);
-                    }
-                }
-            }
-            return 0;
-        }
-
-        if (nmhdr->code == LVN_COLUMNCLICK && nmhdr->idFrom == IDC_ASSET_LIST) {
-            const int column = reinterpret_cast<NMLISTVIEW*>(lParam)->iSubItem;
-            if (g_assetSortColumn == column)
-                g_assetSortAscending = !g_assetSortAscending;
-            else {
-                g_assetSortColumn = column;
-                g_assetSortAscending = true;
-            }
-            const bool ascending = g_assetSortAscending;
-            std::stable_sort(g_assetCatalog.begin(), g_assetCatalog.end(),
-                [column, ascending](const AssetCatalogEntry& a, const AssetCatalogEntry& b) {
-                    int result = 0;
-                    switch (column) {
-                    case 0:
-                        result = LowerAscii(a.name).compare(LowerAscii(b.name));
-                        break;
-                    case 1:
-                        result = LowerAscii(a.archive).compare(LowerAscii(b.archive));
-                        break;
-                    case 2:
-                        result = LowerAscii(std::filesystem::path(a.name).extension().string())
-                                     .compare(LowerAscii(std::filesystem::path(b.name).extension().string()));
-                        break;
-                    case 3:
-                        result = a.entry.offset < b.entry.offset ? -1 : a.entry.offset > b.entry.offset ? 1 : 0;
-                        break;
-                    case 4:
-                        result = a.entry.length < b.entry.length ? -1 : a.entry.length > b.entry.length ? 1 : 0;
-                        break;
-                    default:
-                        break;
-                    }
-                    return ascending ? result < 0 : result > 0;
-                });
-            PopulateAssetList();
-            return 0;
-        }
-        
-        // Double-click on Archive list to open VDX in VDX Info tab
-        if (nmhdr->code == NM_DBLCLK && nmhdr->idFrom == IDC_ARCHIVE_LIST) {
-            int selIdx = ListView_GetNextItem(g_archiveControls[2], -1, LVNI_SELECTED);
-            if (selIdx >= 0) {
-                LVITEMW lvi = {};
-                lvi.mask = LVIF_PARAM;
-                lvi.iItem = selIdx;
-                ListView_GetItem(g_archiveControls[2], &lvi);
-                size_t entryIdx = static_cast<size_t>(lvi.lParam);
-                if (entryIdx < g_currentRLEntries.size()) {
-                    PopulateVDXFromArchive(g_currentRLEntries[entryIdx]);
-                    TabCtrl_SetCurSel(g_hTab, TAB_VDX_INFO);
-                    SwitchTab(TAB_VDX_INFO);
-                }
-            }
-            return 0;
-        }
-        
-        // Right-click on Archive list shows context menu
-        if (nmhdr->code == NM_RCLICK && nmhdr->idFrom == IDC_ARCHIVE_LIST) {
-            int selIdx = ListView_GetNextItem(g_archiveControls[2], -1, LVNI_SELECTED);
-            if (selIdx >= 0) {
-                POINT pt;
-                GetCursorPos(&pt);
-                
-                HMENU hMenu = CreatePopupMenu();
-                AppendMenuW(hMenu, MF_STRING, 1, L"Open in VDX Info...");
-                
-                int cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
-                    pt.x, pt.y, 0, hwnd, nullptr);
-                DestroyMenu(hMenu);
-                
-                if (cmd == 1) {
-                    LVITEMW lvi = {};
-                    lvi.mask = LVIF_PARAM;
-                    lvi.iItem = selIdx;
-                    ListView_GetItem(g_archiveControls[2], &lvi);
-                    size_t entryIdx = static_cast<size_t>(lvi.lParam);
-                    if (entryIdx < g_currentRLEntries.size()) {
-                        PopulateVDXFromArchive(g_currentRLEntries[entryIdx]);
-                        TabCtrl_SetCurSel(g_hTab, TAB_VDX_INFO);
-                        SwitchTab(TAB_VDX_INFO);
-                    }
-                }
-            }
-            return 0;
-        }
-        
-        // Right-click on 0x20 or 0x25 list shows save context menu
-        if (nmhdr->code == NM_RCLICK && 
-            (nmhdr->idFrom == IDC_VDX_0x20_LIST || nmhdr->idFrom == IDC_VDX_0x25_LIST)) {
-            // Only show menu if we have bitmap data to save
-            if (g_bitmapData.size() > 0) {
-                POINT pt;
-                GetCursorPos(&pt);
-                
-                HMENU hMenu = CreatePopupMenu();
-                AppendMenuW(hMenu, MF_STRING, 1, L"Save RAW...");
-                AppendMenuW(hMenu, MF_STRING, 2, L"Save PNG...");
-                
-                int cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
-                    pt.x, pt.y, 0, hwnd, nullptr);
-                DestroyMenu(hMenu);
-                
-                if (cmd == 1) {
-                    // Save RAW
-                    wchar_t filename[MAX_PATH] = L"bitmap.raw";
-                    OPENFILENAMEW ofn = {};
-                    ofn.lStructSize = sizeof(ofn);
-                    ofn.hwndOwner = hwnd;
-                    ofn.lpstrFilter = L"RAW Files\0*.raw\0All Files\0*.*\0";
-                    ofn.lpstrFile = filename;
-                    ofn.nMaxFile = MAX_PATH;
-                    ofn.lpstrDefExt = L"raw";
-                    ofn.Flags = OFN_OVERWRITEPROMPT;
-                    
-                    if (GetSaveFileNameW(&ofn)) {
-                        std::ofstream file(filename, std::ios::binary);
-                        if (file) {
-                            file.write(reinterpret_cast<const char*>(g_bitmapData.data()), 
-                                       g_bitmapData.size());
-                        }
-                    }
-                }
-                else if (cmd == 2) {
-                    ExportVDX(hwnd, false);
-                }
-            }
-            return 0;
-        }
-        
         if (nmhdr->code == LVN_ITEMCHANGED &&
             (nmhdr->idFrom == IDC_VDX_0x25_LIST || nmhdr->idFrom == IDC_VDX_0x20_LIST)) {
             const auto *change = reinterpret_cast<NMLISTVIEW*>(lParam);
@@ -1386,17 +1324,7 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         if (nmhdr->code == LVN_COLUMNCLICK) {
             NMLISTVIEW* pnmv = (NMLISTVIEW*)lParam;
             
-            if (nmhdr->idFrom == IDC_ARCHIVE_LIST) {
-                if (g_archiveSortColumn == pnmv->iSubItem) {
-                    g_archiveSortAscending = !g_archiveSortAscending;
-                } else {
-                    g_archiveSortColumn = pnmv->iSubItem;
-                    g_archiveSortAscending = true;
-                }
-                ListView_SortItemsEx(g_archiveControls[2], ArchiveListCompare, 
-                    (LPARAM)(g_archiveSortColumn | (g_archiveSortAscending ? 0 : 0x1000)));
-            }
-            else if (nmhdr->idFrom == IDC_VDX_0x20_LIST || 
+            if (nmhdr->idFrom == IDC_VDX_0x20_LIST || 
                      nmhdr->idFrom == IDC_VDX_0x25_LIST || 
                      nmhdr->idFrom == IDC_VDX_0x80_LIST) {
                 if (g_vdxSortColumn == pnmv->iSubItem) {
@@ -1434,17 +1362,10 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                 PopulateAssetList();
             break;
 
-        case IDC_ARCHIVE_BROWSE_BTN: {
-            std::string file = OpenFileDialog(hwnd, 
-                L"Archive Files (*.RL;*.GJD)\0*.RL;*.GJD\0All Files (*.*)\0*.*\0",
-                L"Select RL or GJD File");
-            if (!file.empty()) {
-                SetWindowTextA(g_archiveControls[0], file.c_str());
-                PopulateArchiveList(file);
-            }
+        case IDC_ASSET_PREVIEW:
+            OpenSelectedBrowserAsset();
             break;
-        }
-        
+
         case IDC_VDX_BROWSE_BTN: {
             std::string file = OpenFileDialog(hwnd,
                 L"VDX Files (*.VDX)\0*.VDX\0All Files (*.*)\0*.*\0",
@@ -1456,6 +1377,41 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             break;
         }
 
+        case IDC_VDX_BRUSH:
+            g_alphaBrush = SendMessage(g_vdxPlaybackControls[9], BM_GETCHECK, 0, 0) == BST_CHECKED;
+            if (g_alphaBrush) {
+                StopVDXPlayback(false);
+                g_alphaMode = true;
+                SendMessage(g_vdxPlaybackControls[5], BM_SETCHECK, BST_CHECKED, 0);
+                SetWindowTextW(g_vdxControls[13], L"Brush: left-drag includes actor; right-drag excludes background; Shift-right-drag undoes edits. Masks autosave.");
+            }
+            ShowVDXPlaybackFrame();
+            break;
+        case IDC_VDX_BRUSH_SIZE: {
+            HMENU menu = CreatePopupMenu();
+            for (int size : {1, 4, 8, 16, 32}) {
+                const auto name = std::format(L"{} px", size);
+                AppendMenuW(menu, MF_STRING | (size == g_alphaBrushSize ? MF_CHECKED : 0), size, name.c_str());
+            }
+            RECT rect{};
+            GetWindowRect(g_vdxPlaybackControls[10], &rect);
+            const int size = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON,
+                rect.left, rect.bottom, 0, hwnd, nullptr);
+            DestroyMenu(menu);
+            if (size) {
+                g_alphaBrushSize = size;
+                SetWindowTextW(g_vdxPlaybackControls[10], std::format(L"{} px", size).c_str());
+            }
+            break;
+        }
+        case IDC_VDX_BRUSH_RESET:
+            if (g_maskProject.initialized && !g_playbackVDX.frameData.empty()) {
+                g_alphaRestored.erase(g_playbackFrame);
+                g_maskDirty.insert(g_playbackFrame);
+                SaveVDXMaskProject();
+                ShowVDXPlaybackFrame();
+            }
+            break;
         case IDC_VDX_ALPHA:
             g_alphaMode = SendMessage(g_vdxPlaybackControls[5], BM_GETCHECK, 0, 0) == BST_CHECKED;
             ShowVDXPlaybackFrame();
@@ -1547,6 +1503,10 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
     }
 
     case WM_TIMER:
+        if (wParam == VDX_MASK_SAVE_TIMER) {
+            SaveVDXMaskProject();
+            return 0;
+        }
         if (wParam == VDX_PLAYBACK_TIMER && g_vdxPlaying
             && !g_playbackVDX.frameData.empty()) {
             const size_t frame = g_playbackStartFrame + static_cast<size_t>(
@@ -1564,24 +1524,25 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         break;
     
     case WM_CLOSE:
+        if (!SaveVDXMaskProject()) return 0;
         DestroyWindow(hwnd);
         return 0;
         
     case WM_DESTROY:
+        KillTimer(hwnd, VDX_MASK_SAVE_TIMER);
+        SaveVDXMaskProject();
         StopVDXPlayback(false);
         g_menuActive = false;
         resumeCursorTimer();
         g_toolsWindow = nullptr;
         g_hTab = nullptr;
         memset(g_assetControls, 0, sizeof(g_assetControls));
-        memset(g_archiveControls, 0, sizeof(g_archiveControls));
         memset(g_vdxControls, 0, sizeof(g_vdxControls));
         memset(g_vdxPlaybackControls, 0, sizeof(g_vdxPlaybackControls));
         memset(g_cursorControls, 0, sizeof(g_cursorControls));
+        ClearAssetTree();
         g_assetCatalog.clear();
         g_assetFolder.clear();
-        g_currentRLEntries.clear();
-        g_currentRLFile.clear();
         g_currentGJDFile.clear();
         g_vdxChunks.clear();
         g_currentVDXFile.clear();
@@ -1627,8 +1588,6 @@ static void CreateTabs(HWND hwnd)
     tie.pszText = (LPWSTR)L"Asset Browser";
     TabCtrl_InsertItem(g_hTab, TAB_ASSET_BROWSER, &tie);
 
-    tie.pszText = (LPWSTR)L"Archive Info";
-    TabCtrl_InsertItem(g_hTab, TAB_ARCHIVE_INFO, &tie);
     
     tie.pszText = (LPWSTR)L"VDX Info";
     TabCtrl_InsertItem(g_hTab, TAB_VDX_INFO, &tie);
@@ -1660,30 +1619,30 @@ static void CreateAssetBrowserTab(HWND hwnd)
         WS_CHILD | ES_AUTOHSCROLL,
         68, 84, 300, 24, hwnd, (HMENU)IDC_ASSET_FILTER_EDIT, hInst, nullptr);
     g_assetControls[4] = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
-        WS_CHILD | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL | WS_CLIPSIBLINGS,
+        WS_CHILD | WS_TABSTOP | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL | WS_CLIPSIBLINGS,
         20, 120, 980, 400, hwnd, (HMENU)IDC_ASSET_LIST, hInst, nullptr);
     g_assetControls[5] = CreateWindowExW(0, L"STATIC",
         L"Select a T7G data folder. Double-click a VDX asset to inspect its frames.",
         WS_CHILD | SS_LEFT,
         20, 530, 980, 22, hwnd, (HMENU)IDC_ASSET_STATUS, hInst, nullptr);
 
+    g_assetControls[6] = CreateWindowExW(WS_EX_CLIENTEDGE, WC_TREEVIEWW, L"",
+        WS_CHILD | WS_TABSTOP | TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_SHOWSELALWAYS,
+        0, 0, 0, 0, hwnd, (HMENU)IDC_ASSET_TREE, hInst, nullptr);
+    g_assetControls[7] = CreateWindowExW(0, L"BUTTON", L"Open in VDX Info...",
+        WS_CHILD | WS_TABSTOP | WS_DISABLED, 0, 0, 0, 0, hwnd, (HMENU)IDC_ASSET_PREVIEW, hInst, nullptr);
+    InitializeAssetTreeIcons();
     for (HWND control : g_assetControls)
         SendMessage(control, WM_SETFONT, (WPARAM)hFont, TRUE);
-    ListView_SetExtendedListViewStyle(g_assetControls[4],
-        LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_HEADERDRAGDROP | LVS_EX_DOUBLEBUFFER);
-
-    LVCOLUMNW column = {};
+    ListView_SetExtendedListViewStyle(g_assetControls[4], LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
+    LVCOLUMNW column{};
     column.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
-    column.iSubItem = 0; column.pszText = (LPWSTR)L"Asset"; column.cx = 260;
-    ListView_InsertColumn(g_assetControls[4], 0, &column);
-    column.iSubItem = 1; column.pszText = (LPWSTR)L"Archive"; column.cx = 100;
-    ListView_InsertColumn(g_assetControls[4], 1, &column);
-    column.iSubItem = 2; column.pszText = (LPWSTR)L"Type"; column.cx = 90;
-    ListView_InsertColumn(g_assetControls[4], 2, &column);
-    column.iSubItem = 3; column.pszText = (LPWSTR)L"Offset"; column.cx = 140;
-    ListView_InsertColumn(g_assetControls[4], 3, &column);
-    column.iSubItem = 4; column.pszText = (LPWSTR)L"Size"; column.cx = 120;
-    ListView_InsertColumn(g_assetControls[4], 4, &column);
+    const wchar_t *names[] = {L"Name", L"Type", L"Data"};
+    const int widths[] = {200, 110, 520};
+    for (int i = 0; i < 3; ++i) {
+        column.iSubItem = i; column.pszText = const_cast<wchar_t*>(names[i]); column.cx = widths[i];
+        ListView_InsertColumn(g_assetControls[4], i, &column);
+    }
 }
 
 /*
@@ -1691,60 +1650,7 @@ static void CreateAssetBrowserTab(HWND hwnd)
 Function: CreateArchiveInfoTab - ListView for RL/GJD contents
 ===============================================================================
 */
-static void CreateArchiveInfoTab(HWND hwnd)
-{
-    HINSTANCE hInst = GetModuleHandle(nullptr);
-    HFONT hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
-    
-    // File path edit (with proper border)
-    g_archiveControls[0] = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
-        WS_CHILD | ES_AUTOHSCROLL | ES_READONLY,
-        20, 50, 680, 24, hwnd, (HMENU)IDC_ARCHIVE_FILE_EDIT, hInst, nullptr);
-    SendMessage(g_archiveControls[0], WM_SETFONT, (WPARAM)hFont, TRUE);
-    
-    // Browse button
-    g_archiveControls[1] = CreateWindowExW(0, L"BUTTON", L"Browse...",
-        WS_CHILD | BS_PUSHBUTTON,
-        710, 50, 80, 24, hwnd, (HMENU)IDC_ARCHIVE_BROWSE_BTN, hInst, nullptr);
-    SendMessage(g_archiveControls[1], WM_SETFONT, (WPARAM)hFont, TRUE);
-    
-    // ListView
-    g_archiveControls[2] = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
-        WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SHOWSELALWAYS | WS_CLIPSIBLINGS,
-        20, 90, 770, 450, hwnd, (HMENU)IDC_ARCHIVE_LIST, hInst, nullptr);
-    ListView_SetExtendedListViewStyle(g_archiveControls[2], 
-        LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_HEADERDRAGDROP | LVS_EX_DOUBLEBUFFER);
-    
-    // Add columns
-    LVCOLUMNW lvc = {};
-    lvc.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
-    
-    lvc.iSubItem = 0;
-    lvc.pszText = (LPWSTR)L"Filename";
-    lvc.cx = 200;
-    ListView_InsertColumn(g_archiveControls[2], 0, &lvc);
-    
-    lvc.iSubItem = 1;
-    lvc.pszText = (LPWSTR)L"Offset";
-    lvc.cx = 150;
-    ListView_InsertColumn(g_archiveControls[2], 1, &lvc);
-    
-    lvc.iSubItem = 2;
-    lvc.pszText = (LPWSTR)L"Size";
-    lvc.cx = 120;
-    ListView_InsertColumn(g_archiveControls[2], 2, &lvc);
-    
-    lvc.iSubItem = 3;
-    lvc.pszText = (LPWSTR)L"RL Offset";
-    lvc.cx = 120;
-    ListView_InsertColumn(g_archiveControls[2], 3, &lvc);
-    
-    // Status
-    g_archiveControls[3] = CreateWindowExW(0, L"STATIC", L"Select an RL or GJD file to view contents.",
-        WS_CHILD | SS_LEFT,
-        20, 550, 600, 20, hwnd, (HMENU)IDC_ARCHIVE_STATUS, hInst, nullptr);
-    SendMessage(g_archiveControls[3], WM_SETFONT, (WPARAM)hFont, TRUE);
-}
+
 
 /*
 ===============================================================================
@@ -1905,6 +1811,13 @@ static void CreateVDXInfoTab(HWND hwnd)
         WS_CHILD | WS_TABSTOP, 0,0,0,0, hwnd, (HMENU)IDC_VDX_SAVE_FRAME, hInst, nullptr);
     g_vdxPlaybackControls[8] = CreateWindowExW(0, L"BUTTON", L"Dump PNGs...",
         WS_CHILD | WS_TABSTOP, 0,0,0,0, hwnd, (HMENU)IDC_VDX_DUMP, hInst, nullptr);
+    g_vdxPlaybackControls[9] = CreateWindowExW(0, L"BUTTON", L"Brush",
+        WS_CHILD | WS_TABSTOP | BS_AUTOCHECKBOX | BS_PUSHLIKE, 0,0,0,0, hwnd, (HMENU)IDC_VDX_BRUSH, hInst, nullptr);
+    g_vdxPlaybackControls[10] = CreateWindowExW(0, L"BUTTON", std::format(L"{} px", g_alphaBrushSize).c_str(),
+        WS_CHILD | WS_TABSTOP, 0,0,0,0, hwnd, (HMENU)IDC_VDX_BRUSH_SIZE, hInst, nullptr);
+    g_vdxPlaybackControls[11] = CreateWindowExW(0, L"BUTTON", L"Reset Brush",
+        WS_CHILD | WS_TABSTOP, 0,0,0,0, hwnd, (HMENU)IDC_VDX_BRUSH_RESET, hInst, nullptr);
+    SendMessage(g_vdxPlaybackControls[9], BM_SETCHECK, g_alphaBrush ? BST_CHECKED : BST_UNCHECKED, 0);
     for (HWND control : g_vdxPlaybackControls)
         SendMessage(control, WM_SETFONT, (WPARAM)hFont, TRUE);
     
@@ -1975,11 +1888,8 @@ Function: HideAllTabs
 */
 static void HideAllTabs()
 {
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 8; i++) {
         if (g_assetControls[i]) ShowWindow(g_assetControls[i], SW_HIDE);
-    }
-    for (int i = 0; i < 4; i++) {
-        if (g_archiveControls[i]) ShowWindow(g_archiveControls[i], SW_HIDE);
     }
     for (int i = 0; i < 17; i++) {
         if (g_vdxControls[i]) ShowWindow(g_vdxControls[i], SW_HIDE);
@@ -2001,18 +1911,10 @@ static void ShowTab(int tabIndex)
 {
     switch (tabIndex) {
     case TAB_ASSET_BROWSER:
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < 8; i++) {
             if (g_assetControls[i]) {
                 ShowWindow(g_assetControls[i], SW_SHOW);
                 BringWindowToTop(g_assetControls[i]);
-            }
-        }
-        break;
-    case TAB_ARCHIVE_INFO:
-        for (int i = 0; i < 4; i++) {
-            if (g_archiveControls[i]) {
-                ShowWindow(g_archiveControls[i], SW_SHOW);
-                BringWindowToTop(g_archiveControls[i]);
             }
         }
         break;
@@ -2062,91 +1964,7 @@ static void SwitchTab(int tabIndex)
 Function: PopulateArchiveList - Load RL file and populate ListView
 ===============================================================================
 */
-static void PopulateArchiveList(const std::string& filename)
-{
-    HWND hList = g_archiveControls[2];
-    ListView_DeleteAllItems(hList);
-    
-    try {
-        // If user selected a GJD file, try to find corresponding RL file
-        std::string rlFilename = filename;
-        std::filesystem::path filePath(filename);
-        std::string ext = filePath.extension().string();
-        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-        
-        if (ext == ".gjd") {
-            // Try to find RL file with same base name
-            std::filesystem::path rlPath = filePath;
-            rlPath.replace_extension(".RL");
-            if (std::filesystem::exists(rlPath)) {
-                rlFilename = rlPath.string();
-            } else {
-                rlPath.replace_extension(".rl");
-                if (std::filesystem::exists(rlPath)) {
-                    rlFilename = rlPath.string();
-                } else {
-                    SetWindowTextA(g_archiveControls[3], "Error: Corresponding RL file not found.");
-                    return;
-                }
-            }
-            // Update the text box to show the RL file we're actually using
-            SetWindowTextA(g_archiveControls[0], rlFilename.c_str());
-        }
-        
-        auto rlResult = parseRLFile(rlFilename);
-        if (!rlResult) return;
-        auto entries = std::move(*rlResult);
-        
-        int rlOffset = 0;
-        for (size_t i = 0; i < entries.size(); i++) {
-            const auto& entry = entries[i];
-            
-            std::wstring wFilename(entry.filename.begin(), entry.filename.end());
-            
-            LVITEMW lvi = {};
-            lvi.mask = LVIF_TEXT | LVIF_PARAM;
-            lvi.iItem = static_cast<int>(i);
-            lvi.lParam = static_cast<LPARAM>(i);
-            lvi.pszText = const_cast<LPWSTR>(wFilename.c_str());
-            ListView_InsertItem(hList, &lvi);
-            
-            std::wstring wOffset = FormatOffset(entry.offset);
-            ListView_SetItemText(hList, static_cast<int>(i), 1, const_cast<LPWSTR>(wOffset.c_str()));
-            
-            std::wstring wSize = FormatSize(entry.length);
-            ListView_SetItemText(hList, static_cast<int>(i), 2, const_cast<LPWSTR>(wSize.c_str()));
-            
-            std::wstring wRLOffset = FormatOffset(rlOffset);
-            ListView_SetItemText(hList, static_cast<int>(i), 3, const_cast<LPWSTR>(wRLOffset.c_str()));
-            
-            rlOffset += 20;
-        }
-        
-        char status[256];
-        snprintf(status, sizeof(status), "Loaded %zu entries from archive.", entries.size());
-        SetWindowTextA(g_archiveControls[3], status);
-        
-        g_currentRLEntries = entries;
-        g_currentRLFile = rlFilename;
-        
-        // Store GJD path for VDX loading
-        std::filesystem::path gjdPath(rlFilename);
-        gjdPath.replace_extension(".GJD");
-        if (std::filesystem::exists(gjdPath)) {
-            g_currentGJDFile = gjdPath.string();
-        } else {
-            gjdPath.replace_extension(".gjd");
-            if (std::filesystem::exists(gjdPath)) {
-                g_currentGJDFile = gjdPath.string();
-            }
-        }
-    }
-    catch (const std::exception& e) {
-        char error[512];
-        snprintf(error, sizeof(error), "Error: %s", e.what());
-        SetWindowTextA(g_archiveControls[3], error);
-    }
-}
+
 
 /*
 ===============================================================================
@@ -2155,6 +1973,7 @@ Function: PopulateVDXInfoList - Load VDX and show header + chunk info
 */
 static void PopulateVDXInfoList(const std::string& filename)
 {
+    if (!SaveVDXMaskProject()) return;
     // New control indices:
     // [5]=0x20 list, [9]=0x25 list, [12]=0x80 list
     HWND hList0x20 = g_vdxControls[5];   // 0x20 Bitmap ListView
@@ -2382,6 +2201,7 @@ Function: PopulateVDXFromArchive - Load VDX from GJD archive (in RAM)
 */
 static void PopulateVDXFromArchive(const RLEntry& entry)
 {
+    if (!SaveVDXMaskProject()) return;
     if (g_currentGJDFile.empty()) {
         SetWindowTextA(g_vdxControls[13], "Error: No GJD file available.");
         return;
@@ -2593,49 +2413,7 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
 Function: ArchiveListCompare - Sort callback for Archive ListView
 ===============================================================================
 */
-static int CALLBACK ArchiveListCompare(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort)
-{
-    HWND hList = g_archiveControls[2];
-    int col = lParamSort & 0xFFF;
-    bool ascending = (lParamSort & 0x1000) == 0;
-    
-    wchar_t buf1[256] = {0}, buf2[256] = {0};
-    ListView_GetItemText(hList, static_cast<int>(lParam1), col, buf1, 256);
-    ListView_GetItemText(hList, static_cast<int>(lParam2), col, buf2, 256);
-    
-    int result = 0;
-    
-    if (col == 0) {
-        result = wcscmp(buf1, buf2);
-    } else {
-        std::wstring s1(buf1), s2(buf2);
-        s1.erase(std::remove(s1.begin(), s1.end(), L','), s1.end());
-        s2.erase(std::remove(s2.begin(), s2.end(), L','), s2.end());
-        
-        double v1 = 0, v2 = 0;
-        if (s1.find(L"MB") != std::wstring::npos) {
-            v1 = _wtof(s1.c_str()) * 1024 * 1024;
-        } else if (s1.find(L"KB") != std::wstring::npos) {
-            v1 = _wtof(s1.c_str()) * 1024;
-        } else {
-            v1 = _wtof(s1.c_str());
-        }
-        
-        if (s2.find(L"MB") != std::wstring::npos) {
-            v2 = _wtof(s2.c_str()) * 1024 * 1024;
-        } else if (s2.find(L"KB") != std::wstring::npos) {
-            v2 = _wtof(s2.c_str()) * 1024;
-        } else {
-            v2 = _wtof(s2.c_str());
-        }
-        
-        if (v1 < v2) result = -1;
-        else if (v1 > v2) result = 1;
-        else result = 0;
-    }
-    
-    return ascending ? result : -result;
-}
+
 
 /*
 ===============================================================================

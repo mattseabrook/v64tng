@@ -206,38 +206,113 @@ RayHit castRay(vec2 pos, vec2 rayDir)
 // Shading & Lighting
 //==============================================================================
 
-// Procedural mortar mask (approximation to CPU)
-float mortarMask(float globalU, float v)
+// Continuous foundation stone: no repeated tile or map-sized allocation.
+// Irregular foundation stones, recessed mortar, concrete mottling and chips.
+float floorHash(float x, float y)
 {
-    // 1024 px width = 3 world units; vertical: 1 unit per full height
-    float x = (globalU / 1024.0) * 3.0;
-    float y = v;
-    float density = 2.0; // cells/unit
-    float X = x * density;
-    float Y = y * density;
-    int xi = int(floor(X));
-    int yi = int(floor(Y));
-    float f1 = 1e9, f2 = 1e9;
-    for (int dy=-1; dy<=1; ++dy)
-    for (int dx=-1; dx<=1; ++dx)
+    uint h = uint(int(x)) * 374761393u + uint(int(y)) * 668265263u + 1937u;
+    h = (h ^ (h >> 13u)) * 1274126177u;
+    return float(h ^ (h >> 16u)) / 4294967295.0;
+}
+float floorNoise(float x, float y)
+{
+    float ix = floor(x), iy = floor(y);
+    float u = x - ix, v = y - iy;
+    u = u*u*(3.0-2.0*u); v = v*v*(3.0-2.0*v);
+    return mix(mix(floorHash(ix,iy), floorHash(ix+1.0,iy),u),
+                mix(floorHash(ix,iy+1.0), floorHash(ix+1.0,iy+1.0),u),v);
+}
+float foundationStone(float x, float y, float footprint)
+{
+    float wx = x*1.7 + 0.22*floorNoise(x*3.0,y*3.0);
+    float wy = y*1.7 + 0.22*floorNoise(x*3.0+37.0,y*3.0+19.0);
+    float ix = floor(wx), iy = floor(wy);
+    float first = 100.0, second = 100.0, stone = 0.5;
+    for (int j=-1; j<=1; ++j)
+    for (int i=-1; i<=1; ++i)
     {
-        int cx = xi+dx, cy = yi+dy;
-        uint h = uint(cx)*73856093u ^ uint(cy)*19349663u ^ 12345u;
-        float jx = fract(float(h) * 0.000000119);
-        float jy = fract(float(h) * 0.000000167);
-        float fx = float(cx) + jx;
-        float fy = float(cy) + jy;
-        float dxp = X - fx;
-        float dyp = Y - fy;
-        float d2 = dxp*dxp + dyp*dyp;
-        if (d2 < f1) { f2 = f1; f1 = d2; }
-        else if (d2 < f2) { f2 = d2; }
+        float cx = ix+float(i), cy = iy+float(j);
+        float seed = floorHash(cx,cy);
+        float dx = wx-cx-0.15-0.7*seed;
+        float dy = wy-cy-0.15-0.7*floorHash(cx+71.0,cy-43.0);
+        float d = dx*dx+dy*dy;
+        if (d < first) { second=first; first=d; stone=seed; }
+        else { second=min(second,d); }
     }
-    f1 = sqrt(f1); f2 = sqrt(f2);
-    float ridge = (f2 - f1);
-    float target = 0.015; // world units (3x thicker for more visible mortar lines)
-    float m = clamp(1.0 - smoothstep(target*0.25, target*0.75, ridge), 0.0, 1.0);
-    return pow(m, 0.8);
+    float ridge = sqrt(second)-sqrt(first);
+    float aa = max(0.008,footprint*1.7);
+    float mortar = 1.0-smoothstep(0.025,0.025+aa,ridge);
+    float detail = 1.0-smoothstep(0.015,0.09,footprint);
+    float chips = smoothstep(0.68,0.86,floorNoise(x*43.0,y*43.0))*detail;
+    float grain = (floorNoise(x*95.0,y*95.0)-0.5)*detail;
+    float grey = 106.0 + (stone-0.5)*12.0
+        + (floorNoise(x*4.0,y*4.0)-0.5)*18.0 + grain*9.0 - chips*23.0;
+    // Suppress subpixel seams at distance to keep the floor from shimmering.
+    mortar *= 1.0-smoothstep(0.08,0.3,footprint);
+    return (106.0+0.9*(mix(grey,65.0,mortar)-106.0))/255.0;
+}
+float quietFloor(float x, float y, float footprint)
+{
+    // Concrete mottling and scattered flecks, without stone cells or mortar.
+    float detail = 1.0-smoothstep(0.015,0.09,footprint);
+    float grain = floorNoise(x*9.0,y*9.0)-0.5;
+    float flecks = smoothstep(0.72,0.9,floorNoise(x*43.0,y*43.0))*detail;
+    return (106.0+grain*4.0-flecks*5.0)/255.0;
+}
+
+float basementLight(float distance, float range)
+{
+    return 0.65*(1.0-smoothstep(range*0.55,range,distance)) / (1.0+0.035*distance);
+}
+
+// Project the prepared animation as a world billboard; the ray hit supplies
+// wall occlusion for this pixel. Camera movement never moves the source itself.
+vec3 ghostPixel(vec3 color, uvec2 pixel, RayHit hit)
+{
+    if (data2[0] == 0u) return color;
+    vec2 relative=vec2(uintBitsToFloat(data2[3])-pc.playerX,uintBitsToFloat(data2[4])-pc.playerY);
+    float depth=dot(relative,vec2(cos(pc.playerAngle),sin(pc.playerAngle)));
+    if (depth<=0.1 || (hit.hitWall && hit.distance*hit.cosCorr<depth)) return color;
+    float side=dot(relative,vec2(-sin(pc.playerAngle),cos(pc.playerAngle)));
+    float tangent=tan(pc.playerFOV*0.5*pc.fovMul);
+    float fx=float(pc.screenWidth)*0.5/tangent, fy=float(pc.screenHeight)*0.5/tangent;
+    float h=fy*3.8/depth;
+    float w=fx*3.8*float(data2[1])/float(data2[2])/depth;
+    float left=float(pc.screenWidth)*0.5+side*fx/depth-w*0.5;
+    float top=float(pc.screenHeight)*0.5+fy*pc.visualScale/depth-h;
+    vec2 uv=(vec2(pixel)+0.5-vec2(left,top))/vec2(w,h);
+    if (uv.x<0.0 || uv.y<0.0 || uv.x>=1.0 || uv.y>=1.0) return color;
+    uint x=uint(uv.x*float(data2[1])), y=uint(uv.y*float(data2[2]));
+    uint rgba=data2[8u+y*data2[1]+x];
+    vec3 actor=vec3(float(rgba&255u),float((rgba>>8u)&255u),float((rgba>>16u)&255u))/255.0;
+    float alpha=float(rgba>>24u)/255.0;
+    alpha*=1.0-smoothstep(pc.torchRange*0.7,pc.torchRange,length(relative));
+    return mix(color,actor,alpha);
+}
+
+// Only geometric turns get a line; adjacent coplanar tiles stay seamless.
+bool cornerSolid(ivec2 cell)
+{
+    if (cell.x<0 || cell.y<0 || cell.x>=int(pc.mapWidth) || cell.y>=int(pc.mapHeight)) return true;
+    uint tile=getTile(cell);
+    return tile>=1u && (tile<0xf0u || tile>0xf3u);
+}
+bool cornerPixel(uint pixelX, RayHit hit)
+{
+    bool vertical=(hit.cardinalSide&1)!=0;
+    int endpoint=hit.wallX<0.5 ? 0 : 1;
+    int vx=hit.cell.x+(vertical ? (hit.cardinalSide==1 ? 1 : 0) : endpoint);
+    int vy=hit.cell.y+(vertical ? endpoint : (hit.cardinalSide==2 ? 1 : 0));
+    bool a=cornerSolid(ivec2(vx-1,vy-1)), b=cornerSolid(ivec2(vx,vy-1));
+    bool c=cornerSolid(ivec2(vx-1,vy)), d=cornerSolid(ivec2(vx,vy));
+    int count=int(a)+int(b)+int(c)+int(d);
+    if (!(count==1 || count==3 || (count==2 && a==d))) return false;
+    vec2 relative=vec2(vx,vy)-vec2(pc.playerX,pc.playerY);
+    float depth=dot(relative,vec2(cos(pc.playerAngle),sin(pc.playerAngle)));
+    if (depth<=0.001) return false;
+    float side=dot(relative,vec2(-sin(pc.playerAngle),cos(pc.playerAngle)));
+    float projected=float(pc.screenWidth)*0.5*(1.0+side/(depth*tan(pc.playerFOV*0.5*pc.fovMul)));
+    return floor(projected)==float(pixelX);
 }
 
 vec3 shadePixel(uvec2 pixel, RayHit hit, float halfW, float halfH, float maxRadius)
@@ -251,18 +326,25 @@ vec3 shadePixel(uvec2 pixel, RayHit hit, float halfW, float halfH, float maxRadi
     float screenDist = sqrt(dx * dx + dy * dy);
     float screenFactor = max(0.0, 1.0 - (screenDist / maxRadius) * pc.falloffMul);
     
-    // Ceiling gradient
-    float ceilingShade = (120.0/255.0) * (1.0 - yf / halfH);
-    ceilingShade = clamp(ceilingShade, 0.0, 1.0);
-    vec3 ceilingColor = vec3(ceilingShade);
-    
-    // Floor gradient
-    float floorRatio = (yf - halfH) / halfH;
-    floorRatio = clamp(floorRatio, 0.0, 1.0);
-    vec3 floorColor = vec3(90.0/255.0 * floorRatio, 
-                           70.0/255.0 * floorRatio, 
-                           50.0/255.0 * floorRatio);
-    
+    // Project both planes with the same camera scale as the wall projection.
+    float viewX = (2.0*(float(pixel.x)+0.5)/float(pc.screenWidth)-1.0)
+        * tan(pc.playerFOV*0.5*pc.fovMul);
+    float corr = 1.0/sqrt(1.0+viewX*viewX);
+    float planeDistance = halfH*pc.visualScale /
+        (max(abs(yf-halfH),0.5)*max(tan(pc.playerFOV*0.5*pc.fovMul),0.001)*corr);
+    float planeLight = basementLight(planeDistance,pc.torchRange);
+    vec3 ceilingColor = vec3(35.0,28.0,42.0)/255.0*planeLight;
+    vec3 floorColor = vec3(0.0,0.0,0.0);
+    if (yf > halfH && planeLight > 0.0)
+    {
+        float angle = pc.playerAngle+atan(viewX);
+        vec2 world = vec2(pc.playerX,pc.playerY)
+            + vec2(cos(angle),sin(angle))*planeDistance;
+        float footprint = planeDistance/max(yf-halfH,1.0);
+        float grey = quietFloor(world.x,world.y,footprint)*planeLight;
+        floorColor = vec3(grey,grey,grey);
+    }
+
     // If no wall hit, just render floor/ceiling
     vec3 color;
     if (!hit.hitWall)
@@ -281,8 +363,6 @@ vec3 shadePixel(uvec2 pixel, RayHit hit, float halfW, float halfH, float maxRadi
         float drawStart = halfH - lineHeight / 2.0;
         float drawEnd = halfH + lineHeight / 2.0;
         
-        // Base wall color
-        vec3 baseWall = vec3(120.0/255.0);
         
         // Determine pixel color: ceiling, wall, or floor
         if (yf < drawStart)
@@ -297,47 +377,33 @@ vec3 shadePixel(uvec2 pixel, RayHit hit, float halfW, float halfH, float maxRadi
         }
         else
         {
-            // Wall with edge blending for anti-aliasing
-            if (yf < drawStart + 1.0)
-            {
-                // Blend ceiling → wall (apply lighting to base wall first)
-                float lightFactor = max(0.0, 1.0 - hit.distance / pc.torchRange);
-                vec3 litWall = baseWall * lightFactor;
-                float weight = (yf - drawStart);
-                weight = clamp(weight, 0.0, 1.0);
-                color = mix(ceilingColor, litWall, weight);
-            }
-            else if (yf > drawEnd - 1.0)
-            {
-                // Blend wall → floor (apply lighting to base wall first)
-                float lightFactor = max(0.0, 1.0 - hit.distance / pc.torchRange);
-                vec3 litWall = baseWall * lightFactor;
-                float weight = (drawEnd - yf);
-                weight = clamp(weight, 0.0, 1.0);
-                color = mix(floorColor, litWall, weight);
-            }
+            // The former floor stone material, mapped continuously along each wall.
+            float v = clamp((yf-drawStart)/max(1.0,drawEnd-drawStart),0.0,1.0);
+            bool vertical = (hit.cardinalSide & 1) != 0;
+            float wx = vertical ? float(hit.cell.x)+(hit.cardinalSide == 1 ? 1.0 : 0.0)
+                : float(hit.cell.x)+hit.wallX;
+            float wy = vertical ? float(hit.cell.y)+hit.wallX
+                : float(hit.cell.y)+(hit.cardinalSide == 2 ? 1.0 : 0.0);
+            float u = wx+wy; // Shared corners sample exactly the same stone seam.
+            float height = 2.0*pc.visualScale;
+            float footprint = max(height/max(1.0,lineHeight),
+                hit.distance*2.0*halfFovTan/float(pc.screenWidth));
+            float grey = foundationStone(u,v*height,footprint)
+                * basementLight(hit.distance,pc.torchRange);
+            if (cornerPixel(pixel.x,hit)) grey = (88.0/255.0)*basementLight(hit.distance,pc.torchRange);
+            if (getTile(hit.cell) == 0xfeu) grey = 0.0;
+            vec3 litWall = vec3(grey,grey,grey);
+            if (yf < drawStart+1.0)
+                color = mix(ceilingColor,litWall,clamp(yf-drawStart,0.0,1.0));
+            else if (yf > drawEnd-1.0)
+                color = mix(floorColor,litWall,clamp(drawEnd-yf,0.0,1.0));
             else
-            {
-                // Pure wall: overlay procedural mortar using global edge offset
-                float v = clamp((yf - drawStart) / max(1.0, (drawEnd - drawStart)), 0.0, 1.0);
-                uint idx = (uint(hit.cell.y) * pc.mapWidth + uint(hit.cell.x)) * 4u + uint(hit.cardinalSide & 3);
-                uint idx3 = idx * 3u;
-                uint xOff = (idx3 + 2u < data2.length()) ? data2[idx3 + 0u] : 0u;
-                uint wpx  = (idx3 + 2u < data2.length()) ? data2[idx3 + 1u] : 1024u;
-                uint dir  = (idx3 + 2u < data2.length()) ? data2[idx3 + 2u] : 0u;
-                float uLocal = (dir != 0u) ? (1.0 - hit.wallX) : hit.wallX;
-                float globalU = float(xOff) + uLocal * float(wpx);
-                float a = mortarMask(globalU, v);
-                vec3 mortarGray = vec3(0.30);
-                // Blend base wall with mortar FIRST (both unlit)
-                vec3 compositedWall = mix(baseWall, mortarGray, a);
-                // THEN apply lighting to the final composited color
-                float lightFactor = max(0.0, 1.0 - hit.distance / pc.torchRange);
-                color = compositedWall * lightFactor;
-            }
+                color = litWall;
         }
     }
     
+    color = ghostPixel(color,pixel,hit);
+
     // Apply screen vignette
     color *= screenFactor;
     

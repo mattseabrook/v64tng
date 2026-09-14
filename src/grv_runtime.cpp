@@ -773,9 +773,8 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 			videoFlags_ |= 1u << 9;
 			break;
 		case 0x04:
-			// Palette interpolation belongs to the native renderer. Consume the
-			// presentation opcode here so execution reaches a following VIDEOREF
-			// or ENDSCRIPT; it has no mutable GRV-bank effect.
+			// Blocking presentation operation, ordered before the next video/copy.
+			presentationCommands_.emplace_back(GrvPaletteFadeOutCommand{});
 			break;
 		case 0x05:
 			videoFlags_ |= 1u << 8;
@@ -1258,6 +1257,76 @@ std::expected<GrvTransition, std::string> GrvRuntime::follow(uint16_t target)
 		return std::unexpected(result.error());
 	return GrvTransition{
 		std::move(videoCommands_), std::move(presentationCommands_), ended_};
+}
+
+std::expected<GrvTransition, std::string> GrvRuntime::solvePuzzle()
+{
+	if (!parentScript_ || ended_ || !activeLoop_)
+		return std::unexpected("No active puzzle to solve");
+	// Retail success entries documented in disassembly/GRV. Fingerprint the
+	// entire child image before using offsets; modified scripts must be mapped
+	// explicitly. Let the child publish its result and the parent run its videos.
+	struct Entry { std::string_view script; uint32_t fingerprint; uint16_t target; };
+	static constexpr Entry entries[] = {
+		{"at.grv", 0x31d86b27u, 0x0736},
+		{"b.grv", 0x9372a22fu, 0x04e9},
+		{"ch.grv", 0xd8ebe270u, 0x1c79},
+		{"cr.grv", 0x4f8343c2u, 0x01cf},
+		{"d.grv", 0xea6a7222u, 0x0114},
+		{"dr.grv", 0xff3a6c76u, 0x120c},
+		{"ek.grv", 0x9f146512u, 0x0c27},
+		{"f.grv", 0xf430ef79u, 0x0512},
+		{"ga.grv", 0x63497cc6u, 0x0054},
+		{"grate.grv", 0x63c449b6u, 0x0119},
+		{"h.grv", 0x68714622u, 0x0149},
+		{"hm.grv", 0xc445a66eu, 0x03b1},
+		{"jh.grv", 0x300f7506u, 0x0c50},
+		{"k.grv", 0x911d6dd2u, 0x0087},
+		{"la.grv", 0x12a10371u, 0x00d3},
+		{"li.grv", 0x7bdc87ebu, 0x082c},
+		{"mb.grv", 0x6e5525edu, 0x0f4b},
+		{"mu.grv", 0x36485d5eu, 0x0536},
+		{"n.grv", 0x2fb6aeb5u, 0x016c},
+		{"p.grv", 0x43d428dfu, 0x0235},
+	};
+	const auto name = asciiLower(scriptPath_.filename().string());
+	const auto entry = std::ranges::find(entries, name, &Entry::script);
+	if (entry == std::end(entries))
+		return std::unexpected("No solve entry for " + name);
+	uint32_t fingerprint = 2166136261u;
+	for (const uint8_t byte : bytes_)
+		fingerprint = (fingerprint ^ byte) * 16777619u;
+	if (fingerprint != entry->fingerprint)
+		return std::unexpected("SOLVE does not recognize this version of " + name);
+
+	// Execute on a copy so an unsupported opcode cannot leave a half-solved VM.
+	auto solved = *this;
+	solved.callDepth_ = solved.parentScript_->stackCheckpoint;
+	// GRATE's success branch animates the final center tile move and then
+	// rechecks the board before returning. Supply its native pre-win layout.
+	if (name == "grate.grv")
+	{
+		constexpr uint8_t finalMove[] = {1, 1, 2, 1, 0, 3};
+		std::ranges::copy(finalMove, solved.variables_.begin());
+	}
+	consoleLogf("GRV", "console solve {} -> 0x{:04X}", name, entry->target);
+	auto transition = solved.follow(entry->target);
+	if (!transition)
+		return std::unexpected(transition.error());
+	// These scripts contain successive boards within the same puzzle. Complete
+	// each native stage, preserving its interlude, with one console command.
+	for (int stage = 0; stage < 3 && (name == "at.grv" || name == "hm.grv")
+		&& solved.parentScript_ && solved.scriptPath_ == scriptPath_; ++stage)
+	{
+		auto next = solved.follow(entry->target);
+		if (!next)
+			return std::unexpected(next.error());
+		transition->videos.insert(transition->videos.end(), next->videos.begin(), next->videos.end());
+		transition->commands.insert(transition->commands.end(), next->commands.begin(), next->commands.end());
+		transition->ended = next->ended;
+	}
+	*this = std::move(solved);
+	return transition;
 }
 
 std::expected<std::optional<GrvTransition>, std::string>

@@ -360,7 +360,7 @@ run_grv_vm:
     %endif
     times 5 - ($ - %%insn_004022ca) db 0
     %%insn_004022cf:
-    call 0x4015bf ; 004022CF E8EBF2FFFF
+    call sleep_until_multimedia_deadline ; 004022CF E8EBF2FFFF
     %if ($ - %%insn_004022cf) > 5
         %error "LONG_004022CF"
     %endif
@@ -681,7 +681,7 @@ grv_opcode_dispatch:
     %endif
     times 5 - ($ - %%insn_004023e5) db 0
     %%insn_004023ea:
-    call 0x40a84b ; 004023EA E85C840000
+    call fade_out_vdx_palette_rgb_and_clear ; 004023EA E85C840000
     %if ($ - %%insn_004023ea) > 5
         %error "LONG_004023EA"
     %endif
@@ -2771,7 +2771,7 @@ grv_opcode_play_interpolated_transition_name:
     %endif
     times 2 - ($ - %%insn_00402a6a) db 0
     %%insn_00402a6c:
-    call 0x40a73a ; 00402A6C E8C97C0000
+    call clear_grv_top_bar ; 00402A6C E8C97C0000
     %if ($ - %%insn_00402a6c) > 5
         %error "LONG_00402A6C"
     %endif
@@ -3883,7 +3883,7 @@ grv_opcode_play_interpolated_transition_name:
     %endif
     times 1 - ($ - %%insn_00402de4) db 0
     %%insn_00402de5:
-    call 0x4017ee ; 00402DE5 E804EAFFFF
+    call grv_read_variable_operand ; 00402DE5 E804EAFFFF
     %if ($ - %%insn_00402de5) > 5
         %error "LONG_00402DE5"
     %endif
@@ -3931,7 +3931,7 @@ grv_opcode_play_interpolated_transition_name:
     %endif
     times 1 - ($ - %%insn_00402e0b) db 0
     %%insn_00402e0c:
-    call 0x401572 ; 00402E0C E861E7FFFF
+    call grv_random_below_limit ; 00402E0C E861E7FFFF
     %if ($ - %%insn_00402e0c) > 5
         %error "LONG_00402E0C"
     %endif
@@ -4009,7 +4009,7 @@ grv_opcode_play_interpolated_transition_name:
     %endif
     times 1 - ($ - %%insn_00402e49) db 0
     %%insn_00402e4a:
-    call 0x4017ee ; 00402E4A E89FE9FFFF
+    call grv_read_variable_operand ; 00402E4A E89FE9FFFF
     %if ($ - %%insn_00402e4a) > 5
         %error "LONG_00402E4A"
     %endif
@@ -4027,7 +4027,7 @@ grv_opcode_play_interpolated_transition_name:
     %endif
     times 7 - ($ - %%insn_00402e52) db 0
     %%insn_00402e59:
-    call 0x4015e6 ; 00402E59 E888E7FFFF
+    call grv_decode_sequence_element ; 00402E59 E888E7FFFF
     %if ($ - %%insn_00402e59) > 5
         %error "LONG_00402E59"
     %endif
@@ -4324,7 +4324,7 @@ grv_opcode_play_interpolated_transition_name:
     %endif
     times 1 - ($ - %%insn_00402f44) db 0
     %%insn_00402f45:
-    call 0x4015bf ; 00402F45 E875E6FFFF
+    call sleep_until_multimedia_deadline ; 00402F45 E875E6FFFF
     %if ($ - %%insn_00402f45) > 5
         %error "LONG_00402F45"
     %endif
@@ -4354,7 +4354,7 @@ grv_opcode_play_interpolated_transition_name:
     %endif
     times 1 - ($ - %%insn_00402f59) db 0
     %%insn_00402f5a:
-    call 0x4017ee ; 00402F5A E88FE8FFFF
+    call grv_read_variable_operand ; 00402F5A E88FE8FFFF
     %if ($ - %%insn_00402f5a) > 5
         %error "LONG_00402F5A"
     %endif
@@ -4404,7 +4404,7 @@ grv_opcode_play_interpolated_transition_name:
     times 3 - ($ - %%insn_00402f85) db 0
     db 0x8B, 0xF2 ; 00402F88 8BF2 | mov esi,edx | encoding preserved
     %%insn_00402f8a:
-    call 0x4015e6 ; 00402F8A E857E6FFFF
+    call grv_decode_sequence_element ; 00402F8A E857E6FFFF
     %if ($ - %%insn_00402f8a) > 5
         %error "LONG_00402F8A"
     %endif
@@ -4556,7 +4556,7 @@ grv_opcode_play_interpolated_transition_name:
     %endif
     times 1 - ($ - %%insn_00403001) db 0
     %%insn_00403002:
-    call 0x4017ee ; 00403002 E8E7E7FFFF
+    call grv_read_variable_operand ; 00403002 E8E7E7FFFF
     %if ($ - %%insn_00403002) > 5
         %error "LONG_00403002"
     %endif
@@ -4720,7 +4720,7 @@ grv_opcode_play_interpolated_transition_name:
     %endif
     times 1 - ($ - %%insn_0040308d) db 0
     %%insn_0040308e:
-    call 0x4017ee ; 0040308E E85BE7FFFF
+    call grv_read_variable_operand ; 0040308E E85BE7FFFF
     %if ($ - %%insn_0040308e) > 5
         %error "LONG_0040308E"
     %endif
@@ -4876,7 +4876,7 @@ grv_opcode_play_interpolated_transition_name:
     %endif
     times 1 - ($ - %%insn_0040310a) db 0
     %%insn_0040310b:
-    call 0x4017ee ; 0040310B E8DEE6FFFF
+    call grv_read_variable_operand ; 0040310B E8DEE6FFFF
     %if ($ - %%insn_0040310b) > 5
         %error "LONG_0040310B"
     %endif
@@ -4966,7 +4966,7 @@ grv_opcode_play_interpolated_transition_name:
     %endif
     times 1 - ($ - %%insn_00403151) db 0
     %%insn_00403152:
-    call 0x4017ee ; 00403152 E897E6FFFF
+    call grv_read_variable_operand ; 00403152 E897E6FFFF
     %if ($ - %%insn_00403152) > 5
         %error "LONG_00403152"
     %endif
@@ -5056,7 +5056,7 @@ grv_opcode_play_interpolated_transition_name:
     %endif
     times 1 - ($ - %%insn_00403198) db 0
     %%insn_00403199:
-    call 0x40179b ; 00403199 E8FDE5FFFF
+    call grv_read_variable_value ; 00403199 E8FDE5FFFF
     %if ($ - %%insn_00403199) > 5
         %error "LONG_00403199"
     %endif
@@ -5184,7 +5184,7 @@ grv_opcode_play_interpolated_transition_name:
     times 3 - ($ - %%insn_00403209) db 0
     db 0x8B, 0xF2 ; 0040320C 8BF2 | mov esi,edx | encoding preserved
     %%insn_0040320e:
-    call 0x4015e6 ; 0040320E E8D3E3FFFF
+    call grv_decode_sequence_element ; 0040320E E8D3E3FFFF
     %if ($ - %%insn_0040320e) > 5
         %error "LONG_0040320E"
     %endif
@@ -5323,11 +5323,12 @@ grv_opcode_play_interpolated_transition_name:
         %error "LONG_00403279"
     %endif
     times 5 - ($ - %%insn_00403279) db 0
-; Opcode 22h COPY_BG_TO_FG.  The jump table maps 22h here; dining trace
+; Opcode 22h snapshots display to saved background (historical COPY_BG_TO_FG
+; mnemonic reversed the direction). The jump table maps 22h here; dining trace
 ; 20260809-212141 reached SCRIPT.GRV:3476 before the palette one-shot opcode.
-grv_opcode_copy_background_to_foreground:
+grv_opcode_snapshot_display_to_background:
     %%insn_0040327e:
-    call 0x40a786 ; 0040327E E803750000
+    call snapshot_display_band_to_saved_background ; 0040327E E803750000
     %if ($ - %%insn_0040327e) > 5
         %error "LONG_0040327E"
     %endif
@@ -5351,7 +5352,7 @@ grv_opcode_copy_background_to_foreground:
     %endif
     times 1 - ($ - %%insn_0040328f) db 0
     %%insn_00403290:
-    call 0x4017ee ; 00403290 E859E5FFFF
+    call grv_read_variable_operand ; 00403290 E859E5FFFF
     %if ($ - %%insn_00403290) > 5
         %error "LONG_00403290"
     %endif
@@ -5401,7 +5402,7 @@ grv_opcode_copy_background_to_foreground:
     times 3 - ($ - %%insn_004032bc) db 0
     db 0x8B, 0xF0 ; 004032BF 8BF0 | mov esi,eax | encoding preserved
     %%insn_004032c1:
-    call 0x4015e6 ; 004032C1 E820E3FFFF
+    call grv_decode_sequence_element ; 004032C1 E820E3FFFF
     %if ($ - %%insn_004032c1) > 5
         %error "LONG_004032C1"
     %endif
@@ -5553,7 +5554,7 @@ grv_opcode_copy_background_to_foreground:
     %endif
     times 1 - ($ - %%insn_00403339) db 0
     %%insn_0040333a:
-    call 0x4017ee ; 0040333A E8AFE4FFFF
+    call grv_read_variable_operand ; 0040333A E8AFE4FFFF
     %if ($ - %%insn_0040333a) > 5
         %error "LONG_0040333A"
     %endif
@@ -5649,7 +5650,7 @@ grv_opcode_copy_background_to_foreground:
     %endif
     times 1 - ($ - %%insn_00403384) db 0
     %%insn_00403385:
-    call 0x4017ee ; 00403385 E864E4FFFF
+    call grv_read_variable_operand ; 00403385 E864E4FFFF
     %if ($ - %%insn_00403385) > 5
         %error "LONG_00403385"
     %endif
@@ -6049,7 +6050,7 @@ grv_opcode_load_game:
     %endif
     times 1 - ($ - %%insn_004034f6) db 0
     %%insn_004034f7:
-    call 0x4017ee ; 004034F7 E8F2E2FFFF
+    call grv_read_variable_operand ; 004034F7 E8F2E2FFFF
     %if ($ - %%insn_004034f7) > 5
         %error "LONG_004034F7"
     %endif
@@ -6133,7 +6134,7 @@ grv_opcode_save_game:
     %endif
     times 1 - ($ - %%insn_0040352b) db 0
     %%insn_0040352c:
-    call 0x4017ee ; 0040352C E8BDE2FFFF
+    call grv_read_variable_operand ; 0040352C E8BDE2FFFF
     %if ($ - %%insn_0040352c) > 5
         %error "LONG_0040352C"
     %endif
@@ -6314,7 +6315,7 @@ grv_opcode_save_game:
     %endif
     times 1 - ($ - %%insn_0040359d) db 0
     %%insn_0040359e:
-    call 0x4017ee ; 0040359E E84BE2FFFF
+    call grv_read_variable_operand ; 0040359E E84BE2FFFF
     %if ($ - %%insn_0040359e) > 5
         %error "LONG_0040359E"
     %endif
@@ -6508,7 +6509,7 @@ grv_opcode_save_game:
     %endif
     times 1 - ($ - %%insn_00403647) db 0
     %%insn_00403648:
-    call 0x4017ee ; 00403648 E8A1E1FFFF
+    call grv_read_variable_operand ; 00403648 E8A1E1FFFF
     %if ($ - %%insn_00403648) > 5
         %error "LONG_00403648"
     %endif
@@ -6563,7 +6564,7 @@ grv_opcode_save_game:
     %endif
     times 7 - ($ - %%insn_00403671) db 0
     %%insn_00403678:
-    call 0x4015e6 ; 00403678 E869DFFFFF
+    call grv_decode_sequence_element ; 00403678 E869DFFFFF
     %if ($ - %%insn_00403678) > 5
         %error "LONG_00403678"
     %endif
@@ -6661,7 +6662,7 @@ grv_opcode_save_game:
     %endif
     times 1 - ($ - %%insn_004036cb) db 0
     %%insn_004036cc:
-    call 0x4017ee ; 004036CC E81DE1FFFF
+    call grv_read_variable_operand ; 004036CC E81DE1FFFF
     %if ($ - %%insn_004036cc) > 5
         %error "LONG_004036CC"
     %endif
@@ -6711,7 +6712,7 @@ grv_opcode_save_game:
     times 3 - ($ - %%insn_004036f8) db 0
     db 0x8B, 0xF0 ; 004036FB 8BF0 | mov esi,eax | encoding preserved
     %%insn_004036fd:
-    call 0x4015e6 ; 004036FD E8E4DEFFFF
+    call grv_decode_sequence_element ; 004036FD E8E4DEFFFF
     %if ($ - %%insn_004036fd) > 5
         %error "LONG_004036FD"
     %endif
@@ -6887,7 +6888,7 @@ grv_opcode_save_game:
     %endif
     times 1 - ($ - %%insn_0040378a) db 0
     %%insn_0040378b:
-    call 0x4017ee ; 0040378B E85EE0FFFF
+    call grv_read_variable_operand ; 0040378B E85EE0FFFF
     %if ($ - %%insn_0040378b) > 5
         %error "LONG_0040378B"
     %endif
@@ -6937,7 +6938,7 @@ grv_opcode_save_game:
     times 3 - ($ - %%insn_004037b6) db 0
     db 0x8B, 0xF1 ; 004037B9 8BF1 | mov esi,ecx | encoding preserved
     %%insn_004037bb:
-    call 0x4015e6 ; 004037BB E826DEFFFF
+    call grv_decode_sequence_element ; 004037BB E826DEFFFF
     %if ($ - %%insn_004037bb) > 5
         %error "LONG_004037BB"
     %endif
@@ -7865,7 +7866,7 @@ grv_opcode_print_string:
     %endif
     times 10 - ($ - %%insn_00403a46) db 0
     %%insn_00403a50:
-    call 0x4015e6 ; 00403A50 E891DBFFFF
+    call grv_decode_sequence_element ; 00403A50 E891DBFFFF
     %if ($ - %%insn_00403a50) > 5
         %error "LONG_00403A50"
     %endif
@@ -8533,6 +8534,9 @@ grv_check_valid_saves:
         %error "LONG_00403C4F"
     %endif
     times 5 - ($ - %%insn_00403c4f) db 0
+    ; Opcode 3Eh MOD: unlike DOS 041CBh, subtract while value >= divisor.
+    ; Unsigned byte inputs are zero-extended before the signed JL at 403C99h.
+    ; Thus Windows 10 MOD 5 = 0, whereas DOS returns 5. Zero divisor loops.
     %%insn_00403c54:
     mov dx,[ebp-0x124] ; 00403C54 668B95DCFEFFFF
     %if ($ - %%insn_00403c54) > 7
@@ -8546,7 +8550,7 @@ grv_check_valid_saves:
     %endif
     times 1 - ($ - %%insn_00403c5b) db 0
     %%insn_00403c5c:
-    call 0x4017ee ; 00403C5C E88DDBFFFF
+    call grv_read_variable_operand ; 00403C5C E88DDBFFFF
     %if ($ - %%insn_00403c5c) > 5
         %error "LONG_00403C5C"
     %endif
@@ -8895,7 +8899,7 @@ grv_opcode_load_child_script:
     %endif
     times 1 - ($ - %%insn_00403d7c) db 0
     %%insn_00403d7d:
-    call 0x40ca10 ; 00403D7D E88E8C0000
+    call copy_memory_overlap_safe ; 00403D7D E88E8C0000
     %if ($ - %%insn_00403d7d) > 5
         %error "LONG_00403D7D"
     %endif
@@ -9087,7 +9091,7 @@ grv_opcode_return_from_child_script:
     %endif
     times 1 - ($ - %%insn_00403e10) db 0
     %%insn_00403e11:
-    call 0x40ca10 ; 00403E11 E8FA8B0000
+    call copy_memory_overlap_safe ; 00403E11 E8FA8B0000
     %if ($ - %%insn_00403e11) > 5
         %error "LONG_00403E11"
     %endif
@@ -9255,7 +9259,7 @@ grv_opcode_return_from_child_script:
     %endif
     times 1 - ($ - %%insn_00403ead) db 0
     %%insn_00403eae:
-    call 0x4017ee ; 00403EAE E83BD9FFFF
+    call grv_read_variable_operand ; 00403EAE E83BD9FFFF
     %if ($ - %%insn_00403eae) > 5
         %error "LONG_00403EAE"
     %endif
@@ -9945,7 +9949,7 @@ grv_opcode_return_from_child_script:
     %endif
     times 1 - ($ - %%insn_004040a3) db 0
     %%insn_004040a4:
-    call 0x4017ee ; 004040A4 E845D7FFFF
+    call grv_read_variable_operand ; 004040A4 E845D7FFFF
     %if ($ - %%insn_004040a4) > 5
         %error "LONG_004040A4"
     %endif
