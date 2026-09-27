@@ -237,7 +237,7 @@ func_04a7b:
     times 2 - ($ - %%insn_04ae8) db 0
     db 0x33, 0xFF ; 04AEA 33FF | xor di,di | encoding preserved
     %%insn_04aec:
-    call 0x230f ; 04AEC E820D8
+    call decompress_cursor_lzss_12bit ; 04AEC E820D8
     %if ($ - %%insn_04aec) > 3
         %error "LONG_04AEC"
     %endif
@@ -297,7 +297,7 @@ func_04a7b:
     %endif
     times 3 - ($ - %%insn_04b0c) db 0
     %%insn_04b0f:
-    call 0x4980 ; 04B0F E86EFE
+    call build_32_color_palette_translation ; 04B0F E86EFE
     %if ($ - %%insn_04b0f) > 3
         %error "LONG_04B0F"
     %endif

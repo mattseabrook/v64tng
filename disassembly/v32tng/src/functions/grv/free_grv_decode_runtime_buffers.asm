@@ -1,11 +1,13 @@
 ; PE virtual entry 0040C129
 ; Ghidra working symbol: FUN_0040c129
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role (static/cross-version evidence): Null-checks, frees and clears 00420A28 and 00420E44. Paired
+; allocate_grv_runtime_buffers establishes both; VDX decompression and
+; tile decoders consume them. Returns zero and is safe to call twice.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_0040c129_part_00 0
+%macro emit_free_grv_decode_runtime_buffers_part_00 0
     %%fragment_start:
-func_0040c129:
+free_grv_decode_runtime_buffers:
     %%insn_0040c129:
     push ebp ; 0040C129 55
     %if ($ - %%insn_0040c129) > 1

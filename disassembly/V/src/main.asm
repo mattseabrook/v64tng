@@ -11,8 +11,8 @@ bits 16
 %include "src/functions/runtime/entry.asm"
 %include "src/functions/unknown/00089_func_00089.asm"
 %include "src/functions/runtime/standalone_vdx_or_diagnostics.asm"
-%include "src/functions/unknown/001e1_func_001e1.asm"
-%include "src/functions/unknown/0020a_func_0020a.asm"
+%include "src/functions/resource_io/open_vdx_file_or_borrow_archive_handle.asm"
+%include "src/functions/resource_io/close_vdx_file_unless_archive_borrowed.asm"
 %include "src/functions/vdx/read_vdx_stream_bytes.asm"
 %include "src/functions/vdx/read_and_validate_vdx_header.asm"
 %include "src/functions/vdx/decode_vdx_stream.asm"
@@ -23,13 +23,13 @@ bits 16
 %include "src/functions/vdx/fade_in_vdx_palette_rgb.asm"
 %include "src/functions/vdx/fade_out_vdx_palette_rgb_and_clear.asm"
 %include "src/functions/vdx/decode_vdx_delta_frame.asm"
-%include "src/functions/unknown/0230f_func_0230f.asm"
+%include "src/functions/cursor/decompress_cursor_lzss_12bit.asm"
 %include "src/functions/vdx/decompress_vdx_lzss.asm"
 %include "src/functions/vdx/copy_background_rectangle_to_foreground.asm"
 %include "src/functions/vdx/snapshot_display_to_xms_background.asm"
-%include "src/functions/unknown/026e5_func_026e5.asm"
+%include "src/functions/vdx/merge_32_color_palette_into_unused_entries.asm"
 %include "src/functions/vdx/mark_used_background_palette_entries.asm"
-%include "src/functions/unknown/02822_func_02822.asm"
+%include "src/functions/vdx/restore_saved_vga_palette_at_retrace.asm"
 %include "src/functions/platform/clear_indexed_display_memory.asm"
 %include "src/functions/unknown/02896_func_02896.asm"
 %include "src/functions/unknown/028ad_func_028ad.asm"
@@ -109,7 +109,7 @@ bits 16
 %include "src/functions/grv/grv_call_absolute.asm"
 %include "src/functions/grv/run_grv_input_loop.asm"
 %include "src/functions/grv/replay_grv_background_song.asm"
-%include "src/functions/unknown/04710_func_04710.asm"
+%include "src/functions/cursor/select_cursor_shape_and_palette.asm"
 %include "src/functions/grv/match_grv_key_action.asm"
 %include "src/functions/unknown/04754_func_04754.asm"
 %include "src/functions/unknown/0475e_func_0475e.asm"
@@ -126,7 +126,7 @@ bits 16
 %include "src/functions/unknown/048c9_func_048c9.asm"
 %include "src/functions/unknown/04957_func_04957.asm"
 %include "src/functions/unknown/0495d_func_0495d.asm"
-%include "src/functions/unknown/04980_func_04980.asm"
+%include "src/functions/vdx/build_32_color_palette_translation.asm"
 %include "src/functions/unknown/04a23_func_04a23.asm"
 %include "src/functions/unknown/04a55_func_04a55.asm"
 %include "src/functions/unknown/04a7b_func_04a7b.asm"
@@ -438,9 +438,9 @@ load_image_start:
     ; 000D1..001E0 function
     emit_standalone_vdx_or_diagnostics_part_00
     ; 001E1..00209 function
-    emit_func_001e1_part_00
+    emit_open_vdx_file_or_borrow_archive_handle_part_00
     ; 0020A..0021A function
-    emit_func_0020a_part_00
+    emit_close_vdx_file_unless_archive_borrowed_part_00
     ; 0021B..002BF function
     emit_read_vdx_stream_bytes_part_00
     ; 002C0..0030D function
@@ -558,7 +558,7 @@ load_image_start:
     ; 02306..0230E function
     emit_decode_vdx_delta_frame_part_19
     ; 0230F..02369 function
-    emit_func_0230f_part_00
+    emit_decompress_cursor_lzss_12bit_part_00
     ; 0236A..023A4 function
     emit_decompress_vdx_lzss_part_00
     ; 023A5..02590 function
@@ -566,11 +566,11 @@ load_image_start:
     ; 02591..026E4 function
     emit_snapshot_display_to_xms_background_part_00
     ; 026E5..0276C function
-    emit_func_026e5_part_00
+    emit_merge_32_color_palette_into_unused_entries_part_00
     ; 0276D..02821 function
     emit_mark_used_background_palette_entries_part_00
     ; 02822..0285C function
-    emit_func_02822_part_00
+    emit_restore_saved_vga_palette_at_retrace_part_00
     ; 0285D..02895 function
     emit_clear_indexed_display_memory_part_00
     ; 02896..028AC function
@@ -778,7 +778,7 @@ load_image_start:
     ; 046F5..0470F function
     emit_replay_grv_background_song_part_00
     ; 04710..04728 function
-    emit_func_04710_part_00
+    emit_select_cursor_shape_and_palette_part_00
     ; 04729..04753 function
     emit_match_grv_key_action_part_00
     ; 04754..0475D function
@@ -818,7 +818,7 @@ load_image_start:
     ; 04968..0497F gap
     emit_gap_043_04968
     ; 04980..04A22 function
-    emit_func_04980_part_00
+    emit_build_32_color_palette_translation_part_00
     ; 04A23..04A54 function
     emit_func_04a23_part_00
     ; 04A55..04A7A function

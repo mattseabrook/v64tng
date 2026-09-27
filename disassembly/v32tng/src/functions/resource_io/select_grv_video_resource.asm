@@ -744,7 +744,7 @@ select_grv_video_resource:
     %endif
     times 1 - ($ - %%insn_00401f0f) db 0
     %%insn_00401f10:
-    call 0x408d24 ; 00401F10 E80F6E0000
+    call initialize_selected_vdx_stream ; 00401F10 E80F6E0000
     %if ($ - %%insn_00401f10) > 5
         %error "LONG_00401F10"
     %endif

@@ -1,11 +1,15 @@
 ; Linear entry 026E5 (1000:26e5)
 ; Ghidra working symbol: FUN_1000_26e5
-; Role not yet verified; boundary is provisional.
+; Verified role (static evidence): Optionally marks used background entries and clears one-shot D9B0.
+; Protects index zero; scans 256 usage bytes at CB20, installs up to 32
+; ES:SI RGB triplets into unused CF8C slots after >>2, and records source
+; to destination indexes at E166. Uploads DAC at retrace. Caller 04980
+; provides the source palette and completes missing translations.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_026e5_part_00 0
+%macro emit_merge_32_color_palette_into_unused_entries_part_00 0
     %%fragment_start:
-func_026e5:
+merge_32_color_palette_into_unused_entries:
     %%insn_026e5:
     pusha ; 026E5 60
     %if ($ - %%insn_026e5) > 1

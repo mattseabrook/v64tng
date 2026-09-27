@@ -205,7 +205,7 @@ standalone_vdx_or_diagnostics:
     %endif
     times 4 - ($ - %%insn_0012e) db 0
     %%insn_00132:
-    call 0x1e1 ; 00132 E8AC00
+    call open_vdx_file_or_borrow_archive_handle ; 00132 E8AC00
     %if ($ - %%insn_00132) > 3
         %error "LONG_00132"
     %endif
@@ -463,7 +463,7 @@ standalone_vdx_or_diagnostics:
     %endif
     times 2 - ($ - %%insn_001c8) db 0
     %%insn_001ca:
-    call 0x20a ; 001CA E83D00
+    call close_vdx_file_unless_archive_borrowed ; 001CA E83D00
     %if ($ - %%insn_001ca) > 3
         %error "LONG_001CA"
     %endif
@@ -493,7 +493,7 @@ standalone_vdx_or_diagnostics:
     %endif
     times 3 - ($ - %%insn_001d6) db 0
     %%insn_001d9:
-    call 0x20a ; 001D9 E82E00
+    call close_vdx_file_unless_archive_borrowed ; 001D9 E82E00
     %if ($ - %%insn_001d9) > 3
         %error "LONG_001D9"
     %endif

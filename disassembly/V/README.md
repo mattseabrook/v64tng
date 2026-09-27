@@ -44,8 +44,8 @@ The project has complete mechanical source coverage:
 This is not yet complete semantic recovery. Ghidra's 261 function boundaries
 are analyzer findings, not original object-module boundaries. Some bytes now
 classified as data may prove to be code, and some functions may later be
-split, joined, or grouped. Of the 261 entries, 81 currently have verified
-semantic roles and 180 retain neutral address-based names.
+split, joined, or grouped. Of the 261 entries, 88 currently have verified
+semantic roles and 173 retain neutral address-based names.
 
 Exact coverage and the complete function address map are maintained later in
 this README. This file is the public, monolithic research record for the DOS
@@ -205,6 +205,21 @@ The canonical target is the unpacked executable. Reproducing the original
 23,425-byte compressed file is a separate compressor-provenance milestone;
 unpacked program identity is already exact.
 
+The September 26 static/native-code evidence pass adds roles at `001E1`,
+`0020A`, `026E5`, `02822`, and `04980`. Palette restore/merge/translation are
+exercised from the original rebuilt machine code by
+[`verify_dos_palette_helpers.py`](../../grooviev1/verify_dos_palette_helpers.py).
+The translation fallback is asymmetric, not absolute RGB distance. Detailed
+inputs, outputs and limitations are in
+[the evidence record](../../docs/SEMANTIC_CAPTURE_ADVANCE.md).
+
+The continued pass verifies cursor decompression at `0230F` and parallel
+shape/palette selection at `04710`. The 12-bit distance/4-bit length cursor
+codec has a different token layout from parameterized VDX LZSS. Matching DOS
+and Win32 code is exercised with overlapping copies and DOS segment rebasing
+by [`verify_recovered_media_helpers.py`](../../grooviev1/verify_recovered_media_helpers.py).
+See [the continued report](../../docs/GROOVIEV1_DEEP_DIVE.md).
+
 ## Runtime evidence workflow
 
 Runtime captures turn neutral address-based symbols into accurate semantic
@@ -260,8 +275,8 @@ understanding.
 | Function-body instructions decoded | 12,484 |
 | Instructions requiring exact `db` encoding fallback | 1,620 |
 | Bytes in encoding fallbacks | 3,477 |
-| Verified semantic function roles | 81 |
-| Unidentified/provisionally bounded functions | 180 |
+| Verified semantic function roles | 88 |
+| Unidentified/provisionally bounded functions | 173 |
 | Analyzed function/gap span end | `0892Ch` |
 | Non-function bytes in the load image | 69,332 |
 
@@ -287,8 +302,8 @@ Owned ranges are inclusive linear offsets into the unpacked load image.
 | `00000` | `1000:0000` | verified-role | `entry` | `entry` | `00000–0007B`<br>`0007E–00088` | [`src/functions/runtime/entry.asm`](src/functions/runtime/entry.asm) |
 | `00089` | `1000:0089` | unidentified | `func_00089` | `FUN_1000_0089` | `00089–000D0` | [`src/functions/unknown/00089_func_00089.asm`](src/functions/unknown/00089_func_00089.asm) |
 | `000D1` | `1000:00d1` | verified-role | `standalone_vdx_or_diagnostics` | `FUN_1000_00d1` | `000D1–001E0` | [`src/functions/runtime/standalone_vdx_or_diagnostics.asm`](src/functions/runtime/standalone_vdx_or_diagnostics.asm) |
-| `001E1` | `1000:01e1` | unidentified | `func_001e1` | `FUN_1000_01e1` | `001E1–00209` | [`src/functions/unknown/001e1_func_001e1.asm`](src/functions/unknown/001e1_func_001e1.asm) |
-| `0020A` | `1000:020a` | unidentified | `func_0020a` | `FUN_1000_020a` | `0020A–0021A` | [`src/functions/unknown/0020a_func_0020a.asm`](src/functions/unknown/0020a_func_0020a.asm) |
+| `001E1` | `1000:01e1` | verified-role | `open_vdx_file_or_borrow_archive_handle` | `FUN_1000_01e1` | `001E1–00209` | [`src/functions/resource_io/open_vdx_file_or_borrow_archive_handle.asm`](src/functions/resource_io/open_vdx_file_or_borrow_archive_handle.asm) |
+| `0020A` | `1000:020a` | verified-role | `close_vdx_file_unless_archive_borrowed` | `FUN_1000_020a` | `0020A–0021A` | [`src/functions/resource_io/close_vdx_file_unless_archive_borrowed.asm`](src/functions/resource_io/close_vdx_file_unless_archive_borrowed.asm) |
 | `0021B` | `1000:021b` | verified-role | `read_vdx_stream_bytes` | `FUN_1000_021b` | `0021B–002BF` | [`src/functions/vdx/read_vdx_stream_bytes.asm`](src/functions/vdx/read_vdx_stream_bytes.asm) |
 | `002C0` | `1000:02c0` | verified-role | `read_and_validate_vdx_header` | `FUN_1000_02c0` | `002C0–0030D` | [`src/functions/vdx/read_and_validate_vdx_header.asm`](src/functions/vdx/read_and_validate_vdx_header.asm) |
 | `0030E` | `1000:030e` | verified-role | `decode_vdx_stream` | `FUN_1000_030e` | `0030E–00382`<br>`00385–0038D`<br>`00390–0039B`<br>`0039E–0040C` | [`src/functions/vdx/decode_vdx_stream.asm`](src/functions/vdx/decode_vdx_stream.asm) |
@@ -299,13 +314,13 @@ Owned ranges are inclusive linear offsets into the unpacked load image.
 | `00F33` | `1000:0f33` | verified-role | `fade_in_vdx_palette_rgb` | `FUN_1000_0f33` | `00F33–00FC5` | [`src/functions/vdx/fade_in_vdx_palette_rgb.asm`](src/functions/vdx/fade_in_vdx_palette_rgb.asm) |
 | `00FC6` | `1000:0fc6` | verified-role | `fade_out_vdx_palette_rgb_and_clear` | `FUN_1000_0fc6` | `00FC6–01059` | [`src/functions/vdx/fade_out_vdx_palette_rgb_and_clear.asm`](src/functions/vdx/fade_out_vdx_palette_rgb_and_clear.asm) |
 | `0105A` | `1000:105a` | verified-role | `decode_vdx_delta_frame` | `FUN_1000_105a` | `0105A–01216`<br>`01218–01234`<br>`01236–0127C`<br>`0127E–012BC`<br>`012C1–01396`<br>`01398–0168E`<br>`01691–0169A`<br>`0169C–01ED2`<br>`01ED5–01FE6`<br>`01FE8–0205C`<br>`0205E–0207A`<br>`0207C–0210A`<br>`0210C–02174`<br>`02178–02180`<br>`02182–02218`<br>`02260–02288`<br>`0228A–022A6`<br>`022A8–022E0`<br>`022E2–02303`<br>`02306–0230E` | [`src/functions/vdx/decode_vdx_delta_frame.asm`](src/functions/vdx/decode_vdx_delta_frame.asm) |
-| `0230F` | `1000:230f` | unidentified | `func_0230f` | `FUN_1000_230f` | `0230F–02369` | [`src/functions/unknown/0230f_func_0230f.asm`](src/functions/unknown/0230f_func_0230f.asm) |
+| `0230F` | `1000:230f` | verified-role | `decompress_cursor_lzss_12bit` | `FUN_1000_230f` | `0230F–02369` | [`src/functions/cursor/decompress_cursor_lzss_12bit.asm`](src/functions/cursor/decompress_cursor_lzss_12bit.asm) |
 | `0236A` | `1000:236a` | verified-role | `decompress_vdx_lzss` | `FUN_1000_236a` | `0236A–023A4` | [`src/functions/vdx/decompress_vdx_lzss.asm`](src/functions/vdx/decompress_vdx_lzss.asm) |
 | `023A5` | `1000:23a5` | verified-role | `copy_background_rectangle_to_foreground` | `FUN_1000_23a5` | `023A5–02590` | [`src/functions/vdx/copy_background_rectangle_to_foreground.asm`](src/functions/vdx/copy_background_rectangle_to_foreground.asm) |
 | `02591` | `1000:2591` | verified-role | `snapshot_display_to_xms_background` | `FUN_1000_2591` | `02591–026E4` | [`src/functions/vdx/snapshot_display_to_xms_background.asm`](src/functions/vdx/snapshot_display_to_xms_background.asm) |
-| `026E5` | `1000:26e5` | unidentified | `func_026e5` | `FUN_1000_26e5` | `026E5–0276C` | [`src/functions/unknown/026e5_func_026e5.asm`](src/functions/unknown/026e5_func_026e5.asm) |
+| `026E5` | `1000:26e5` | verified-role | `merge_32_color_palette_into_unused_entries` | `FUN_1000_26e5` | `026E5–0276C` | [`src/functions/vdx/merge_32_color_palette_into_unused_entries.asm`](src/functions/vdx/merge_32_color_palette_into_unused_entries.asm) |
 | `0276D` | `1000:276d` | palette-use scanner for one-shot still-palette merge | `mark_used_background_palette_entries` | `FUN_1000_276d` | `0276D–02821` | [`src/functions/vdx/mark_used_background_palette_entries.asm`](src/functions/vdx/mark_used_background_palette_entries.asm) |
-| `02822` | `1000:2822` | unidentified | `func_02822` | `FUN_1000_2822` | `02822–0285C` | [`src/functions/unknown/02822_func_02822.asm`](src/functions/unknown/02822_func_02822.asm) |
+| `02822` | `1000:2822` | verified-role | `restore_saved_vga_palette_at_retrace` | `FUN_1000_2822` | `02822–0285C` | [`src/functions/vdx/restore_saved_vga_palette_at_retrace.asm`](src/functions/vdx/restore_saved_vga_palette_at_retrace.asm) |
 | `0285D` | `1000:285d` | verified-role | `clear_indexed_display_memory` | `FUN_1000_285d` | `0285D–02895` | [`src/functions/platform/clear_indexed_display_memory.asm`](src/functions/platform/clear_indexed_display_memory.asm) |
 | `02896` | `1000:2896` | unidentified | `func_02896` | `FUN_1000_2896` | `02896–028AC` | [`src/functions/unknown/02896_func_02896.asm`](src/functions/unknown/02896_func_02896.asm) |
 | `028AD` | `1000:28ad` | unidentified | `func_028ad` | `FUN_1000_28ad` | `028AD–028D8`<br>`028DB–0292E`<br>`02931–0293A` | [`src/functions/unknown/028ad_func_028ad.asm`](src/functions/unknown/028ad_func_028ad.asm) |
@@ -385,7 +400,7 @@ Owned ranges are inclusive linear offsets into the unpacked load image.
 | `04461` | `1000:4461` | verified-role | `grv_call_absolute` | `FUN_1000_4461` | `04461–0447A` | [`src/functions/grv/grv_call_absolute.asm`](src/functions/grv/grv_call_absolute.asm) |
 | `0447B` | `1000:447b` | verified-role | `run_grv_input_loop` | `FUN_1000_447b` | `0447B–046F4` | [`src/functions/grv/run_grv_input_loop.asm`](src/functions/grv/run_grv_input_loop.asm) |
 | `046F5` | `1000:46f5` | verified-role | `replay_grv_background_song` | `FUN_1000_46f5` | `046F5–0470F` | [`src/functions/grv/replay_grv_background_song.asm`](src/functions/grv/replay_grv_background_song.asm) |
-| `04710` | `1000:4710` | unidentified | `func_04710` | `FUN_1000_4710` | `04710–04728` | [`src/functions/unknown/04710_func_04710.asm`](src/functions/unknown/04710_func_04710.asm) |
+| `04710` | `1000:4710` | verified-role | `select_cursor_shape_and_palette` | `FUN_1000_4710` | `04710–04728` | [`src/functions/cursor/select_cursor_shape_and_palette.asm`](src/functions/cursor/select_cursor_shape_and_palette.asm) |
 | `04729` | `1000:4729` | verified-role | `match_grv_key_action` | `FUN_1000_4729` | `04729–04753` | [`src/functions/grv/match_grv_key_action.asm`](src/functions/grv/match_grv_key_action.asm) |
 | `04754` | `1000:4754` | unidentified | `func_04754` | `FUN_1000_4754` | `04754–0475D` | [`src/functions/unknown/04754_func_04754.asm`](src/functions/unknown/04754_func_04754.asm) |
 | `0475E` | `1000:475e` | unidentified | `func_0475e` | `FUN_1000_475e` | `0475E–04767` | [`src/functions/unknown/0475e_func_0475e.asm`](src/functions/unknown/0475e_func_0475e.asm) |
@@ -402,7 +417,7 @@ Owned ranges are inclusive linear offsets into the unpacked load image.
 | `048C9` | `1000:48c9` | unidentified | `func_048c9` | `FUN_1000_48c9` | `048C9–04956` | [`src/functions/unknown/048c9_func_048c9.asm`](src/functions/unknown/048c9_func_048c9.asm) |
 | `04957` | `1000:4957` | unidentified | `func_04957` | `FUN_1000_4957` | `04957–0495C` | [`src/functions/unknown/04957_func_04957.asm`](src/functions/unknown/04957_func_04957.asm) |
 | `0495D` | `1000:495d` | unidentified | `func_0495d` | `FUN_1000_495d` | `0495D–04967` | [`src/functions/unknown/0495d_func_0495d.asm`](src/functions/unknown/0495d_func_0495d.asm) |
-| `04980` | `1000:4980` | unidentified | `func_04980` | `FUN_1000_4980` | `04980–04A22` | [`src/functions/unknown/04980_func_04980.asm`](src/functions/unknown/04980_func_04980.asm) |
+| `04980` | `1000:4980` | verified-role | `build_32_color_palette_translation` | `FUN_1000_4980` | `04980–04A22` | [`src/functions/vdx/build_32_color_palette_translation.asm`](src/functions/vdx/build_32_color_palette_translation.asm) |
 | `04A23` | `1000:4a23` | unidentified | `func_04a23` | `FUN_1000_4a23` | `04A23–04A54` | [`src/functions/unknown/04a23_func_04a23.asm`](src/functions/unknown/04a23_func_04a23.asm) |
 | `04A55` | `1000:4a55` | unidentified | `func_04a55` | `FUN_1000_4a55` | `04A55–04A7A` | [`src/functions/unknown/04a55_func_04a55.asm`](src/functions/unknown/04a55_func_04a55.asm) |
 | `04A7B` | `1000:4a7b` | unidentified | `func_04a7b` | `FUN_1000_4a7b` | `04A7B–04B67`<br>`04B6B–04BAB`<br>`04BAE–04BF4` | [`src/functions/unknown/04a7b_func_04a7b.asm`](src/functions/unknown/04a7b_func_04a7b.asm) |

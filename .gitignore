@@ -4,7 +4,19 @@ build.log
 /obj/
 /grooviev1/build/grooviev1-native
 /grooviev1/build/font-atlas-glyphs/
-/research/
+/research/*
+!/research/debug/
+/research/debug/*
+!/research/debug/README.md
+!/research/debug/agent.js
+!/research/debug/capture.py
+!/research/debug/digest.py
+!/research/debug/profiles.json
+!/research/debug/requirements.txt
+!/research/debug/test_digest.py
+!/research/debug/test_capture.py
+!/research/debug/script_inventory.py
+!/research/debug/test_script_inventory.py
 
 # Ignore .vs dir
 /.vs/
@@ -55,3 +67,5 @@ __pycache__/
 /ActorMasks/
 /grooviev1/test_f_1bc/
 /grooviev1/build/verify_lossless
+/grooviev1/build/verify_codec
+/grooviev1/build/verify_codec-sanitized

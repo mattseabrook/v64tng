@@ -1,11 +1,14 @@
 ; PE virtual entry 00408BB4
 ; Ghidra working symbol: FUN_00408bb4
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role (static/cross-version evidence): Caller 004044B4; LSB-first flags, zero word terminator, 12-bit
+; output-relative distance and 4-bit length+3; forward byte copy supports
+; overlapping matches, returns decoded byte count. Matches DOS 0230F.
+; This nibble-layout codec is distinct from parameterized VDX LZSS.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_00408bb4_part_00 0
+%macro emit_decompress_cursor_lzss_12bit_part_00 0
     %%fragment_start:
-func_00408bb4:
+decompress_cursor_lzss_12bit:
     %%insn_00408bb4:
     push ebp ; 00408BB4 55
     %if ($ - %%insn_00408bb4) > 1

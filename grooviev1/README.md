@@ -8,6 +8,8 @@ Current scope:
 - Emits `0x20` still frame from first input frame.
 - Emits `0x25` delta frames for subsequent changed frames.
 - Emits adaptive `0x25` local-palette updates for stronger canonical similarity.
+- Retains soundtrack PCM and original audio/visual chunk positions in indexed
+  extraction and re-encoding, including the PNG editing workflow.
 - Emits `0x00` duplicate-frame chunks when frame data is unchanged.
 - Optionally interleaves WAV PCM as `0x80` chunks.
 - Optional native-compatible LZSS compression (`coding=0x77`, off by default).
@@ -90,6 +92,16 @@ grooviev1.exe archive-list --rl ROOM.RL [--gjd ROOM.GJD]
 grooviev1.exe archive-unpack --rl ROOM.RL --out-dir ./out [--gjd ROOM.GJD]
 ```
 
+Unpacking writes `_archive-order.txt`, preserving each resource's original RL
+name and index order. Repack that directory with `archive-pack --input-dir out`:
+the tool automatically uses this manifest. You can also pass
+`--manifest out/_archive-order.txt` explicitly. Duplicate RL filenames are
+legal in retail archives (K.RL contains eleven duplicate pairs); extraction
+gives each such entry an index-prefixed filename and the manifest restores
+its original RL name. Thus edited assets retain all numeric GRV references.
+Repacking preserves resource bytes, names and indexes, while archive padding
+and physical offsets may change.
+
 ### Inspect SPHINX.FNT
 
 ```bash
@@ -122,12 +134,19 @@ Optional overrides:
 
 Packing validates dimensions and metadata consistency before writing the final
 FNT with a rebuilt offset table.
+The first glyph offset defines the complete table length, including trailing
+glyphs not currently referenced by the character map. These glyphs survive
+extraction and repacking; the character map is checked against the table.
 
 ## Notes
 
 - Default is full quality for all frames and raw `0x67` chunk payloads.
 - `--compress` uses the original output-relative, overlap-capable LZSS token
   model and validates every compressed payload by decoding it before writing.
+  An indexed first-byte match search preserves historical token selection while
+  avoiding scans over unrelated bytes. Extraction also supports references into
+  the original decoder's zero-initialized history; decoded chunks are capped at
+  16 MiB and truncated compressed streams fail clearly.
 - The 192-byte VDX tile-map table is copied byte-for-byte from two independent
   decoder locations: DOS `V.EXE` load offset `015DBEh` (`DS:D48Eh`) and Win32
   `v32tng.exe` VA `0041A088h`. The two original tables are identical.
@@ -149,6 +168,15 @@ FNT with a rebuilt offset table.
 - `archive-pack` writes the RL file as exact 20-byte records and writes the GJD
   as raw concatenated payloads in RL order.
 - RL entry names must fit the original 12-byte filename field.
+- Explicit `archive-pack` file arguments retain their supplied order: that is
+  the numeric resource-index order used by GRV. Directory discovery is sorted.
+  Packing validates all names, collisions, input files and size limits before
+  opening output archives. Unpacking rejects invalid basenames and bounds.
+- RGB input is intentionally quantized. The first still uses the two dominant
+  indices per tile and maps other colors to the nearer of those two. The tool
+  reports the number of reduced pixels. Later deltas compare against the
+  decoded still, so detail omitted from the still can be restored. Indexed
+  encoding continues to reject an unrepresentable first frame.
 
 ## Example
 
@@ -182,8 +210,15 @@ Use `--tool PATH` before the subcommand to select `grooviev1.exe` on Windows.
 Extraction creates native-resolution indexed PNGs, `sequence.json` (geometry,
 frame rate and count), and `raw/` containing `.idx` (one byte per pixel), `.pal`
 (256 RGB triples), and `.rgb` (RGB24). All are row-major/top-down. Encoding reads
-only the PNGs and sequence metadata, so deleting `raw/` does not affect encoding.
+the PNGs, sequence metadata and any audio sidecars, so deleting `raw/` does not affect encoding.
 No PNG is quantized or resized by this route. Output paths must be new.
+When the input contains PCM, extraction also writes `audio.pcm` and `audio.txt`
+beside the PNGs and adds audio metadata to `sequence.json`. `audio.txt` contains
+`visual_boundary pcm_offset pcm_bytes` triples: boundary zero is before the
+first visual chunk, boundary one is after it, and the final boundary is after
+the last visual chunk. Keep both sidecars to retain the original soundtrack;
+they remain usable after deleting `raw/`. Editing PNG pixels or palette entries
+preserves this audio and its visual boundaries.
 
 The C++ commands `extract-indexed INPUT.vdx OUT_DIR` and
 `encode-indexed INPUT_DIR OUTPUT.vdx` operate directly on `.idx`/`.pal` plus
@@ -196,10 +231,13 @@ Every delta row, including the final row, ends with `0x61`: DOS V.EXE uses
 that last advance to reach its end-of-frame sentinel. Encoder validation rejects
 streams that omit it even if a payload-length-bounded decoder renders them.
 
-This is visual sequence encoding: it preserves frame count, dimensions, frame
-rate, indices and palettes. It does not preserve audio, arbitrary header bytes,
-original chunk boundaries/types beyond those needed for the frames, or identical
-compressed bytes. An extracted VDX remains the source archive for those details.
+This preserves frame count, dimensions, frame rate, indices, complete palettes,
+decoded PCM and each PCM chunk's position among the visual chunks. It does not
+preserve arbitrary header bytes, nonvisual nonaudio commands, original visual
+chunk choices or identical compressed bytes. Changing frame count or rate may
+change the meaning of the preserved audio positions; no automatic audio
+retiming is performed. An extracted VDX remains the source archive for those
+details. `frames.py compare` checks PCM and audio positions as well as pixels.
 
 ### Independent decoder and PNG export cross-check
 
@@ -215,3 +253,20 @@ This uses v64tng's actual bitmap/delta implementations and production PNG writer
 then checks indexed, RGB and RGBA PNGs with Pillow (including hidden RGB under
 zero alpha). It does not run the game. See [the f_1bc results](../docs/F_1BC_LOSSLESS.md)
 for the first source-material comparison and assembly references.
+
+### Continued toolkit verification
+
+```sh
+python3 grooviev1/test_toolkit.py
+g++ grooviev1/verify_codec.cpp src/bitmap.cpp src/delta.cpp src/lzss.cpp \
+  -Iinclude -std=c++23 -O2 -o grooviev1/build/verify_codec
+grooviev1/build/verify_codec path/to/asset.vdx path/to/ROOM.RL
+```
+
+The independent verifier checks compression tokens against the previous
+exhaustive search, compares decompressed bytes against v64tng's production
+LZSS decoder and compares pixel indexes and all palette entries against its
+production bitmap/delta decoders. RL arguments inspect resources directly
+inside GJD without extracting thousands of files. ASan/UBSan validation and
+native executable helper checks are recorded in
+[the deep-dive report](../docs/GROOVIEV1_DEEP_DIVE.md).

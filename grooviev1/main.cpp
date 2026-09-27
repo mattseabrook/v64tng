@@ -11,8 +11,12 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 #include <limits>
+#include <numeric>
+#include <functional>
 #include <map>
+#include <set>
 #include <sstream>
 #include <span>
 #include <string>
@@ -134,6 +138,7 @@ static void printUsage()
         << "  --no-validate                      Skip internal round-trip validation\n\n"
         << "Archive usage:\n"
         << "  grooviev1.exe archive-pack --rl ROOM.RL --gjd ROOM.GJD [--input-dir DIR] [files...]\n"
+        << "  grooviev1.exe archive-pack --rl ROOM.RL --gjd ROOM.GJD --manifest DIR/_archive-order.txt\n"
         << "  grooviev1.exe archive-list --rl ROOM.RL [--gjd ROOM.GJD]\n"
         << "  grooviev1.exe archive-unpack --rl ROOM.RL --out-dir DIR [--gjd ROOM.GJD]\n\n"
         << "FNT usage:\n"
@@ -161,11 +166,13 @@ static bool parseInt(const std::string &s, int &out)
 
 static bool parseSizeT(const std::string &s, size_t &out)
 {
+    if (s.empty() || s.front() == '-')
+        return false;
     try
     {
         size_t idx = 0;
         const unsigned long long v = std::stoull(s, &idx, 0);
-        if (idx != s.size())
+        if (idx != s.size() || v > std::numeric_limits<size_t>::max())
             return false;
         out = static_cast<size_t>(v);
         return true;
@@ -705,6 +712,16 @@ static std::vector<uint8_t> lzssCompress(const std::vector<uint8_t> &inputData, 
     const size_t maxDistance = 0xFFFFu >> lengthBits;
     const size_t maxLength = static_cast<size_t>(lengthMask) + 3u;
     constexpr size_t threshold = 3;
+    // Index previous occurrences of the first byte. Keep nearest-first search
+    // and historical tie breaking without scanning every unrelated distance.
+    const size_t none = std::numeric_limits<size_t>::max();
+    std::array<size_t, 256> last;
+    last.fill(none);
+    std::vector<size_t> previous(inputData.size());
+    for (size_t i = 0; i < inputData.size(); ++i) {
+        previous[i] = last[inputData[i]];
+        last[inputData[i]] = i;
+    }
 
     std::vector<uint8_t> compressedData;
     compressedData.reserve(inputData.size() / 2 + 16);
@@ -734,10 +751,11 @@ static std::vector<uint8_t> lzssCompress(const std::vector<uint8_t> &inputData, 
             size_t matchDistance = 0;
 
             const size_t distanceLimit = std::min(pos, maxDistance);
-            for (size_t distance = 1; distance <= distanceLimit; ++distance)
+            for (size_t candidate = previous[pos]; candidate != none; candidate = previous[candidate])
             {
-                if (inputData[pos - distance] != inputData[pos])
-                    continue;
+                const size_t distance = pos - candidate;
+                if (distance > distanceLimit)
+                    break;
 
                 size_t matchLength = 0;
                 while (matchLength < maxLength && pos + matchLength < inputData.size() &&
@@ -777,7 +795,20 @@ static std::vector<uint8_t> lzssDecompressForValidation(const std::vector<uint8_
                                                         uint8_t lengthMask,
                                                         uint8_t lengthBits)
 {
+    if (!lengthBits || lengthBits > 8)
+        throw std::runtime_error("LZSS validation: invalid length bits");
+    constexpr size_t maximumOutput = 16 * 1024 * 1024;
+    std::vector<uint8_t> history(size_t{1} << (16 - lengthBits), 0);
+    const size_t wrap = history.size() - 1;
+    size_t cursor = history.size() - (size_t{1} << lengthBits);
     std::vector<uint8_t> decoded;
+    auto emit = [&](uint8_t value) {
+        if (decoded.size() == maximumOutput)
+            throw std::runtime_error("LZSS validation: output exceeds 16 MiB");
+        decoded.push_back(value);
+        history[cursor] = value;
+        cursor = (cursor + 1) & wrap;
+    };
     size_t source = 0;
 
     for (;;)
@@ -792,7 +823,7 @@ static std::vector<uint8_t> lzssDecompressForValidation(const std::vector<uint8_
             {
                 if (source >= encoded.size())
                     throw std::runtime_error("LZSS validation: truncated literal");
-                decoded.push_back(encoded[source++]);
+                emit(encoded[source++]);
                 continue;
             }
 
@@ -806,10 +837,9 @@ static std::vector<uint8_t> lzssDecompressForValidation(const std::vector<uint8_
 
             const size_t distance = token >> lengthBits;
             const size_t length = (token & lengthMask) + 3u;
-            if (distance == 0 || distance > decoded.size())
-                throw std::runtime_error("LZSS validation: invalid output-relative distance");
+            const size_t origin = (cursor - distance) & wrap;
             for (size_t i = 0; i < length; ++i)
-                decoded.push_back(decoded[decoded.size() - distance]);
+                emit(history[(origin + i) & wrap]);
         }
     }
 }
@@ -879,7 +909,12 @@ static std::vector<uint8_t> encodeStill0x20(const std::vector<uint8_t> &indexed,
             {
                 map <<= 1;
                 const uint8_t v = tile[i];
-                const bool pickC1 = (v == c1) || (v != c0 && v != c1);
+                auto distance = [&](uint8_t index) {
+                    const auto a = palette[v], b = palette[index];
+                    const int dr = int(a.r) - b.r, dg = int(a.g) - b.g, db = int(a.b) - b.b;
+                    return dr * dr + dg * dg + db * db;
+                };
+                const bool pickC1 = v == c1 || (v != c0 && distance(c1) < distance(c0));
                 if (pickC1)
                     map |= 1;
             }
@@ -1080,7 +1115,7 @@ static std::vector<uint8_t> encodeDeltaImageOps(const std::vector<uint8_t> &prev
                         break;
                     ++run;
                 }
-                if (run > 0)
+                if (run >= 2)
                 {
                     out.push_back(static_cast<uint8_t>(0x6B + run));
                     out.push_back(solidColor);
@@ -1108,6 +1143,13 @@ static std::vector<uint8_t> encodeDeltaImageOps(const std::vector<uint8_t> &prev
                     out.push_back(seqColors[i]);
                 tx += seqLen;
                 stats.opSolidSeq++;
+                continue;
+            }
+            if (seqLen == 1) {
+                out.push_back(0x6C);
+                out.push_back(seqColors[0]);
+                ++tx;
+                stats.opSolidRun++;
                 continue;
             }
 
@@ -1285,19 +1327,25 @@ static WavDecoded loadWav(const std::string &path)
         std::string_view(reinterpret_cast<const char *>(data.data() + 8), 4) != "WAVE")
         throw std::runtime_error("Invalid WAV RIFF header: " + path);
 
-    uint16_t audioFormat = 1;
+    const size_t riffEnd = size_t(readLE32At(data, 4)) + 8;
+    if (riffEnd < 12 || riffEnd > size)
+        throw std::runtime_error("Truncated WAV RIFF payload: " + path);
+    uint16_t audioFormat = 0;
     uint16_t channels = 1;
     uint32_t sampleRate = 22050;
     uint16_t bitsPerSample = 8;
     std::vector<uint8_t> pcm;
+    bool hasFormat = false, hasData = false;
 
     size_t off = 12;
-    while (off + 8 <= size)
+    while (off < riffEnd)
     {
+        if (riffEnd - off < 8)
+            throw std::runtime_error("Truncated WAV chunk header: " + path);
         const uint32_t chunkSize = readLE32At(data, off + 4);
         const size_t chunkStart = off + 8;
-        if (chunkStart + chunkSize > size)
-            break;
+        if (chunkSize > riffEnd - chunkStart)
+            throw std::runtime_error("Truncated WAV chunk payload: " + path);
 
         const std::string_view id(reinterpret_cast<const char *>(data.data() + off), 4);
         if (id == "fmt ")
@@ -1308,20 +1356,29 @@ static WavDecoded loadWav(const std::string &path)
             channels = readLE16At(data, chunkStart + 2);
             sampleRate = readLE32At(data, chunkStart + 4);
             bitsPerSample = readLE16At(data, chunkStart + 14);
+            if (!channels || channels > 32 || !sampleRate ||
+                (bitsPerSample != 8 && bitsPerSample != 16) ||
+                readLE16At(data, chunkStart + 12) != channels * (bitsPerSample / 8))
+                throw std::runtime_error("Invalid WAV PCM format: " + path);
+            hasFormat = true;
         }
         else if (id == "data")
         {
-            pcm.assign(data.begin() + static_cast<std::ptrdiff_t>(chunkStart),
+            pcm.insert(pcm.end(), data.begin() + static_cast<std::ptrdiff_t>(chunkStart),
                        data.begin() + static_cast<std::ptrdiff_t>(chunkStart + chunkSize));
+            hasData = true;
         }
 
         off = chunkStart + chunkSize + (chunkSize & 1u);
+        // Some PCM writers omit the final odd data padding byte.
+        if (chunkStart + chunkSize == riffEnd)
+            off = riffEnd;
     }
 
-    if (audioFormat != 1)
+    if (!hasFormat || audioFormat != 1)
         throw std::runtime_error("Only PCM WAV is supported for --wav");
-    if (pcm.empty())
-        throw std::runtime_error("WAV data chunk is empty");
+    if (!hasData || pcm.empty() || pcm.size() % (channels * (bitsPerSample / 8)))
+        throw std::runtime_error("WAV data is empty or contains a partial PCM frame");
 
     return WavDecoded{sampleRate, channels, bitsPerSample, std::move(pcm)};
 }
@@ -1346,7 +1403,7 @@ static std::vector<uint8_t> convertToU8Mono22050(const WavDecoded &wav)
             int sample = 0;
             if (bytesPerSample == 1)
             {
-                sample = (static_cast<int>(wav.pcm[src]) - 128) << 8;
+                sample = (static_cast<int>(wav.pcm[src]) - 128) * 256;
                 src += 1;
             }
             else
@@ -1397,6 +1454,7 @@ static void writeVDX(const std::string &path,
     std::ofstream out(path, std::ios::binary);
     if (!out)
         throw std::runtime_error("Failed to open output: " + path);
+    out.exceptions(std::ios::badbit | std::ios::failbit);
 
     const uint16_t id = 0x9267;
     const uint8_t unknown[4] = {0, 0, 0, 0};
@@ -1423,6 +1481,8 @@ static void writeVDX(const std::string &path,
             lb = lengthBits;
         }
 
+        if (payload.size() > std::numeric_limits<uint32_t>::max())
+            throw std::runtime_error("VDX chunk exceeds 32-bit size field");
         const uint32_t size = static_cast<uint32_t>(payload.size());
         out.put(static_cast<char>(b.type));
         out.put(static_cast<char>(coding));
@@ -1432,6 +1492,7 @@ static void writeVDX(const std::string &path,
         if (!payload.empty())
             out.write(reinterpret_cast<const char *>(payload.data()), static_cast<std::streamsize>(payload.size()));
     }
+    out.close();
 }
 
 static std::vector<uint8_t> readBinaryFile(const std::string &path)
@@ -1442,6 +1503,7 @@ static std::vector<uint8_t> readBinaryFile(const std::string &path)
     in.seekg(0, std::ios::end);
     const size_t size = static_cast<size_t>(in.tellg());
     in.seekg(0, std::ios::beg);
+    in.exceptions(std::ios::badbit | std::ios::failbit);
     std::vector<uint8_t> data(size);
     if (size > 0)
         in.read(reinterpret_cast<char *>(data.data()), static_cast<std::streamsize>(size));
@@ -1458,6 +1520,17 @@ static std::string trimRlName(std::string s)
     return s;
 }
 
+static std::string checkedRlName(const std::string &name)
+{
+    if (name.empty() || name.size() > 12 || name == "." || name == ".." ||
+        name.find_first_of("/\\:") != std::string::npos ||
+        std::any_of(name.begin(), name.end(), [](unsigned char c) { return c < 32 || c > 126; }))
+        throw std::runtime_error("Invalid RL resource basename: " + name);
+    auto key = name;
+    std::transform(key.begin(), key.end(), key.begin(), [](unsigned char c) { return char(std::tolower(c)); });
+    return key;
+}
+
 static std::vector<std::pair<std::string, std::vector<uint8_t>>> parseRlGjd(const std::string &rlPath, const std::string &gjdPath)
 {
     const std::vector<uint8_t> rl = readBinaryFile(rlPath);
@@ -1472,13 +1545,14 @@ static std::vector<std::pair<std::string, std::vector<uint8_t>>> parseRlGjd(cons
     {
         std::string name(reinterpret_cast<const char *>(rl.data() + off), 12);
         name = trimRlName(name);
+        checkedRlName(name);
         const uint32_t dataOff = readLE32At(rl, off + 12);
         const uint32_t dataLen = readLE32At(rl, off + 16);
         if (static_cast<size_t>(dataOff) > gjd.size() || static_cast<size_t>(dataLen) > gjd.size() - static_cast<size_t>(dataOff))
             throw std::runtime_error("RL entry extends beyond GJD: " + name);
 
         std::vector<uint8_t> blob(gjd.begin() + static_cast<std::ptrdiff_t>(dataOff),
-                                  gjd.begin() + static_cast<std::ptrdiff_t>(dataOff + dataLen));
+                                  gjd.begin() + static_cast<std::ptrdiff_t>(size_t(dataOff) + dataLen));
         entries.push_back({name, std::move(blob)});
     }
 
@@ -1566,8 +1640,13 @@ static FntFile parseGroovieFnt(const std::string &path)
     for (uint8_t v : out.charMap)
         if (v > maxIndex)
             maxIndex = v;
-    const size_t glyphCount = static_cast<size_t>(maxIndex) + 1;
     const size_t tableStart = 128;
+    const size_t firstRecord = readLE16(bytes.data() + tableStart);
+    if (firstRecord < tableStart + 2 || (firstRecord - tableStart) % 2)
+        throw std::runtime_error("FNT first record does not define a word offset table");
+    const size_t glyphCount = (firstRecord - tableStart) / 2;
+    if (glyphCount > 256 || glyphCount <= maxIndex)
+        throw std::runtime_error("FNT character map references beyond the offset table");
     const size_t tableBytes = glyphCount * 2;
     if (bytes.size() < tableStart + tableBytes)
         throw std::runtime_error("FNT truncated offset table: " + path);
@@ -1615,8 +1694,8 @@ static FntFile parseGroovieFnt(const std::string &path)
 
 static std::vector<uint8_t> buildGroovieFntBytes(const FntFile &fnt)
 {
-    if (fnt.glyphs.empty())
-        throw std::runtime_error("Cannot build FNT with zero glyphs");
+    if (fnt.glyphs.empty() || fnt.glyphs.size() > 256)
+        throw std::runtime_error("FNT requires 1..256 glyphs");
 
     uint8_t maxIndex = 0;
     for (uint8_t v : fnt.charMap)
@@ -1667,8 +1746,10 @@ static void writeBinaryFile(const std::string &path, const std::vector<uint8_t> 
     std::ofstream out(path, std::ios::binary);
     if (!out)
         throw std::runtime_error("Failed to write file: " + path);
+    out.exceptions(std::ios::badbit | std::ios::failbit);
     if (!data.empty())
         out.write(reinterpret_cast<const char *>(data.data()), static_cast<std::streamsize>(data.size()));
+    out.close();
 }
 
 static void writeBmpGray24(const std::string &path,
@@ -2022,6 +2103,7 @@ static void archivePackCommand(int argc, char **argv)
     std::string rlPath;
     std::string gjdPath;
     std::string inputDir;
+    std::string manifestPath;
     std::vector<std::string> files;
 
     for (int i = 2; i < argc; ++i)
@@ -2039,6 +2121,8 @@ static void archivePackCommand(int argc, char **argv)
             gjdPath = needValue("--gjd");
         else if (arg == "--input-dir")
             inputDir = needValue("--input-dir");
+        else if (arg == "--manifest")
+            manifestPath = needValue("--manifest");
         else
             files.push_back(arg);
     }
@@ -2046,16 +2130,59 @@ static void archivePackCommand(int argc, char **argv)
     if (rlPath.empty() || gjdPath.empty())
         throw std::runtime_error("archive-pack requires --rl and --gjd");
 
-    if (!inputDir.empty())
+    if (manifestPath.empty() && !inputDir.empty() &&
+        fs::exists(fs::path(inputDir) / "_archive-order.txt"))
+        manifestPath = (fs::path(inputDir) / "_archive-order.txt").string();
+
+    std::vector<std::pair<std::string, std::string>> sources; // RL name, input path
+    if (!manifestPath.empty()) {
+        if (!files.empty()) throw std::runtime_error("Archive manifest cannot be mixed with explicit files");
+        std::ifstream manifest(manifestPath);
+        std::string schema, name, file;
+        std::getline(manifest, schema);
+        if (!schema.empty() && schema.back() == '\r') schema.pop_back();
+        if (!manifest || schema != "grooviev1.archive/1")
+            throw std::runtime_error("Invalid archive manifest header");
+        while (manifest >> std::quoted(name)) {
+            if (!(manifest >> std::quoted(file)) || file.empty() || fs::path(file).filename().string() != file ||
+                file == "." || file == ".." || file.find_first_of("/\\:") != std::string::npos)
+                throw std::runtime_error("Invalid archive manifest input filename");
+            checkedRlName(name);
+            sources.emplace_back(name, (fs::path(manifestPath).parent_path() / file).string());
+        }
+        if (!manifest.eof()) throw std::runtime_error("Invalid archive manifest record");
+    } else if (!inputDir.empty())
     {
+        std::vector<std::string> discovered;
         for (const auto &entry : fs::directory_iterator(inputDir))
             if (entry.is_regular_file())
-                files.push_back(entry.path().string());
+                discovered.push_back(entry.path().string());
+        std::sort(discovered.begin(), discovered.end());
+        files.insert(files.end(), discovered.begin(), discovered.end());
     }
-    if (files.empty())
+    if (manifestPath.empty())
+        for (const auto &file : files) sources.emplace_back(fs::path(file).filename().string(), file);
+    if (sources.empty())
         throw std::runtime_error("archive-pack requires one or more input files");
 
-    std::sort(files.begin(), files.end());
+    // Explicit order is the resource index order encoded in GRV references.
+    // Validate the whole input set before truncating either output archive.
+    if (fs::weakly_canonical(rlPath) == fs::weakly_canonical(gjdPath))
+        throw std::runtime_error("RL and GJD output paths must differ");
+    std::set<std::string> names;
+    uint64_t total = 0;
+    for (const auto &[name, file] : sources) {
+        const auto path = fs::path(file);
+        const auto key = checkedRlName(name);
+        if (!names.insert(key).second && manifestPath.empty())
+            throw std::runtime_error("Duplicate RL resource name: " + name);
+        if (fs::weakly_canonical(path) == fs::weakly_canonical(rlPath) ||
+            fs::weakly_canonical(path) == fs::weakly_canonical(gjdPath))
+            throw std::runtime_error("Archive output would overwrite an input: " + file);
+        total += fs::file_size(path);
+        if (total > std::numeric_limits<uint32_t>::max())
+            throw std::runtime_error("GJD exceeds 32-bit offset/length range");
+    }
 
     std::ofstream rlOut(rlPath, std::ios::binary);
     std::ofstream gjdOut(gjdPath, std::ios::binary);
@@ -2063,12 +2190,12 @@ static void archivePackCommand(int argc, char **argv)
         throw std::runtime_error("Failed to open RL output: " + rlPath);
     if (!gjdOut)
         throw std::runtime_error("Failed to open GJD output: " + gjdPath);
+    rlOut.exceptions(std::ios::badbit | std::ios::failbit);
+    gjdOut.exceptions(std::ios::badbit | std::ios::failbit);
 
     uint32_t offset = 0;
-    for (const auto &file : files)
+    for (const auto &[name, file] : sources)
     {
-        const fs::path path(file);
-        const std::string name = path.filename().string();
         if (name.empty() || name.size() > 12)
             throw std::runtime_error("RL/GJD names must fit in 12 bytes: " + name);
 
@@ -2086,10 +2213,12 @@ static void archivePackCommand(int argc, char **argv)
             gjdOut.write(reinterpret_cast<const char *>(data.data()), static_cast<std::streamsize>(data.size()));
         offset += length;
     }
+    rlOut.close();
+    gjdOut.close();
 
     std::cout << "Packed RL: " << rlPath << "\n";
     std::cout << "Packed GJD: " << gjdPath << "\n";
-    std::cout << "Entries: " << files.size() << "\n";
+    std::cout << "Entries: " << sources.size() << "\n";
 }
 
 static void archiveListCommand(int argc, char **argv)
@@ -2168,17 +2297,29 @@ static void archiveUnpackCommand(int argc, char **argv)
     if (gjdPath.empty())
         gjdPath = defaultGjdPathFromRl(rlPath);
 
-    fs::create_directories(outDir);
     const auto entries = parseRlGjd(rlPath, gjdPath);
+    std::map<std::string, size_t> names;
     for (const auto &[name, data] : entries)
+        ++names[checkedRlName(name)];
+    fs::create_directories(outDir);
+    std::ofstream manifest(fs::path(outDir) / "_archive-order.txt", std::ios::binary);
+    manifest.exceptions(std::ios::badbit | std::ios::failbit);
+    manifest << "grooviev1.archive/1\n";
+    for (size_t i = 0; i < entries.size(); ++i)
     {
-        const fs::path outPath = fs::path(outDir) / name;
-        std::ofstream out(outPath, std::ios::binary);
-        if (!out)
-            throw std::runtime_error("Failed to write extracted file: " + outPath.string());
-        if (!data.empty())
-            out.write(reinterpret_cast<const char *>(data.data()), static_cast<std::streamsize>(data.size()));
+        const auto &[name, data] = entries[i];
+        // Duplicate names are legal retail RL entries. Keep one file per index
+        // and preserve their original names through the archive manifest.
+        std::string file = name;
+        if (names.at(checkedRlName(name)) > 1) {
+            const auto index = std::to_string(i);
+            file = "index" + std::string(index.size() < 5 ? 5 - index.size() : 0, '0') + index + "_" + name;
+        }
+        const fs::path outPath = fs::path(outDir) / file;
+        writeBinaryFile(outPath.string(), data);
+        manifest << std::quoted(name) << ' ' << std::quoted(file) << '\n';
     }
+    manifest.close();
 
     std::cout << "Unpacked entries: " << entries.size() << "\n";
     std::cout << "Output directory: " << outDir << "\n";
@@ -2199,6 +2340,8 @@ static void decodeStill0x20(const std::vector<uint8_t> &data,
     const int h = tilesY * 4;
     if (w != width || h != height)
         throw std::runtime_error("Validation: 0x20 dimensions mismatch");
+    if (readLE16(data.data() + 4) != 8 || data.size() != 774u + size_t(tilesX) * tilesY * 4)
+        throw std::runtime_error("Validation: invalid still depth or payload size");
 
     palette.resize(256);
     size_t off = 6;
@@ -2246,7 +2389,7 @@ static void applyDelta0x25(const std::vector<uint8_t> &data,
 
     if (localPaletteSize > 0)
     {
-        if (data.size() < off + 32 || data.size() < 2u + localPaletteSize)
+        if (localPaletteSize < 32 || data.size() < off + 32 || data.size() < 2u + localPaletteSize)
             throw std::runtime_error("Validation: invalid local palette size");
 
         size_t entryOff = off + 32;
@@ -2257,13 +2400,15 @@ static void applyDelta0x25(const std::vector<uint8_t> &data,
             {
                 if ((bits & (0x8000u >> bit)) == 0)
                     continue;
-                if (entryOff + 3 > data.size())
+                if (entryOff + 3 > 2u + localPaletteSize)
                     throw std::runtime_error("Validation: truncated local palette entries");
                 const int idx = group * 16 + bit;
                 palette[static_cast<size_t>(idx)] = RGB{data[entryOff], data[entryOff + 1], data[entryOff + 2]};
                 entryOff += 3;
             }
         }
+        if (entryOff != 2u + localPaletteSize)
+            throw std::runtime_error("Validation: local palette map/size mismatch");
         off = 2u + localPaletteSize;
     }
 
@@ -2273,6 +2418,8 @@ static void applyDelta0x25(const std::vector<uint8_t> &data,
     int yTile = 0;
 
     auto writeTileFromMap = [&](uint16_t map, uint8_t c1, uint8_t c0) {
+        if (xTile >= tilesX || yTile >= tilesY)
+            throw std::runtime_error("Validation: delta tile outside frame");
         for (int i = 0; i < 16; ++i)
         {
             const int x = xTile * 4 + (i % 4);
@@ -2301,6 +2448,8 @@ static void applyDelta0x25(const std::vector<uint8_t> &data,
 
         if (opcode == 0x60)
         {
+            if (xTile >= tilesX || yTile >= tilesY)
+                throw std::runtime_error("Validation: delta tile outside frame");
             if (off + 16 > data.size())
                 throw std::runtime_error("Validation: truncated opcode 0x60");
             for (int i = 0; i < 16; ++i)
@@ -2320,6 +2469,8 @@ static void applyDelta0x25(const std::vector<uint8_t> &data,
 
         if (opcode == 0x61)
         {
+            if (yTile >= tilesY)
+                throw std::runtime_error("Validation: delta row outside frame");
             ++yTile;
             xTile = 0;
             continue;
@@ -2328,6 +2479,8 @@ static void applyDelta0x25(const std::vector<uint8_t> &data,
         if (opcode >= 0x62 && opcode <= 0x6B)
         {
             xTile += static_cast<int>(opcode) - 0x62;
+            if (xTile > tilesX || yTile >= tilesY)
+                throw std::runtime_error("Validation: delta skip outside frame");
             continue;
         }
 
@@ -2554,8 +2707,15 @@ int main(int argc, char **argv)
         EncodeStats stats;
 
         const auto firstIndexed = rgbToIndexed(qualityFrames[0], workingPalette);
-        indexedFrames.push_back(firstIndexed);
         visualBlocks.push_back(Block{0x20, encodeStill0x20(firstIndexed, workingPalette, width, height)});
+        // RGB authoring is lossy: a still tile can hold only two indices.
+        // Subsequent deltas must compare against what was actually displayed.
+        std::vector<uint8_t> firstDisplayed;
+        std::vector<RGB> firstPalette;
+        decodeStill0x20(visualBlocks.back().data, firstPalette, firstDisplayed, width, height);
+        const size_t reducedPixels = std::inner_product(firstIndexed.begin(), firstIndexed.end(),
+            firstDisplayed.begin(), size_t{0}, std::plus<size_t>(), std::not_equal_to<uint8_t>());
+        indexedFrames.push_back(std::move(firstDisplayed));
 
         for (size_t i = 1; i < qualityFrames.size(); ++i)
         {
@@ -2639,6 +2799,7 @@ int main(int argc, char **argv)
 
         std::cout << "Encoded VDX: " << opt.outputPath << "\n";
         std::cout << "Frames: " << indexedFrames.size() << " (" << width << "x" << height << ")\n";
+        std::cout << "First-still pixels reduced to fit two-color tiles: " << reducedPixels << "\n";
         std::cout << "Visual chunks: " << visualBlocks.size() << "\n";
         std::cout << "Total chunks: " << finalBlocks.size() << "\n";
         std::cout << "Stats: opMap=" << stats.opMap

@@ -109,15 +109,15 @@ bits 32
 %include "src/functions/unknown/0040800d_func_0040800d.asm"
 %include "src/functions/unknown/00408050_func_00408050.asm"
 %include "src/functions/unknown/004080ad_func_004080ad.asm"
-%include "src/functions/unknown/004087fb_func_004087fb.asm"
-%include "src/functions/unknown/0040881e_func_0040881e.asm"
-%include "src/functions/unknown/00408846_func_00408846.asm"
-%include "src/functions/unknown/00408920_func_00408920.asm"
+%include "src/functions/platform/clear_gdi_indexed_framebuffer.asm"
+%include "src/functions/platform/destroy_gdi_framebuffer_resources.asm"
+%include "src/functions/platform/blit_gdi_dirty_rectangle.asm"
+%include "src/functions/platform/upload_gdi_palette_and_reset_dirty_rectangle.asm"
 %include "src/functions/vdx/decompress_vdx_lzss.asm"
-%include "src/functions/unknown/00408bb4_func_00408bb4.asm"
-%include "src/functions/unknown/00408d00_func_00408d00.asm"
-%include "src/functions/unknown/00408d12_func_00408d12.asm"
-%include "src/functions/unknown/00408d24_func_00408d24.asm"
+%include "src/functions/cursor/decompress_cursor_lzss_12bit.asm"
+%include "src/functions/vdx/retain_active_vdx_stream.asm"
+%include "src/functions/vdx/release_active_vdx_stream.asm"
+%include "src/functions/vdx/initialize_selected_vdx_stream.asm"
 %include "src/functions/vdx/open_loose_vdx.asm"
 %include "src/functions/runtime/dispatch_game_or_loose_vdx.asm"
 %include "src/functions/runtime/pump_media_and_game.asm"
@@ -156,9 +156,9 @@ bits 32
 %include "src/functions/unknown/0040bff4_func_0040bff4.asm"
 %include "src/functions/vdx/decompress_vdx_chunk.asm"
 %include "src/functions/grv/allocate_grv_runtime_buffers.asm"
-%include "src/functions/unknown/0040c129_func_0040c129.asm"
-%include "src/functions/resource_io/init_archive_tables.asm"
-%include "src/functions/unknown/0040c197_func_0040c197.asm"
+%include "src/functions/grv/free_grv_decode_runtime_buffers.asm"
+%include "src/functions/vdx/allocate_saved_background_buffer.asm"
+%include "src/functions/vdx/free_saved_background_buffer.asm"
 %include "src/functions/vdx/configure_vdx_stream.asm"
 %include "src/functions/vdx/decode_vdx_stream.asm"
 %include "src/functions/vdx/finalize_vdx_stream_playback.asm"
@@ -1271,25 +1271,25 @@ emit_func_004080ad_part_00
 %if ($ - $$) != 0x007BFB
     %error "layout drift at raw 007BFB"
 %endif
-emit_func_004087fb_part_00
+emit_clear_gdi_indexed_framebuffer_part_00
 
 ; raw 007C1E..007C46 (function)
 %if ($ - $$) != 0x007C1E
     %error "layout drift at raw 007C1E"
 %endif
-emit_func_0040881e_part_00
+emit_destroy_gdi_framebuffer_resources_part_00
 
 ; raw 007C46..007D20 (function)
 %if ($ - $$) != 0x007C46
     %error "layout drift at raw 007C46"
 %endif
-emit_func_00408846_part_00
+emit_blit_gdi_dirty_rectangle_part_00
 
 ; raw 007D20..007E7E (function)
 %if ($ - $$) != 0x007D20
     %error "layout drift at raw 007D20"
 %endif
-emit_func_00408920_part_00
+emit_upload_gdi_palette_and_reset_dirty_rectangle_part_00
 
 ; raw 007E7E..007E80 (explicit-data)
 %if ($ - $$) != 0x007E7E
@@ -1307,7 +1307,7 @@ emit_decompress_vdx_lzss_part_00
 %if ($ - $$) != 0x007FB4
     %error "layout drift at raw 007FB4"
 %endif
-emit_func_00408bb4_part_00
+emit_decompress_cursor_lzss_12bit_part_00
 
 ; raw 0080F5..008100 (explicit-data)
 %if ($ - $$) != 0x0080F5
@@ -1319,19 +1319,19 @@ emit_file_data_0009_0080f5
 %if ($ - $$) != 0x008100
     %error "layout drift at raw 008100"
 %endif
-emit_func_00408d00_part_00
+emit_retain_active_vdx_stream_part_00
 
 ; raw 008112..008124 (function)
 %if ($ - $$) != 0x008112
     %error "layout drift at raw 008112"
 %endif
-emit_func_00408d12_part_00
+emit_release_active_vdx_stream_part_00
 
 ; raw 008124..0081F6 (function)
 %if ($ - $$) != 0x008124
     %error "layout drift at raw 008124"
 %endif
-emit_func_00408d24_part_00
+emit_initialize_selected_vdx_stream_part_00
 
 ; raw 0081F6..008275 (function)
 %if ($ - $$) != 0x0081F6
@@ -1625,7 +1625,7 @@ emit_allocate_grv_runtime_buffers_part_00
 %if ($ - $$) != 0x00B529
     %error "layout drift at raw 00B529"
 %endif
-emit_func_0040c129_part_00
+emit_free_grv_decode_runtime_buffers_part_00
 
 ; raw 00B573..00B580 (explicit-data)
 %if ($ - $$) != 0x00B573
@@ -1637,13 +1637,13 @@ emit_file_data_0017_00b573
 %if ($ - $$) != 0x00B580
     %error "layout drift at raw 00B580"
 %endif
-emit_init_archive_tables_part_00
+emit_allocate_saved_background_buffer_part_00
 
 ; raw 00B597..00B5BD (function)
 %if ($ - $$) != 0x00B597
     %error "layout drift at raw 00B597"
 %endif
-emit_func_0040c197_part_00
+emit_free_saved_background_buffer_part_00
 
 ; raw 00B5BD..00B661 (function)
 %if ($ - $$) != 0x00B5BD

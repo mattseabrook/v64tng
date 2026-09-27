@@ -1,11 +1,14 @@
 ; Linear entry 02822 (1000:2822)
 ; Ghidra working symbol: FUN_1000_2822
-; Role not yet verified; boundary is provisional.
+; Verified role (static evidence): Copies 768 bytes SS:CC20 to SS:CF8C. Waits for bit 3 at port
+; 03DAh to clear then set; uploads all components to DAC 03C8h/03C9h.
+; Called by test_grv_hotspot_rect at 04831. Fade routines establish CF8C
+; independently as the active DAC palette.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_02822_part_00 0
+%macro emit_restore_saved_vga_palette_at_retrace_part_00 0
     %%fragment_start:
-func_02822:
+restore_saved_vga_palette_at_retrace:
     %%insn_02822:
     pusha ; 02822 60
     %if ($ - %%insn_02822) > 1

@@ -1,11 +1,13 @@
 ; PE virtual entry 0040C180
 ; Ghidra working symbol: FUN_0040c180
-; Verified archive table initialization role.
+; Verified allocation of 32000h bytes (640*320) into 004212D0.
+; Snapshot/copy/delta decoder consumers establish saved indexed background
+; ownership. Corrects the earlier archive-table label; paired free is 0040C197.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_init_archive_tables_part_00 0
+%macro emit_allocate_saved_background_buffer_part_00 0
     %%fragment_start:
-init_archive_tables:
+allocate_saved_background_buffer:
     %%insn_0040c180:
     push ebp ; 0040C180 55
     %if ($ - %%insn_0040c180) > 1

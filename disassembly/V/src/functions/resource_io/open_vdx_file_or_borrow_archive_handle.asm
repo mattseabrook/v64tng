@@ -1,11 +1,13 @@
 ; Linear entry 001E1 (1000:01e1)
 ; Ghidra working symbol: FUN_1000_01e1
-; Role not yet verified; boundary is provisional.
+; Verified role (static evidence): Standalone caller 00132. CF2E selects DOS INT 21h/3D00h open of
+; DS:CF68 versus borrowing D849 into active handle D47E. AX=0 on success
+; or FFFFh on open failure. Paired with close at 0020A.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_001e1_part_00 0
+%macro emit_open_vdx_file_or_borrow_archive_handle_part_00 0
     %%fragment_start:
-func_001e1:
+open_vdx_file_or_borrow_archive_handle:
     %%insn_001e1:
     cmp word [bp-0x30d2],0x0 ; 001E1 83BE2ECF00
     %if ($ - %%insn_001e1) > 5

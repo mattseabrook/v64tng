@@ -1,11 +1,16 @@
 ; PE virtual entry 00408D24
 ; Ghidra working symbol: FUN_00408d24
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role (static evidence): select_grv_video_resource and optional logo/credit callers supply
+; handle, flags, length, offset and cache key. Clears loose-file bit 2 at
+; 00421404; reads 16 bytes from cache or mmioRead; checks 9267h magic.
+; On success calls configure_vdx_stream, installs decode_vdx_stream at
+; 004213C4 and increments the stream-start counter through 00408D00.
+; Independent open_loose_vdx has the same magic/configure/callback path.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_00408d24_part_00 0
+%macro emit_initialize_selected_vdx_stream_part_00 0
     %%fragment_start:
-func_00408d24:
+initialize_selected_vdx_stream:
     %%insn_00408d24:
     push ebp ; 00408D24 55
     %if ($ - %%insn_00408d24) > 1
@@ -274,7 +279,7 @@ func_00408d24:
     %endif
     times 10 - ($ - %%insn_00408dd4) db 0
     %%insn_00408dde:
-    call 0x408d00 ; 00408DDE E81DFFFFFF
+    call retain_active_vdx_stream ; 00408DDE E81DFFFFFF
     %if ($ - %%insn_00408dde) > 5
         %error "LONG_00408DDE"
     %endif

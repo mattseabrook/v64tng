@@ -1,11 +1,13 @@
 ; PE virtual entry 0040881E
 ; Ghidra working symbol: FUN_0040881e
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role (static/cross-version evidence): Calls imported GDI DeleteObject on 0041F58C (DIB handle), then
+; frees BITMAPINFO storage at 0041F57C through allocator free. Returns
+; zero, does not clear globals. Paired with DIB creation in 004080AD.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_0040881e_part_00 0
+%macro emit_destroy_gdi_framebuffer_resources_part_00 0
     %%fragment_start:
-func_0040881e:
+destroy_gdi_framebuffer_resources:
     %%insn_0040881e:
     push ebp ; 0040881E 55
     %if ($ - %%insn_0040881e) > 1

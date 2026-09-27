@@ -22,7 +22,7 @@ Recent changes in this build:
 [![v64tng build](https://img.shields.io/badge/v64tng%20build-passing-2ea44f?logo=github)](build.sh)
 [![V.EXE NASM rebuild](https://img.shields.io/badge/V.EXE%20NASM%20rebuild-passing-2ea44f?logo=nasm)](disassembly/V)
 [![v32tng.exe NASM rebuild](https://img.shields.io/badge/v32tng.exe%20NASM%20rebuild-passing-2ea44f?logo=nasm)](disassembly/v32tng)
-[![semantic disassembly](https://img.shields.io/badge/semantic%20disassembly-28.6%25-7c3aed)](#semantic-disassembly-progress)
+[![semantic disassembly](https://img.shields.io/badge/semantic%20disassembly-31.5%25-7c3aed)](#semantic-disassembly-progress)
 [![source byte coverage](https://img.shields.io/badge/source%20byte%20coverage-100%25-2ea44f)](#semantic-disassembly-progress)
 [![License](https://img.shields.io/badge/license-see%20LICENSE-64748b?logo=github)](LICENSE)
 
@@ -30,16 +30,40 @@ Recent changes in this build:
 
 | Original executable | Verified semantic roles | Provisional roles remaining | Semantic completeness | Lossless source-byte coverage |
 |---|---:|---:|---:|---:|
-| [`V.EXE` 1.30`](disassembly/V) | 81 / 261 | 180 | **31.0%** | 101,624 / 101,624 bytes (**100%**) |
-| [`v32tng.exe` 1.02b1](disassembly/v32tng) | 90 / 336 | 246 | **26.8%** | 144,896 / 144,896 bytes (**100%**) |
-| **Combined** | **171 / 597** | **426** | **28.6%** | **246,520 / 246,520 bytes (100%)** |
+| [`V.EXE` 1.30](disassembly/V) | 88 / 261 | 173 | **33.7%** | 101,624 / 101,624 bytes (**100%**) |
+| [`v32tng.exe` 1.02b1](disassembly/v32tng) | 100 / 336 | 236 | **29.8%** | 144,896 / 144,896 bytes (**100%**) |
+| **Combined** | **188 / 597** | **409** | **31.5%** | **246,520 / 246,520 bytes (100%)** |
 
-Across both permanent disassemblies, **33,236 machine instructions** are
-decoded and **171 analyzer-discovered function entries have evidence-backed
+Across both permanent disassemblies, **37,665 machine instructions** are
+decoded and **188 analyzer-discovered function entries have evidence-backed
 semantic roles**. Semantic completeness is calculated as verified roles divided
 by provisional analyzer function entries. It is intentionally distinct from
 mechanical source coverage: every executable byte is already represented in
 NASM source, while behavioral identification continues.
+
+The September 26 research pass verified five more DOS functions (VDX handle
+ownership, saved palette restoration, 32-color palette merging and translation)
+and one Win32 function (selected VDX stream initialization). The DOS palette
+fallback uses an asymmetric RGB score; this is now verified against original
+machine code, rather than assumed to be absolute color distance. See
+[the evidence record](docs/SEMANTIC_CAPTURE_ADVANCE.md).
+
+The continued pass adds eleven more verified roles: the matching DOS/Win32
+cursor LZSS helpers, DOS cursor selection, Win32 media lifetime counters, GDI
+framebuffer/palette helpers, and decoder/background cleanup. It also corrects
+`0040C180`: that routine allocates the saved background, rather than archive
+tables. [`grooviev1`](grooviev1/README.md) now preserves audio in indexed PNG
+round trips, encodes ordinary RGB stills against their actual decoded baseline,
+preserves explicitly supplied archive index order, and uses a faster LZSS match
+search without changing compression tokens. Details and validation are in
+[the toolkit deep-dive report](docs/GROOVIEV1_DEEP_DIVE.md).
+
+The maintained capture kit is in [`research/debug`](research/debug/README.md).
+It now offers compact VM logging and optional hashed decoded-payload dumps.
+Its static script inventory extracts every direct asset reference from the
+entire GRV listing, including unvisited branches. The basement example
+resolved **95 resources**, including **16 assets with audio**, without gameplay:
+[static inventory and limitations](docs/BASEMENT_STATIC_INVENTORY.md).
 
 ## Build and Reproducibility Status
 
@@ -1734,11 +1758,11 @@ For opcodes in the range `0x80` to `0xFF` within the VDX file's delta frame proc
 
 When `grooviev1` emits `25h` delta streams, it currently prefers opcode families in this order to stay as close as practical to observed retail structure while still falling back safely for arbitrary source material:
 
-1. `0x00..0x5F` predefined-map two-colour tiles when the 4×4 pattern fits one of the known retail selector maps, including near-fits chosen by heuristic scoring.
-2. `0x62..0x6B` horizontal skip runs for unchanged tile spans.
-3. `0x6C..0x75` repeated solid-tile runs when several adjacent changed tiles share one palette entry.
-4. `0x76..0x7F` solid-tile sequences when adjacent changed tiles are each solid but use different palette entries.
-5. `0x60` full 16-byte per-pixel indexed tiles, then generic `0x80..0xFF` two-colour map form as fallback.
+1. `0x62..0x6B` horizontal skip runs for unchanged tile spans.
+2. `0x6C..0x75` repeated solid-tile runs of at least two adjacent changed tiles sharing one palette entry.
+3. `0x76..0x7F` solid-tile sequences for adjacent solid tiles; a remaining single solid tile uses `0x6C`.
+4. `0x00..0x5F` predefined-map two-colour tiles for exact selector-map matches; other two-colour tiles use the exact generic `0x80..0xFF` map form.
+5. `0x60` full 16-byte per-pixel indexed tiles for tiles with more than two indices.
 
 That ordering is an encoder policy, not a player requirement. The original players accept any structurally valid mix of the documented opcode classes.
 
@@ -2117,7 +2141,9 @@ All offsets below are file-relative and little-endian:
 - `0x0080..`: glyph offset table (`uint16_le[glyph_count]`)
 - `offset[glyph_index]..`: glyph record payloads
 
-`glyph_count` is derivable from the character map as `max(charmap) + 1`.
+`glyph_count = (first_glyph_offset - 128) / 2`, derived from the offset
+table's extent. `max(charmap) + 1` only counts through the highest mapped
+glyph and can miss unused trailing glyphs in custom fonts.
 For the retail `SPHINX.FNT` in this repository, `glyph_count = 37`.
 
 ### Character Map (128 bytes)
@@ -2359,6 +2385,18 @@ zero-token terminator accepted by both original decoders. Compression is
 lossless rather than quality-based; the default maximum-match profile is
 `lengthMask=7Fh`, `lengthBits=7`. Every compressed payload is immediately
 decoded and compared byte-for-byte with its source before the VDX is written.
+
+The toolkit's current match search indexes previous occurrences of each first
+byte, retaining nearest-first tie breaking. A 128 KiB high-entropy benchmark
+produced identical tokens while reducing compression time from about 172 ms
+to 3 ms on this host. This microbenchmark is not a whole-video encode speed
+claim. Its extractor now supports the original decoder's zero-initialized
+history references before the start of emitted output.
+
+Cursor/ROB compression uses a separate nibble-layout codec: distance is the
+low byte plus the upper nibble of the high byte, while length is the lower
+nibble plus three. It is verified in DOS at `0230F` and Win32 at `00408BB4`.
+It must not be confused with a VDX stream using `lengthBits=4`.
 
 ### Original DOS implementation
 
@@ -2658,6 +2696,31 @@ semantic events sufficient to answer:
 - what entered and left LZSS, `20h`, and `25h` processing;
 - what the palette and persistent frame hashes were after each visual chunk;
 - where the original and v64tng first ceased to agree.
+
+### Capture kit and complete script asset inventory
+
+Use [`research/debug/README.md`](research/debug/README.md) for the restored,
+maintained Win32 capture host, Frida agent, profiles, and offline digester.
+`--compact` omits VM entry/exit records while keeping their hooks for variable
+attribution; every GRV dispatch and variable change remains recorded.
+`--dump-decoded` writes decoded VDX bytes as SHA-256-addressed blobs rather
+than embedding binary payloads in JSON. These options require no game changes.
+
+For the basement example, run from the repository root:
+
+```sh
+python3 research/debug/script_inventory.py --scripts GRATE MAZE --extract --audio
+```
+
+The output at `research/basement-inventory/` includes exact GRVs, a JSON
+instruction/resource inventory, original referenced VDX/XMI files, chunk maps,
+and WAV audio. Add `--trace path/to/events.ndjson` to mark resources selected
+in an existing capture. This comparison is resource-level; it does not prove
+which branches ran. Dynamic filenames and child-script sites are reported as
+unresolved, not silently declared complete. The checked-in listings must match
+the full GRV bytes and SHA-256. See
+[the basement inventory](docs/BASEMENT_STATIC_INVENTORY.md) for actual counts.
+No dungeon gameplay trace was used or created in this pass.
 
 ### Reproducible DOS baseline
 

@@ -174,7 +174,7 @@ test_grv_hotspot_rect:
     %endif
     times 3 - ($ - %%insn_0482e) db 0
     %%insn_04831:
-    call 0x2822 ; 04831 E8EEDF
+    call restore_saved_vga_palette_at_retrace ; 04831 E8EEDF
     %if ($ - %%insn_04831) > 3
         %error "LONG_04831"
     %endif
@@ -242,7 +242,7 @@ test_grv_hotspot_rect:
     times 3 - ($ - %%insn_04840) db 0
     db 0x32, 0xE4 ; 04843 32E4 | xor ah,ah | encoding preserved
     %%insn_04845:
-    call 0x4710 ; 04845 E8C8FE
+    call select_cursor_shape_and_palette ; 04845 E8C8FE
     %if ($ - %%insn_04845) > 3
         %error "LONG_04845"
     %endif

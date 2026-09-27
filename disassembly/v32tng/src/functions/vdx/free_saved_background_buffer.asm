@@ -1,11 +1,13 @@
 ; PE virtual entry 0040C197
 ; Ghidra working symbol: FUN_0040c197
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role (static/cross-version evidence): Null-checks, frees and clears 004212D0. The paired 0040C180
+; allocation and snapshot/copy/delta consumers establish saved indexed
+; background ownership. No claimed relation to original object modules.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_0040c197_part_00 0
+%macro emit_free_saved_background_buffer_part_00 0
     %%fragment_start:
-func_0040c197:
+free_saved_background_buffer:
     %%insn_0040c197:
     push ebp ; 0040C197 55
     %if ($ - %%insn_0040c197) > 1

@@ -147,7 +147,7 @@ play_optional_numbered_credit_video:
     %endif
     times 1 - ($ - %%insn_00401d24) db 0
     %%insn_00401d25:
-    call 0x408d24 ; 00401D25 E8FA6F0000
+    call initialize_selected_vdx_stream ; 00401D25 E8FA6F0000
     %if ($ - %%insn_00401d25) > 5
         %error "LONG_00401D25"
     %endif

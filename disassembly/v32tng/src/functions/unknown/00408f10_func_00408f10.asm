@@ -14,13 +14,13 @@ func_00408f10:
     times 1 - ($ - %%insn_00408f10) db 0
     db 0x8B, 0xEC ; 00408F11 8BEC | mov ebp,esp | encoding preserved
     %%insn_00408f13:
-    call 0x40c197 ; 00408F13 E87F320000
+    call free_saved_background_buffer ; 00408F13 E87F320000
     %if ($ - %%insn_00408f13) > 5
         %error "LONG_00408F13"
     %endif
     times 5 - ($ - %%insn_00408f13) db 0
     %%insn_00408f18:
-    call 0x40c129 ; 00408F18 E80C320000
+    call free_grv_decode_runtime_buffers ; 00408F18 E80C320000
     %if ($ - %%insn_00408f18) > 5
         %error "LONG_00408F18"
     %endif

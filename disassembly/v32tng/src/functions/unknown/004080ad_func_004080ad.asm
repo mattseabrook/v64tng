@@ -3032,7 +3032,7 @@ func_004080ad:
     %endif
     times 3 - ($ - %%insn_004087df) db 0
     %%insn_004087e2:
-    call 0x4087fb ; 004087E2 E814000000
+    call clear_gdi_indexed_framebuffer ; 004087E2 E814000000
     %if ($ - %%insn_004087e2) > 5
         %error "LONG_004087E2"
     %endif

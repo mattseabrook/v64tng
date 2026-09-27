@@ -93,7 +93,7 @@ play_optional_trilogo_video:
     %endif
     times 1 - ($ - %%insn_00401cc9) db 0
     %%insn_00401cca:
-    call 0x408d24 ; 00401CCA E855700000
+    call initialize_selected_vdx_stream ; 00401CCA E855700000
     %if ($ - %%insn_00401cca) > 5
         %error "LONG_00401CCA"
     %endif

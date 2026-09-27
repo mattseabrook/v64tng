@@ -246,13 +246,13 @@ run_grv_input_loop:
     %endif
     times 3 - ($ - %%insn_04501) db 0
     %%insn_04504:
-    call 0x4710 ; 04504 E80902
+    call select_cursor_shape_and_palette ; 04504 E80902
     %if ($ - %%insn_04504) > 3
         %error "LONG_04504"
     %endif
     times 3 - ($ - %%insn_04504) db 0
     %%insn_04507:
-    call 0x4980 ; 04507 E87604
+    call build_32_color_palette_translation ; 04507 E87604
     %if ($ - %%insn_04507) > 3
         %error "LONG_04507"
     %endif
@@ -728,7 +728,7 @@ run_grv_input_loop:
     %endif
     times 3 - ($ - %%insn_045eb) db 0
     %%insn_045ee:
-    call 0x4710 ; 045EE E81F01
+    call select_cursor_shape_and_palette ; 045EE E81F01
     %if ($ - %%insn_045ee) > 3
         %error "LONG_045EE"
     %endif

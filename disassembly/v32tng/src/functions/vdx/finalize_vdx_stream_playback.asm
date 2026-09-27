@@ -125,7 +125,7 @@ finalize_vdx_stream_playback:
     %endif
     times 7 - ($ - %%insn_0040c70b) db 0
     %%insn_0040c712:
-    call 0x408d12 ; 0040C712 E8FBC5FFFF
+    call release_active_vdx_stream ; 0040C712 E8FBC5FFFF
     %if ($ - %%insn_0040c712) > 5
         %error "LONG_0040C712"
     %endif

@@ -1,11 +1,14 @@
 ; Linear entry 0230F (1000:230f)
 ; Ghidra working symbol: FUN_1000_230f
-; Role not yet verified; boundary is provisional.
+; Verified role (static/cross-version evidence): Cursor update caller 04AEC; flags are LSB-first, zero word ends stream,
+; distance is low byte plus high-byte upper nibble, length is lower nibble
+; plus 3. Overlap-capable ES output copy; SI/DI > FA00h rebase by 8000h
+; and segment +0800h. BH tracks output rebases. Matches Win32 00408BB4.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_0230f_part_00 0
+%macro emit_decompress_cursor_lzss_12bit_part_00 0
     %%fragment_start:
-func_0230f:
+decompress_cursor_lzss_12bit:
     %%insn_0230f:
     lodsb ; 0230F AC
     %if ($ - %%insn_0230f) > 1

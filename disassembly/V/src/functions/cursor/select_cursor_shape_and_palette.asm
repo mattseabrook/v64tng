@@ -1,11 +1,13 @@
 ; Linear entry 04710 (1000:4710)
 ; Ghidra working symbol: FUN_1000_4710
-; Role not yet verified; boundary is provisional.
+; Verified role (static/cross-version evidence): AX cursor index selects word at SS:E02B+2*AX into D9B8 and word
+; 16h bytes later into D9BA. Mouse updater consumes D9B8 as compressed
+; shape and D9BA as palette source. Exact 11-entry parallel pointer tables.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_04710_part_00 0
+%macro emit_select_cursor_shape_and_palette_part_00 0
     %%fragment_start:
-func_04710:
+select_cursor_shape_and_palette:
     %%insn_04710:
     mov bx,0xe02b ; 04710 BB2BE0
     %if ($ - %%insn_04710) > 3

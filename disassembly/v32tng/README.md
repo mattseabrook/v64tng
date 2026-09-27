@@ -33,8 +33,8 @@ The project has complete mechanical source coverage:
 This is not yet complete semantic recovery. Ghidra's function ownership is
 provisional and does not reveal the original Visual C++ object-module layout.
 Some explicit data may later prove to be code, jump tables, inline constants,
-or alignment. Ninety entries currently have verified semantic roles; the
-other 246 retain neutral address-based names.
+or alignment. One hundred entries currently have verified semantic roles; the
+other 236 retain neutral address-based names.
 
 Exact coverage and the complete function address map are maintained later in
 this README. This file is the public, monolithic research record for the
@@ -153,6 +153,20 @@ contains no generator, analyzer export, disassembler automation, or private
 reference executable. Historical addresses, analyzer symbols, ownership
 ranges, confidence, and source paths remain preserved in the function map
 below. `build.sh` is the sole required entry point.
+
+The September 26 pass identifies `00408D24` as
+`initialize_selected_vdx_stream`, through its resource/logo/credit callers,
+cache or mmio header read, magic validation, stream configuration and decoder
+callback installation. The independent loose-file path corroborates that
+sequence. See [the evidence record](../../docs/SEMANTIC_CAPTURE_ADVANCE.md).
+
+The continued pass adds nine roles in cursor decompression, VDX lifetime,
+GDI indexed-display/palette handling and runtime cleanup. It corrects the
+already named `0040C180` to `allocate_saved_background_buffer`: its 200 KiB
+allocation and snapshot/delta consumers establish background ownership, not
+archive-table ownership. Native helper tests check imported GDI calls and
+pixel/palette effects with modeled operating-system services. See
+[the continued report](../../docs/GROOVIEV1_DEEP_DIVE.md).
 
 ## Verified semantic footholds
 
@@ -331,8 +345,8 @@ understanding.
 | Function-body instructions decoded | 25,181 |
 | Instructions requiring exact `db` encoding fallback | 1,992 |
 | Bytes in encoding fallbacks | 4,159 |
-| Verified semantic function roles | 90 |
-| Unidentified/provisionally bounded functions | 246 |
+| Verified semantic function roles | 100 |
+| Unidentified/provisionally bounded functions | 236 |
 | Non-function PE file bytes | 63,737 |
 
 All headers, section padding, code gaps, `.rdata`, `.data`, imports, resources,
@@ -455,15 +469,15 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `0040800D` | unidentified | `func_0040800d` | `FUN_0040800d` | `0040800D–0040804A` | [`src/functions/unknown/0040800d_func_0040800d.asm`](src/functions/unknown/0040800d_func_0040800d.asm) |
 | `00408050` | unidentified | `func_00408050` | `FUN_00408050` | `00408050–004080AC` | [`src/functions/unknown/00408050_func_00408050.asm`](src/functions/unknown/00408050_func_00408050.asm) |
 | `004080AD` | unidentified | `func_004080ad` | `FUN_004080ad` | `004080AD–004087FA` | [`src/functions/unknown/004080ad_func_004080ad.asm`](src/functions/unknown/004080ad_func_004080ad.asm) |
-| `004087FB` | unidentified | `func_004087fb` | `FUN_004087fb` | `004087FB–0040881D` | [`src/functions/unknown/004087fb_func_004087fb.asm`](src/functions/unknown/004087fb_func_004087fb.asm) |
-| `0040881E` | unidentified | `func_0040881e` | `FUN_0040881e` | `0040881E–00408845` | [`src/functions/unknown/0040881e_func_0040881e.asm`](src/functions/unknown/0040881e_func_0040881e.asm) |
-| `00408846` | unidentified | `func_00408846` | `FUN_00408846` | `00408846–0040891F` | [`src/functions/unknown/00408846_func_00408846.asm`](src/functions/unknown/00408846_func_00408846.asm) |
-| `00408920` | unidentified | `func_00408920` | `FUN_00408920` | `00408920–00408A7D` | [`src/functions/unknown/00408920_func_00408920.asm`](src/functions/unknown/00408920_func_00408920.asm) |
+| `004087FB` | verified-role | `clear_gdi_indexed_framebuffer` | `FUN_004087fb` | `004087FB–0040881D` | [`src/functions/platform/clear_gdi_indexed_framebuffer.asm`](src/functions/platform/clear_gdi_indexed_framebuffer.asm) |
+| `0040881E` | verified-role | `destroy_gdi_framebuffer_resources` | `FUN_0040881e` | `0040881E–00408845` | [`src/functions/platform/destroy_gdi_framebuffer_resources.asm`](src/functions/platform/destroy_gdi_framebuffer_resources.asm) |
+| `00408846` | verified-role | `blit_gdi_dirty_rectangle` | `FUN_00408846` | `00408846–0040891F` | [`src/functions/platform/blit_gdi_dirty_rectangle.asm`](src/functions/platform/blit_gdi_dirty_rectangle.asm) |
+| `00408920` | verified-role | `upload_gdi_palette_and_reset_dirty_rectangle` | `FUN_00408920` | `00408920–00408A7D` | [`src/functions/platform/upload_gdi_palette_and_reset_dirty_rectangle.asm`](src/functions/platform/upload_gdi_palette_and_reset_dirty_rectangle.asm) |
 | `00408A80` | verified-role | `decompress_vdx_lzss` | `FUN_00408a80` | `00408A80–00408BB3` | [`src/functions/vdx/decompress_vdx_lzss.asm`](src/functions/vdx/decompress_vdx_lzss.asm) |
-| `00408BB4` | unidentified | `func_00408bb4` | `FUN_00408bb4` | `00408BB4–00408CF4` | [`src/functions/unknown/00408bb4_func_00408bb4.asm`](src/functions/unknown/00408bb4_func_00408bb4.asm) |
-| `00408D00` | unidentified | `func_00408d00` | `FUN_00408d00` | `00408D00–00408D11` | [`src/functions/unknown/00408d00_func_00408d00.asm`](src/functions/unknown/00408d00_func_00408d00.asm) |
-| `00408D12` | unidentified | `func_00408d12` | `FUN_00408d12` | `00408D12–00408D23` | [`src/functions/unknown/00408d12_func_00408d12.asm`](src/functions/unknown/00408d12_func_00408d12.asm) |
-| `00408D24` | unidentified | `func_00408d24` | `FUN_00408d24` | `00408D24–00408DF5` | [`src/functions/unknown/00408d24_func_00408d24.asm`](src/functions/unknown/00408d24_func_00408d24.asm) |
+| `00408BB4` | verified-role | `decompress_cursor_lzss_12bit` | `FUN_00408bb4` | `00408BB4–00408CF4` | [`src/functions/cursor/decompress_cursor_lzss_12bit.asm`](src/functions/cursor/decompress_cursor_lzss_12bit.asm) |
+| `00408D00` | verified-role | `retain_active_vdx_stream` | `FUN_00408d00` | `00408D00–00408D11` | [`src/functions/vdx/retain_active_vdx_stream.asm`](src/functions/vdx/retain_active_vdx_stream.asm) |
+| `00408D12` | verified-role | `release_active_vdx_stream` | `FUN_00408d12` | `00408D12–00408D23` | [`src/functions/vdx/release_active_vdx_stream.asm`](src/functions/vdx/release_active_vdx_stream.asm) |
+| `00408D24` | verified-role | `initialize_selected_vdx_stream` | `FUN_00408d24` | `00408D24–00408DF5` | [`src/functions/vdx/initialize_selected_vdx_stream.asm`](src/functions/vdx/initialize_selected_vdx_stream.asm) |
 | `00408DF6` | verified-role | `open_loose_vdx` | `FUN_00408df6` | `00408DF6–00408E74` | [`src/functions/vdx/open_loose_vdx.asm`](src/functions/vdx/open_loose_vdx.asm) |
 | `00408E75` | verified-role | `dispatch_game_or_loose_vdx` | `FUN_00408e75` | `00408E75–00408EB6` | [`src/functions/runtime/dispatch_game_or_loose_vdx.asm`](src/functions/runtime/dispatch_game_or_loose_vdx.asm) |
 | `00408EB7` | verified-role | `pump_media_and_game` | `FUN_00408eb7` | `00408EB7–00408F0F` | [`src/functions/runtime/pump_media_and_game.asm`](src/functions/runtime/pump_media_and_game.asm) |
@@ -502,9 +516,9 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `0040BFF4` | unidentified | `func_0040bff4` | `FUN_0040bff4` | `0040BFF4–0040C0BA` | [`src/functions/unknown/0040bff4_func_0040bff4.asm`](src/functions/unknown/0040bff4_func_0040bff4.asm) |
 | `0040C0BB` | verified-role | `decompress_vdx_chunk` | `FUN_0040c0bb` | `0040C0BB–0040C0E6` | [`src/functions/vdx/decompress_vdx_chunk.asm`](src/functions/vdx/decompress_vdx_chunk.asm) |
 | `0040C0E7` | verified-role | `allocate_grv_runtime_buffers` | `FUN_0040c0e7` | `0040C0E7–0040C128` | [`src/functions/grv/allocate_grv_runtime_buffers.asm`](src/functions/grv/allocate_grv_runtime_buffers.asm) |
-| `0040C129` | unidentified | `func_0040c129` | `FUN_0040c129` | `0040C129–0040C172` | [`src/functions/unknown/0040c129_func_0040c129.asm`](src/functions/unknown/0040c129_func_0040c129.asm) |
-| `0040C180` | verified-role | `init_archive_tables` | `FUN_0040c180` | `0040C180–0040C196` | [`src/functions/resource_io/init_archive_tables.asm`](src/functions/resource_io/init_archive_tables.asm) |
-| `0040C197` | unidentified | `func_0040c197` | `FUN_0040c197` | `0040C197–0040C1BC` | [`src/functions/unknown/0040c197_func_0040c197.asm`](src/functions/unknown/0040c197_func_0040c197.asm) |
+| `0040C129` | verified-role | `free_grv_decode_runtime_buffers` | `FUN_0040c129` | `0040C129–0040C172` | [`src/functions/grv/free_grv_decode_runtime_buffers.asm`](src/functions/grv/free_grv_decode_runtime_buffers.asm) |
+| `0040C180` | verified-role | `allocate_saved_background_buffer` | `FUN_0040c180` | `0040C180–0040C196` | [`src/functions/vdx/allocate_saved_background_buffer.asm`](src/functions/vdx/allocate_saved_background_buffer.asm) |
+| `0040C197` | verified-role | `free_saved_background_buffer` | `FUN_0040c197` | `0040C197–0040C1BC` | [`src/functions/vdx/free_saved_background_buffer.asm`](src/functions/vdx/free_saved_background_buffer.asm) |
 | `0040C1BD` | verified-role | `configure_vdx_stream` | `FUN_0040c1bd` | `0040C1BD–0040C260` | [`src/functions/vdx/configure_vdx_stream.asm`](src/functions/vdx/configure_vdx_stream.asm) |
 | `0040C261` | verified-role | `decode_vdx_stream` | `FUN_0040c261` | `0040C261–0040C60F` | [`src/functions/vdx/decode_vdx_stream.asm`](src/functions/vdx/decode_vdx_stream.asm) |
 | `0040C6A5` | verified-role | `finalize_vdx_stream_playback` | `FUN_0040c6a5` | `0040C6A5–0040C773` | [`src/functions/vdx/finalize_vdx_stream_playback.asm`](src/functions/vdx/finalize_vdx_stream_playback.asm) |

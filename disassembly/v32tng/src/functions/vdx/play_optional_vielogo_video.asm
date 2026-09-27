@@ -93,7 +93,7 @@ play_optional_vielogo_video:
     %endif
     times 1 - ($ - %%insn_00401c85) db 0
     %%insn_00401c86:
-    call 0x408d24 ; 00401C86 E899700000
+    call initialize_selected_vdx_stream ; 00401C86 E899700000
     %if ($ - %%insn_00401c86) > 5
         %error "LONG_00401C86"
     %endif

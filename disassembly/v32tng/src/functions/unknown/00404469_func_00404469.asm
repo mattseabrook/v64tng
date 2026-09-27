@@ -116,7 +116,7 @@ func_00404469:
     %endif
     times 1 - ($ - %%insn_004044b3) db 0
     %%insn_004044b4:
-    call 0x408bb4 ; 004044B4 E8FB460000
+    call decompress_cursor_lzss_12bit ; 004044B4 E8FB460000
     %if ($ - %%insn_004044b4) > 5
         %error "LONG_004044B4"
     %endif

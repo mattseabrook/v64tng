@@ -1,11 +1,14 @@
 ; PE virtual entry 00408920
 ; Ghidra working symbol: FUN_00408920
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role (static/cross-version evidence): Converts 256 RGB triples from ECX object +44h to BGR RGBQUAD
+; stack entries; SetDIBColorTable updates all 256 colors on selected DIB.
+; Restores/releases GDI objects; resets dirty bounds to 640,0,480,0 and
+; marks palette refresh global 0041F590. Null palette skips GDI work.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_00408920_part_00 0
+%macro emit_upload_gdi_palette_and_reset_dirty_rectangle_part_00 0
     %%fragment_start:
-func_00408920:
+upload_gdi_palette_and_reset_dirty_rectangle:
     %%insn_00408920:
     push ebp ; 00408920 55
     %if ($ - %%insn_00408920) > 1

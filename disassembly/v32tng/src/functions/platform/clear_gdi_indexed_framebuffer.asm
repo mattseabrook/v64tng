@@ -1,11 +1,13 @@
 ; PE virtual entry 004087FB
 ; Ghidra working symbol: FUN_004087fb
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role (static/cross-version evidence): ECX object field +3Ch supplies pixel pointer; fill_memory_bytes
+; clears exactly 4B000h bytes (640*480 indexed pixels), returns zero.
+; DIB initialization installs that pointer and calls this helper.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_004087fb_part_00 0
+%macro emit_clear_gdi_indexed_framebuffer_part_00 0
     %%fragment_start:
-func_004087fb:
+clear_gdi_indexed_framebuffer:
     %%insn_004087fb:
     push ebp ; 004087FB 55
     %if ($ - %%insn_004087fb) > 1

@@ -26,6 +26,8 @@ static void extractIndexed(const std::string &input, const std::string &director
     size_t count = 0;
     std::vector<uint8_t> frame;
     std::vector<RGB> palette;
+    std::vector<uint8_t> audio;
+    std::ostringstream audioMap;
     for (size_t pos = 8; pos < bytes.size();) {
         if (bytes.size() - pos < 8) throw std::runtime_error("Truncated chunk header");
         const uint8_t type = bytes[pos], coding = bytes[pos + 1];
@@ -34,12 +36,17 @@ static void extractIndexed(const std::string &input, const std::string &director
         if (size > bytes.size() - pos - 8) throw std::runtime_error("Truncated chunk payload");
         std::vector<uint8_t> payload(bytes.begin() + pos + 8, bytes.begin() + pos + 8 + size);
         pos += 8 + size;
-        if (type != 0x20 && type != 0x25 && type != 0x00) continue;
+        if (type != 0x20 && type != 0x25 && type != 0x00 && type != 0x80) continue;
         if (coding == 0x77) {
             if (!bits || bits > 8 || mask != (1u << bits) - 1)
                 throw std::runtime_error("Unsupported LZSS parameters");
             payload = lzssDecompressForValidation(payload, mask, bits);
-        } else if (coding != 0x67) throw std::runtime_error("Unsupported chunk coding");
+        } // The original stream decoder treats every other coding byte as raw.
+        if (type == 0x80) {
+            audioMap << count << ' ' << audio.size() << ' ' << payload.size() << '\n';
+            audio.insert(audio.end(), payload.begin(), payload.end());
+            continue;
+        }
         if (type == 0x20) {
             if (payload.size() < 6) throw std::runtime_error("Truncated still");
             const int w = readLE16(payload.data()) * 4, h = readLE16(payload.data() + 2) * 4;
@@ -59,6 +66,12 @@ static void extractIndexed(const std::string &input, const std::string &director
     std::ofstream meta(fs::path(directory) / "sequence.txt");
     meta.exceptions(std::ios::badbit | std::ios::failbit);
     meta << width << ' ' << height << ' ' << readLE16(bytes.data() + 6) << ' ' << count << '\n';
+    if (!audioMap.str().empty()) {
+        writeBinaryFile((fs::path(directory) / "audio.pcm").string(), audio);
+        std::ofstream map(fs::path(directory) / "audio.txt");
+        map.exceptions(std::ios::badbit | std::ios::failbit);
+        map << audioMap.str();
+    }
     std::cout << "Extracted " << count << " indexed frames, " << width << 'x' << height << "\n";
 }
 
@@ -76,6 +89,28 @@ static void encodeIndexed(const std::string &directory, const std::string &outpu
     std::vector<RGB> decodedPalette;
     std::vector<Block> blocks;
     EncodeStats stats;
+    std::vector<Block> audioBlocks;
+    std::vector<size_t> audioPositions;
+    const auto audioPath = fs::path(directory) / "audio.pcm";
+    const auto audioMapPath = fs::path(directory) / "audio.txt";
+    if (fs::exists(audioPath) != fs::exists(audioMapPath))
+        throw std::runtime_error("Indexed audio requires both audio.pcm and audio.txt");
+    if (fs::exists(audioPath)) {
+        const auto audio = readBinaryFile(audioPath.string());
+        std::ifstream map(audioMapPath);
+        size_t position, offset, size, consumed = 0;
+        while (map >> position) {
+            if (!(map >> offset >> size) || position > count || offset != consumed ||
+                offset > audio.size() || size > audio.size() - offset ||
+                (!audioPositions.empty() && position < audioPositions.back()))
+                throw std::runtime_error("Invalid indexed audio chunk map");
+            audioPositions.push_back(position);
+            audioBlocks.push_back({0x80, std::vector<uint8_t>(audio.begin() + offset, audio.begin() + offset + size)});
+            consumed += size;
+        }
+        if (!map.eof() || consumed != audio.size())
+            throw std::runtime_error("Incomplete indexed audio chunk map");
+    }
     for (size_t i = 0; i < count; ++i) {
         const auto base = fs::path(directory) / indexedName(i);
         const auto frame = readBinaryFile(base.string() + ".idx");
@@ -118,6 +153,15 @@ static void encodeIndexed(const std::string &directory, const std::string &outpu
         blocks.push_back(std::move(block));
         previous = frame; previousPalette = pal;
     }
-    writeVDX(output, fps, blocks, true, 31, 5);
+    std::vector<Block> interleaved;
+    interleaved.reserve(blocks.size() + audioBlocks.size());
+    size_t audioIndex = 0;
+    for (size_t i = 0; i <= blocks.size(); ++i) {
+        while (audioIndex < audioBlocks.size() && audioPositions[audioIndex] == i)
+            interleaved.push_back(std::move(audioBlocks[audioIndex++]));
+        if (i < blocks.size()) interleaved.push_back(std::move(blocks[i]));
+    }
+    writeVDX(output, fps, interleaved, true, 31, 5);
     std::cout << "Encoded and validated " << count << " frames and complete palettes\n";
+    std::cout << "Preserved " << audioBlocks.size() << " PCM chunks at original visual boundaries\n";
 }

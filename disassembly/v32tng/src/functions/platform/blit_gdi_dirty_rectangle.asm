@@ -1,11 +1,14 @@
 ; PE virtual entry 00408846
 ; Ghidra working symbol: FUN_00408846
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role (static/cross-version evidence): ECX object +54/+58 and +5C/+60 are half-open dirty bounds.
+; Empty rectangles return zero. Gets window DC, creates compatible DC,
+; selects indexed DIB, BitBlt SRCCOPY at identical source/dest bounds,
+; releases window DC, restores selected object, deletes temporary DC.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_00408846_part_00 0
+%macro emit_blit_gdi_dirty_rectangle_part_00 0
     %%fragment_start:
-func_00408846:
+blit_gdi_dirty_rectangle:
     %%insn_00408846:
     push ebp ; 00408846 55
     %if ($ - %%insn_00408846) > 1

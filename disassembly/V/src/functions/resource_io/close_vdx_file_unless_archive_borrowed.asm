@@ -1,11 +1,13 @@
 ; Linear entry 0020A (1000:020a)
 ; Ghidra working symbol: FUN_1000_020a
-; Role not yet verified; boundary is provisional.
+; Verified role (static evidence): Standalone cleanup callers 001CA/001D9. CF2E nonzero preserves the
+; borrowed archive handle; otherwise DOS INT 21h/3E00h closes D47E.
+; The active handle global is not cleared.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_0020a_part_00 0
+%macro emit_close_vdx_file_unless_archive_borrowed_part_00 0
     %%fragment_start:
-func_0020a:
+close_vdx_file_unless_archive_borrowed:
     %%insn_0020a:
     cmp word [bp-0x30d2],0x0 ; 0020A 83BE2ECF00
     %if ($ - %%insn_0020a) > 5

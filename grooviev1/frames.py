@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import subprocess
 import tempfile
+import shutil
 from PIL import Image
 
 
@@ -20,6 +21,11 @@ def extract(tool, source, output):
     w, h, fps, count = map(int, (raw / 'sequence.txt').read_text().split())
     metadata = dict(format='grooviev1.indexed-png', version=1, width=w, height=h,
                     fps=fps, frames=count)
+    if (raw / 'audio.pcm').exists():
+        for name in ('audio.pcm', 'audio.txt'):
+            shutil.copyfile(raw / name, output / name)
+        metadata['audio'] = dict(pcm='audio.pcm', chunks='audio.txt',
+                                 sample_rate=22050, channels=1, sample_bits=8)
     (output / 'sequence.json').write_text(json.dumps(metadata, indent=2) + '\n')
     for i in range(count):
         name = f'{i:05}'
@@ -47,6 +53,12 @@ def encode(tool, source, output):
     with tempfile.TemporaryDirectory(prefix='grooviev1-png-') as folder:
         folder = Path(folder)
         (folder / 'sequence.txt').write_text(f'{w} {h} {fps} {count}\n')
+        if 'audio' in meta:
+            if meta['audio'] != dict(pcm='audio.pcm', chunks='audio.txt',
+                                     sample_rate=22050, channels=1, sample_bits=8):
+                raise ValueError('Unsupported indexed audio metadata')
+            for name in ('audio.pcm', 'audio.txt'):
+                shutil.copyfile(source / name, folder / name)
         for i in range(count):
             name = f'{i:05}'
             with Image.open(source / (name + '.png')) as image:
@@ -85,14 +97,22 @@ def compare(tool, source, output, report):
                                 palette_sha256=hashlib.sha256(pal[0]).hexdigest(),
                                 rgb_sha256=hashlib.sha256(rgb[0]).hexdigest()))
         passed = all(not any(r[k] for k in ('index_mismatches', 'palette_byte_mismatches', 'rgb_byte_mismatches')) for r in records)
-        data = dict(passed=passed, comparison='decoded indices, all palette entries and RGB',
+        data = dict(passed=passed, comparison='decoded indices, all palette entries, RGB, PCM and audio chunk positions',
                     compressed_bytes_identical=source.read_bytes() == output.read_bytes(),
                     source_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),
                     encoded_sha256=hashlib.sha256(output.read_bytes()).hexdigest(), frames=records)
+        audio = [(p / 'audio.pcm').read_bytes() if (p / 'audio.pcm').exists() else b'' for p in roots]
+        maps = [(p / 'audio.txt').read_text() if (p / 'audio.txt').exists() else '' for p in roots]
+        data['audio'] = dict(pcm_identical=audio[0] == audio[1],
+                             chunk_positions_identical=maps[0] == maps[1],
+                             bytes=len(audio[0]), sha256=hashlib.sha256(audio[0]).hexdigest())
+        passed = passed and audio[0] == audio[1] and maps[0] == maps[1]
+        data['passed'] = passed
         report.write_text(json.dumps(data, indent=2) + '\n')
         if not passed:
             raise ValueError(f'Lossless comparison failed; see {report}')
-        print(f'PASS: {len(records)} frames; zero index, palette or RGB mismatches. Report: {report}')
+        print(f'PASS: {len(records)} frames; zero index, palette or RGB mismatches; '
+              f'{len(audio[0])} PCM bytes and chunk positions match. Report: {report}')
 
 
 def main():

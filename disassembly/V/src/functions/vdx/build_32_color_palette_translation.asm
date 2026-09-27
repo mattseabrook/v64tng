@@ -1,11 +1,16 @@
 ; Linear entry 04980 (1000:4980)
 ; Ghidra working symbol: FUN_1000_4980
-; Role not yet verified; boundary is provisional.
+; Verified role (static evidence): Clears the 256-byte E166 translation table and merges the palette
+; at DS:[D9BA]+3 into unused entries. For unmapped source indexes 1..31,
+; chooses an active RGB entry 1..255 using the original asymmetric score
+; (DAC components <<2): active-source when nonnegative, otherwise
+; 2*source-active, summed across RGB. Ties keep the first entry;
+; an exact match ends the scan. Static caller/callee and data-flow proof.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
-%macro emit_func_04980_part_00 0
+%macro emit_build_32_color_palette_translation_part_00 0
     %%fragment_start:
-func_04980:
+build_32_color_palette_translation:
     %%insn_04980:
     push ds ; 04980 1E
     %if ($ - %%insn_04980) > 1
@@ -85,7 +90,7 @@ func_04980:
     %endif
     times 3 - ($ - %%insn_0499b) db 0
     %%insn_0499e:
-    call 0x26e5 ; 0499E E844DD
+    call merge_32_color_palette_into_unused_entries ; 0499E E844DD
     %if ($ - %%insn_0499e) > 3
         %error "LONG_0499E"
     %endif

@@ -1,11 +1,13 @@
 ; PE virtual entry 00408D12
 ; Ghidra working symbol: FUN_00408d12
-; Role not yet verified; analyzer boundary is provisional.
+; Verified role (static/cross-version evidence): Decrements 0041F598 modulo 2^32 without a zero guard. Native
+; finalize_vdx_stream_playback calls it at 0040C712; paired with 00408D00
+; and active-media check in pump_media_and_game.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_00408d12_part_00 0
+%macro emit_release_active_vdx_stream_part_00 0
     %%fragment_start:
-func_00408d12:
+release_active_vdx_stream:
     %%insn_00408d12:
     push ebp ; 00408D12 55
     %if ($ - %%insn_00408d12) > 1

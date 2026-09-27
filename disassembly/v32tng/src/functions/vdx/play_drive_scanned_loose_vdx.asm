@@ -141,7 +141,7 @@ play_drive_scanned_loose_vdx:
     %endif
     times 1 - ($ - %%insn_00401c3f) db 0
     %%insn_00401c40:
-    call 0x408d24 ; 00401C40 E8DF700000
+    call initialize_selected_vdx_stream ; 00401C40 E8DF700000
     %if ($ - %%insn_00401c40) > 5
         %error "LONG_00401C40"
     %endif
