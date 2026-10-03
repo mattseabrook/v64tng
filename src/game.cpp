@@ -27,6 +27,8 @@
 #include "config.h"
 #include "cursor.h"
 #include "raycast.h"
+#include "raycast_ghost.h"
+#include "raycast_chase.h"
 #include "assets.h"
 #include "grv_runtime.h"
 #include "grv_palette_fade.h"
@@ -56,16 +58,14 @@ static uint8_t activeRedbookSelection = 0;
 static bool raycasterMenuOpen = false;
 static bool grvGameMenuOpen = false;
 static unsigned grvTransitionDepth = 0;
-struct GhostTexture
-{
-    int width = 0, height = 0;
-    std::vector<uint8_t> rgba;
-};
+static bool basementCapturePlaying = false;
 struct GhostAsset
 {
     std::vector<GhostTexture> frames;
     std::shared_ptr<std::vector<uint8_t>> pcm;
     double fps = 15.0;
+    double firstVisible = 0;
+    size_t firstActorFrame = 0, lastActorFrame = 0;
 };
 struct GhostEntity
 {
@@ -74,10 +74,78 @@ struct GhostEntity
     bool queued = false, active = false;
     float x = 0, y = 0;
     double elapsed = 0;
+    GhostNavigation navigation;
+    GhostPoint previousPlayer;
     std::optional<std::chrono::steady_clock::time_point> speechEnded;
     std::chrono::steady_clock::time_point updated;
 };
 static GhostEntity ghostEntity;
+static void ghostCaughtPlayer();
+
+struct BasementPose
+{
+    float x, y, angle;
+};
+static std::optional<BasementPose> pendingBasementPose;
+
+static uint64_t savePayloadHash(std::span<const uint8_t> payload)
+{
+    uint64_t hash=14695981039346656037ull;
+    for (const uint8_t byte : payload)
+    {
+        hash^=byte;
+        hash*=1099511628211ull;
+    }
+    return hash;
+}
+
+static std::expected<void, std::string> observeNativeSave(
+    bool loading, uint8_t, const std::filesystem::path &nativePath,
+    std::span<const uint8_t> payload)
+{
+    // Keep the native payload byte-for-byte compatible with V and v32tng.
+    // The companion is valid only for the exact native payload it accompanied.
+    auto companion=nativePath;
+    companion += ".v64tng";
+    if (loading)
+    {
+        // LOADGAME replaces the parked session, even when the loaded room is
+        // another basement save that will restore its pose at the handoff.
+        raycasterMenuOpen=false;
+        pendingBasementPose.reset();
+        std::ifstream file(companion);
+        std::string marker;
+        uint64_t hash=0;
+        uint32_t x=0, y=0, angle=0;
+        if (file >> marker >> std::hex >> hash >> x >> y >> angle &&
+            marker=="v64tng-basement-1" && hash==savePayloadHash(payload))
+        {
+            const BasementPose pose{std::bit_cast<float>(x),
+                                    std::bit_cast<float>(y), std::bit_cast<float>(angle)};
+            if (std::isfinite(pose.x) && std::isfinite(pose.y) && std::isfinite(pose.angle))
+                pendingBasementPose=pose;
+        }
+        return {};
+    }
+    if (!raycasterMenuOpen || !grvGameMenuOpen || !state.raycast.map)
+    {
+        std::error_code ignored;
+        std::filesystem::remove(companion,ignored);
+        if (ignored)
+            return std::unexpected("Cannot remove basement save companion " + companion.string());
+        return {};
+    }
+    const auto &p=state.raycast.player;
+    std::ofstream file(companion,std::ios::trunc);
+    if (!file || !(file << std::format("v64tng-basement-1 {:016x} {:08x} {:08x} {:08x}\n",
+        savePayloadHash(payload),std::bit_cast<uint32_t>(p.x),
+        std::bit_cast<uint32_t>(p.y),std::bit_cast<uint32_t>(p.angle))))
+        return std::unexpected("Cannot write basement save companion " + companion.string());
+    file.close();
+    if (!file)
+        return std::unexpected("Cannot close basement save companion " + companion.string());
+    return {};
+}
 
 static GhostAsset prepareGhostAsset()
 {
@@ -87,44 +155,17 @@ static GhostAsset prepareGhostAsset()
     GhostAsset result;
     result.fps = loaded->frameRate ? double(loaded->frameRate) : 15.0;
     result.pcm = std::make_shared<std::vector<uint8_t>>(std::move(loaded->audioData));
-    if (loaded->frameIndices.empty()) throw std::runtime_error("Ghost has no indexed frames");
-    const auto &plate = *loaded->frameIndices.front();
-    const int width = loaded->width, height = loaded->height;
-    if (width <= 0 || height <= 0 || plate.size() != size_t(width)*height)
-        throw std::runtime_error("Invalid ghost bitmap size");
-    // Extract actor support relative to the VDX's initial room plate. Crop
-    // each frame so camera zoom in the movie is not a second world movement.
-    for (size_t frame=0; frame<loaded->frameData.size(); ++frame)
-    {
-        const auto &indices = *loaded->frameIndices.at(frame);
-        const auto &rgb = *loaded->frameData[frame];
-        if (indices.size() != plate.size() || rgb.size() != plate.size()*3)
-            throw std::runtime_error("Invalid ghost frame size");
-        int left=width, top=height, right=-1, bottom=-1;
-        for (int y=0; y<height; ++y)
-        for (int x=0; x<width; ++x)
+    result.frames=prepareGhostFrames(*loaded);
+    size_t first=result.frames.size(), last=0;
+    for (size_t i=0; i<result.frames.size(); ++i)
+        if (result.frames[i].width)
         {
-            const size_t p=size_t(y)*width+x;
-            if (indices[p] == plate[p]) continue;
-            left=(std::min)(left,x); right=(std::max)(right,x);
-            top=(std::min)(top,y); bottom=(std::max)(bottom,y);
+            first=(std::min)(first,i);
+            last=i+1;
         }
-        GhostTexture texture;
-        if (right >= left)
-        {
-            texture.width=right-left+1; texture.height=bottom-top+1;
-            texture.rgba.resize(size_t(texture.width)*texture.height*4);
-            for (int y=top; y<=bottom; ++y)
-            for (int x=left; x<=right; ++x)
-            {
-                const size_t p=size_t(y)*width+x;
-                const size_t q=(size_t(y-top)*texture.width+x-left)*4;
-                std::copy_n(rgb.data()+p*3,3,texture.rgba.data()+q);
-                texture.rgba[q+3]=indices[p] == plate[p] ? 0 : 255;
-            }
-        }
-        result.frames.push_back(std::move(texture));
-    }
+    if (first==result.frames.size()) throw std::runtime_error("Ghost has no actor frames");
+    result.firstActorFrame=first; result.lastActorFrame=last;
+    result.firstVisible=first/result.fps;
     // Only prepared textures, PCM and timing survive; no VDX player state.
     return result;
 }
@@ -144,6 +185,13 @@ static void updateRaycastGhost()
 {
     auto &g=ghostEntity;
     const auto now=std::chrono::steady_clock::now();
+    if (gameConsoleActive())
+    {
+        g.updated=now;
+        g.previousPlayer={state.raycast.player.x,state.raycast.player.y};
+        resetRaycastInput();
+        return;
+    }
     if (g.queued && !state.pcm_playing && !g.speechEnded) g.speechEnded=now;
     if (g.preparation.valid() && g.preparation.wait_for(std::chrono::seconds(0))==std::future_status::ready)
     {
@@ -158,74 +206,75 @@ static void updateRaycastGhost()
         && !state.pcm_playing && !gameConsoleActive())
     {
         const auto &p=state.raycast.player;
-        constexpr float quarterTurn=std::numbers::pi_v<float>*0.5f;
-        const float axis=std::round(p.angle/quarterTurn)*quarterTurn;
-        // Wait for the player's own view to align, never turn or teleport them.
-        if (std::abs(std::remainder(p.angle-axis,2.0f*std::numbers::pi_v<float>)) <= 0.26f)
+        const auto spawn=g.navigation.spawnBehind(*state.raycast.map,{p.x,p.y},p.angle);
+        if (spawn)
         {
-            bool clear=true;
-            for (float offset : {-0.18f,0.0f,0.18f})
-            {
-                const auto hit=castRay(*state.raycast.map,p.x,p.y,
-                    std::cos(p.angle+offset),std::sin(p.angle+offset));
-                if (hit.distance<3.5f) clear=false;
-            }
-            if (clear)
-            {
-                g.x=p.x+std::cos(axis)*3.0f; g.y=p.y+std::sin(axis)*3.0f;
-                g.queued=false; g.active=true; g.elapsed=0; g.updated=now;
-                updateGhostSpatialAudio();
-                wavPlaySpatial(g.asset->pcm);
-            }
+            g.x=spawn->x; g.y=spawn->y;
+            g.previousPlayer={p.x,p.y};
+            g.queued=false; g.active=true; g.elapsed=0; g.updated=now;
+            updateGhostSpatialAudio();
+            wavPlaySpatial(g.asset->pcm);
         }
     }
     if (!g.active || !g.asset) return;
     const double dt=std::chrono::duration<double>(now-g.updated).count();
     g.updated=now; g.elapsed+=dt;
-    const float dx=state.raycast.player.x-g.x, dy=state.raycast.player.y-g.y;
-    const float distance=std::hypot(dx,dy);
-    if (distance>0.85f)
-    {
-        const float move=(std::min)(float((std::min)(dt,0.1)*0.35),distance-0.85f);
-        const auto hit=castRay(*state.raycast.map,g.x,g.y,dx/distance,dy/distance);
-        if (hit.distance>move+0.25f) { g.x+=dx/distance*move; g.y+=dy/distance*move; }
-    }
+    const auto &p=state.raycast.player;
+    const float arrival=ghostArrival(g.elapsed,g.asset->firstVisible);
+    const bool crossed=arrival>0 && ghostSweptContact(*state.raycast.map,
+        {g.x,g.y},g.previousPlayer,{p.x,p.y});
+    g.previousPlayer={p.x,p.y};
+    // Default walking is 12 units/sec. Six lets the player escape on foot,
+    // while giving a stationary player a short, readable reaction window.
+    const float speed=std::clamp(p.walkSpeed*60.0f*0.65f,1.5f,6.0f);
+    const auto position=g.navigation.advance(*state.raycast.map,{g.x,g.y},{p.x,p.y},
+        float(std::clamp(dt,0.0,0.1))*speed*arrival);
+    g.x=position.x; g.y=position.y;
     updateGhostSpatialAudio();
-    const double animationDuration=g.asset->frames.size()/(std::max)(g.asset->fps,1.0);
-    const double audioDuration=g.asset->pcm->size()/22050.0;
-    if (g.elapsed >= (std::max)(animationDuration,audioDuration)) g.active=false;
+    if (crossed || (arrival>0 && ghostContact(*state.raycast.map,{g.x,g.y},{p.x,p.y})))
+    {
+        g.active=false;
+        ghostCaughtPlayer();
+        return;
+    }
+    // The sprite frame and world position change without any player input.
+    state.frameTiming.dirtyFrame=true;
 }
 
 // Prepared world sprites never own input, currentVDX or the game animation
 // clock. GPU renderers consume the packed texture; CPU uses the same asset.
 bool raycastIntroActive() { return ghostEntity.active; }
 
-// Packed sprite header + RGBA pixels use the now-unused edge lookup binding.
-// Stable capacity avoids reallocating GPU buffers for differently cropped frames.
+// Header: active, width, height, world x/y, opacity, world height, frame blend.
+// RGBA pixels follow in the now-unused edge lookup binding.
 const std::vector<uint32_t> &raycastEntityPixels()
 {
-    static std::vector<uint32_t> words(8+640*480,0);
-    static const GhostTexture *previous=nullptr;
+    constexpr size_t pixels=256*256;
+    static std::vector<uint32_t> words(8+pixels*2,0);
+    static const GhostTexture *previous=nullptr, *previousNext=nullptr;
     words[0]=0;
     const auto &g=ghostEntity;
-    if (!g.active || !g.asset) { previous=nullptr; return words; }
-    const size_t frame=size_t(g.elapsed*(std::max)(g.asset->fps,1.0));
-    if (frame>=g.asset->frames.size()) return words;
-    const auto &texture=g.asset->frames[frame];
-    if (!texture.width || !texture.height) return words;
-    const size_t pixels=size_t(texture.width)*texture.height;
-    if (words.size()<8+pixels) words.resize(8+pixels);
-    if (previous!=&texture)
+    if (!g.active || !g.asset) { previous=previousNext=nullptr; return words; }
+    const auto sample=ghostChaseFrame(g.elapsed,g.asset->fps,g.asset->firstActorFrame,g.asset->lastActorFrame);
+    const auto &texture=g.asset->frames[sample.first];
+    const auto &next=g.asset->frames[sample.second];
+    if (!texture.width && !next.width) return words;
+    const auto pack=[&](const GhostTexture &frame, size_t start)
     {
-        for (size_t i=0;i<pixels;++i)
+        for (size_t i=0; i<pixels; ++i)
         {
-            const auto *p=texture.rgba.data()+i*4;
-            words[8+i]=uint32_t(p[0])|(uint32_t(p[1])<<8)|(uint32_t(p[2])<<16)|(uint32_t(p[3])<<24);
+            if (frame.rgba.empty()) { words[start+i]=0; continue; }
+            const auto *p=frame.rgba.data()+i*4;
+            words[start+i]=uint32_t(p[0])|(uint32_t(p[1])<<8)|(uint32_t(p[2])<<16)|(uint32_t(p[3])<<24);
         }
-        previous=&texture;
-    }
-    words[0]=1; words[1]=texture.width; words[2]=texture.height;
+    };
+    if (previous!=&texture) { pack(texture,8); previous=&texture; }
+    if (previousNext!=&next) { pack(next,8+pixels); previousNext=&next; }
+    words[0]=1; words[1]=256; words[2]=256;
     words[3]=std::bit_cast<uint32_t>(g.x); words[4]=std::bit_cast<uint32_t>(g.y);
+    words[5]=std::bit_cast<uint32_t>(ghostArrival(g.elapsed,g.asset->firstVisible));
+    words[6]=std::bit_cast<uint32_t>(config.value("raycastScale",3.0f)*1.4f);
+    words[7]=std::bit_cast<uint32_t>(sample.weight);
     return words;
 }
 
@@ -233,10 +282,10 @@ void compositeRaycastIntro(uint8_t *bgra, int pitch, int width, int height)
 {
     const auto &g=ghostEntity;
     if (!g.active || !g.asset || !state.raycast.map) return;
-    const size_t frame=size_t(g.elapsed*(std::max)(g.asset->fps,1.0));
-    if (frame>=g.asset->frames.size()) return;
-    const auto &texture=g.asset->frames[frame];
-    if (!texture.width || !texture.height) return;
+    const auto sample=ghostChaseFrame(g.elapsed,g.asset->fps,g.asset->firstActorFrame,g.asset->lastActorFrame);
+    const auto &texture=g.asset->frames[sample.first];
+    const auto &next=g.asset->frames[sample.second];
+    if (!texture.width && !next.width) return;
     const auto &p=state.raycast.player;
     const float dx=g.x-p.x, dy=g.y-p.y;
     const float depth=dx*std::cos(p.angle)+dy*std::sin(p.angle);
@@ -244,27 +293,38 @@ void compositeRaycastIntro(uint8_t *bgra, int pitch, int width, int height)
     const float side=-dx*std::sin(p.angle)+dy*std::cos(p.angle);
     const float tangent=std::tan(p.fov*0.5f*config.value("raycastFovMul",1.0f));
     const float focalX=width*0.5f/tangent, focalY=height*0.5f/tangent;
-    const float spriteHeight=focalY*3.8f/depth;
-    const float spriteWidth=focalX*3.8f*float(texture.width)/texture.height/depth;
+    const float spriteHeight=focalY*config.value("raycastScale",3.0f)*1.4f/depth;
+    const float spriteWidth=spriteHeight;
     const float left=width*0.5f+side*focalX/depth-spriteWidth*0.5f;
     const float bottom=height*0.5f+focalY*config.value("raycastScale",3.0f)/depth;
-    const float top=bottom-spriteHeight;
+    const float top=bottom-spriteHeight*(248.0f/256.0f);
+    const float alpha=ghostArrival(g.elapsed,g.asset->firstVisible)*ghostVisibility(std::hypot(dx,dy));
     const int x0=(std::max)(0,int(std::floor(left))), x1=(std::min)(width,int(std::ceil(left+spriteWidth)));
-    const int y0=(std::max)(0,int(std::floor(top))), y1=(std::min)(height,int(std::ceil(bottom)));
+    const int y0=(std::max)(0,int(std::floor(top))), y1=(std::min)(height,int(std::ceil(top+spriteHeight)));
     for (int x=x0; x<x1; ++x)
     {
         const float camera=(2.0f*(x+0.5f)/width-1.0f)*tangent;
         const float angle=p.angle+std::atan(camera);
         const auto wall=castRay(*state.raycast.map,p.x,p.y,std::cos(angle),std::sin(angle));
         if (wall.hitWall && wall.distance/std::sqrt(1.0f+camera*camera)<depth) continue;
-        const int sx=std::clamp(int((x+0.5f-left)/spriteWidth*texture.width),0,texture.width-1);
+        const int sx=std::clamp(int((x+0.5f-left)/spriteWidth*256),0,255);
         for (int y=y0; y<y1; ++y)
         {
-            const int sy=std::clamp(int((y+0.5f-top)/spriteHeight*texture.height),0,texture.height-1);
-            const auto *src=texture.rgba.data()+(size_t(sy)*texture.width+sx)*4;
-            if (!src[3]) continue;
+            const int sy=std::clamp(int((y+0.5f-top)/spriteHeight*256),0,255);
+            const size_t pixel=(size_t(sy)*256+sx)*4;
+            float coverage=0, color[3]={};
+            const auto blend=[&](const GhostTexture &frame, float weight)
+            {
+                if (frame.rgba.empty()) return;
+                const auto *src=frame.rgba.data()+pixel;
+                const float a=src[3]/255.0f*weight;
+                coverage+=a;
+                for (int c=0; c<3; ++c) color[c]+=src[c]*a;
+            };
+            blend(texture,1.0f-sample.weight); blend(next,sample.weight);
             auto *dst=bgra+size_t(y)*pitch+x*4;
-            dst[0]=src[2]; dst[1]=src[1]; dst[2]=src[0];
+            for (int c=0; c<3; ++c)
+                dst[2-c]=uint8_t(std::clamp(dst[2-c]*(1.0f-alpha*coverage)+color[c]*alpha,0.0f,255.0f));
         }
     }
 }
@@ -1107,7 +1167,7 @@ void maybeRenderFrame(bool force)
 		std::this_thread::sleep_for(duration - elapsed);
 #endif
 	};
-	if (!force && state.raycast.enabled && !state.frameTiming.dirtyFrame)
+	if (!force && state.raycast.enabled && !state.frameTiming.dirtyFrame && !raycastIntroActive())
 	{
 #ifdef _WIN32
 		const auto idleWait = duration_cast<milliseconds>(minDuration);
@@ -1229,6 +1289,7 @@ Description:
 */
 void startNewGame()
 {
+	pendingBasementPose.reset();
 	state.mainMenu.active = false;
 	setGameplayMusicMix(true);
 	// Keep the pointer hidden for the entire scripted intro, including the
@@ -1502,6 +1563,9 @@ static void playRaycastIntroVideo(const GrvVideoCommand &command)
 {
     if (command.ref==0x3c57)
     {
+        ghostEntity.active=false;
+        ghostEntity.asset.reset();
+        ghostEntity.navigation={};
         ghostEntity.queued=true;
         ghostEntity.speechEnded.reset();
         ghostEntity.preparation=std::async(std::launch::async,prepareGhostAsset);
@@ -1545,10 +1609,65 @@ static void enterRaycasterAfterGrate()
 	raycasterMenuOpen = false;
 	grvGameMenuOpen = false;
 	initRaycaster();
+	if (pendingBasementPose)
+	{
+		const auto pose=*pendingBasementPose;
+		pendingBasementPose.reset();
+		const auto &map=*state.raycast.map;
+		if (!map.empty() && !map[0].empty() &&
+			pose.x>=0.0f && pose.y>=0.0f &&
+			pose.y<static_cast<float>(map.size()) &&
+			pose.x<static_cast<float>(map[0].size()))
+		{
+			const int cellX=static_cast<int>(std::floor(pose.x));
+			const int cellY=static_cast<int>(std::floor(pose.y));
+			if (cellX<static_cast<int>(map[cellY].size()) &&
+			(map[cellY][cellX]==0 ||
+			 (map[cellY][cellX]>=0xf0 && map[cellY][cellX]<=0xf3)))
+			{
+				state.raycast.player.x=pose.x;
+				state.raycast.player.y=pose.y;
+				state.raycast.player.angle=pose.angle;
+				state.frameTiming.dirtyFrame=true;
+			}
+		}
+	}
 	grvHoldBlackFrame = false;
 	state.frameTiming.dirtyFrame = true;
 	maybeRenderFrame(true);
 	forceUpdateCursor();
+}
+
+static void ghostCaughtPlayer()
+{
+    ghostEntity.queued=false;
+    pendingBasementPose.reset();
+    // The demo has no exit yet. Keep MAZE parked: returning to SCRIPT here
+    // runs unrelated room dialogue and can expose another puzzle's SOLVE path.
+    basementCapturePlaying=true;
+    consoleLog("ENGINE","Ghost contact: death clip, then restart dungeon chase");
+    resetRaycastInput();
+    wavStop();
+    state.raycast.enabled=false;
+    raycasterMenuOpen=false; grvGameMenuOpen=false;
+    state.animation.reset(); state.transient_animation.reset();
+    state.transientVDX.reset();
+    grvHoldBlackFrame=false;
+    refreshRendererForCurrentMode();
+    playGrvVideo(GrvVideoCommand{0x3c53,0,0});
+    wavStop();
+    if (!g_quitRequested)
+    {
+        initRaycaster();
+        ghostEntity.navigation={};
+        ghostEntity.elapsed=0;
+        ghostEntity.queued=true;
+        ghostEntity.speechEnded=std::chrono::steady_clock::now();
+        grvHoldBlackFrame=false;
+        state.frameTiming.dirtyFrame=true;
+        forceUpdateCursor();
+    }
+    basementCapturePlaying=false;
 }
 
 static void applyGrvTransition(
@@ -1802,6 +1921,7 @@ bool initializeGrvMainMenu()
 		return false;
 	}
 	grvRuntime.emplace(std::move(*runtime));
+	grvRuntime->setSaveObserver(observeNativeSave);
 	const auto boot = grvRuntime->boot();
 	if (!boot)
 	{
@@ -1847,6 +1967,7 @@ void resumeParkedRaycaster()
 	grvGameMenuOpen = false;
 	raycasterMenuOpen = false;
 	state.raycast.enabled = true;
+	ghostEntity.updated=std::chrono::steady_clock::now();
 	state.mainMenu.active = false;
 	state.animation.reset();
 	state.transient_animation.reset();
@@ -1872,6 +1993,8 @@ uint8_t grvPointerCursor(int x, int y)
 
 bool grvPointerClick(int x, int y)
 {
+	if (state.raycast.enabled || basementCapturePlaying)
+		return true;
 	if (grvPaletteFadeActive)
 		return true;
 	consoleLogf("INPUT", "left click client=({}, {}) GRV-active={}", x, y,
@@ -1914,6 +2037,7 @@ bool grvPointerClick(int x, int y)
 
 bool grvEscapeAction()
 {
+	if (basementCapturePlaying) return true;
 	if (grvPaletteFadeActive)
 		return true;
 
@@ -2040,7 +2164,7 @@ Description:
 */
 void grvConsoleSolve()
 {
-	if (!grvRuntime || state.raycast.enabled || grvGameMenuOpen)
+	if (!grvRuntime || state.raycast.enabled || basementCapturePlaying || grvGameMenuOpen)
 	{
 		consoleLog("CONSOLE", "No active puzzle to solve");
 		return;
@@ -2061,6 +2185,8 @@ void grvConsoleSolve()
 
 void grvKeyInput(char c)
 {
+	if (state.raycast.enabled || basementCapturePlaying)
+		return;
 	if (grvPaletteFadeActive)
 		return;
 	if (grvRuntime)

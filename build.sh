@@ -55,7 +55,8 @@ TARGET_TRIPLE="x86_64-pc-windows-msvc"
 BUILD_DIR="build"
 TARGET_DIR="/mnt/T7G"
 WINSDK_BASE="/opt/winsdk"
-VULKAN_DIR="/opt/VulkanSDK/1.4.313.2"
+VULKAN_DIR="/opt/VulkanSDK/1.4.363.0"
+GLSLC="$VULKAN_DIR/linux/bin/glslc"
 
 # Third-party library paths (these will be built for Windows target)
 ZLIB_DIR="/opt/windows-libs/zlib"
@@ -392,6 +393,12 @@ init_log
 # Call setups
 setup_winsdk
 
+if [[ ! -f "$VULKAN_DIR/Include/vulkan/vulkan_core.h" ||
+      ! -f "$VULKAN_DIR/Lib/vulkan-1.lib" || ! -x "$GLSLC" ]]; then
+    echo -e "${COLOR_RED}${EMOJI_FAILED} ERROR: Vulkan SDK headers, Windows import library, or Linux glslc missing from $VULKAN_DIR${COLOR_RESET}"
+    exit 1
+fi
+
 # Clean target
 if [[ "$1" == "clean" ]]; then
     clean
@@ -482,10 +489,11 @@ compile_vulkan_shader() {
     local regen=false
     if [[ ! -f "$header_out" ]]; then regen=true; fi
     if [[ -f "$shader_src" && -f "$header_out" && "$shader_src" -nt "$header_out" ]]; then regen=true; fi
+    if [[ -f "$header_out" && "$GLSLC" -nt "$header_out" ]]; then regen=true; fi
     
     if [[ "$regen" == true ]]; then
         echo -e "${COLOR_CYAN}${EMOJI_WRENCH} Compiling Vulkan shader: $shader_name...${COLOR_RESET}"
-        glslc -fshader-stage=compute "$shader_src" -o "$spv_out"
+        "$GLSLC" -fshader-stage=compute "$shader_src" -o "$spv_out"
         if command -v xxd >/dev/null 2>&1; then
             xxd -i "$spv_out" > "$header_out"
         else
@@ -711,6 +719,12 @@ needs_compile() {
     
     # Source is newer
     [[ "$src" -nt "$obj" ]] && return 0
+
+    # Generated shader headers are included directly by the renderer sources.
+    # Recompile their objects when a shader changes, even without a .d file.
+    while IFS= read -r generated_header; do
+        [[ "$BUILD_DIR/$generated_header" -nt "$obj" ]] && return 0
+    done < <(sed -nE 's@^#include "\.\./build/([^"]+)".*@\1@p' "$src")
     
     # Check dependencies
     if [[ -f "$dep_file" ]]; then

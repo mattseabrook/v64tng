@@ -192,7 +192,8 @@ float quietFloor(float x, float y, float footprint)
 
 float basementLight(float distance, float range)
 {
-    return 0.65*(1.0-smoothstep(range*0.55,range,distance)) / (1.0+0.035*distance);
+    float d=max(distance,0.0), t=d/(max(range,0.1)*0.9);
+    return 0.65/((1.0+0.035*d)*(1.0+t*t*t));
 }
 
 // Project the prepared animation as a world billboard; the ray hit supplies
@@ -206,18 +207,24 @@ float3 ghostPixel(float3 color, uint2 pixel, RayHit hit)
     float side=dot(relative,float2(-sin(playerAngle),cos(playerAngle)));
     float tangent=tan(playerFOV*0.5*fovMul);
     float fx=float(screenWidth)*0.5/tangent, fy=float(screenHeight)*0.5/tangent;
-    float h=fy*3.8/depth;
-    float w=fx*3.8*float(edgeData[1])/float(edgeData[2])/depth;
+    float h=fy*asfloat(edgeData[6])/depth;
+    float w=h*float(edgeData[1])/float(edgeData[2]);
     float left=float(screenWidth)*0.5+side*fx/depth-w*0.5;
-    float top=float(screenHeight)*0.5+fy*visualScale/depth-h;
+    float top=float(screenHeight)*0.5+fy*visualScale/depth-h*(248.0/256.0);
     float2 uv=(float2(pixel)+0.5-float2(left,top))/float2(w,h);
     if (uv.x<0.0 || uv.y<0.0 || uv.x>=1.0 || uv.y>=1.0) return color;
     uint x=uint(uv.x*float(edgeData[1])), y=uint(uv.y*float(edgeData[2]));
-    uint rgba=edgeData[8u+y*edgeData[1]+x];
+    uint offset=8u+y*edgeData[1]+x;
+    uint rgba=edgeData[offset], next=edgeData[offset+edgeData[1]*edgeData[2]];
     float3 actor=float3(float(rgba&255u),float((rgba>>8u)&255u),float((rgba>>16u)&255u))/255.0;
-    float alpha=float(rgba>>24u)/255.0;
-    alpha*=1.0-smoothstep(torchRange*0.7,torchRange,length(relative));
-    return lerp(color,actor,alpha);
+    float3 nextActor=float3(float(next&255u),float((next>>8u)&255u),float((next>>16u)&255u))/255.0;
+    float a=float(rgba>>24u)/255.0, b=float(next>>24u)/255.0;
+    float blend=asfloat(edgeData[7]);
+    float coverage=lerp(a,b,blend);
+    float3 premultiplied=lerp(actor*a,nextActor*b,blend);
+    float distance=length(relative);
+    float opacity=asfloat(edgeData[5])/(1.0+0.002*distance*distance);
+    return color*(1.0-coverage*opacity)+premultiplied*opacity;
 }
 
 // Only geometric turns get a line; adjacent coplanar tiles stay seamless.
@@ -319,7 +326,6 @@ float3 shadePixel(uint2 pixel, RayHit hit, float halfW, float halfH, float maxRa
             float grey = foundationStone(u,v*height,footprint)
                 * basementLight(hit.distance,torchRange);
             if (cornerPixel(pixel.x,hit)) grey = (88.0/255.0)*basementLight(hit.distance,torchRange);
-            if (tileMap[hit.cell] == 0xfeu) grey = 0.0;
             float3 litWall = float3(grey,grey,grey);
             if (yf < drawStart+1.0)
                 color = lerp(ceilingColor,litWall,clamp(yf-drawStart,0.0,1.0));
@@ -436,18 +442,24 @@ float3 applyMapOverlay(float3 sceneColor, uint2 pixel)
     float halfFovTan = tan(playerFOV * 0.5 * fovMul);
     float fovHalf = atan(halfFovTan);
 
-    // Filled FOV cone. Keep this cheap; per-overlay-pixel ray casts destroy frame time.
+    // Current sight cone stops at the first wall, including in explored rooms.
     float2 target = float2(wpx - playerX, wpy - playerY);
     float targetDist = length(target);
     float overlayRange = max(8.0, min(maxDim, 24.0));
-    if (targetDist > 0.001 && targetDist <= overlayRange)
+    if (targetDist > 0.001 && targetDist <= overlayRange &&
+        cx >= 0 && cy >= 0 && cx < (int)mapWidth && cy < (int)mapHeight &&
+        !isSolidWallTile(tileMap[int2(cx, cy)]))
     {
         float ang = atan2(target.y, target.x);
         float rel = abs(angleDiff(ang, playerAngle));
         if (rel <= fovHalf)
         {
-            float fade = 1.0 - smoothstep(overlayRange * 0.65, overlayRange, targetDist);
-            color = lerp(color, float3(1.0, 0.20, 0.20), 0.22 * fade);
+            RayHit sight = castRay(float2(playerX, playerY), target / targetDist);
+            if (targetDist < sight.distance)
+            {
+                float fade = 1.0 - smoothstep(overlayRange * 0.65, overlayRange, targetDist);
+                color = lerp(color, float3(1.0, 0.20, 0.20), 0.22 * fade);
+            }
         }
     }
 

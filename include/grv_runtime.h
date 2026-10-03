@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <expected>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <random>
@@ -13,6 +14,7 @@
 #include <string_view>
 #include <variant>
 #include <vector>
+#include <utility>
 
 // A view into one hotspot instruction in the mapped GRV image.  Geometry is
 // decoded on demand; no parallel ClickArea/Hotspot object is constructed.
@@ -155,6 +157,10 @@ public:
 	// definitive proof the player has left the top-level title menu.
 	[[nodiscard]] bool inChildScript() const { return parentScript_.has_value(); }
 	[[nodiscard]] std::span<const uint8_t> variables() const { return variables_; }
+	// v64tng-only companion data may observe successful native save/load I/O.
+	using SaveObserver = std::function<std::expected<void, std::string>(bool loading, uint8_t slot,
+		const std::filesystem::path &path, std::span<const uint8_t> payload)>;
+	void setSaveObserver(SaveObserver observer) { saveObserver_ = std::move(observer); }
 	[[nodiscard]] uint16_t cursorStyleAt(
 		int clientX, int clientY, int clientWidth, int clientHeight) const;
 
@@ -198,6 +204,7 @@ private:
 	std::filesystem::path assetRoot_;
 	GrvSaveConvention saveConvention_ = GrvSaveConvention::Auto;
 	std::array<std::optional<GrvSaveConvention>, 10> slotSaveConventions_{};
+	SaveObserver saveObserver_;
 	std::optional<ParentScript> parentScript_;
 	// V.EXE persists 0x523 bytes from its GRV state base; v32tng.exe persists
 	// only the first 0x400.  Keep the larger native DOS block in memory and

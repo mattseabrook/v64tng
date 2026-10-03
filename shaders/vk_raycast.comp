@@ -262,7 +262,8 @@ float quietFloor(float x, float y, float footprint)
 
 float basementLight(float distance, float range)
 {
-    return 0.65*(1.0-smoothstep(range*0.55,range,distance)) / (1.0+0.035*distance);
+    float d=max(distance,0.0), t=d/(max(range,0.1)*0.9);
+    return 0.65/((1.0+0.035*d)*(1.0+t*t*t));
 }
 
 // Project the prepared animation as a world billboard; the ray hit supplies
@@ -276,18 +277,24 @@ vec3 ghostPixel(vec3 color, uvec2 pixel, RayHit hit)
     float side=dot(relative,vec2(-sin(pc.playerAngle),cos(pc.playerAngle)));
     float tangent=tan(pc.playerFOV*0.5*pc.fovMul);
     float fx=float(pc.screenWidth)*0.5/tangent, fy=float(pc.screenHeight)*0.5/tangent;
-    float h=fy*3.8/depth;
-    float w=fx*3.8*float(data2[1])/float(data2[2])/depth;
+    float h=fy*uintBitsToFloat(data2[6])/depth;
+    float w=h*float(data2[1])/float(data2[2]);
     float left=float(pc.screenWidth)*0.5+side*fx/depth-w*0.5;
-    float top=float(pc.screenHeight)*0.5+fy*pc.visualScale/depth-h;
+    float top=float(pc.screenHeight)*0.5+fy*pc.visualScale/depth-h*(248.0/256.0);
     vec2 uv=(vec2(pixel)+0.5-vec2(left,top))/vec2(w,h);
     if (uv.x<0.0 || uv.y<0.0 || uv.x>=1.0 || uv.y>=1.0) return color;
     uint x=uint(uv.x*float(data2[1])), y=uint(uv.y*float(data2[2]));
-    uint rgba=data2[8u+y*data2[1]+x];
+    uint offset=8u+y*data2[1]+x;
+    uint rgba=data2[offset], next=data2[offset+data2[1]*data2[2]];
     vec3 actor=vec3(float(rgba&255u),float((rgba>>8u)&255u),float((rgba>>16u)&255u))/255.0;
-    float alpha=float(rgba>>24u)/255.0;
-    alpha*=1.0-smoothstep(pc.torchRange*0.7,pc.torchRange,length(relative));
-    return mix(color,actor,alpha);
+    vec3 nextActor=vec3(float(next&255u),float((next>>8u)&255u),float((next>>16u)&255u))/255.0;
+    float a=float(rgba>>24u)/255.0, b=float(next>>24u)/255.0;
+    float blend=uintBitsToFloat(data2[7]);
+    float coverage=mix(a,b,blend);
+    vec3 premultiplied=mix(actor*a,nextActor*b,blend);
+    float distance=length(relative);
+    float opacity=uintBitsToFloat(data2[5])/(1.0+0.002*distance*distance);
+    return color*(1.0-coverage*opacity)+premultiplied*opacity;
 }
 
 // Only geometric turns get a line; adjacent coplanar tiles stay seamless.
@@ -391,7 +398,6 @@ vec3 shadePixel(uvec2 pixel, RayHit hit, float halfW, float halfH, float maxRadi
             float grey = foundationStone(u,v*height,footprint)
                 * basementLight(hit.distance,pc.torchRange);
             if (cornerPixel(pixel.x,hit)) grey = (88.0/255.0)*basementLight(hit.distance,pc.torchRange);
-            if (getTile(hit.cell) == 0xfeu) grey = 0.0;
             vec3 litWall = vec3(grey,grey,grey);
             if (yf < drawStart+1.0)
                 color = mix(ceilingColor,litWall,clamp(yf-drawStart,0.0,1.0));
@@ -465,18 +471,24 @@ vec3 applyMapOverlay(vec3 sceneColor, uvec2 pixel)
     float halfFovTan = tan(pc.playerFOV * 0.5 * pc.fovMul);
     float fovHalf = atan(halfFovTan);
 
-    // Filled FOV cone. Keep this cheap; per-overlay-pixel ray casts destroy frame time.
+    // Current sight cone stops at the first wall, including in explored rooms.
     vec2 target = vec2(wpx - pc.playerX, wpy - pc.playerY);
     float targetDist = length(target);
     float overlayRange = max(8.0, min(maxDim, 24.0));
-    if (targetDist > 0.001 && targetDist <= overlayRange)
+    if (targetDist > 0.001 && targetDist <= overlayRange &&
+        cx >= 0 && cy >= 0 && cx < int(pc.mapWidth) && cy < int(pc.mapHeight) &&
+        !isSolidTileValue(getTile(ivec2(cx, cy))))
     {
         float ang = atan(target.y, target.x);
         float rel = abs(angleDiff(ang, pc.playerAngle));
         if (rel <= fovHalf)
         {
-            float fade = 1.0 - smoothstep(overlayRange * 0.65, overlayRange, targetDist);
-            color = mix(color, vec3(1.0, 0.20, 0.20), 0.22 * fade);
+            RayHit sight = castRay(vec2(pc.playerX, pc.playerY), target / targetDist);
+            if (targetDist < sight.distance)
+            {
+                float fade = 1.0 - smoothstep(overlayRange * 0.65, overlayRange, targetDist);
+                color = mix(color, vec3(1.0, 0.20, 0.20), 0.22 * fade);
+            }
         }
     }
 

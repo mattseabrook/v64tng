@@ -15,6 +15,7 @@
 #include <cstdio>
 
 #include "raycast.h"
+#include "raycast_chase.h"
 #include "window.h"
 #include "game.h"
 #include "basement.h"
@@ -112,7 +113,7 @@ static float quietFloor(float x, float y, float footprint)
 
 static float basementLight(float distance, float range)
 {
-    return 0.65f*(1.0f-smoothstep(range*0.55f,range,distance)) / (1.0f+0.035f*distance);
+    return basementLightFalloff(distance,range);
 }
 
 // Persistent thread pool to avoid thread creation overhead per frame
@@ -599,7 +600,7 @@ void accumulateColumn(int x,
             const float height = 2.0f*visualScale;
             const float footprint = std::max(height/std::max(1.0f,drawEnd-drawStart),
                 hit.distance*std::tan(state.raycast.player.fov*0.5f*g_rayConfig.fovMul)/halfW);
-            const uint8_t wallR_px = (*state.raycast.map)[hit.mapY][hit.mapX] == 0xfe ? 0 : static_cast<uint8_t>(
+            const uint8_t wallR_px = static_cast<uint8_t>(
                 (cornerLine ? 88.0f : 255.0f*foundationStone(u,v*height,footprint))*lightFactor);
             const uint8_t wallG_px = wallR_px, wallB_px = wallR_px;
             if (yf < drawStart + 1.0f)
@@ -1036,7 +1037,7 @@ void updateFogOfWar()
 
     // Match exploration to the rendered camera frustum instead of 360-degree reveal.
     const int NUM_RAYS = std::clamp(state.ui.width / 4, 128, 384);
-    const float MAX_DIST = g_rayConfig.baseTorchRange;
+    const float MAX_DIST = g_rayConfig.baseTorchRange*2.0f;
     const float halfFovTan = std::tan(state.raycast.player.fov * 0.5f * g_rayConfig.fovMul);
     const float forwardX = std::cos(state.raycast.player.angle);
     const float forwardY = std::sin(state.raycast.player.angle);
@@ -1112,10 +1113,7 @@ Description:
 void initRaycaster()
 {
     state.raycast.enabled = true;
-    // Own mutable scene tiles for runtime edits; preserve the authored map.
-    static TileMap runtimeMap;
-    runtimeMap = basementMap;
-    state.raycast.map = &runtimeMap;
+    state.raycast.map = &basementMap;
     ++state.raycast.mapRevision;
     state.frameTiming.currentFPS =
         static_cast<double>(std::max(1, getDisplayRefreshRate()));
@@ -1136,13 +1134,6 @@ void initRaycaster()
         MessageBoxA(nullptr, "No player start position found in the map!", "Error", MB_ICONERROR | MB_OK);
 #endif
     }
-
-    // Seal the cell immediately behind the authored start with an unlit wall.
-    const int backX = int(state.raycast.player.x)-int(std::round(std::cos(state.raycast.player.angle)));
-    const int backY = int(state.raycast.player.y)-int(std::round(std::sin(state.raycast.player.angle)));
-    if (backY >= 0 && backY < int(basementMap.size()) && backX >= 0 &&
-        backX < int(basementMap[backY].size()))
-        runtimeMap[backY][backX] = 0xfe;
 
     // Initialize fog-of-war explored map
     if (!basementMap.empty() && !basementMap[0].empty())

@@ -21,6 +21,7 @@
 #include "game.h"
 #include "config.h"
 #include "basement.h"
+#include "raycast.h"
 
 // Legacy globals kept for ABI compatibility with existing call sites.
 // g_hwndMapOverlay is no longer used (no separate window is created).
@@ -138,29 +139,36 @@ void renderMapOverlay(uint8_t *fb, size_t pitch, int w, int h)
 				continue;
 			}
 
-			// Keep the overlay O(screen pixels). Fog-of-war already carries the
-			// wall visibility result, so casting another DDA ray per overlay
-			// pixel only repeats work and makes CPU map mode map-depth times slower.
+			// Clip the current sight cone against the first wall on each ray.
+			// Explored cells include earlier views and cannot serve as occlusion.
 			{
 				const float worldX = (static_cast<float>(x) - ox) / cellSize;
 				const float worldY = (static_cast<float>(y) - oy) / cellSize;
 				const float vx = worldX - p.x;
 				const float vy = worldY - p.y;
 				const float targetDist = std::sqrt(vx * vx + vy * vy);
-				if (targetDist > 0.001f && targetDist <= overlayRange)
+				const int targetX=static_cast<int>(std::floor(worldX));
+				const int targetY=static_cast<int>(std::floor(worldY));
+				if (targetDist > 0.001f && targetDist <= overlayRange &&
+					targetX>=0 && targetY>=0 && targetX<mapW && targetY<mapH &&
+					!isSolid(targetX,targetY))
 				{
 					const float ang = std::atan2(vy, vx);
 					if (std::abs(angleDiff(ang, p.angle)) <= fovHalf)
 					{
-						const float fadeStart = overlayRange * 0.65f;
-						const float fadeT = std::clamp((targetDist - fadeStart) /
-													   std::max(overlayRange - fadeStart, 0.001f),
-													   0.0f, 1.0f);
-						const float smooth = fadeT * fadeT * (3.0f - 2.0f * fadeT);
-						const float t = 0.22f * (1.0f - smooth);
-						r = r * (1.0f - t) + 255.0f * t;
-						g2 = g2 * (1.0f - t) + 51.0f * t;
-						bv = bv * (1.0f - t) + 51.0f * t;
+						const auto hit=castRay(m,p.x,p.y,vx/targetDist,vy/targetDist);
+						if (targetDist<hit.distance)
+						{
+							const float fadeStart = overlayRange * 0.65f;
+							const float fadeT = std::clamp((targetDist - fadeStart) /
+														   std::max(overlayRange - fadeStart, 0.001f),
+														   0.0f, 1.0f);
+							const float smooth = fadeT * fadeT * (3.0f - 2.0f * fadeT);
+							const float t = 0.22f * (1.0f - smooth);
+							r = r * (1.0f - t) + 255.0f * t;
+							g2 = g2 * (1.0f - t) + 51.0f * t;
+							bv = bv * (1.0f - t) + 51.0f * t;
+						}
 					}
 				}
 			}

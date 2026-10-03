@@ -585,6 +585,13 @@ std::expected<void, std::string> GrvRuntime::loadGame(uint8_t slot)
 		static_cast<std::streamsize>(savePayloadSize(*convention))))
 		return std::unexpected("Truncated GRV save " + path.string());
 	slotSaveConventions_[slot] = convention;
+	if (saveObserver_)
+	{
+		const auto result = saveObserver_(true, slot, path,
+			std::span<const uint8_t>(variables_.data(), savePayloadSize(*convention)));
+		if (!result)
+			return std::unexpected(result.error());
+	}
 	return {};
 }
 
@@ -611,7 +618,17 @@ std::expected<void, std::string> GrvRuntime::saveGame(uint8_t slot)
 		static_cast<std::streamsize>(savePayloadSize(convention)));
 	if (!file)
 		return std::unexpected("Cannot write " + path.string());
+	file.close();
+	if (!file)
+		return std::unexpected("Cannot close " + path.string());
 	slotSaveConventions_[slot] = convention;
+	if (saveObserver_)
+	{
+		const auto result = saveObserver_(false, slot, path,
+			std::span<const uint8_t>(variables_.data(), savePayloadSize(convention)));
+		if (!result)
+			return std::unexpected(result.error());
+	}
 	return {};
 }
 
