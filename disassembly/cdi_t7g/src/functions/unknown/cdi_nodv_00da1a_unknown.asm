@@ -1,0 +1,60 @@
+; Provisional entry from module header or linear decoded direct call; slice end is NOT a proved function end.
+; File offsets 00DA1A–00DAD1, inclusive.
+cdi_nodv_entry_00da1a:
+db 0x48, 0xE7 ; file 00DA1A
+db 0xF0, 0xE0 ; 00DA1C: provisional 68k dc.w $f0e0
+db 0x20, 0x6F, 0x00, 0x20 ; 00DA1E: provisional 68k movea.l $20(a7), a0
+db 0x4A, 0x6E, 0xAB, 0x82 ; 00DA22: provisional 68k tst.w -$547e(a6)
+db 0x66, 0x46 ; 00DA26: provisional 68k bne.b $da6e
+db 0x2D, 0x48, 0xAB, 0x84 ; 00DA28: provisional 68k move.l a0, -$547c(a6)
+db 0x2F, 0x08 ; 00DA2C: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x35, 0xC6 ; 00DA2E: provisional 68k bsr.w $10ff6
+db 0x3D, 0x40, 0xAB, 0x88 ; 00DA32: provisional 68k move.w d0, -$5478(a6)
+db 0x2D, 0x6F, 0x00, 0x24, 0xAB, 0x9C ; 00DA36: provisional 68k move.l $24(a7), -$5464(a6)
+db 0x2D, 0x6F, 0x00, 0x28, 0xAB, 0xA0 ; 00DA3C: provisional 68k move.l $28(a7), -$5460(a6)
+db 0x3D, 0x68, 0x00, 0x1E, 0xAB, 0x82 ; 00DA42: provisional 68k move.w $1e(a0), -$547e(a6)
+db 0x20, 0x68, 0x00, 0x20 ; 00DA48: provisional 68k movea.l $20(a0), a0
+db 0x2D, 0x48, 0xAB, 0x8A ; 00DA4C: provisional 68k move.l a0, -$5476(a6)
+db 0x61, 0x00, 0x00, 0x80 ; 00DA50: provisional 68k bsr.w $dad2
+db 0x3F, 0x3C, 0x00, 0x0A ; 00DA54: provisional 68k move.w #$a, -(a7)
+db 0x3F, 0x3C, 0x00, 0x32 ; 00DA58: provisional 68k move.w #$32, -(a7)
+db 0x61, 0x00, 0x04, 0x28 ; 00DA5C: provisional 68k bsr.w $de86
+db 0x4C, 0xDF, 0x07, 0x0F ; 00DA60: provisional 68k movem.l (a7)+, d0-d3/a0-a2
+db 0x2F, 0x57, 0x00, 0x0C ; 00DA64: provisional 68k move.l (a7), $c(a7)
+db 0x4F, 0xEF, 0x00, 0x0C ; 00DA68: provisional 68k lea.l $c(a7), a7
+db 0x4E, 0x75 ; 00DA6C: provisional 68k rts 
+db 0x61, 0x00, 0xF1, 0x46 ; 00DA6E: provisional 68k bsr.w $cbb6
+db 0x48, 0x7A, 0x00, 0x08 ; 00DA72: provisional 68k pea.l $da7c(pc)
+db 0x61, 0x00, 0xF1, 0x58 ; 00DA76: provisional 68k bsr.w $cbd0
+db 0x60, 0x22 ; 00DA7A: provisional 68k bra.b $da9e
+db 0x73, 0x6D ; file 00DA7C
+db 0x61, 0x70 ; 00DA7E: provisional 68k bsr.b $daf0
+db 0x5F, 0x70, 0x6C, 0x61 ; 00DA80: provisional 68k subq.w #$7, $61(a0, d6.l)
+db 0x79, 0x3A ; file 00DA84
+db 0x20, 0x45 ; 00DA86: provisional 68k movea.l d5, a0
+db 0x72, 0x72 ; 00DA88: provisional 68k moveq #$72, d1
+db 0x6F, 0x72 ; 00DA8A: provisional 68k ble.b $dafe
+db 0x2C, 0x20 ; 00DA8C: provisional 68k move.l -(a0), d6
+db 0x73, 0x74 ; file 00DA8E
+db 0x69, 0x6C ; 00DA90: provisional 68k bvs.b $dafe
+db 0x6C, 0x20 ; 00DA92: provisional 68k bge.b $dab4
+db 0x70, 0x6C ; 00DA94: provisional 68k moveq #$6c, d0
+db 0x61, 0x79 ; 00DA96: provisional 68k bsr.b $db11
+db 0x69, 0x6E ; 00DA98: provisional 68k bvs.b $db08
+db 0x67, 0x20 ; 00DA9A: provisional 68k beq.b $dabc
+db 0x00, 0x00, 0x20, 0x6E ; 00DA9C: provisional 68k ori.b #$6e, d0
+db 0xAB, 0x84 ; 00DAA0: provisional 68k dc.w $ab84
+db 0x48, 0x68, 0x00, 0x00 ; 00DAA2: provisional 68k pea.l $0(a0)
+db 0x61, 0x00, 0xF1, 0x28 ; 00DAA6: provisional 68k bsr.w $cbd0
+db 0x61, 0x00, 0xF1, 0x0A ; 00DAAA: provisional 68k bsr.w $cbb6
+db 0x32, 0x3C, 0x80, 0x00 ; 00DAAE: provisional 68k move.w #$8000, d1
+db 0x61, 0x00, 0xF1, 0x4A ; 00DAB2: provisional 68k bsr.w $cbfe
+db 0x73, 0x6D ; file 00DAB6
+db 0x61, 0x70 ; 00DAB8: provisional 68k bsr.b $db2a
+db 0x3A, 0x20 ; 00DABA: provisional 68k move.w -(a0), d5
+db 0x00, 0x00, 0x53, 0x6E ; 00DABC: provisional 68k ori.b #$6e, d0
+db 0xAB, 0x82 ; 00DAC0: provisional 68k dc.w $ab82
+db 0x67, 0x00, 0x00, 0x90 ; 00DAC2: provisional 68k beq.w $db54
+db 0x20, 0x6E, 0xAB, 0x8A ; 00DAC6: provisional 68k movea.l -$5476(a6), a0
+db 0x20, 0x68, 0x09, 0x34 ; 00DACA: provisional 68k movea.l $934(a0), a0
+db 0x2D, 0x48, 0xAB, 0x8A ; 00DACE: provisional 68k move.l a0, -$5476(a6)

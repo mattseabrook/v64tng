@@ -1,0 +1,41 @@
+; Provisional entry from module header or linear decoded direct call; slice end is NOT a proved function end.
+; File offsets 00D902–00D989, inclusive.
+cdi_nodv_entry_00d902:
+db 0x30, 0x3C, 0x00, 0x5B ; 00D902: provisional 68k move.w #$5b, d0
+db 0x41, 0xEE, 0xAA, 0xB4 ; 00D906: provisional 68k lea.l -$554c(a6), a0
+db 0x61, 0x00, 0x73, 0xC6 ; 00D90A: provisional 68k bsr.w $14cd2
+db 0x65, 0x00, 0x00, 0x2C ; 00D90E: provisional 68k bcs.w $d93c
+db 0x41, 0xEE, 0xAA, 0xB4 ; 00D912: provisional 68k lea.l -$554c(a6), a0
+db 0x43, 0xEE, 0xAA, 0xD4 ; 00D916: provisional 68k lea.l -$552c(a6), a1
+db 0x61, 0x00, 0x73, 0xA2 ; 00D91A: provisional 68k bsr.w $14cbe
+db 0x41, 0xEE, 0xAA, 0xB4 ; 00D91E: provisional 68k lea.l -$554c(a6), a0
+db 0x43, 0xEE, 0xAA, 0xF4 ; 00D922: provisional 68k lea.l -$550c(a6), a1
+db 0x61, 0x00, 0x73, 0x7C ; 00D926: provisional 68k bsr.w $14ca4
+db 0x41, 0xEE, 0xAA, 0xD4 ; 00D92A: provisional 68k lea.l -$552c(a6), a0
+db 0x70, 0x00 ; 00D92E: provisional 68k moveq #$0, d0
+db 0x4E, 0x40, 0x00, 0x84 ; 00D930: provisional 68k trap #0 ; OS-9 service word $0084
+db 0x65, 0x06 ; 00D934: provisional 68k bcs.b $d93c
+db 0x3D, 0x40, 0xAB, 0x14 ; 00D936: provisional 68k move.w d0, -$54ec(a6)
+db 0x4E, 0x75 ; 00D93A: provisional 68k rts 
+db 0x32, 0x01 ; 00D93C: provisional 68k move.w d1, d1
+db 0x61, 0x00, 0xF2, 0xBE ; 00D93E: provisional 68k bsr.w $cbfe
+db 0x6F, 0x70 ; 00D942: provisional 68k ble.b $d9b4
+db 0x65, 0x6E ; 00D944: provisional 68k bcs.b $d9b4
+db 0x5F, 0x6D, 0x70, 0x65 ; 00D946: provisional 68k subq.w #$7, $7065(a5)
+db 0x67, 0x61 ; 00D94A: provisional 68k beq.b $d9ad
+db 0x20, 0x3A, 0x20, 0x00 ; 00D94C: provisional 68k move.l $f94e(pc), d0
+db 0x61, 0x00, 0x02, 0x2E ; 00D950: provisional 68k bsr.w $db80
+db 0x61, 0x00, 0x00, 0x34 ; 00D954: provisional 68k bsr.w $d98a
+db 0x41, 0xFA, 0x01, 0x64 ; 00D958: provisional 68k lea.l $dabe(pc), a0
+db 0x2F, 0x08 ; 00D95C: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0xF7, 0x24 ; 00D95E: provisional 68k bsr.w $d084
+db 0x3D, 0x40, 0xAB, 0x92 ; 00D962: provisional 68k move.w d0, -$546e(a6)
+db 0x42, 0x2E, 0xAB, 0xAC ; 00D966: provisional 68k clr.b -$5454(a6)
+db 0x42, 0xAE, 0xAB, 0x84 ; 00D96A: provisional 68k clr.l -$547c(a6)
+db 0x42, 0x6E, 0xAB, 0x82 ; 00D96E: provisional 68k clr.w -$547e(a6)
+db 0x26, 0x3C, 0x00, 0xFF, 0x00, 0xFF ; 00D972: provisional 68k move.l #$ff00ff, d3
+db 0x30, 0x2E, 0xAB, 0x78 ; 00D978: provisional 68k move.w -$5488(a6), d0
+db 0x32, 0x3C, 0x00, 0x3D ; 00D97C: provisional 68k move.w #$3d, d1
+db 0x34, 0x3C, 0x00, 0x00 ; 00D980: provisional 68k move.w #$0, d2
+db 0x4E, 0x40, 0x00, 0x8E ; 00D984: provisional 68k trap #0 ; OS-9 service word $008E
+db 0x4E, 0x75 ; 00D988: provisional 68k rts 

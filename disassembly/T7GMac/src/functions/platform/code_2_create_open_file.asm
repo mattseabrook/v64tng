@@ -1,0 +1,52 @@
+; verified-role: Native Create_OpenFile routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.
+; Original native symbol: Create_OpenFile; evidence file offset 0x5b18.
+; Exact bytes retained; instruction decoding remains provisional where inline data may occur.
+mac_code_2_create_open_file:
+db 0x4E, 0x56, 0x00, 0x00 ; file 005A7C | 68k link.w a6, #$0
+db 0x48, 0xE7, 0x01, 0x08 ; file 005A80 | 68k movem.l d7/a4, -(a7)
+db 0x28, 0x6E, 0x00, 0x08 ; file 005A84 | 68k movea.l $8(a6), a4
+db 0x42, 0x67 ; file 005A88 | 68k clr.w -(a7)
+db 0x3F, 0x14 ; file 005A8A | 68k move.w (a4), -(a7)
+db 0x2F, 0x2C, 0x00, 0x02 ; file 005A8C | 68k move.l $2(a4), -(a7)
+db 0x48, 0x6C, 0x00, 0x06 ; file 005A90 | 68k pea.l $6(a4)
+db 0x2F, 0x3C, 0x43, 0x53, 0x48, 0x4C ; file 005A94 | 68k move.l #$4353484c, -(a7)
+db 0x2F, 0x3C, 0x43, 0x44, 0x4F, 0x43 ; file 005A9A | 68k move.l #$43444f43, -(a7)
+db 0x4E, 0xAD, 0x01, 0xDA ; file 005AA0 | 68k jsr $1da(a5)
+db 0x3E, 0x1F ; file 005AA4 | 68k move.w (a7)+, d7
+db 0x0C, 0x47, 0xFF, 0xD0 ; file 005AA6 | 68k cmpi.w #$ffd0, d7
+db 0x66, 0x2E ; file 005AAA | 68k bne.b $4a72
+db 0x42, 0x67 ; file 005AAC | 68k clr.w -(a7)
+db 0x3F, 0x14 ; file 005AAE | 68k move.w (a4), -(a7)
+db 0x2F, 0x2C, 0x00, 0x02 ; file 005AB0 | 68k move.l $2(a4), -(a7)
+db 0x48, 0x6C, 0x00, 0x06 ; file 005AB4 | 68k pea.l $6(a4)
+db 0x4E, 0xAD, 0x01, 0xE2 ; file 005AB8 | 68k jsr $1e2(a5)
+db 0x42, 0x57 ; file 005ABC | 68k clr.w (a7)
+db 0x3F, 0x14 ; file 005ABE | 68k move.w (a4), -(a7)
+db 0x2F, 0x2C, 0x00, 0x02 ; file 005AC0 | 68k move.l $2(a4), -(a7)
+db 0x48, 0x6C, 0x00, 0x06 ; file 005AC4 | 68k pea.l $6(a4)
+db 0x2F, 0x3C, 0x43, 0x53, 0x48, 0x4C ; file 005AC8 | 68k move.l #$4353484c, -(a7)
+db 0x2F, 0x3C, 0x43, 0x44, 0x4F, 0x43 ; file 005ACE | 68k move.l #$43444f43, -(a7)
+db 0x4E, 0xAD, 0x01, 0xDA ; file 005AD4 | 68k jsr $1da(a5)
+db 0x3E, 0x1F ; file 005AD8 | 68k move.w (a7)+, d7
+db 0x4A, 0x47 ; file 005ADA | 68k tst.w d7
+db 0x66, 0x30 ; file 005ADC | 68k bne.b $4aa6
+db 0x42, 0x67 ; file 005ADE | 68k clr.w -(a7)
+db 0x3F, 0x14 ; file 005AE0 | 68k move.w (a4), -(a7)
+db 0x2F, 0x2C, 0x00, 0x02 ; file 005AE2 | 68k move.l $2(a4), -(a7)
+db 0x48, 0x6C, 0x00, 0x06 ; file 005AE6 | 68k pea.l $6(a4)
+db 0x1F, 0x3C, 0x00, 0x03 ; file 005AEA | 68k move.b #$3, -(a7)
+db 0x2F, 0x2E, 0x00, 0x0C ; file 005AEE | 68k move.l $c(a6), -(a7)
+db 0x4E, 0xAD, 0x01, 0xD2 ; file 005AF2 | 68k jsr $1d2(a5)
+db 0x3E, 0x1F ; file 005AF6 | 68k move.w (a7)+, d7
+db 0x4A, 0x47 ; file 005AF8 | 68k tst.w d7
+db 0x67, 0x12 ; file 005AFA | 68k beq.b $4aa6
+db 0x42, 0x67 ; file 005AFC | 68k clr.w -(a7)
+db 0x3F, 0x14 ; file 005AFE | 68k move.w (a4), -(a7)
+db 0x2F, 0x2C, 0x00, 0x02 ; file 005B00 | 68k move.l $2(a4), -(a7)
+db 0x48, 0x6C, 0x00, 0x06 ; file 005B04 | 68k pea.l $6(a4)
+db 0x4E, 0xAD, 0x01, 0xE2 ; file 005B08 | 68k jsr $1e2(a5)
+db 0x54, 0x8F ; file 005B0C | 68k addq.l #$2, a7
+db 0x30, 0x07 ; file 005B0E | 68k move.w d7, d0
+db 0x4C, 0xDF, 0x10, 0x80 ; file 005B10 | 68k movem.l (a7)+, d7/a4
+db 0x4E, 0x5E ; file 005B14 | 68k unlk a6
+db 0x4E, 0x75 ; file 005B16 | 68k rts 

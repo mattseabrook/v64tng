@@ -33,38 +33,38 @@ bits 32
 %include "src/functions/resource_io/detect_t7g_archive_set.asm"
 %include "src/functions/grv/run_grv_vm.asm"
 %include "src/functions/runtime/init_game_subsystems.asm"
-%include "src/functions/unknown/0040441d_func_0040441d.asm"
-%include "src/functions/unknown/00404469_func_00404469.asm"
-%include "src/functions/unknown/00404983_func_00404983.asm"
-%include "src/functions/unknown/00404ca2_func_00404ca2.asm"
-%include "src/functions/unknown/00404e80_func_00404e80.asm"
-%include "src/functions/unknown/00404ebb_func_00404ebb.asm"
-%include "src/functions/unknown/00404ef6_func_00404ef6.asm"
-%include "src/functions/unknown/00404f02_func_00404f02.asm"
-%include "src/functions/unknown/00404f90_func_00404f90.asm"
-%include "src/functions/unknown/00405045_func_00405045.asm"
-%include "src/functions/unknown/00405095_func_00405095.asm"
-%include "src/functions/unknown/004050af_func_004050af.asm"
-%include "src/functions/unknown/00405291_func_00405291.asm"
-%include "src/functions/unknown/004054b4_func_004054b4.asm"
-%include "src/functions/unknown/0040563c_func_0040563c.asm"
-%include "src/functions/unknown/004056b2_func_004056b2.asm"
-%include "src/functions/unknown/004058af_func_004058af.asm"
-%include "src/functions/unknown/004059a7_func_004059a7.asm"
-%include "src/functions/unknown/004059d7_func_004059d7.asm"
-%include "src/functions/unknown/00405a24_func_00405a24.asm"
-%include "src/functions/unknown/00405b6f_func_00405b6f.asm"
-%include "src/functions/unknown/00405bc2_func_00405bc2.asm"
-%include "src/functions/unknown/00405c15_func_00405c15.asm"
-%include "src/functions/unknown/00405c68_func_00405c68.asm"
-%include "src/functions/unknown/00405cbb_func_00405cbb.asm"
-%include "src/functions/unknown/0040604c_func_0040604c.asm"
-%include "src/functions/unknown/004062fd_func_004062fd.asm"
-%include "src/functions/unknown/00406324_func_00406324.asm"
-%include "src/functions/unknown/00406427_func_00406427.asm"
-%include "src/functions/unknown/004066a9_func_004066a9.asm"
-%include "src/functions/unknown/00406809_func_00406809.asm"
-%include "src/functions/unknown/004068b0_func_004068b0.asm"
+%include "src/functions/cursor/free_cursor_runtime_buffers.asm"
+%include "src/functions/cursor/draw_animated_software_cursor.asm"
+%include "src/functions/cursor/prepare_cursor_palette_translation.asm"
+%include "src/functions/cursor/erase_cursor_and_restore_palette.asm"
+%include "src/functions/puzzle/cell_copy_board_to_scratch.asm"
+%include "src/functions/puzzle/cell_copy_scratch_to_board.asm"
+%include "src/functions/puzzle/cell_request_search_abort.asm"
+%include "src/functions/puzzle/cell_convert_adjacent_pieces.asm"
+%include "src/functions/puzzle/cell_count_board_pieces.asm"
+%include "src/functions/puzzle/cell_begin_forward_move_iteration.asm"
+%include "src/functions/puzzle/cell_begin_reverse_move_iteration.asm"
+%include "src/functions/puzzle/cell_next_forward_move.asm"
+%include "src/functions/puzzle/cell_next_forward_move_with_jump_deduplication.asm"
+%include "src/functions/puzzle/cell_next_reverse_move.asm"
+%include "src/functions/puzzle/cell_apply_move_to_scratch_board.asm"
+%include "src/functions/puzzle/cell_score_candidate_move.asm"
+%include "src/functions/puzzle/cell_count_adjacent_clone_opportunities.asm"
+%include "src/functions/puzzle/cell_reset_best_move_list.asm"
+%include "src/functions/puzzle/cell_append_tied_best_move.asm"
+%include "src/functions/puzzle/cell_choose_best_move.asm"
+%include "src/functions/puzzle/cell_push_board_search_snapshot.asm"
+%include "src/functions/puzzle/cell_pop_board_search_snapshot.asm"
+%include "src/functions/puzzle/cell_push_iterator_search_snapshot.asm"
+%include "src/functions/puzzle/cell_pop_iterator_search_snapshot.asm"
+%include "src/functions/puzzle/cell_search_recursive.asm"
+%include "src/functions/puzzle/cell_search_best_move.asm"
+%include "src/functions/puzzle/cell_reset_ranked_move_list.asm"
+%include "src/functions/puzzle/cell_insert_ranked_move.asm"
+%include "src/functions/puzzle/cell_build_ranked_move_list.asm"
+%include "src/functions/puzzle/cell_search_ranked_moves.asm"
+%include "src/functions/puzzle/cell_run_grv_puzzle_search.asm"
+%include "src/functions/puzzle/cell_dispatch_search_strategy.asm"
 %include "src/functions/unknown/004069a0_func_004069a0.asm"
 %include "src/functions/unknown/004069c7_func_004069c7.asm"
 %include "src/functions/input/dequeue_key_input.asm"
@@ -95,7 +95,7 @@ bits 32
 %include "src/functions/unknown/00407670_func_00407670.asm"
 %include "src/functions/unknown/0040768c_func_0040768c.asm"
 %include "src/functions/unknown/00407748_func_00407748.asm"
-%include "src/functions/unknown/004077e5_func_004077e5.asm"
+%include "src/functions/platform/install_display_backend_callbacks.asm"
 %include "src/functions/unknown/00407842_func_00407842.asm"
 %include "src/functions/unknown/004078b3_func_004078b3.asm"
 %include "src/functions/unknown/00407931_func_00407931.asm"
@@ -121,16 +121,16 @@ bits 32
 %include "src/functions/vdx/open_loose_vdx.asm"
 %include "src/functions/runtime/dispatch_game_or_loose_vdx.asm"
 %include "src/functions/runtime/pump_media_and_game.asm"
-%include "src/functions/unknown/00408f10_func_00408f10.asm"
+%include "src/functions/runtime/release_player_runtime_resources.asm"
 %include "src/functions/runtime/v32_window_procedure.asm"
-%include "src/functions/unknown/00409396_func_00409396.asm"
-%include "src/functions/unknown/00409503_func_00409503.asm"
+%include "src/functions/platform/poll_mouse_position_and_button_edges.asm"
+%include "src/functions/platform/clear_mouse_release_edges.asm"
 %include "src/functions/unknown/00409512_func_00409512.asm"
 %include "src/functions/runtime/enforce_single_instance.asm"
-%include "src/functions/unknown/0040965b_func_0040965b.asm"
+%include "src/functions/platform/is_legacy_windows_platform.asm"
 %include "src/functions/runtime/fatal_media_error.asm"
 %include "src/functions/runtime/shutdown_player.asm"
-%include "src/functions/unknown/00409760_func_00409760.asm"
+%include "src/functions/runtime/show_error_and_exit.asm"
 %include "src/functions/runtime/winmain.asm"
 %include "src/functions/runtime/setup_window_and_runtime.asm"
 %include "src/functions/resource_io/allocate_vdx_ring_and_spill.asm"
@@ -162,17 +162,17 @@ bits 32
 %include "src/functions/vdx/configure_vdx_stream.asm"
 %include "src/functions/vdx/decode_vdx_stream.asm"
 %include "src/functions/vdx/finalize_vdx_stream_playback.asm"
-%include "src/functions/unknown/0040c780_func_0040c780.asm"
-%include "src/functions/unknown/0040c79c_func_0040c79c.asm"
-%include "src/functions/unknown/0040c7c3_func_0040c7c3.asm"
-%include "src/functions/unknown/0040c996_func_0040c996.asm"
-%include "src/functions/unknown/0040c9a0_func_0040c9a0.asm"
+%include "src/functions/platform/query_async_key_activity.asm"
+%include "src/functions/platform/is_primary_mouse_button_down.asm"
+%include "src/functions/platform/is_secondary_mouse_button_down.asm"
+%include "src/functions/platform/direct_draw_create_import_thunk.asm"
+%include "src/functions/runtime/crt_free.asm"
 %include "src/functions/runtime/copy_memory_overlap_safe.asm"
-%include "src/functions/unknown/0040cd50_func_0040cd50.asm"
-%include "src/functions/unknown/0040cdc0_func_0040cdc0.asm"
-%include "src/functions/unknown/0040cde0_func_0040cde0.asm"
-%include "src/functions/unknown/0040ce30_func_0040ce30.asm"
-%include "src/functions/unknown/0040ce90_func_0040ce90.asm"
+%include "src/functions/runtime/crt_sprintf.asm"
+%include "src/functions/runtime/crt_malloc.asm"
+%include "src/functions/runtime/crt_allocate_with_new_handler.asm"
+%include "src/functions/runtime/crt_allocate_heap_block.asm"
+%include "src/functions/runtime/compare_strings_bounded.asm"
 %include "src/functions/unknown/0040ced0_func_0040ced0.asm"
 %include "src/functions/unknown/0040cf10_func_0040cf10.asm"
 %include "src/functions/unknown/0040cf80_func_0040cf80.asm"
@@ -184,22 +184,22 @@ bits 32
 %include "src/functions/unknown/0040d2f0_func_0040d2f0.asm"
 %include "src/functions/unknown/0040d3c0_func_0040d3c0.asm"
 %include "src/functions/runtime/fill_memory_bytes.asm"
-%include "src/functions/unknown/0040d4d0_func_0040d4d0.asm"
-%include "src/functions/unknown/0040d550_func_0040d550.asm"
-%include "src/functions/unknown/0040d5c0_func_0040d5c0.asm"
-%include "src/functions/unknown/0040d5f0_func_0040d5f0.asm"
-%include "src/functions/unknown/0040d610_func_0040d610.asm"
-%include "src/functions/unknown/0040d650_func_0040d650.asm"
+%include "src/functions/runtime/string_length.asm"
+%include "src/functions/runtime/crt_vsprintf.asm"
+%include "src/functions/runtime/crt_run_initializers.asm"
+%include "src/functions/runtime/crt_exit.asm"
+%include "src/functions/runtime/crt_quick_exit.asm"
+%include "src/functions/runtime/crt_exit_common.asm"
 %include "src/functions/unknown/0040d710_func_0040d710.asm"
 %include "src/functions/unknown/0040d720_func_0040d720.asm"
-%include "src/functions/unknown/0040d730_func_0040d730.asm"
+%include "src/functions/runtime/crt_call_function_pointer_range.asm"
 %include "src/functions/unknown/0040d750_func_0040d750.asm"
 %include "src/functions/unknown/0040d780_func_0040d780.asm"
 %include "src/functions/unknown/0040d790_func_0040d790.asm"
 %include "src/functions/unknown/0040d7b0_func_0040d7b0.asm"
 %include "src/functions/unknown/0040d7c0_func_0040d7c0.asm"
 %include "src/functions/runtime/strcmp_runtime.asm"
-%include "src/functions/unknown/0040d930_func_0040d930.asm"
+%include "src/functions/runtime/crt_set_file_creation_mask.asm"
 %include "src/functions/unknown/0040d950_func_0040d950.asm"
 %include "src/functions/unknown/0040d9f0_func_0040d9f0.asm"
 %include "src/functions/unknown/0040da18_func_0040da18.asm"
@@ -208,14 +208,14 @@ bits 32
 %include "src/functions/unknown/0040dbcd_func_0040dbcd.asm"
 %include "src/functions/runtime/pe_entry.asm"
 %include "src/functions/unknown/0040dda0_func_0040dda0.asm"
-%include "src/functions/unknown/0040ddd0_func_0040ddd0.asm"
-%include "src/functions/unknown/0040de50_func_0040de50.asm"
-%include "src/functions/unknown/0040df00_func_0040df00.asm"
-%include "src/functions/unknown/0040df80_func_0040df80.asm"
-%include "src/functions/unknown/0040dfa0_func_0040dfa0.asm"
-%include "src/functions/unknown/0040dfe0_func_0040dfe0.asm"
-%include "src/functions/unknown/0040e010_func_0040e010.asm"
-%include "src/functions/unknown/0040e050_func_0040e050.asm"
+%include "src/functions/runtime/crt_initialize_heap.asm"
+%include "src/functions/runtime/crt_initialize_builtin_locks.asm"
+%include "src/functions/runtime/crt_lock_index.asm"
+%include "src/functions/runtime/crt_unlock_index.asm"
+%include "src/functions/runtime/crt_lock_file_stream.asm"
+%include "src/functions/runtime/crt_lock_file_stream_by_index.asm"
+%include "src/functions/runtime/crt_unlock_file_stream.asm"
+%include "src/functions/runtime/crt_unlock_file_stream_by_index.asm"
 %include "src/functions/unknown/0040e0d0_func_0040e0d0.asm"
 %include "src/functions/unknown/0040e240_func_0040e240.asm"
 %include "src/functions/unknown/0040e2a0_func_0040e2a0.asm"
@@ -229,9 +229,9 @@ bits 32
 %include "src/functions/unknown/0040f550_func_0040f550.asm"
 %include "src/functions/unknown/0040f5a0_func_0040f5a0.asm"
 %include "src/functions/unknown/0040f5e0_func_0040f5e0.asm"
-%include "src/functions/unknown/0040f620_func_0040f620.asm"
-%include "src/functions/unknown/0040f640_func_0040f640.asm"
-%include "src/functions/unknown/0040f660_func_0040f660.asm"
+%include "src/functions/runtime/crt_read_vararg_dword.asm"
+%include "src/functions/runtime/crt_read_vararg_qword.asm"
+%include "src/functions/runtime/crt_read_vararg_word.asm"
 %include "src/functions/unknown/0040f6c0_func_0040f6c0.asm"
 %include "src/functions/unknown/0040f6e0_func_0040f6e0.asm"
 %include "src/functions/unknown/0040f750_func_0040f750.asm"
@@ -253,7 +253,7 @@ bits 32
 %include "src/functions/unknown/00411050_func_00411050.asm"
 %include "src/functions/unknown/004110f0_func_004110f0.asm"
 %include "src/functions/unknown/004111f0_func_004111f0.asm"
-%include "src/functions/unknown/00411260_func_00411260.asm"
+%include "src/functions/runtime/crt_unlock_file_descriptor.asm"
 %include "src/functions/unknown/00411290_func_00411290.asm"
 %include "src/functions/unknown/00411310_func_00411310.asm"
 %include "src/functions/unknown/00411390_func_00411390.asm"
@@ -303,7 +303,7 @@ bits 32
 %include "src/functions/unknown/00414f60_func_00414f60.asm"
 %include "src/functions/unknown/00414ff0_func_00414ff0.asm"
 %include "src/functions/unknown/00415280_func_00415280.asm"
-%include "src/functions/unknown/00415530_func_00415530.asm"
+%include "src/functions/runtime/wide_string_length.asm"
 %include "src/functions/unknown/00415550_func_00415550.asm"
 %include "src/functions/unknown/00415600_func_00415600.asm"
 %include "src/functions/unknown/00415730_func_00415730.asm"
@@ -342,7 +342,7 @@ bits 32
 %include "src/functions/unknown/00419130_func_00419130.asm"
 %include "src/functions/unknown/004191a0_func_004191a0.asm"
 %include "src/functions/unknown/00419350_func_00419350.asm"
-%include "src/functions/unknown/004194a2_func_004194a2.asm"
+%include "src/functions/runtime/rtl_unwind_import_thunk.asm"
 
 ; Data Segments
 %include "src/data/pe_headers_and_section_table.asm"
@@ -578,7 +578,12 @@ bits 32
 %include "src/data/data_0230_01859f.asm"
 %include "src/data/data_0231_0187a0.asm"
 %include "src/data/data_0232_0188a8.asm"
-%include "src/data/data_0233_0198a8.asm"
+%include "src/data/unresolved_pre_cell_neighbor_tables.asm"
+%include "src/data/cell_adjacent_neighbor_lists.asm"
+%include "src/data/cell_distance_two_neighbor_lists.asm"
+%include "src/data/cell_adjacent_neighbor_pointers.asm"
+%include "src/data/cell_distance_two_neighbor_pointers.asm"
+%include "src/data/unresolved_post_cell_neighbor_tables.asm"
 %include "src/data/data_0234_01a8a8.asm"
 %include "src/data/data_0235_01b8a8.asm"
 %include "src/data/data_0236_01c8a8.asm"
@@ -779,25 +784,25 @@ emit_init_game_subsystems_part_00
 %if ($ - $$) != 0x00381D
     %error "layout drift at raw 00381D"
 %endif
-emit_func_0040441d_part_00
+emit_free_cursor_runtime_buffers_part_00
 
 ; raw 003869..003D83 (function)
 %if ($ - $$) != 0x003869
     %error "layout drift at raw 003869"
 %endif
-emit_func_00404469_part_00
+emit_draw_animated_software_cursor_part_00
 
 ; raw 003D83..0040A2 (function)
 %if ($ - $$) != 0x003D83
     %error "layout drift at raw 003D83"
 %endif
-emit_func_00404983_part_00
+emit_prepare_cursor_palette_translation_part_00
 
 ; raw 0040A2..004278 (function)
 %if ($ - $$) != 0x0040A2
     %error "layout drift at raw 0040A2"
 %endif
-emit_func_00404ca2_part_00
+emit_erase_cursor_and_restore_palette_part_00
 
 ; raw 004278..004280 (explicit-data)
 %if ($ - $$) != 0x004278
@@ -809,169 +814,169 @@ emit_file_data_0002_004278
 %if ($ - $$) != 0x004280
     %error "layout drift at raw 004280"
 %endif
-emit_func_00404e80_part_00
+emit_cell_copy_board_to_scratch_part_00
 
 ; raw 0042BB..0042F6 (function)
 %if ($ - $$) != 0x0042BB
     %error "layout drift at raw 0042BB"
 %endif
-emit_func_00404ebb_part_00
+emit_cell_copy_scratch_to_board_part_00
 
 ; raw 0042F6..004302 (function)
 %if ($ - $$) != 0x0042F6
     %error "layout drift at raw 0042F6"
 %endif
-emit_func_00404ef6_part_00
+emit_cell_request_search_abort_part_00
 
 ; raw 004302..004390 (function)
 %if ($ - $$) != 0x004302
     %error "layout drift at raw 004302"
 %endif
-emit_func_00404f02_part_00
+emit_cell_convert_adjacent_pieces_part_00
 
 ; raw 004390..004445 (function)
 %if ($ - $$) != 0x004390
     %error "layout drift at raw 004390"
 %endif
-emit_func_00404f90_part_00
+emit_cell_count_board_pieces_part_00
 
 ; raw 004445..004495 (function)
 %if ($ - $$) != 0x004445
     %error "layout drift at raw 004445"
 %endif
-emit_func_00405045_part_00
+emit_cell_begin_forward_move_iteration_part_00
 
 ; raw 004495..0044AF (function)
 %if ($ - $$) != 0x004495
     %error "layout drift at raw 004495"
 %endif
-emit_func_00405095_part_00
+emit_cell_begin_reverse_move_iteration_part_00
 
 ; raw 0044AF..004691 (function)
 %if ($ - $$) != 0x0044AF
     %error "layout drift at raw 0044AF"
 %endif
-emit_func_004050af_part_00
+emit_cell_next_forward_move_part_00
 
 ; raw 004691..0048B4 (function)
 %if ($ - $$) != 0x004691
     %error "layout drift at raw 004691"
 %endif
-emit_func_00405291_part_00
+emit_cell_next_forward_move_with_jump_deduplication_part_00
 
 ; raw 0048B4..004A3C (function)
 %if ($ - $$) != 0x0048B4
     %error "layout drift at raw 0048B4"
 %endif
-emit_func_004054b4_part_00
+emit_cell_next_reverse_move_part_00
 
 ; raw 004A3C..004AB2 (function)
 %if ($ - $$) != 0x004A3C
     %error "layout drift at raw 004A3C"
 %endif
-emit_func_0040563c_part_00
+emit_cell_apply_move_to_scratch_board_part_00
 
 ; raw 004AB2..004CAF (function)
 %if ($ - $$) != 0x004AB2
     %error "layout drift at raw 004AB2"
 %endif
-emit_func_004056b2_part_00
+emit_cell_score_candidate_move_part_00
 
 ; raw 004CAF..004DA7 (function)
 %if ($ - $$) != 0x004CAF
     %error "layout drift at raw 004CAF"
 %endif
-emit_func_004058af_part_00
+emit_cell_count_adjacent_clone_opportunities_part_00
 
 ; raw 004DA7..004DD7 (function)
 %if ($ - $$) != 0x004DA7
     %error "layout drift at raw 004DA7"
 %endif
-emit_func_004059a7_part_00
+emit_cell_reset_best_move_list_part_00
 
 ; raw 004DD7..004E24 (function)
 %if ($ - $$) != 0x004DD7
     %error "layout drift at raw 004DD7"
 %endif
-emit_func_004059d7_part_00
+emit_cell_append_tied_best_move_part_00
 
 ; raw 004E24..004F6F (function)
 %if ($ - $$) != 0x004E24
     %error "layout drift at raw 004E24"
 %endif
-emit_func_00405a24_part_00
+emit_cell_choose_best_move_part_00
 
 ; raw 004F6F..004FC2 (function)
 %if ($ - $$) != 0x004F6F
     %error "layout drift at raw 004F6F"
 %endif
-emit_func_00405b6f_part_00
+emit_cell_push_board_search_snapshot_part_00
 
 ; raw 004FC2..005015 (function)
 %if ($ - $$) != 0x004FC2
     %error "layout drift at raw 004FC2"
 %endif
-emit_func_00405bc2_part_00
+emit_cell_pop_board_search_snapshot_part_00
 
 ; raw 005015..005068 (function)
 %if ($ - $$) != 0x005015
     %error "layout drift at raw 005015"
 %endif
-emit_func_00405c15_part_00
+emit_cell_push_iterator_search_snapshot_part_00
 
 ; raw 005068..0050BB (function)
 %if ($ - $$) != 0x005068
     %error "layout drift at raw 005068"
 %endif
-emit_func_00405c68_part_00
+emit_cell_pop_iterator_search_snapshot_part_00
 
 ; raw 0050BB..00544C (function)
 %if ($ - $$) != 0x0050BB
     %error "layout drift at raw 0050BB"
 %endif
-emit_func_00405cbb_part_00
+emit_cell_search_recursive_part_00
 
 ; raw 00544C..0056FD (function)
 %if ($ - $$) != 0x00544C
     %error "layout drift at raw 00544C"
 %endif
-emit_func_0040604c_part_00
+emit_cell_search_best_move_part_00
 
 ; raw 0056FD..005724 (function)
 %if ($ - $$) != 0x0056FD
     %error "layout drift at raw 0056FD"
 %endif
-emit_func_004062fd_part_00
+emit_cell_reset_ranked_move_list_part_00
 
 ; raw 005724..005827 (function)
 %if ($ - $$) != 0x005724
     %error "layout drift at raw 005724"
 %endif
-emit_func_00406324_part_00
+emit_cell_insert_ranked_move_part_00
 
 ; raw 005827..005AA9 (function)
 %if ($ - $$) != 0x005827
     %error "layout drift at raw 005827"
 %endif
-emit_func_00406427_part_00
+emit_cell_build_ranked_move_list_part_00
 
 ; raw 005AA9..005C09 (function)
 %if ($ - $$) != 0x005AA9
     %error "layout drift at raw 005AA9"
 %endif
-emit_func_004066a9_part_00
+emit_cell_search_ranked_moves_part_00
 
 ; raw 005C09..005CB0 (function)
 %if ($ - $$) != 0x005C09
     %error "layout drift at raw 005C09"
 %endif
-emit_func_00406809_part_00
+emit_cell_run_grv_puzzle_search_part_00
 
 ; raw 005CB0..005D93 (function)
 %if ($ - $$) != 0x005CB0
     %error "layout drift at raw 005CB0"
 %endif
-emit_func_004068b0_part_00
+emit_cell_dispatch_search_strategy_part_00
 
 ; raw 005D93..005DA0 (explicit-data)
 %if ($ - $$) != 0x005D93
@@ -1181,7 +1186,7 @@ emit_func_00407748_part_00
 %if ($ - $$) != 0x006BE5
     %error "layout drift at raw 006BE5"
 %endif
-emit_func_004077e5_part_00
+emit_install_display_backend_callbacks_part_00
 
 ; raw 006C42..006CB3 (function)
 %if ($ - $$) != 0x006C42
@@ -1355,7 +1360,7 @@ emit_pump_media_and_game_part_00
 %if ($ - $$) != 0x008310
     %error "layout drift at raw 008310"
 %endif
-emit_func_00408f10_part_00
+emit_release_player_runtime_resources_part_00
 
 ; raw 00832E..008330 (explicit-data)
 %if ($ - $$) != 0x00832E
@@ -1379,13 +1384,13 @@ emit_file_data_0011_00867b
 %if ($ - $$) != 0x008796
     %error "layout drift at raw 008796"
 %endif
-emit_func_00409396_part_00
+emit_poll_mouse_position_and_button_edges_part_00
 
 ; raw 008903..008912 (function)
 %if ($ - $$) != 0x008903
     %error "layout drift at raw 008903"
 %endif
-emit_func_00409503_part_00
+emit_clear_mouse_release_edges_part_00
 
 ; raw 008912..0089D7 (function)
 %if ($ - $$) != 0x008912
@@ -1403,7 +1408,7 @@ emit_enforce_single_instance_part_00
 %if ($ - $$) != 0x008A5B
     %error "layout drift at raw 008A5B"
 %endif
-emit_func_0040965b_part_00
+emit_is_legacy_windows_platform_part_00
 
 ; raw 008A91..008AF0 (function)
 %if ($ - $$) != 0x008A91
@@ -1421,7 +1426,7 @@ emit_shutdown_player_part_00
 %if ($ - $$) != 0x008B60
     %error "layout drift at raw 008B60"
 %endif
-emit_func_00409760_part_00
+emit_show_error_and_exit_part_00
 
 ; raw 008B7B..008C50 (function)
 %if ($ - $$) != 0x008B7B
@@ -1679,19 +1684,19 @@ emit_file_data_0019_00bb74
 %if ($ - $$) != 0x00BB80
     %error "layout drift at raw 00BB80"
 %endif
-emit_func_0040c780_part_00
+emit_query_async_key_activity_part_00
 
 ; raw 00BB9C..00BBC3 (function)
 %if ($ - $$) != 0x00BB9C
     %error "layout drift at raw 00BB9C"
 %endif
-emit_func_0040c79c_part_00
+emit_is_primary_mouse_button_down_part_00
 
 ; raw 00BBC3..00BBEC (function)
 %if ($ - $$) != 0x00BBC3
     %error "layout drift at raw 00BBC3"
 %endif
-emit_func_0040c7c3_part_00
+emit_is_secondary_mouse_button_down_part_00
 
 ; raw 00BBEC..00BD96 (explicit-data)
 %if ($ - $$) != 0x00BBEC
@@ -1703,7 +1708,7 @@ emit_file_data_0020_00bbec
 %if ($ - $$) != 0x00BD96
     %error "layout drift at raw 00BD96"
 %endif
-emit_func_0040c996_part_00
+emit_direct_draw_create_import_thunk_part_00
 
 ; raw 00BD9C..00BDA0 (explicit-data)
 %if ($ - $$) != 0x00BD9C
@@ -1715,7 +1720,7 @@ emit_file_data_0021_00bd9c
 %if ($ - $$) != 0x00BDA0
     %error "layout drift at raw 00BDA0"
 %endif
-emit_func_0040c9a0_part_00
+emit_crt_free_part_00
 
 ; raw 00BE08..00BE10 (explicit-data)
 %if ($ - $$) != 0x00BE08
@@ -1979,7 +1984,7 @@ emit_file_data_0043_00c145
 %if ($ - $$) != 0x00C150
     %error "layout drift at raw 00C150"
 %endif
-emit_func_0040cd50_part_00
+emit_crt_sprintf_part_00
 
 ; raw 00C1B8..00C1C0 (explicit-data)
 %if ($ - $$) != 0x00C1B8
@@ -1991,7 +1996,7 @@ emit_file_data_0044_00c1b8
 %if ($ - $$) != 0x00C1C0
     %error "layout drift at raw 00C1C0"
 %endif
-emit_func_0040cdc0_part_00
+emit_crt_malloc_part_00
 
 ; raw 00C1D4..00C1E0 (explicit-data)
 %if ($ - $$) != 0x00C1D4
@@ -2003,7 +2008,7 @@ emit_file_data_0045_00c1d4
 %if ($ - $$) != 0x00C1E0
     %error "layout drift at raw 00C1E0"
 %endif
-emit_func_0040cde0_part_00
+emit_crt_allocate_with_new_handler_part_00
 
 ; raw 00C224..00C230 (explicit-data)
 %if ($ - $$) != 0x00C224
@@ -2015,7 +2020,7 @@ emit_file_data_0046_00c224
 %if ($ - $$) != 0x00C230
     %error "layout drift at raw 00C230"
 %endif
-emit_func_0040ce30_part_00
+emit_crt_allocate_heap_block_part_00
 
 ; raw 00C285..00C290 (explicit-data)
 %if ($ - $$) != 0x00C285
@@ -2027,7 +2032,7 @@ emit_file_data_0047_00c285
 %if ($ - $$) != 0x00C290
     %error "layout drift at raw 00C290"
 %endif
-emit_func_0040ce90_part_00
+emit_compare_strings_bounded_part_00
 
 ; raw 00C2C8..00C2D0 (explicit-data)
 %if ($ - $$) != 0x00C2C8
@@ -2165,7 +2170,7 @@ emit_file_data_0058_00c8c8
 %if ($ - $$) != 0x00C8D0
     %error "layout drift at raw 00C8D0"
 %endif
-emit_func_0040d4d0_part_00
+emit_string_length_part_00
 
 ; raw 00C94B..00C950 (explicit-data)
 %if ($ - $$) != 0x00C94B
@@ -2177,7 +2182,7 @@ emit_file_data_0059_00c94b
 %if ($ - $$) != 0x00C950
     %error "layout drift at raw 00C950"
 %endif
-emit_func_0040d550_part_00
+emit_crt_vsprintf_part_00
 
 ; raw 00C9B8..00C9C0 (explicit-data)
 %if ($ - $$) != 0x00C9B8
@@ -2189,13 +2194,13 @@ emit_file_data_0060_00c9b8
 %if ($ - $$) != 0x00C9C0
     %error "layout drift at raw 00C9C0"
 %endif
-emit_func_0040d5c0_part_00
+emit_crt_run_initializers_part_00
 
 ; raw 00C9F0..00CA02 (function)
 %if ($ - $$) != 0x00C9F0
     %error "layout drift at raw 00C9F0"
 %endif
-emit_func_0040d5f0_part_00
+emit_crt_exit_part_00
 
 ; raw 00CA02..00CA10 (explicit-data)
 %if ($ - $$) != 0x00CA02
@@ -2207,7 +2212,7 @@ emit_file_data_0061_00ca02
 %if ($ - $$) != 0x00CA10
     %error "layout drift at raw 00CA10"
 %endif
-emit_func_0040d610_part_00
+emit_crt_quick_exit_part_00
 
 ; raw 00CA22..00CA50 (explicit-data)
 %if ($ - $$) != 0x00CA22
@@ -2219,7 +2224,7 @@ emit_file_data_0062_00ca22
 %if ($ - $$) != 0x00CA50
     %error "layout drift at raw 00CA50"
 %endif
-emit_func_0040d650_part_00
+emit_crt_exit_common_part_00
 
 ; raw 00CAFE..00CB10 (explicit-data)
 %if ($ - $$) != 0x00CAFE
@@ -2255,7 +2260,7 @@ emit_file_data_0065_00cb2b
 %if ($ - $$) != 0x00CB30
     %error "layout drift at raw 00CB30"
 %endif
-emit_func_0040d730_part_00
+emit_crt_call_function_pointer_range_part_00
 
 ; raw 00CB50..00CB7D (function)
 %if ($ - $$) != 0x00CB50
@@ -2351,7 +2356,7 @@ emit_file_data_0072_00cd24
 %if ($ - $$) != 0x00CD30
     %error "layout drift at raw 00CD30"
 %endif
-emit_func_0040d930_part_00
+emit_crt_set_file_creation_mask_part_00
 
 ; raw 00CD46..00CD50 (explicit-data)
 %if ($ - $$) != 0x00CD46
@@ -2471,7 +2476,7 @@ emit_file_data_0082_00d1c6
 %if ($ - $$) != 0x00D1D0
     %error "layout drift at raw 00D1D0"
 %endif
-emit_func_0040ddd0_part_00
+emit_crt_initialize_heap_part_00
 
 ; raw 00D207..00D250 (explicit-data)
 %if ($ - $$) != 0x00D207
@@ -2483,7 +2488,7 @@ emit_file_data_0083_00d207
 %if ($ - $$) != 0x00D250
     %error "layout drift at raw 00D250"
 %endif
-emit_func_0040de50_part_00
+emit_crt_initialize_builtin_locks_part_00
 
 ; raw 00D27B..00D300 (explicit-data)
 %if ($ - $$) != 0x00D27B
@@ -2495,7 +2500,7 @@ emit_file_data_0084_00d27b
 %if ($ - $$) != 0x00D300
     %error "layout drift at raw 00D300"
 %endif
-emit_func_0040df00_part_00
+emit_crt_lock_index_part_00
 
 ; raw 00D376..00D380 (explicit-data)
 %if ($ - $$) != 0x00D376
@@ -2507,7 +2512,7 @@ emit_file_data_0085_00d376
 %if ($ - $$) != 0x00D380
     %error "layout drift at raw 00D380"
 %endif
-emit_func_0040df80_part_00
+emit_crt_unlock_index_part_00
 
 ; raw 00D396..00D3A0 (explicit-data)
 %if ($ - $$) != 0x00D396
@@ -2519,7 +2524,7 @@ emit_file_data_0086_00d396
 %if ($ - $$) != 0x00D3A0
     %error "layout drift at raw 00D3A0"
 %endif
-emit_func_0040dfa0_part_00
+emit_crt_lock_file_stream_part_00
 
 ; raw 00D3D6..00D3E0 (explicit-data)
 %if ($ - $$) != 0x00D3D6
@@ -2531,7 +2536,7 @@ emit_file_data_0087_00d3d6
 %if ($ - $$) != 0x00D3E0
     %error "layout drift at raw 00D3E0"
 %endif
-emit_func_0040dfe0_part_00
+emit_crt_lock_file_stream_by_index_part_00
 
 ; raw 00D408..00D410 (explicit-data)
 %if ($ - $$) != 0x00D408
@@ -2543,7 +2548,7 @@ emit_file_data_0088_00d408
 %if ($ - $$) != 0x00D410
     %error "layout drift at raw 00D410"
 %endif
-emit_func_0040e010_part_00
+emit_crt_unlock_file_stream_part_00
 
 ; raw 00D446..00D450 (explicit-data)
 %if ($ - $$) != 0x00D446
@@ -2555,7 +2560,7 @@ emit_file_data_0089_00d446
 %if ($ - $$) != 0x00D450
     %error "layout drift at raw 00D450"
 %endif
-emit_func_0040e050_part_00
+emit_crt_unlock_file_stream_by_index_part_00
 
 ; raw 00D478..00D4D0 (explicit-data)
 %if ($ - $$) != 0x00D478
@@ -2717,7 +2722,7 @@ emit_file_data_0102_00ea1d
 %if ($ - $$) != 0x00EA20
     %error "layout drift at raw 00EA20"
 %endif
-emit_func_0040f620_part_00
+emit_crt_read_vararg_dword_part_00
 
 ; raw 00EA31..00EA40 (explicit-data)
 %if ($ - $$) != 0x00EA31
@@ -2729,7 +2734,7 @@ emit_file_data_0103_00ea31
 %if ($ - $$) != 0x00EA40
     %error "layout drift at raw 00EA40"
 %endif
-emit_func_0040f640_part_00
+emit_crt_read_vararg_qword_part_00
 
 ; raw 00EA52..00EA60 (explicit-data)
 %if ($ - $$) != 0x00EA52
@@ -2741,7 +2746,7 @@ emit_file_data_0104_00ea52
 %if ($ - $$) != 0x00EA60
     %error "layout drift at raw 00EA60"
 %endif
-emit_func_0040f660_part_00
+emit_crt_read_vararg_word_part_00
 
 ; raw 00EA72..00EAC0 (explicit-data)
 %if ($ - $$) != 0x00EA72
@@ -2993,7 +2998,7 @@ emit_file_data_0124_010655
 %if ($ - $$) != 0x010660
     %error "layout drift at raw 010660"
 %endif
-emit_func_00411260_part_00
+emit_crt_unlock_file_descriptor_part_00
 
 ; raw 010682..010690 (explicit-data)
 %if ($ - $$) != 0x010682
@@ -3593,7 +3598,7 @@ emit_file_data_0173_014927
 %if ($ - $$) != 0x014930
     %error "layout drift at raw 014930"
 %endif
-emit_func_00415530_part_00
+emit_wide_string_length_part_00
 
 ; raw 01494E..014950 (explicit-data)
 %if ($ - $$) != 0x01494E
@@ -4301,7 +4306,7 @@ emit_file_data_0231_0187a0
 %if ($ - $$) != 0x0188A2
     %error "layout drift at raw 0188A2"
 %endif
-emit_func_004194a2_part_00
+emit_rtl_unwind_import_thunk_part_00
 
 ; raw 0188A8..0198A8 (explicit-data)
 %if ($ - $$) != 0x0188A8
@@ -4313,7 +4318,12 @@ emit_file_data_0232_0188a8
 %if ($ - $$) != 0x0198A8
     %error "layout drift at raw 0198A8"
 %endif
-emit_file_data_0233_0198a8
+emit_unresolved_pre_cell_neighbor_tables
+emit_cell_adjacent_neighbor_lists
+emit_cell_distance_two_neighbor_lists
+emit_cell_adjacent_neighbor_pointers
+emit_cell_distance_two_neighbor_pointers
+emit_unresolved_post_cell_neighbor_tables
 
 ; raw 01A8A8..01B8A8 (explicit-data)
 %if ($ - $$) != 0x01A8A8

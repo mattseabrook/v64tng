@@ -1,0 +1,3 @@
+; OS-9 initialized-data record (destination offset, length, bytes)
+; File offsets 00034E–000357, inclusive.
+db 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00 ; file 00034E

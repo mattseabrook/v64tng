@@ -1,0 +1,12 @@
+; Segment emission manifest: entries are provisional; bytes retain original order.
+%include "src/data/code_1_header_and_unowned_prefix.asm"
+%include "src/functions/unknown/code_1_000c_unknown.asm"
+%include "src/functions/unknown/code_1_00aa_unknown.asm"
+%include "src/functions/unknown/code_1_00be_unknown.asm"
+%include "src/functions/unknown/code_1_00d2_unknown.asm"
+%include "src/functions/unknown/code_1_00ee_unknown.asm"
+%include "src/functions/unknown/code_1_0124_unknown.asm"
+%include "src/functions/unknown/code_1_0144_unknown.asm"
+%include "src/functions/unknown/code_1_0166_unknown.asm"
+%include "src/functions/unknown/code_1_0186_unknown.asm"
+%include "src/functions/unknown/code_1_0240_unknown.asm"

@@ -1,0 +1,23 @@
+; Provisional entry from module header or linear decoded direct call; slice end is NOT a proved function end.
+; File offsets 00C946–00C995, inclusive.
+cdi_nodv_entry_00c946:
+db 0x48, 0xE7, 0x00, 0x60 ; 00C946: provisional 68k movem.l a1-a2, -(a7)
+db 0x24, 0x6C, 0x00, 0x1E ; 00C94A: provisional 68k movea.l $1e(a4), a2
+db 0xD4, 0xC0 ; 00C94E: provisional 68k adda.w d0, a2
+db 0x61, 0x00, 0x01, 0x2C ; 00C950: provisional 68k bsr.w $ca7e
+db 0x21, 0x6C, 0x00, 0x04, 0x00, 0x04 ; 00C954: provisional 68k move.l $4(a4), $4(a0)
+db 0x21, 0x4C, 0x00, 0x0A ; 00C95A: provisional 68k move.l a4, $a(a0)
+db 0x31, 0x6C, 0x00, 0x08, 0x00, 0x08 ; 00C95E: provisional 68k move.w $8(a4), $8(a0)
+db 0x22, 0x6C, 0x00, 0x0E ; 00C964: provisional 68k movea.l $e(a4), a1
+db 0x29, 0x48, 0x00, 0x0E ; 00C968: provisional 68k move.l a0, $e(a4)
+db 0x21, 0x49, 0x00, 0x3E ; 00C96C: provisional 68k move.l a1, $3e(a0)
+db 0x20, 0x09 ; 00C970: provisional 68k move.l a1, d0
+db 0x67, 0x04 ; 00C972: provisional 68k beq.b $c978
+db 0x23, 0x48, 0x00, 0x42 ; 00C974: provisional 68k move.l a0, $42(a1)
+db 0x21, 0x6C, 0x00, 0x1E, 0x00, 0x1E ; 00C978: provisional 68k move.l $1e(a4), $1e(a0)
+db 0x21, 0x4A, 0x00, 0x22 ; 00C97E: provisional 68k move.l a2, $22(a0)
+db 0x21, 0x4A, 0x00, 0x1A ; 00C982: provisional 68k move.l a2, $1a(a0)
+db 0x31, 0x7C, 0x00, 0x01, 0x00, 0x02 ; 00C986: provisional 68k move.w #$1, $2(a0)
+db 0x30, 0x28, 0x00, 0x00 ; 00C98C: provisional 68k move.w $0(a0), d0
+db 0x4C, 0xDF, 0x06, 0x00 ; 00C990: provisional 68k movem.l (a7)+, a1-a2
+db 0x4E, 0x75 ; 00C994: provisional 68k rts 

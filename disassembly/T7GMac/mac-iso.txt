@@ -1,0 +1,42 @@
+f  APPL/Dk@P     83851         0 Mar  4  1996 7th Guest English Manual
+f  APPL/Dk@P     87283         0 Mar  8  1996 7th Guest Manual Deutsch
+f  APPL/Dk@P     84744         0 Mar  7  1996 7th Guest Manual Français
+f  TEXT/ttxt       332      9761 Feb 12  1996 Aztech License Agreement
+fi FNDR/ERIK      2703         0 Dec 31  1903 Desktop
+fi BTFL/DMGR         0     20480 Mar  8  1996 Desktop DB
+fi DTFL/DMGR         0     14208 Mar  8  1996 Desktop DF
+fi     /          2670         0 Mar  8  1996 Icon
+f  bbkr/bbkr     33652         0 Jan 21  1994 Install The 7th Guest
+f  APPL/bbkr    154809         0 Jun 15  1993 Installer
+f  TEXT/ttxt       332      5325 Jan 24  1996 Other Aztech Products
+f  TEXT/ttxt       372       217 Feb 12  1996 Read Me First
+f  TEXT/ttxt       332      3166 Jan 24  1996 Registration Form
+d         19 items               Mar  8  1996 T7G
+d          4 items               Mar  8  1996 The 7th Guest - Install files
+
+The 7th Guest:T7G:
+f  TEXT/hscd      1702  45171574 Dec 10  1993 AT.GJD
+f  TEXT/hscd      1702  25672908 Dec 10  1993 B.GJD
+f  TEXT/hscd      1702  16889832 Dec 10  1993 CH.GJD
+f  TEXT/hscd      1702  31565570 Dec 10  1993 D.GJD
+f  TEXT/hscd      1702  23532001 Dec 10  1993 DR.GJD
+f  TEXT/hscd      1702  94315192 Dec 10  1993 FH.GJD
+f  TEXT/hscd      1702  26905546 Dec 10  1993 GA.GJD
+f  TEXT/hscd      1702  10709519 Dec 10  1993 GAMWAV.GJD
+f  TEXT/hscd      1702  43211514 Dec 10  1993 HTBD.GJD
+f  TEXT/hscd      1702  30611047 Dec 10  1993 INTRO.GJD
+f  TEXT/hscd      1702  45053968 Dec 10  1993 JHEK.GJD
+f  TEXT/hscd      1702  41165447 Dec 10  1993 K.GJD
+f  TEXT/hscd      1702  31590902 Dec 10  1993 LA.GJD
+f  TEXT/hscd      1702  51284217 Dec 10  1993 LI.GJD
+f  TEXT/hscd      1702  28133514 Dec 10  1993 MB.GJD
+f  TEXT/hscd      1702  38925255 Dec 10  1993 MC.GJD
+f  TEXT/hscd      1702  16087706 Dec 10  1993 MU.GJD
+f  TEXT/hscd      1702  45452282 Dec 10  1993 N.GJD
+f  TEXT/hscd      1702  11897552 Dec 10  1993 P.GJD
+
+The 7th Guest:The 7th Guest - Install files:
+f  INIT/ånd6    827450    245206 Jun 19  1994 QuickTime™
+f  INIT/sad      76993         0 Jul 13  1993 Sound Manager
+f  TEXT/mdos      1702   4202291 Dec 21  1993 T7GData
+f  APPL/T7GM   1830783         0 Jan 30  1994 T7GMac

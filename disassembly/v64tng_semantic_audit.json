@@ -1,0 +1,3321 @@
+{
+  "schema_version": 1,
+  "scope": "Recovered role inventory compared with modern engine; platform replacement is not native ABI emulation. Unknown routines excluded.",
+  "validation": "Static review and compilation only; no runtime, emulator or unit tests.",
+  "mac_coverage": {
+    "verified_original_jump_table_entries": 55,
+    "denominator": 80,
+    "unknown": 25,
+    "percent": 68.75,
+    "verified_role_records": 204,
+    "unverified_candidates": 21
+  },
+  "changes": [
+    {
+      "behavior": "GRV opcode 42 microscope search",
+      "files": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp",
+        "src/grv_runtime.cpp"
+      ]
+    },
+    {
+      "behavior": "Native 24-bit RNG with host seed",
+      "files": [
+        "include/grv_random.h",
+        "include/grv_runtime.h",
+        "src/grv_runtime.cpp"
+      ]
+    },
+    {
+      "behavior": "Opcode 22 display-to-background snapshot, including preload ownership",
+      "files": [
+        "src/game.cpp"
+      ]
+    },
+    {
+      "behavior": "Cursor backreference, extent, read and creation-error handling",
+      "files": [
+        "src/cursor.cpp"
+      ]
+    },
+    {
+      "behavior": "Instruction-end and LOADSCRIPT string bounds",
+      "files": [
+        "src/grv_runtime.cpp"
+      ]
+    }
+  ],
+  "x86_roles": [
+    {
+      "origin": "V:05ED6",
+      "name": "cell_run_grv_puzzle_search",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::search"
+    },
+    {
+      "origin": "v32tng:00406809",
+      "name": "cell_run_grv_puzzle_search",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::search"
+    },
+    {
+      "origin": "V:05F22",
+      "name": "cell_convert_adjacent_pieces",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::convertAdjacentPieces"
+    },
+    {
+      "origin": "v32tng:00404F02",
+      "name": "cell_convert_adjacent_pieces",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::convertAdjacentPieces"
+    },
+    {
+      "origin": "V:05F6C",
+      "name": "cell_count_board_pieces",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::countBoardPieces"
+    },
+    {
+      "origin": "v32tng:00404F90",
+      "name": "cell_count_board_pieces",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::countBoardPieces"
+    },
+    {
+      "origin": "V:05FB6",
+      "name": "cell_begin_forward_move_iteration",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::beginMoveIteration precomputes ordered native forward/reverse/deduplicated moves."
+    },
+    {
+      "origin": "v32tng:00405045",
+      "name": "cell_begin_forward_move_iteration",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::beginMoveIteration precomputes ordered native forward/reverse/deduplicated moves."
+    },
+    {
+      "origin": "V:05FD8",
+      "name": "cell_begin_reverse_move_iteration",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::beginMoveIteration precomputes ordered native forward/reverse/deduplicated moves."
+    },
+    {
+      "origin": "v32tng:00405095",
+      "name": "cell_begin_reverse_move_iteration",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::beginMoveIteration precomputes ordered native forward/reverse/deduplicated moves."
+    },
+    {
+      "origin": "V:05FE4",
+      "name": "cell_next_forward_move",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::beginMoveIteration precomputes ordered native forward/reverse/deduplicated moves."
+    },
+    {
+      "origin": "v32tng:004050AF",
+      "name": "cell_next_forward_move",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::beginMoveIteration precomputes ordered native forward/reverse/deduplicated moves."
+    },
+    {
+      "origin": "V:060D0",
+      "name": "cell_next_forward_move_with_jump_deduplication",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::beginMoveIteration precomputes ordered native forward/reverse/deduplicated moves."
+    },
+    {
+      "origin": "v32tng:00405291",
+      "name": "cell_next_forward_move_with_jump_deduplication",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::beginMoveIteration precomputes ordered native forward/reverse/deduplicated moves."
+    },
+    {
+      "origin": "V:061D0",
+      "name": "cell_next_reverse_move",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::beginMoveIteration precomputes ordered native forward/reverse/deduplicated moves."
+    },
+    {
+      "origin": "v32tng:004054B4",
+      "name": "cell_next_reverse_move",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::beginMoveIteration precomputes ordered native forward/reverse/deduplicated moves."
+    },
+    {
+      "origin": "V:06290",
+      "name": "cell_apply_move_to_scratch_board",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::applyMoveToScratchBoard"
+    },
+    {
+      "origin": "v32tng:0040563C",
+      "name": "cell_apply_move_to_scratch_board",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::applyMoveToScratchBoard"
+    },
+    {
+      "origin": "V:062EA",
+      "name": "cell_score_candidate_move",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::scoreCandidateMove"
+    },
+    {
+      "origin": "v32tng:004056B2",
+      "name": "cell_score_candidate_move",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::scoreCandidateMove"
+    },
+    {
+      "origin": "V:063B4",
+      "name": "cell_count_adjacent_clone_opportunities",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::countAdjacentCloneOpportunities"
+    },
+    {
+      "origin": "v32tng:004058AF",
+      "name": "cell_count_adjacent_clone_opportunities",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::countAdjacentCloneOpportunities"
+    },
+    {
+      "origin": "V:0641C",
+      "name": "cell_reset_best_move_list",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::resetBestMoveList"
+    },
+    {
+      "origin": "v32tng:004059A7",
+      "name": "cell_reset_best_move_list",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::resetBestMoveList"
+    },
+    {
+      "origin": "V:06436",
+      "name": "cell_append_tied_best_move",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::appendTiedBestMove"
+    },
+    {
+      "origin": "v32tng:004059D7",
+      "name": "cell_append_tied_best_move",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::appendTiedBestMove"
+    },
+    {
+      "origin": "V:06458",
+      "name": "cell_choose_best_move",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::chooseBestMove"
+    },
+    {
+      "origin": "v32tng:00405A24",
+      "name": "cell_choose_best_move",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::chooseBestMove"
+    },
+    {
+      "origin": "V:0656C",
+      "name": "cell_search_recursive",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::searchRecursive"
+    },
+    {
+      "origin": "v32tng:00405CBB",
+      "name": "cell_search_recursive",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::searchRecursive"
+    },
+    {
+      "origin": "V:06846",
+      "name": "cell_search_best_move",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::searchBestMove"
+    },
+    {
+      "origin": "v32tng:0040604C",
+      "name": "cell_search_best_move",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::searchBestMove"
+    },
+    {
+      "origin": "V:06A6D",
+      "name": "cell_reset_ranked_move_list",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "A fresh ranked vector replaces native head/count reset."
+    },
+    {
+      "origin": "v32tng:004062FD",
+      "name": "cell_reset_ranked_move_list",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "A fresh ranked vector replaces native head/count reset."
+    },
+    {
+      "origin": "V:06A81",
+      "name": "cell_insert_ranked_move",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::insertRankedMove"
+    },
+    {
+      "origin": "v32tng:00406324",
+      "name": "cell_insert_ranked_move",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::insertRankedMove"
+    },
+    {
+      "origin": "V:06AEF",
+      "name": "cell_build_ranked_move_list",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::buildRankedMoveList"
+    },
+    {
+      "origin": "v32tng:00406427",
+      "name": "cell_build_ranked_move_list",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::buildRankedMoveList"
+    },
+    {
+      "origin": "V:06D0E",
+      "name": "cell_search_ranked_moves",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::searchRankedMoves"
+    },
+    {
+      "origin": "v32tng:004066A9",
+      "name": "cell_search_ranked_moves",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::searchRankedMoves"
+    },
+    {
+      "origin": "V:06DE4",
+      "name": "cell_dispatch_search_strategy",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::search"
+    },
+    {
+      "origin": "v32tng:004068B0",
+      "name": "cell_dispatch_search_strategy",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::search"
+    },
+    {
+      "origin": "V:06E68",
+      "name": "cell_random_byte",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/grv_random.h"
+      ],
+      "note": "Recovered byte generator; startup seeding is host-specific."
+    },
+    {
+      "origin": "v32tng:00404E80",
+      "name": "cell_copy_board_to_scratch",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Board and iterator value semantics replace native global copies/software-stack snapshots."
+    },
+    {
+      "origin": "v32tng:00404EBB",
+      "name": "cell_copy_scratch_to_board",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Board and iterator value semantics replace native global copies/software-stack snapshots."
+    },
+    {
+      "origin": "v32tng:00404EF6",
+      "name": "cell_request_search_abort",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "CellPuzzle::requestSearchAbort"
+    },
+    {
+      "origin": "v32tng:00405B6F",
+      "name": "cell_push_board_search_snapshot",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Board and iterator value semantics replace native global copies/software-stack snapshots."
+    },
+    {
+      "origin": "v32tng:00405BC2",
+      "name": "cell_pop_board_search_snapshot",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Board and iterator value semantics replace native global copies/software-stack snapshots."
+    },
+    {
+      "origin": "v32tng:00405C15",
+      "name": "cell_push_iterator_search_snapshot",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Board and iterator value semantics replace native global copies/software-stack snapshots."
+    },
+    {
+      "origin": "v32tng:00405C68",
+      "name": "cell_pop_iterator_search_snapshot",
+      "status": "implemented-recovered-behavior",
+      "implementation": [
+        "include/cell_puzzle.h",
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Board and iterator value semantics replace native global copies/software-stack snapshots."
+    },
+    {
+      "origin": "V:04A7B",
+      "name": "update_animated_software_cursor",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/cursor.cpp"
+      ],
+      "note": "RGBA/native Windows cursor rendering replaces banked software drawing, saved-under restoration and palette translation."
+    },
+    {
+      "origin": "V:04BF5",
+      "name": "erase_software_cursor",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/cursor.cpp"
+      ],
+      "note": "RGBA/native Windows cursor rendering replaces banked software drawing, saved-under restoration and palette translation."
+    },
+    {
+      "origin": "V:04C27",
+      "name": "draw_cursor_and_save_background_banked",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/cursor.cpp"
+      ],
+      "note": "RGBA/native Windows cursor rendering replaces banked software drawing, saved-under restoration and palette translation."
+    },
+    {
+      "origin": "V:04CD2",
+      "name": "redraw_cursor_frame_banked",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/cursor.cpp"
+      ],
+      "note": "RGBA/native Windows cursor rendering replaces banked software drawing, saved-under restoration and palette translation."
+    },
+    {
+      "origin": "V:04D8C",
+      "name": "draw_cursor_and_save_background_half_resolution",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/cursor.cpp"
+      ],
+      "note": "RGBA/native Windows cursor rendering replaces banked software drawing, saved-under restoration and palette translation."
+    },
+    {
+      "origin": "V:04E1F",
+      "name": "redraw_cursor_frame_half_resolution",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/cursor.cpp"
+      ],
+      "note": "RGBA/native Windows cursor rendering replaces banked software drawing, saved-under restoration and palette translation."
+    },
+    {
+      "origin": "V:04EAE",
+      "name": "restore_cursor_background",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/cursor.cpp"
+      ],
+      "note": "RGBA/native Windows cursor rendering replaces banked software drawing, saved-under restoration and palette translation."
+    },
+    {
+      "origin": "V:02C32",
+      "name": "probe_cpu_and_x87_capabilities",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:03590",
+      "name": "print_hardware_and_memory_diagnostics",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:048C9",
+      "name": "tokenize_configuration_line",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:04957",
+      "name": "skip_nul_terminated_string",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:0495D",
+      "name": "skip_configuration_whitespace",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:04A23",
+      "name": "parse_configuration_decimal_word",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:04A55",
+      "name": "parse_configuration_hex_word",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:04FC7",
+      "name": "skip_configuration_crlf_line",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:05010",
+      "name": "copy_config_string_leaving_terminator",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:05018",
+      "name": "find_configuration_section",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:05057",
+      "name": "load_groovie_configuration",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:051C5",
+      "name": "mark_videocard_configuration_seen",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:051CB",
+      "name": "configure_dma_buffer_size",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:051E5",
+      "name": "configure_ticks_per_second",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:051FF",
+      "name": "configure_svga_mode",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:05217",
+      "name": "configure_program_directory",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:05226",
+      "name": "configure_data_directory",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:05235",
+      "name": "configure_midi_driver",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:05379",
+      "name": "configure_pcm_driver",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:05E8D",
+      "name": "free_dos_memory_segment",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:05EA9",
+      "name": "allocate_dos_memory_for_byte_count",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:05EC8",
+      "name": "allocate_dos_memory_paragraphs",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "V:02D50",
+      "name": "dispatch_video_bank_switch",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Windows input and rendering replace BIOS/mouse-driver/SVGA bank probes and legacy DirectDraw setup."
+    },
+    {
+      "origin": "V:02D5A",
+      "name": "synchronize_video_bank_state",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Windows input and rendering replace BIOS/mouse-driver/SVGA bank probes and legacy DirectDraw setup."
+    },
+    {
+      "origin": "V:02F6A",
+      "name": "call_scaled_video_bank_handler",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Windows input and rendering replace BIOS/mouse-driver/SVGA bank probes and legacy DirectDraw setup."
+    },
+    {
+      "origin": "V:033FF",
+      "name": "probe_video_memory_bank_separation",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Windows input and rendering replace BIOS/mouse-driver/SVGA bank probes and legacy DirectDraw setup."
+    },
+    {
+      "origin": "V:0341A",
+      "name": "test_video_bank_pattern_pair",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Windows input and rendering replace BIOS/mouse-driver/SVGA bank probes and legacy DirectDraw setup."
+    },
+    {
+      "origin": "V:0345E",
+      "name": "probe_indexed_register_writable_bits",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Windows input and rendering replace BIOS/mouse-driver/SVGA bank probes and legacy DirectDraw setup."
+    },
+    {
+      "origin": "V:0348C",
+      "name": "probe_direct_register_writable_bits",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Windows input and rendering replace BIOS/mouse-driver/SVGA bank probes and legacy DirectDraw setup."
+    },
+    {
+      "origin": "V:034A5",
+      "name": "set_detected_graphics_mode",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Windows input and rendering replace BIOS/mouse-driver/SVGA bank probes and legacy DirectDraw setup."
+    },
+    {
+      "origin": "V:0358A",
+      "name": "restore_bios_text_mode",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Windows input and rendering replace BIOS/mouse-driver/SVGA bank probes and legacy DirectDraw setup."
+    },
+    {
+      "origin": "V:03671",
+      "name": "detect_and_reset_mouse_driver",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Windows input and rendering replace BIOS/mouse-driver/SVGA bank probes and legacy DirectDraw setup."
+    },
+    {
+      "origin": "V:03756",
+      "name": "open_named_archive_file",
+      "status": "existing-modern-subsystem",
+      "implementation": [
+        "src/grv_runtime.cpp",
+        "src/rl.cpp"
+      ],
+      "note": "Modern archive resolution and bounded host-file reads; no DOS disc-prompt/handle ABI."
+    },
+    {
+      "origin": "V:0378F",
+      "name": "resolve_named_resource_reference",
+      "status": "existing-modern-subsystem",
+      "implementation": [
+        "src/grv_runtime.cpp",
+        "src/rl.cpp"
+      ],
+      "note": "Modern archive resolution and bounded host-file reads; no DOS disc-prompt/handle ABI."
+    },
+    {
+      "origin": "V:03A51",
+      "name": "read_open_resource_file",
+      "status": "existing-modern-subsystem",
+      "implementation": [
+        "src/grv_runtime.cpp",
+        "src/rl.cpp"
+      ],
+      "note": "Modern archive resolution and bounded host-file reads; no DOS disc-prompt/handle ABI."
+    },
+    {
+      "origin": "V:03E44",
+      "name": "probe_game_disc_archive_availability",
+      "status": "existing-modern-subsystem",
+      "implementation": [
+        "src/grv_runtime.cpp",
+        "src/rl.cpp"
+      ],
+      "note": "Modern archive resolution and bounded host-file reads; no DOS disc-prompt/handle ABI."
+    },
+    {
+      "origin": "V:04849",
+      "name": "expand_grv_video_filename",
+      "status": "existing-modern-subsystem",
+      "implementation": [
+        "src/grv_runtime.cpp",
+        "src/game.cpp",
+        "src/vdx.cpp"
+      ],
+      "note": "Subsystem correspondence; does not claim native ABI or identical platform side effects."
+    },
+    {
+      "origin": "V:04406",
+      "name": "grv_play_video_reference",
+      "status": "existing-modern-subsystem",
+      "implementation": [
+        "src/grv_runtime.cpp",
+        "src/game.cpp",
+        "src/vdx.cpp"
+      ],
+      "note": "Subsystem correspondence; does not claim native ABI or identical platform side effects."
+    },
+    {
+      "origin": "V:0443A",
+      "name": "grv_play_song_reference",
+      "status": "existing-modern-subsystem",
+      "implementation": [
+        "src/grv_runtime.cpp",
+        "src/game.cpp",
+        "src/vdx.cpp"
+      ],
+      "note": "Subsystem correspondence; does not claim native ABI or identical platform side effects."
+    },
+    {
+      "origin": "V:00089",
+      "name": "initialize_vdx_stream_buffers",
+      "status": "existing-modern-subsystem",
+      "implementation": [
+        "src/grv_runtime.cpp",
+        "src/game.cpp",
+        "src/vdx.cpp"
+      ],
+      "note": "Subsystem correspondence; does not claim native ABI or identical platform side effects."
+    },
+    {
+      "origin": "V:04375",
+      "name": "play_named_vdx_resource",
+      "status": "existing-modern-subsystem",
+      "implementation": [
+        "src/grv_runtime.cpp",
+        "src/game.cpp",
+        "src/vdx.cpp"
+      ],
+      "note": "Subsystem correspondence; does not claim native ABI or identical platform side effects."
+    },
+    {
+      "origin": "v32tng:0040441D",
+      "name": "free_cursor_runtime_buffers",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/cursor.cpp"
+      ],
+      "note": "RGBA/native Windows cursor rendering replaces banked software drawing, saved-under restoration and palette translation."
+    },
+    {
+      "origin": "v32tng:00404469",
+      "name": "draw_animated_software_cursor",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/cursor.cpp"
+      ],
+      "note": "RGBA/native Windows cursor rendering replaces banked software drawing, saved-under restoration and palette translation."
+    },
+    {
+      "origin": "v32tng:00404983",
+      "name": "prepare_cursor_palette_translation",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/cursor.cpp"
+      ],
+      "note": "RGBA/native Windows cursor rendering replaces banked software drawing, saved-under restoration and palette translation."
+    },
+    {
+      "origin": "v32tng:00404CA2",
+      "name": "erase_cursor_and_restore_palette",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/cursor.cpp"
+      ],
+      "note": "RGBA/native Windows cursor rendering replaces banked software drawing, saved-under restoration and palette translation."
+    },
+    {
+      "origin": "v32tng:004077E5",
+      "name": "install_display_backend_callbacks",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Windows input and rendering replace BIOS/mouse-driver/SVGA bank probes and legacy DirectDraw setup."
+    },
+    {
+      "origin": "v32tng:00409396",
+      "name": "poll_mouse_position_and_button_edges",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Windows input and rendering replace BIOS/mouse-driver/SVGA bank probes and legacy DirectDraw setup."
+    },
+    {
+      "origin": "v32tng:00409503",
+      "name": "clear_mouse_release_edges",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Windows input and rendering replace BIOS/mouse-driver/SVGA bank probes and legacy DirectDraw setup."
+    },
+    {
+      "origin": "v32tng:0040965B",
+      "name": "is_legacy_windows_platform",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Windows input and rendering replace BIOS/mouse-driver/SVGA bank probes and legacy DirectDraw setup."
+    },
+    {
+      "origin": "v32tng:0040C780",
+      "name": "query_async_key_activity",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Windows input and rendering replace BIOS/mouse-driver/SVGA bank probes and legacy DirectDraw setup."
+    },
+    {
+      "origin": "v32tng:0040C79C",
+      "name": "is_primary_mouse_button_down",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Windows input and rendering replace BIOS/mouse-driver/SVGA bank probes and legacy DirectDraw setup."
+    },
+    {
+      "origin": "v32tng:0040C7C3",
+      "name": "is_secondary_mouse_button_down",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Windows input and rendering replace BIOS/mouse-driver/SVGA bank probes and legacy DirectDraw setup."
+    },
+    {
+      "origin": "v32tng:0040C996",
+      "name": "direct_draw_create_import_thunk",
+      "status": "host-platform-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Windows input and rendering replace BIOS/mouse-driver/SVGA bank probes and legacy DirectDraw setup."
+    },
+    {
+      "origin": "v32tng:00408F10",
+      "name": "release_player_runtime_resources",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:00409760",
+      "name": "show_error_and_exit",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040C9A0",
+      "name": "crt_free",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040CDC0",
+      "name": "crt_malloc",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040CDE0",
+      "name": "crt_allocate_with_new_handler",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040CE30",
+      "name": "crt_allocate_heap_block",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040CD50",
+      "name": "crt_sprintf",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040D550",
+      "name": "crt_vsprintf",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040CE90",
+      "name": "compare_strings_bounded",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040D4D0",
+      "name": "string_length",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040D5C0",
+      "name": "crt_run_initializers",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040D730",
+      "name": "crt_call_function_pointer_range",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040D5F0",
+      "name": "crt_exit",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040D610",
+      "name": "crt_quick_exit",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040D650",
+      "name": "crt_exit_common",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040D930",
+      "name": "crt_set_file_creation_mask",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040DDD0",
+      "name": "crt_initialize_heap",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040DE50",
+      "name": "crt_initialize_builtin_locks",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040DF00",
+      "name": "crt_lock_index",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040DF80",
+      "name": "crt_unlock_index",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040DFA0",
+      "name": "crt_lock_file_stream",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040DFE0",
+      "name": "crt_lock_file_stream_by_index",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040E010",
+      "name": "crt_unlock_file_stream",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040E050",
+      "name": "crt_unlock_file_stream_by_index",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040F620",
+      "name": "crt_read_vararg_dword",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040F640",
+      "name": "crt_read_vararg_qword",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:0040F660",
+      "name": "crt_read_vararg_word",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:00411260",
+      "name": "crt_unlock_file_descriptor",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:00415530",
+      "name": "wide_string_length",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    },
+    {
+      "origin": "v32tng:004194A2",
+      "name": "rtl_unwind_import_thunk",
+      "status": "host-runtime-replacement",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Host C++ runtime/standard library owns allocation, strings, formatting, initialization, locks, errors and teardown. DOS configuration/hardware knobs are replaced by modern engine configuration; GROOVIE.INI compatibility is not claimed."
+    }
+  ],
+  "mac_roles": [
+    {
+      "origin": "T7GMac:CODE1:000C",
+      "name": "start_application",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE1:00AA",
+      "name": "dispatch_word_switch",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE1:00BE",
+      "name": "dispatch_long_switch",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE1:00D2",
+      "name": "dispatch_indexed_switch",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE1:00EE",
+      "name": "multiply_long",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE1:0124",
+      "name": "divide_unsigned_long",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE1:0144",
+      "name": "remainder_unsigned_long",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE1:0166",
+      "name": "divide_signed_long",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE1:0186",
+      "name": "remainder_signed_long",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE1:0240",
+      "name": "reserved_no_op",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:04A4",
+      "name": "exit_to_shell_with_cleanup",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:0544",
+      "name": "reserved_no_op",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:287C",
+      "name": "return_minus_one",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:2960",
+      "name": "string_copy",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:2970",
+      "name": "string_concatenate",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:2986",
+      "name": "string_compare",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:2A80",
+      "name": "string_length",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:3D06",
+      "name": "do_high_level_event",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE2:3D2E",
+      "name": "get_target_info",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:3DFC",
+      "name": "init_apple_events",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:3EAC",
+      "name": "make_target",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:3FD4",
+      "name": "missed_any_parameters",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:403C",
+      "name": "do_aeopen_application",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:40B4",
+      "name": "do_aeopen_documents",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:410E",
+      "name": "do_aeprint_documents",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4188",
+      "name": "do_aequit_application",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:41DA",
+      "name": "open_doc_event_handler",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:42E2",
+      "name": "do_aeanswer",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:42FE",
+      "name": "send_connect",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4316",
+      "name": "receive_connect",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4336",
+      "name": "receive_connect_reply",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:435A",
+      "name": "send_message",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4372",
+      "name": "receive_message",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4392",
+      "name": "get_aewindow",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:43A8",
+      "name": "my_idle_proc",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:43C4",
+      "name": "aeport_filter",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:43E2",
+      "name": "do_cursor",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/cursor.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE2:4506",
+      "name": "do_set_cursor",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/cursor.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE2:453C",
+      "name": "event_loop",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4580",
+      "name": "app_dispose_document",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:45D4",
+      "name": "app_document_dirty",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:45F8",
+      "name": "app_new_document",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4686",
+      "name": "app_open_document",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4832",
+      "name": "app_save_document",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:498E",
+      "name": "convert_old_to_new_sfreply",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4A14",
+      "name": "create_open_file",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4AC2",
+      "name": "display_get_file",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4B3E",
+      "name": "display_put_file",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4BB8",
+      "name": "inc_new_file_num",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4BD6",
+      "name": "app_free_document",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4BF0",
+      "name": "app_init_document",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4C18",
+      "name": "app_read_document",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4C36",
+      "name": "app_write_document",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4C56",
+      "name": "app_duplicate_document",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4C7A",
+      "name": "dynamic_balloon_help",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4D80",
+      "name": "my_idle_proc_boo",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4E64",
+      "name": "initialize",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE2:4F10",
+      "name": "enable_or_disable_item",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:4F4A",
+      "name": "do_menu_command",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:503C",
+      "name": "run_application_event_loop",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5056",
+      "name": "centered_alert",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE2:510C",
+      "name": "center_rect_in_rect",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:514C",
+      "name": "center_window",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5224",
+      "name": "close_any_window",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5278",
+      "name": "dispose_any_window",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:52CE",
+      "name": "death_alert",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:52F2",
+      "name": "death_alert_message",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5320",
+      "name": "error_alert",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5344",
+      "name": "error_alert_message",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:53D0",
+      "name": "find_sys_folder",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5480",
+      "name": "get_app_ind_resource",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:54C4",
+      "name": "get_app_named_resource",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5514",
+      "name": "get_app_resource",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5560",
+      "name": "get_auxversion",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:55BE",
+      "name": "get_centered_dialog",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5650",
+      "name": "get_centered_window",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5688",
+      "name": "get_check_or_radio",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:56C6",
+      "name": "get_gestalt_result",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:56FC",
+      "name": "get_global_mouse",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5728",
+      "name": "get_global_top_left",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:576E",
+      "name": "get_kfree_space",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:57C2",
+      "name": "get_main_screen_rect",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/vdx.cpp",
+        "src/game.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE2:5818",
+      "name": "get_rect_device",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:58A4",
+      "name": "get_rect_device_rect",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:58FC",
+      "name": "get_some_kind_of_window",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5A12",
+      "name": "get_max_window",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5A46",
+      "name": "get_trap_type",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5A6A",
+      "name": "get_window_content_rect",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5AC2",
+      "name": "get_window_count",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5B10",
+      "name": "get_window_device",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5B42",
+      "name": "get_window_device_rect",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5B98",
+      "name": "get_window_device_rect_nmb",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5C0E",
+      "name": "get_window_structure_rect",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5CCC",
+      "name": "global_to_local_rect",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5D0E",
+      "name": "init_utilities",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE2:5E06",
+      "name": "is_app_window",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5E34",
+      "name": "is_dawindow",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5E60",
+      "name": "local_to_global_rect",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5E8C",
+      "name": "lock_handle_high",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5EC0",
+      "name": "num_toolbox_traps",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5F08",
+      "name": "outline_control",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5F9E",
+      "name": "outline_dialog_item",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:5FD8",
+      "name": "position_rect_in_rect",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:6072",
+      "name": "pstr_concat",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:60D4",
+      "name": "pull_application_to_front",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:6114",
+      "name": "select_button",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:614A",
+      "name": "set_check_or_radio_button",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:618A",
+      "name": "max_window",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:61B4",
+      "name": "standard_about",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:62A8",
+      "name": "standard_initialization",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:62E6",
+      "name": "standard_menu_setup",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:633C",
+      "name": "toggle_check",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:6380",
+      "name": "trap_exists",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:63E6",
+      "name": "zoom_to_window_device",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:6562",
+      "name": "app_new_window",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:65FE",
+      "name": "app_new_window_title",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:6646",
+      "name": "app_window_dirty",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE2:66A8",
+      "name": "dispose_one_window",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE2:66CE",
+      "name": "set_file_port",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE4:038A",
+      "name": "get_trap_address",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE4:039E",
+      "name": "lookup_unit_table_entry",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE4:03B8",
+      "name": "open_file_with_hfs_fallback",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE4:03F8",
+      "name": "close_file_parameter_block",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE4:0412",
+      "name": "read_file_parameter_block",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE4:045A",
+      "name": "set_file_position",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE4:04AC",
+      "name": "get_working_directory_info",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE4:04C2",
+      "name": "get_volume_info_parameter_block",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE4:05A0",
+      "name": "get_indexed_string_resource",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE4:05E6",
+      "name": "findfolder",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE4:0744",
+      "name": "hopen",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE4:079E",
+      "name": "hcreate",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE4:0824",
+      "name": "hdelete",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE4:0864",
+      "name": "openwd",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE4:08B6",
+      "name": "closewd",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE4:08E4",
+      "name": "getwdinfo",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:0004",
+      "name": "do_event",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:0288",
+      "name": "do_activate",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE5:02D2",
+      "name": "do_update",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:0300",
+      "name": "do_content_click",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:037A",
+      "name": "resize_content",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE5:03B8",
+      "name": "cell_convert_adjacent_pieces",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:040A",
+      "name": "cell_count_board_pieces",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:0478",
+      "name": "cell_begin_forward_move_iteration",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:04A2",
+      "name": "cell_begin_reverse_move_iteration",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:04B0",
+      "name": "cell_next_forward_move",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:05BE",
+      "name": "cell_next_forward_move_with_jump_deduplication",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:06F2",
+      "name": "cell_next_reverse_move",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:07E4",
+      "name": "cell_apply_move_to_scratch_board",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:085A",
+      "name": "cell_score_candidate_move",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:095E",
+      "name": "cell_count_adjacent_clone_opportunities",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:09E0",
+      "name": "cell_reset_best_move_list",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:09FA",
+      "name": "cell_append_tied_best_move",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:0A1C",
+      "name": "cell_choose_best_move",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:0B3C",
+      "name": "cell_search_recursive",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:0F2E",
+      "name": "cell_search_best_move",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:11B2",
+      "name": "cell_reset_ranked_move_list",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:11C6",
+      "name": "cell_insert_ranked_move",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:1250",
+      "name": "cell_build_ranked_move_list",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:14AE",
+      "name": "cell_search_ranked_moves",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:15A4",
+      "name": "cell_run_grv_puzzle_search",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:15FC",
+      "name": "cell_dispatch_search_strategy",
+      "native_status": "verified-role",
+      "status": "shared-puzzle-reference",
+      "implementation": [
+        "src/cell_puzzle.cpp"
+      ],
+      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+    },
+    {
+      "origin": "T7GMac:CODE5:19DA",
+      "name": "lzsscursor_decode",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE5:1A44",
+      "name": "cursor_color_remap",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/cursor.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:1BAC",
+      "name": "init_file_system",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:1BFE",
+      "name": "open_file_by_number",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:1DE8",
+      "name": "file_name_to_number",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:2032",
+      "name": "init_buffers",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE5:20B4",
+      "name": "t7_ginit",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE5:23A4",
+      "name": "check_machine",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE5:2670",
+      "name": "check_system",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:26EE",
+      "name": "is_pressed",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:2724",
+      "name": "script",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:3830",
+      "name": "unimp",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE5:3844",
+      "name": "dummy",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:3858",
+      "name": "check_default_clicks",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:3A38",
+      "name": "get_var_offset",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE5:3A86",
+      "name": "get_lval",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:3AD6",
+      "name": "get_rval",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:3B86",
+      "name": "get2_rval",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:3C3C",
+      "name": "get_next_word",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:3C6E",
+      "name": "check_region",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:3D12",
+      "name": "vdxplayed",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/vdx.cpp",
+        "src/game.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:3D6C",
+      "name": "save_game",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:3E1A",
+      "name": "load_game",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:3E72",
+      "name": "count_saved_games",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:3F08",
+      "name": "load_script",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:3FBA",
+      "name": "load_main_script",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:400A",
+      "name": "init_script",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:40B6",
+      "name": "random_number",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE5:419C",
+      "name": "set_up_text",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:41F4",
+      "name": "erase_text",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:4260",
+      "name": "clear_eol",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/grv_runtime.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:4368",
+      "name": "set_pcmvolume",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE5:439E",
+      "name": "close_sound",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/game.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:43DA",
+      "name": "fix_word",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:43FE",
+      "name": "fix_long",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:4422",
+      "name": "appendi2cstr",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:4452",
+      "name": "appendi2pstr",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:44AC",
+      "name": "i2cstr",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:4502",
+      "name": "i2pstr",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:4524",
+      "name": "pstrcat",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:4564",
+      "name": "pstrcpy",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:4594",
+      "name": "get_hex_byte",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:45F6",
+      "name": "key_equiv_filter",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:4742",
+      "name": "offset_control",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:4786",
+      "name": "do_draw_grow_icon",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:47A0",
+      "name": "do_draw_controls",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:47DC",
+      "name": "do_draw1_control",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:48A6",
+      "name": "init_vdx",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/vdx.cpp",
+        "src/game.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:4B14",
+      "name": "open_vdx",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE5:4C00",
+      "name": "frame_vdx",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE5:4EDC",
+      "name": "proc_ccm4",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/vdx.cpp",
+        "src/game.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:523A",
+      "name": "proc_ccc4",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/vdx.cpp",
+        "src/game.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:6A88",
+      "name": "fade_palette_down",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/vdx.cpp",
+        "src/game.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:6B82",
+      "name": "mboff",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE5:6C16",
+      "name": "reserved_no_op",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:6C18",
+      "name": "clear_screen",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/vdx.cpp",
+        "src/game.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:6C7E",
+      "name": "reserved_decoder_no_op",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered native role retained as evidence; native Mac ABI is not transplanted into the Windows engine."
+    },
+    {
+      "origin": "T7GMac:CODE5:6C80",
+      "name": "lzssdecode",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/vdx.cpp",
+        "src/game.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:6D28",
+      "name": "set_mask",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE5:6FA0",
+      "name": "copy_screen_to_mask",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/vdx.cpp",
+        "src/game.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:701E",
+      "name": "blit_to_screen",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/vdx.cpp",
+        "src/game.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:7128",
+      "name": "proc_masked_ccc4",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/vdx.cpp",
+        "src/game.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:73E0",
+      "name": "find_used_colors",
+      "native_status": "verified-role",
+      "status": "existing-subsystem-reference",
+      "implementation": [
+        "src/vdx.cpp",
+        "src/game.cpp"
+      ],
+      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+    },
+    {
+      "origin": "T7GMac:CODE5:74DC",
+      "name": "init_ccctable",
+      "native_status": "recovered-symbol-candidate",
+      "status": "unverified-excluded",
+      "implementation": [],
+      "note": "Ambiguous symbol/body association; no implementation inferred."
+    }
+  ],
+  "remaining_limits": [
+    "No claim of 100% semantic byte coverage.",
+    "Mac strategy initialization, full music routing and uncertain function boundaries remain unrecovered.",
+    "Host startup seeding differs from DOS; no historical-session random sequence claim.",
+    "No native Mac resource-fork playback or Mac save-format compatibility added.",
+    "Unknown opcode and function behaviors remain explicit rather than guessed."
+  ]
+}

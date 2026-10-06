@@ -1,0 +1,105 @@
+; Provisional entry from module header or linear decoded direct call; slice end is NOT a proved function end.
+; File offsets 0128D4–012A21, inclusive.
+cdi_t7g_entry_0128d4:
+db 0x3F, 0x05 ; 0128D4: provisional 68k move.w d5, -(a7)
+db 0x61, 0x00, 0xE2, 0xEA ; 0128D6: provisional 68k bsr.w $10bc2
+db 0x3F, 0x3C, 0x00, 0x03 ; 0128DA: provisional 68k move.w #$3, -(a7)
+db 0x2F, 0x0D ; 0128DE: provisional 68k move.l a5, -(a7)
+db 0x2D, 0x43, 0xCF, 0xE8 ; 0128E0: provisional 68k move.l d3, -$3018(a6)
+db 0x2D, 0x42, 0xCF, 0xEC ; 0128E4: provisional 68k move.l d2, -$3014(a6)
+db 0x2D, 0x48, 0xCF, 0xF0 ; 0128E8: provisional 68k move.l a0, -$3010(a6)
+db 0x61, 0x00, 0xD7, 0x90 ; 0128EC: provisional 68k bsr.w $1007e
+db 0x3B, 0x68, 0x00, 0x1C, 0x00, 0x30 ; 0128F0: provisional 68k move.w $1c(a0), $30(a5)
+db 0x3B, 0x68, 0x00, 0x1E, 0x00, 0x32 ; 0128F6: provisional 68k move.w $1e(a0), $32(a5)
+db 0x3B, 0x68, 0x00, 0x24, 0x00, 0x34 ; 0128FC: provisional 68k move.w $24(a0), $34(a5)
+db 0x3B, 0x68, 0x00, 0x26, 0x00, 0x36 ; 012902: provisional 68k move.w $26(a0), $36(a5)
+db 0x3B, 0x68, 0x00, 0x28, 0x00, 0x38 ; 012908: provisional 68k move.w $28(a0), $38(a5)
+db 0x3B, 0x68, 0x00, 0x2A, 0x00, 0x3A ; 01290E: provisional 68k move.w $2a(a0), $3a(a5)
+db 0x2B, 0x68, 0x00, 0x2C, 0x00, 0x3C ; 012914: provisional 68k move.l $2c(a0), $3c(a5)
+db 0x42, 0xA8, 0x00, 0x2C ; 01291A: provisional 68k clr.l $2c(a0)
+db 0x2F, 0x08 ; 01291E: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0xD7, 0xC2 ; 012920: provisional 68k bsr.w $100e4
+db 0x4E, 0x75 ; 012924: provisional 68k rts 
+db 0x42, 0x6D, 0x00, 0x2A ; 012926: provisional 68k clr.w $2a(a5)
+db 0x0C, 0x44, 0x00, 0x00 ; 01292A: provisional 68k cmpi.w #$0, d4
+db 0x67, 0x02 ; 01292E: provisional 68k beq.b $12932
+db 0xE2, 0x4B ; 012930: provisional 68k lsr.w #$1, d3
+db 0xE2, 0x4A ; 012932: provisional 68k lsr.w #$1, d2
+db 0x52, 0x42 ; 012934: provisional 68k addq.w #$1, d2
+db 0xC4, 0x7C, 0x0F, 0xFE ; 012936: provisional 68k and.w #$ffe, d2
+db 0x3B, 0x42, 0x00, 0x2C ; 01293A: provisional 68k move.w d2, $2c(a5)
+db 0x3B, 0x43, 0x00, 0x2E ; 01293E: provisional 68k move.w d3, $2e(a5)
+db 0x61, 0x00, 0xFF, 0x90 ; 012942: provisional 68k bsr.w $128d4
+db 0x4E, 0x75 ; 012946: provisional 68k rts 
+db 0x42, 0x6D, 0x00, 0x2A ; 012948: provisional 68k clr.w $2a(a5)
+db 0x0C, 0x44, 0x00, 0x00 ; 01294C: provisional 68k cmpi.w #$0, d4
+db 0x67, 0x02 ; 012950: provisional 68k beq.b $12954
+db 0xE2, 0x4B ; 012952: provisional 68k lsr.w #$1, d3
+db 0xE2, 0x4A ; 012954: provisional 68k lsr.w #$1, d2
+db 0x52, 0x42 ; 012956: provisional 68k addq.w #$1, d2
+db 0xC4, 0x7C, 0x0F, 0xFE ; 012958: provisional 68k and.w #$ffe, d2
+db 0x3B, 0x42, 0x00, 0x2C ; 01295C: provisional 68k move.w d2, $2c(a5)
+db 0x3B, 0x43, 0x00, 0x2E ; 012960: provisional 68k move.w d3, $2e(a5)
+db 0x61, 0x00, 0xFF, 0x6E ; 012964: provisional 68k bsr.w $128d4
+db 0x4E, 0x75 ; 012968: provisional 68k rts 
+db 0x0C, 0x44, 0x00, 0x00 ; 01296A: provisional 68k cmpi.w #$0, d4
+db 0x67, 0x02 ; 01296E: provisional 68k beq.b $12972
+db 0xE2, 0x4B ; 012970: provisional 68k lsr.w #$1, d3
+db 0x42, 0x6D, 0x00, 0x2C ; 012972: provisional 68k clr.w $2c(a5)
+db 0x3B, 0x43, 0x00, 0x2E ; 012976: provisional 68k move.w d3, $2e(a5)
+db 0x3F, 0x05 ; 01297A: provisional 68k move.w d5, -(a7)
+db 0x61, 0x00, 0xE2, 0x44 ; 01297C: provisional 68k bsr.w $10bc2
+db 0x3F, 0x06 ; 012980: provisional 68k move.w d6, -(a7)
+db 0x2F, 0x08 ; 012982: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x96, 0xA4 ; 012984: provisional 68k bsr.w $c02a
+db 0x3B, 0x46, 0x00, 0x34 ; 012988: provisional 68k move.w d6, $34(a5)
+db 0x2B, 0x48, 0x00, 0x3C ; 01298C: provisional 68k move.l a0, $3c(a5)
+db 0x4E, 0x75 ; 012990: provisional 68k rts 
+db 0x4C, 0xEE, 0x00, 0x0E, 0xCF, 0xE8 ; 012992: provisional 68k movem.l -$3018(a6), d1-d3
+db 0x30, 0x2D, 0x00, 0x1C ; 012998: provisional 68k move.w $1c(a5), d0
+db 0xD0, 0x40 ; 01299C: provisional 68k add.w d0, d0
+db 0x30, 0x3B, 0x00, 0x06 ; 01299E: provisional 68k move.w $129a6(pc, d0.w), d0
+db 0x4E, 0xFB, 0x00, 0x02 ; 0129A2: provisional 68k jmp $129a6(pc, d0.w)
+db 0x00, 0x10, 0x00, 0x10 ; 0129A6: provisional 68k ori.b #$10, (a0)
+db 0x00, 0x44, 0x00, 0x44 ; 0129AA: provisional 68k ori.w #$44, d4
+db 0x00, 0x10, 0x00, 0x44 ; 0129AE: provisional 68k ori.b #$44, (a0)
+db 0x00, 0x44, 0x00, 0x44 ; 0129B2: provisional 68k ori.w #$44, d4
+db 0x32, 0x39, 0x00, 0x00, 0x80, 0x00 ; 0129B6: provisional 68k move.w $8000.l, d1
+db 0x61, 0x00, 0x93, 0xC0 ; 0129BC: provisional 68k bsr.w $bd7e
+db 0x73, 0x70 ; file 0129C0
+db 0x72, 0x5F ; 0129C2: provisional 68k moveq #$5f, d1
+db 0x70, 0x63 ; 0129C4: provisional 68k moveq #$63, d0
+db 0x62, 0x20 ; 0129C6: provisional 68k bhi.b $129e8
+db 0x3A, 0x20 ; 0129C8: provisional 68k move.w -(a0), d5
+db 0x53, 0x70, 0x72, 0x69 ; 0129CA: provisional 68k subq.w #$1, $69(a0, d7.w)
+db 0x74, 0x65 ; 0129CE: provisional 68k moveq #$65, d2
+db 0x20, 0x74, 0x79, 0x70, 0x65, 0x20, 0x6E, 0x6F ; 0129D0: provisional 68k movea.l $65206e6f(a4, invalid.w), a0
+db 0x74, 0x20 ; 0129D8: provisional 68k moveq #$20, d2
+db 0x69, 0x6D ; 0129DA: provisional 68k bvs.b $12a49
+db 0x70, 0x6C ; 0129DC: provisional 68k moveq #$6c, d0
+db 0x65, 0x6D ; 0129DE: provisional 68k bcs.b $12a4d
+db 0x65, 0x6E ; 0129E0: provisional 68k bcs.b $12a50
+db 0x74, 0x65 ; 0129E2: provisional 68k moveq #$65, d2
+db 0x64, 0x20 ; 0129E4: provisional 68k bcc.b $12a06
+db 0x79, 0x65 ; file 0129E6
+db 0x74, 0x00 ; 0129E8: provisional 68k moveq #$0, d2
+db 0x3F, 0x03 ; 0129EA: provisional 68k move.w d3, -(a7)
+db 0x2F, 0x02 ; 0129EC: provisional 68k move.l d2, -(a7)
+db 0x3F, 0x01 ; 0129EE: provisional 68k move.w d1, -(a7)
+db 0x2F, 0x2D, 0x00, 0x3C ; 0129F0: provisional 68k move.l $3c(a5), -(a7)
+db 0x61, 0x00, 0xBA, 0xE6 ; 0129F4: provisional 68k bsr.w $e4dc
+db 0x4E, 0x75 ; 0129F8: provisional 68k rts 
+db 0x48, 0x7A, 0x00, 0x08 ; 0129FA: provisional 68k pea.l $12a04(pc)
+db 0x61, 0x00, 0x93, 0x50 ; 0129FE: provisional 68k bsr.w $bd50
+db 0x60, 0x0A ; 012A02: provisional 68k bra.b $12a0e
+db 0x73, 0x70 ; file 012A04
+db 0x72, 0x69 ; 012A06: provisional 68k moveq #$69, d1
+db 0x74, 0x65 ; 012A08: provisional 68k moveq #$65, d2
+db 0x20, 0x2D, 0x20, 0x00 ; 012A0A: provisional 68k move.l $2000(a5), d0
+db 0x2F, 0x0D ; 012A0E: provisional 68k move.l a5, -(a7)
+db 0x61, 0x00, 0xD9, 0x5A ; 012A10: provisional 68k bsr.w $1036c
+db 0x4E, 0x75 ; 012A14: provisional 68k rts 
+db 0x4E, 0x75 ; 012A16: provisional 68k rts 
+db 0x2F, 0x2D, 0x00, 0x3C ; 012A18: provisional 68k move.l $3c(a5), -(a7)
+db 0x61, 0x00, 0x97, 0x5A ; 012A1C: provisional 68k bsr.w $c178
+db 0x4E, 0x75 ; 012A20: provisional 68k rts 

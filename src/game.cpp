@@ -395,8 +395,7 @@ void materializeIndexedFrame(
 
 void composeGrvForegroundFromBackground()
 {
-	// The copy covers only the 640x320 game band. Native COPY_BG_TO_FG does
-	// not clear either 80-row bar, so retain any PRINTSTRING pixels there.
+	// Compose a background for text presentation, retaining both 80-row bars.
 	if (state.grvForegroundIndices.size() != kCanvasWidth * kCanvasHeight)
 		state.grvForegroundIndices.assign(kCanvasWidth * kCanvasHeight, 0);
 	if (state.grvBackgroundIndices.size() == kCanvasWidth * kVideoHeight)
@@ -420,6 +419,28 @@ void composeGrvForegroundFromBackground()
 	}
 	state.grvForegroundActive = true;
 	state.frameTiming.dirtyFrame = true;
+}
+
+// Opcode 22h saves the visible 640x320 band; its historical name reverses
+// the native copy direction. When a video is visible, background already owns
+// that band. A displayed text/rectangle surface must be snapshotted explicitly.
+void snapshotGrvDisplayToBackground()
+{
+	if (!state.grvForegroundActive) return;
+	if (state.grvForegroundIndices.size() == kCanvasWidth * kCanvasHeight)
+	{
+		const auto first = state.grvForegroundIndices.begin() +
+			static_cast<std::ptrdiff_t>(kVideoTop * kCanvasWidth);
+		state.grvBackgroundIndices.assign(first,
+			first + static_cast<std::ptrdiff_t>(kVideoHeight * kCanvasWidth));
+	}
+	if (state.grvForegroundFrame.size() == kCanvasWidth * kCanvasHeight * kPixelBytes)
+	{
+		const auto first = state.grvForegroundFrame.begin() +
+			static_cast<std::ptrdiff_t>(kVideoTop * kCanvasWidth * kPixelBytes);
+		state.grvBackgroundFrame.assign(first,
+			first + static_cast<std::ptrdiff_t>(kVideoHeight * kCanvasWidth * kPixelBytes));
+	}
 }
 
 void copyGrvBackgroundRectangleToForeground(const GrvCopyRectCommand &rectangle)
@@ -658,6 +679,7 @@ struct GrvPreloadState
 	std::array<RGBColor, 256> palette{};
 	bool paletteMergeOnce = false;
 	bool previousForegroundStill = false;
+	bool foregroundActive = false;
 };
 
 static GrvPreloadState captureGrvPreloadState()
@@ -668,7 +690,8 @@ static GrvPreloadState captureGrvPreloadState()
 		.foregroundBandIndices = {},
 		.palette = state.grvPalette,
 		.paletteMergeOnce = pendingGrvPaletteMerge,
-		.previousForegroundStill = previousGrvVideoWasForegroundStill};
+		.previousForegroundStill = previousGrvVideoWasForegroundStill,
+		.foregroundActive = state.grvForegroundActive};
 	if (state.grvForegroundIndices.size() == kCanvasWidth * kCanvasHeight)
 	{
 		const auto first = state.grvForegroundIndices.begin() +
@@ -770,7 +793,8 @@ static PreparedGrvVideos preloadGrvTransition(
 								// but it does not replace the persistent foreground matte.
 								// GRATE.GRV installs mgpuzbkd there once, then every
 								// flag-7 movement uses it to erase the old grate position.
-								// Only explicit opcode 22h/37h copies modify the matte.
+								// Opcode 37h restores the saved background into the matte.
+								decodeState.foregroundActive = false;
 							}
 							decodedBytes += decodedVideoBytes(*loaded);
 							item.file =
@@ -791,10 +815,13 @@ static PreparedGrvVideos preloadGrvTransition(
 			}
 			else if constexpr (std::is_same_v<T, GrvCopyBackgroundCommand>)
 			{
-				if (decodeState.backgroundIndices.size() ==
-					kVideoHeight * kCanvasWidth)
-					decodeState.foregroundBandIndices =
-						decodeState.backgroundIndices;
+				if (decodeState.foregroundActive &&
+					decodeState.foregroundBandIndices.size() == kVideoHeight * kCanvasWidth)
+				{
+					decodeState.backgroundIndices = decodeState.foregroundBandIndices;
+					materializeIndexedFrame(decodeState.backgroundIndices,
+						decodeState.palette, decodeState.backgroundFrame);
+				}
 			}
 			else if constexpr (std::is_same_v<T, GrvCopyRectCommand>)
 			{
@@ -803,6 +830,7 @@ static PreparedGrvVideos preloadGrvTransition(
 					decodeState.foregroundBandIndices.size() !=
 						kVideoHeight * kCanvasWidth)
 					return;
+				decodeState.foregroundActive = true;
 				const size_t left =
 					(std::min<size_t>)(value.left, kCanvasWidth);
 				const size_t right =
@@ -824,7 +852,12 @@ static PreparedGrvVideos preloadGrvTransition(
 				}
 			}
 			else if constexpr (std::is_same_v<T, GrvPaletteFadeOutCommand>)
+			{
 				decodeState.foregroundBandIndices.assign(kVideoHeight * kCanvasWidth, 0);
+				decodeState.foregroundActive = true;
+			}
+			else if constexpr (std::is_same_v<T, GrvPrintCommand>)
+				contextReliable = false; // Text composition is performed during playback.
 			else if constexpr (std::is_same_v<T, GrvPaletteMergeOnceCommand>)
 				decodeState.paletteMergeOnce = true;
 		}, command);
@@ -1745,7 +1778,7 @@ static void applyGrvTransition(
 				}
 			}
 			else if constexpr (std::is_same_v<T, GrvCopyBackgroundCommand>)
-				composeGrvForegroundFromBackground();
+				snapshotGrvDisplayToBackground();
 			else if constexpr (std::is_same_v<T, GrvCopyRectCommand>)
 				copyGrvBackgroundRectangleToForeground(value);
 			else if constexpr (std::is_same_v<T, GrvPrintCommand>)

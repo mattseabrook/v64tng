@@ -1,0 +1,41 @@
+; verified-role: Native HCREATE routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.
+; Original native symbol: HCREATE; evidence file offset 0xf4ee.
+; Exact bytes retained; instruction decoding remains provisional where inline data may occur.
+mac_code_4_hcreate:
+db 0x4E, 0x56, 0xFF, 0x86 ; file 00F472 | 68k link.w a6, #$ff86
+db 0x48, 0xE7, 0x03, 0x00 ; file 00F476 | 68k movem.l d6-d7, -(a7)
+db 0x2C, 0x2E, 0x00, 0x14 ; file 00F47A | 68k move.l $14(a6), d6
+db 0x3D, 0x6E, 0x00, 0x18, 0xFF, 0x9C ; file 00F47E | 68k move.w $18(a6), -$64(a6)
+db 0x2D, 0x46, 0xFF, 0xB6 ; file 00F484 | 68k move.l d6, -$4a(a6)
+db 0x2D, 0x6E, 0x00, 0x10, 0xFF, 0x98 ; file 00F488 | 68k move.l $10(a6), -$68(a6)
+db 0x42, 0x2E, 0xFF, 0xA0 ; file 00F48E | 68k clr.b -$60(a6)
+db 0x55, 0x8F ; file 00F492 | 68k subq.l #$2, a7
+db 0x48, 0x6E, 0xFF, 0x86 ; file 00F494 | 68k pea.l -$7a(a6)
+db 0x70, 0x00 ; file 00F498 | 68k moveq #$0, d0
+db 0x1F, 0x00 ; file 00F49A | 68k move.b d0, -(a7)
+db 0x4E, 0xBA, 0xFD, 0x1C ; file 00F49C | 68k jsr $4e6(pc)
+db 0x3E, 0x1F ; file 00F4A0 | 68k move.w (a7)+, d7
+db 0x66, 0x36 ; file 00F4A2 | 68k bne.b $806
+db 0x42, 0x6E, 0xFF, 0xA2 ; file 00F4A4 | 68k clr.w -$5e(a6)
+db 0x55, 0x8F ; file 00F4A8 | 68k subq.l #$2, a7
+db 0x48, 0x6E, 0xFF, 0x86 ; file 00F4AA | 68k pea.l -$7a(a6)
+db 0x70, 0x00 ; file 00F4AE | 68k moveq #$0, d0
+db 0x1F, 0x00 ; file 00F4B0 | 68k move.b d0, -(a7)
+db 0x4E, 0xBA, 0xFD, 0x2A ; file 00F4B2 | 68k jsr $50a(pc)
+db 0x3E, 0x1F ; file 00F4B6 | 68k move.w (a7)+, d7
+db 0x66, 0x20 ; file 00F4B8 | 68k bne.b $806
+db 0x2D, 0x6E, 0x00, 0x0C, 0xFF, 0xAA ; file 00F4BA | 68k move.l $c(a6), -$56(a6)
+db 0x2D, 0x6E, 0x00, 0x08, 0xFF, 0xA6 ; file 00F4C0 | 68k move.l $8(a6), -$5a(a6)
+db 0x2D, 0x46, 0xFF, 0xB6 ; file 00F4C6 | 68k move.l d6, -$4a(a6)
+db 0x55, 0x8F ; file 00F4CA | 68k subq.l #$2, a7
+db 0x48, 0x6E, 0xFF, 0x86 ; file 00F4CC | 68k pea.l -$7a(a6)
+db 0x70, 0x00 ; file 00F4D0 | 68k moveq #$0, d0
+db 0x1F, 0x00 ; file 00F4D2 | 68k move.b d0, -(a7)
+db 0x4E, 0xBA, 0xFD, 0x1A ; file 00F4D4 | 68k jsr $51c(pc)
+db 0x3E, 0x1F ; file 00F4D8 | 68k move.w (a7)+, d7
+db 0x3D, 0x47, 0x00, 0x1A ; file 00F4DA | 68k move.w d7, $1a(a6)
+db 0x4C, 0xEE, 0x00, 0xC0, 0xFF, 0x7E ; file 00F4DE | 68k movem.l -$82(a6), d6-d7
+db 0x4E, 0x5E ; file 00F4E4 | 68k unlk a6
+db 0x20, 0x5F ; file 00F4E6 | 68k movea.l (a7)+, a0
+db 0x4F, 0xEF, 0x00, 0x12 ; file 00F4E8 | 68k lea.l $12(a7), a7
+db 0x4E, 0xD0 ; file 00F4EC | 68k jmp (a0)

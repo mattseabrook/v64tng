@@ -1,0 +1,32 @@
+; verified-role: Native CopyScreenToMask routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.
+; Original native symbol: CopyScreenToMask; evidence file offset 0xe770.
+; Exact bytes retained; instruction decoding remains provisional where inline data may occur.
+mac_code_5_copy_screen_to_mask:
+db 0x4E, 0x56, 0xFF, 0xE2 ; file 00E706 | 68k link.w a6, #$ffe2
+db 0x42, 0xA7 ; file 00E70A | 68k clr.l -(a7)
+db 0x2F, 0x2D, 0xFC, 0x82 ; file 00E70C | 68k move.l -$37e(a5), -(a7)
+db 0x20, 0x3C, 0x00, 0x04, 0x00, 0x0F ; file 00E710 | 68k move.l #$4000f, d0
+db 0xAB, 0x1D ; file 00E716 | 68k dc.w $ab1d
+db 0x2D, 0x5F, 0xFF, 0xE8 ; file 00E718 | 68k move.l (a7)+, -$18(a6)
+db 0x30, 0x2D, 0xF5, 0xAE ; file 00E71C | 68k move.w -$a52(a5), d0
+db 0xC1, 0xED, 0xFC, 0x86 ; file 00E720 | 68k muls.w -$37a(a5), d0
+db 0xD0, 0xAE, 0xFF, 0xE8 ; file 00E724 | 68k add.l -$18(a6), d0
+db 0x30, 0x6D, 0xFC, 0x88 ; file 00E728 | 68k movea.w -$378(a5), a0
+db 0xD0, 0x88 ; file 00E72C | 68k add.l a0, d0
+db 0x2D, 0x40, 0xFF, 0xE8 ; file 00E72E | 68k move.l d0, -$18(a6)
+db 0x3D, 0x6D, 0xFC, 0x86, 0xFF, 0xE2 ; file 00E732 | 68k move.w -$37a(a5), -$1e(a6)
+db 0x2D, 0x6D, 0xFC, 0xA6, 0xFF, 0xE4 ; file 00E738 | 68k move.l -$35a(a5), -$1c(a6)
+db 0x48, 0xE7, 0x1F, 0x3E ; file 00E73E | 68k movem.l d3-d7/a2-a6, -(a7)
+db 0x20, 0x6E, 0xFF, 0xE4 ; file 00E742 | 68k movea.l -$1c(a6), a0
+db 0x24, 0x6E, 0xFF, 0xE8 ; file 00E746 | 68k movea.l -$18(a6), a2
+db 0x20, 0x3C, 0x00, 0x00, 0x01, 0x3F ; file 00E74A | 68k move.l #$13f, d0
+db 0x22, 0x4A ; file 00E750 | 68k movea.l a2, a1
+db 0x22, 0x3C, 0x00, 0x00, 0x00, 0x9F ; file 00E752 | 68k move.l #$9f, d1
+db 0x20, 0xD9 ; file 00E758 | 68k move.l (a1)+, (a0)+
+db 0x51, 0xC9, 0xFF, 0xFC ; file 00E75A | 68k dbra d1, $6ff2
+db 0xD4, 0xEE, 0xFF, 0xE2 ; file 00E75E | 68k adda.w -$1e(a6), a2
+db 0x51, 0xC8, 0xFF, 0xEC ; file 00E762 | 68k dbra d0, $6fea
+db 0x4C, 0xDF, 0x7C, 0xF8 ; file 00E766 | 68k movem.l (a7)+, d3-d7/a2-a6
+db 0x70, 0x01 ; file 00E76A | 68k moveq #$1, d0
+db 0x4E, 0x5E ; file 00E76C | 68k unlk a6
+db 0x4E, 0x75 ; file 00E76E | 68k rts 

@@ -1,0 +1,28 @@
+; verified-role: Native GetWindowDeviceRectNMB routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.
+; Original native symbol: GetWindowDeviceRectNMB; evidence file offset 0x6c5c.
+; Exact bytes retained; instruction decoding remains provisional where inline data may occur.
+mac_code_2_get_window_device_rect_nmb:
+db 0x4E, 0x56, 0xFF, 0xE8 ; file 006C00 | 68k link.w a6, #$ffe8
+db 0x48, 0x6E, 0xFF, 0xE8 ; file 006C04 | 68k pea.l -$18(a6)
+db 0x4E, 0xBA, 0xFC, 0x20 ; file 006C08 | 68k jsr $57c2(pc)
+db 0x2D, 0x6E, 0xFF, 0xE8, 0xFF, 0xF8 ; file 006C0C | 68k move.l -$18(a6), -$8(a6)
+db 0x2D, 0x6E, 0xFF, 0xEC, 0xFF, 0xFC ; file 006C12 | 68k move.l -$14(a6), -$4(a6)
+db 0x2E, 0xAE, 0x00, 0x0C ; file 006C18 | 68k move.l $c(a6), (a7)
+db 0x48, 0x6E, 0xFF, 0xE8 ; file 006C1C | 68k pea.l -$18(a6)
+db 0x4E, 0xBA, 0xFF, 0x88 ; file 006C20 | 68k jsr $5b42(pc)
+db 0x2D, 0x6E, 0xFF, 0xE8, 0xFF, 0xF0 ; file 006C24 | 68k move.l -$18(a6), -$10(a6)
+db 0x2D, 0x6E, 0xFF, 0xEC, 0xFF, 0xF4 ; file 006C2A | 68k move.l -$14(a6), -$c(a6)
+db 0x42, 0x17 ; file 006C30 | 68k clr.b (a7)
+db 0x48, 0x6E, 0xFF, 0xF0 ; file 006C32 | 68k pea.l -$10(a6)
+db 0x48, 0x6E, 0xFF, 0xF8 ; file 006C36 | 68k pea.l -$8(a6)
+db 0xA8, 0xA6 ; file 006C3A | 68k dc.w $a8a6
+db 0x4A, 0x1F ; file 006C3C | 68k tst.b (a7)+
+db 0x5C, 0x8F ; file 006C3E | 68k addq.l #$6, a7
+db 0x67, 0x08 ; file 006C40 | 68k beq.b $5be2
+db 0x30, 0x38, 0x0B, 0xAA ; file 006C42 | 68k move.w $baa.w, d0
+db 0xD1, 0x6E, 0xFF, 0xF0 ; file 006C46 | 68k add.w d0, -$10(a6)
+db 0x20, 0x6E, 0x00, 0x08 ; file 006C4A | 68k movea.l $8(a6), a0
+db 0x20, 0xAE, 0xFF, 0xF0 ; file 006C4E | 68k move.l -$10(a6), (a0)
+db 0x21, 0x6E, 0xFF, 0xF4, 0x00, 0x04 ; file 006C52 | 68k move.l -$c(a6), $4(a0)
+db 0x4E, 0x5E ; file 006C58 | 68k unlk a6
+db 0x4E, 0x75 ; file 006C5A | 68k rts 

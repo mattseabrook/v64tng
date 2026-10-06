@@ -44,8 +44,8 @@ The project has complete mechanical source coverage:
 This is not yet complete semantic recovery. Ghidra's 261 function boundaries
 are analyzer findings, not original object-module boundaries. Some bytes now
 classified as data may prove to be code, and some functions may later be
-split, joined, or grouped. Of the 261 entries, 88 currently have verified
-semantic roles and 173 retain neutral address-based names.
+split, joined, or grouped. Of the 261 entries, 158 currently have verified
+semantic roles and 103 retain neutral address-based names.
 
 Exact coverage and the complete function address map are maintained later in
 this README. This file is the public, monolithic research record for the DOS
@@ -101,7 +101,9 @@ the canonical unpacked entry represented by this source tree.
 | `src/functions/resource_io/*.asm` | Verified archive, resource-selection, and file-I/O routines |
 | `src/functions/savegame/*.asm` | Verified save-game routines |
 | `src/functions/platform/*.asm` | Verified DOS hardware and memory routines |
-| `src/functions/runtime/*.asm` | Verified startup, dispatch, and shutdown routines |
+| `src/functions/runtime/*.asm` | Verified startup, configuration parsing, allocation, dispatch, and shutdown routines |
+| `src/functions/puzzle/*.asm` | Verified microscope board, move generation, scoring, and recursive search routines |
+| `src/functions/cursor/*.asm` | Verified animated cursor rendering and background/palette helpers |
 | `src/functions/unknown/*.asm` | Provisional functions retaining address-based identities |
 | `src/data/gaps.asm` | Explicit bytes between analyzer-owned function bodies |
 | `src/data/unresolved_*.asm` | Post-code initialized ranges whose individual semantics remain unresolved |
@@ -125,7 +127,12 @@ less mysterious than the old generic chunk filenames suggested:
 | `15DBE–15E7D` | `DS:D48E–D54D` | verified 192-byte VDX delta tile-map table |
 | `15E7E–169F7` | `DS:D54E–E0C7` | initialized tables, archive names, and templates still under study |
 | `169F8–16A89` | `DS:E0C8–E159` | verified Groovie configuration-string table |
-| `16A8A–1724B` | `DS:E15A–E91B` | initialized tables and lookup structures still under study |
+| `16A8A–16DEC` | `DS:E15A–E4BC` | unidentified initialized bytes before the cell neighbor tables |
+| `16DED–16F55` | `DS:E4BD–E625` | microscope adjacent-cell neighbor lists |
+| `16F56–17166` | `DS:E626–E836` | microscope distance-two neighbor lists |
+| `17167–171C8` | `DS:E837–E898` | 49 adjacent-list DS-relative word pointers |
+| `171C9–1722A` | `DS:E899–E8FA` | 49 distance-two-list DS-relative word pointers |
+| `1722B–1724B` | `DS:E8FB–E91B` | unidentified initialized bytes after the neighbor tables |
 | `1724C–17C2D` | `DS:E91C–F2FD` | verified 2,530-byte zero-initialized static workspace |
 | `17C2E–17C2F` | `DS:F2FE–F2FF` | unresolved initialized word `C8C8h` |
 | `17C30–18151` | `DS:F300–F821` | verified 1,314-byte zero-initialized static workspace |
@@ -146,13 +153,7 @@ no unresolved data files. Exact ranges remain in source comments and size
 assertions. The zero-workspace filenames retain ranges because there are
 multiple verified zero regions and the boundaries distinguish them usefully.
 
-One still-unresolved initialized structure around `16E1Ah–1722Bh` contains
-repeated index lists bounded by `FFh` sentinels and is used near code operating
-on 7x7 (49-byte) raster blocks. A font/icon/cursor raster lookup is a plausible
-hypothesis, not a verified name, so the permanent source deliberately leaves
-it neutral. The DOS text `icon data file not found` belongs to this diagnostic
-corpus and refers to an external DOS-era data file; it is not the Win32 PE
-application icon.
+The former raster/font hypothesis for `16E1Ah–1722Bh` is superseded by the microscope solver evidence. The exact lists begin at `16DED`: all 49 adjacent lists contain precisely the on-board cells at Chebyshev distance one, and all 49 jump lists contain precisely the cells at distance two. Each ends in `FFh`. The following two tables select those lists through DS-relative word pointers. These four ranges now have separate named source files; the surrounding bytes retain neutral names. The diagnostic text `icon data file not found` refers to an external data file and is not evidence that these board tables are cursor data.
 
 NASM emits an instruction only when it reproduces the historical encoding
 exactly. If NASM's preferred encoding differs, the source uses exact `db`
@@ -275,8 +276,8 @@ understanding.
 | Function-body instructions decoded | 12,484 |
 | Instructions requiring exact `db` encoding fallback | 1,620 |
 | Bytes in encoding fallbacks | 3,477 |
-| Verified semantic function roles | 88 |
-| Unidentified/provisionally bounded functions | 173 |
+| Verified semantic function roles | 158 |
+| Unidentified/provisionally bounded functions | 103 |
 | Analyzed function/gap span end | `0892Ch` |
 | Non-function bytes in the load image | 69,332 |
 
@@ -300,7 +301,7 @@ Owned ranges are inclusive linear offsets into the unpacked load image.
 | Linear entry | Ghidra entry | Status | Working name | Analyzer symbol | Owned ranges | Source |
 |---:|---:|---|---|---|---|---|
 | `00000` | `1000:0000` | verified-role | `entry` | `entry` | `00000–0007B`<br>`0007E–00088` | [`src/functions/runtime/entry.asm`](src/functions/runtime/entry.asm) |
-| `00089` | `1000:0089` | unidentified | `func_00089` | `FUN_1000_0089` | `00089–000D0` | [`src/functions/unknown/00089_func_00089.asm`](src/functions/unknown/00089_func_00089.asm) |
+| `00089` | `1000:0089` | verified-role | `initialize_vdx_stream_buffers` | `FUN_1000_0089` | `00089–000D0` | [`src/functions/vdx/initialize_vdx_stream_buffers.asm`](src/functions/vdx/initialize_vdx_stream_buffers.asm) |
 | `000D1` | `1000:00d1` | verified-role | `standalone_vdx_or_diagnostics` | `FUN_1000_00d1` | `000D1–001E0` | [`src/functions/runtime/standalone_vdx_or_diagnostics.asm`](src/functions/runtime/standalone_vdx_or_diagnostics.asm) |
 | `001E1` | `1000:01e1` | verified-role | `open_vdx_file_or_borrow_archive_handle` | `FUN_1000_01e1` | `001E1–00209` | [`src/functions/resource_io/open_vdx_file_or_borrow_archive_handle.asm`](src/functions/resource_io/open_vdx_file_or_borrow_archive_handle.asm) |
 | `0020A` | `1000:020a` | verified-role | `close_vdx_file_unless_archive_borrowed` | `FUN_1000_020a` | `0020A–0021A` | [`src/functions/resource_io/close_vdx_file_unless_archive_borrowed.asm`](src/functions/resource_io/close_vdx_file_unless_archive_borrowed.asm) |
@@ -326,27 +327,27 @@ Owned ranges are inclusive linear offsets into the unpacked load image.
 | `028AD` | `1000:28ad` | unidentified | `func_028ad` | `FUN_1000_28ad` | `028AD–028D8`<br>`028DB–0292E`<br>`02931–0293A` | [`src/functions/unknown/028ad_func_028ad.asm`](src/functions/unknown/028ad_func_028ad.asm) |
 | `0293B` | `1000:293b` | unidentified | `func_0293b` | `FUN_1000_293b` | `0293B–02992`<br>`02995–02996` | [`src/functions/unknown/0293b_func_0293b.asm`](src/functions/unknown/0293b_func_0293b.asm) |
 | `02997` | `1000:2997` | verified-role | `stream_media_buffer` | `FUN_1000_2997` | `02997–02BE7` | [`src/functions/vdx/stream_media_buffer.asm`](src/functions/vdx/stream_media_buffer.asm) |
-| `02C32` | `1000:2c32` | unidentified | `func_02c32` | `FUN_1000_2c32` | `02C32–02CBF`<br>`02CE9–02CF4`<br>`02D09–02D4E` | [`src/functions/unknown/02c32_func_02c32.asm`](src/functions/unknown/02c32_func_02c32.asm) |
-| `02D50` | `1000:2d50` | unidentified | `func_02d50` | `FUN_1000_2d50` | `02D50–02D58` | [`src/functions/unknown/02d50_func_02d50.asm`](src/functions/unknown/02d50_func_02d50.asm) |
-| `02D5A` | `1000:2d5a` | unidentified | `func_02d5a` | `FUN_1000_2d5a` | `02D5A–02D79` | [`src/functions/unknown/02d5a_func_02d5a.asm`](src/functions/unknown/02d5a_func_02d5a.asm) |
-| `02F6A` | `1000:2f6a` | unidentified | `func_02f6a` | `FUN_1000_2f6a` | `02F6A–02F82` | [`src/functions/unknown/02f6a_func_02f6a.asm`](src/functions/unknown/02f6a_func_02f6a.asm) |
+| `02C32` | `1000:2c32` | verified-role | `probe_cpu_and_x87_capabilities` | `FUN_1000_2c32` | `02C32–02CBF`<br>`02CE9–02CF4`<br>`02D09–02D4E` | [`src/functions/runtime/probe_cpu_and_x87_capabilities.asm`](src/functions/runtime/probe_cpu_and_x87_capabilities.asm) |
+| `02D50` | `1000:2d50` | verified-role | `dispatch_video_bank_switch` | `FUN_1000_2d50` | `02D50–02D58` | [`src/functions/platform/dispatch_video_bank_switch.asm`](src/functions/platform/dispatch_video_bank_switch.asm) |
+| `02D5A` | `1000:2d5a` | verified-role | `synchronize_video_bank_state` | `FUN_1000_2d5a` | `02D5A–02D79` | [`src/functions/platform/synchronize_video_bank_state.asm`](src/functions/platform/synchronize_video_bank_state.asm) |
+| `02F6A` | `1000:2f6a` | verified-role | `call_scaled_video_bank_handler` | `FUN_1000_2f6a` | `02F6A–02F82` | [`src/functions/platform/call_scaled_video_bank_handler.asm`](src/functions/platform/call_scaled_video_bank_handler.asm) |
 | `02F84` | `1000:2f84` | verified-role | `detect_video_hardware` | `FUN_1000_2f84` | `02F84–033B6` | [`src/functions/platform/detect_video_hardware.asm`](src/functions/platform/detect_video_hardware.asm) |
 | `033B7` | `1000:33b7` | unidentified | `func_033b7` | `FUN_1000_33b7` | `033B7–033FE` | [`src/functions/unknown/033b7_func_033b7.asm`](src/functions/unknown/033b7_func_033b7.asm) |
-| `033FF` | `1000:33ff` | unidentified | `func_033ff` | `FUN_1000_33ff` | `033FF–03419` | [`src/functions/unknown/033ff_func_033ff.asm`](src/functions/unknown/033ff_func_033ff.asm) |
-| `0341A` | `1000:341a` | unidentified | `func_0341a` | `FUN_1000_341a` | `0341A–03452` | [`src/functions/unknown/0341a_func_0341a.asm`](src/functions/unknown/0341a_func_0341a.asm) |
-| `0345E` | `1000:345e` | unidentified | `func_0345e` | `FUN_1000_345e` | `0345E–0348B` | [`src/functions/unknown/0345e_func_0345e.asm`](src/functions/unknown/0345e_func_0345e.asm) |
-| `0348C` | `1000:348c` | unidentified | `func_0348c` | `FUN_1000_348c` | `0348C–034A4` | [`src/functions/unknown/0348c_func_0348c.asm`](src/functions/unknown/0348c_func_0348c.asm) |
-| `034A5` | `1000:34a5` | unidentified | `func_034a5` | `FUN_1000_34a5` | `034A5–03589` | [`src/functions/unknown/034a5_func_034a5.asm`](src/functions/unknown/034a5_func_034a5.asm) |
-| `0358A` | `1000:358a` | unidentified | `func_0358a` | `FUN_1000_358a` | `0358A–0358F` | [`src/functions/unknown/0358a_func_0358a.asm`](src/functions/unknown/0358a_func_0358a.asm) |
-| `03590` | `1000:3590` | unidentified | `func_03590` | `FUN_1000_3590` | `03590–03670` | [`src/functions/unknown/03590_func_03590.asm`](src/functions/unknown/03590_func_03590.asm) |
-| `03671` | `1000:3671` | unidentified | `func_03671` | `FUN_1000_3671` | `03671–03687` | [`src/functions/unknown/03671_func_03671.asm`](src/functions/unknown/03671_func_03671.asm) |
+| `033FF` | `1000:33ff` | verified-role | `probe_video_memory_bank_separation` | `FUN_1000_33ff` | `033FF–03419` | [`src/functions/platform/probe_video_memory_bank_separation.asm`](src/functions/platform/probe_video_memory_bank_separation.asm) |
+| `0341A` | `1000:341a` | verified-role | `test_video_bank_pattern_pair` | `FUN_1000_341a` | `0341A–03452` | [`src/functions/platform/test_video_bank_pattern_pair.asm`](src/functions/platform/test_video_bank_pattern_pair.asm) |
+| `0345E` | `1000:345e` | verified-role | `probe_indexed_register_writable_bits` | `FUN_1000_345e` | `0345E–0348B` | [`src/functions/platform/probe_indexed_register_writable_bits.asm`](src/functions/platform/probe_indexed_register_writable_bits.asm) |
+| `0348C` | `1000:348c` | verified-role | `probe_direct_register_writable_bits` | `FUN_1000_348c` | `0348C–034A4` | [`src/functions/platform/probe_direct_register_writable_bits.asm`](src/functions/platform/probe_direct_register_writable_bits.asm) |
+| `034A5` | `1000:34a5` | verified-role | `set_detected_graphics_mode` | `FUN_1000_34a5` | `034A5–03589` | [`src/functions/platform/set_detected_graphics_mode.asm`](src/functions/platform/set_detected_graphics_mode.asm) |
+| `0358A` | `1000:358a` | verified-role | `restore_bios_text_mode` | `FUN_1000_358a` | `0358A–0358F` | [`src/functions/platform/restore_bios_text_mode.asm`](src/functions/platform/restore_bios_text_mode.asm) |
+| `03590` | `1000:3590` | verified-role | `print_hardware_and_memory_diagnostics` | `FUN_1000_3590` | `03590–03670` | [`src/functions/runtime/print_hardware_and_memory_diagnostics.asm`](src/functions/runtime/print_hardware_and_memory_diagnostics.asm) |
+| `03671` | `1000:3671` | verified-role | `detect_and_reset_mouse_driver` | `FUN_1000_3671` | `03671–03687` | [`src/functions/platform/detect_and_reset_mouse_driver.asm`](src/functions/platform/detect_and_reset_mouse_driver.asm) |
 | `0368C` | `1000:368c` | verified-role | `query_xms` | `FUN_1000_368c` | `0368C–036D1` | [`src/functions/platform/query_xms.asm`](src/functions/platform/query_xms.asm) |
 | `036D2` | `1000:36d2` | verified-role | `format_memory_diagnostic` | `FUN_1000_36d2` | `036D2–03755` | [`src/functions/platform/format_memory_diagnostic.asm`](src/functions/platform/format_memory_diagnostic.asm) |
-| `03756` | `1000:3756` | unidentified | `func_03756` | `FUN_1000_3756` | `03756–03769` | [`src/functions/unknown/03756_func_03756.asm`](src/functions/unknown/03756_func_03756.asm) |
+| `03756` | `1000:3756` | verified-role | `open_named_archive_file` | `FUN_1000_3756` | `03756–03769` | [`src/functions/resource_io/open_named_archive_file.asm`](src/functions/resource_io/open_named_archive_file.asm) |
 | `0376A` | `1000:376a` | unidentified | `func_0376a` | `FUN_1000_376a` | `0376A–03773` | [`src/functions/unknown/0376a_func_0376a.asm`](src/functions/unknown/0376a_func_0376a.asm) |
 | `03774` | `1000:3774` | unidentified | `func_03774` | `FUN_1000_3774` | `03774–0377D` | [`src/functions/unknown/03774_func_03774.asm`](src/functions/unknown/03774_func_03774.asm) |
 | `0377E` | `1000:377e` | unidentified | `func_0377e` | `FUN_1000_377e` | `0377E–03784` | [`src/functions/unknown/0377e_func_0377e.asm`](src/functions/unknown/0377e_func_0377e.asm) |
-| `0378F` | `1000:378f` | unidentified | `func_0378f` | `FUN_1000_378f` | `0378F–0382C` | [`src/functions/unknown/0378f_func_0378f.asm`](src/functions/unknown/0378f_func_0378f.asm) |
+| `0378F` | `1000:378f` | verified-role | `resolve_named_resource_reference` | `FUN_1000_378f` | `0378F–0382C` | [`src/functions/resource_io/resolve_named_resource_reference.asm`](src/functions/resource_io/resolve_named_resource_reference.asm) |
 | `0382D` | `1000:382d` | verified-role | `save_selected_archive_context` | `FUN_1000_382d` | `0382D–03837` | [`src/functions/resource_io/save_selected_archive_context.asm`](src/functions/resource_io/save_selected_archive_context.asm) |
 | `03838` | `1000:3838` | verified-role | `restore_selected_archive_context` | `FUN_1000_3838` | `03838–03889` | [`src/functions/resource_io/restore_selected_archive_context.asm`](src/functions/resource_io/restore_selected_archive_context.asm) |
 | `0388A` | `1000:388a` | verified-role | `select_grv_video_resource` | `FUN_1000_388a` | `0388A–03936` | [`src/functions/resource_io/select_grv_video_resource.asm`](src/functions/resource_io/select_grv_video_resource.asm) |
@@ -355,10 +356,10 @@ Owned ranges are inclusive linear offsets into the unpacked load image.
 | `039F8` | `1000:39f8` | verified-role | `build_resource_filename` | `FUN_1000_39f8` | `039F8–03A30` | [`src/functions/resource_io/build_resource_filename.asm`](src/functions/resource_io/build_resource_filename.asm) |
 | `03A31` | `1000:3a31` | verified-role | `open_resource_read_only` | `FUN_1000_3a31` | `03A31–03A46` | [`src/functions/resource_io/open_resource_read_only.asm`](src/functions/resource_io/open_resource_read_only.asm) |
 | `03A47` | `1000:3a47` | verified-role | `close_resource_file` | `FUN_1000_3a47` | `03A47–03A50` | [`src/functions/resource_io/close_resource_file.asm`](src/functions/resource_io/close_resource_file.asm) |
-| `03A51` | `1000:3a51` | unidentified | `func_03a51` | `FUN_1000_3a51` | `03A51–03A5A` | [`src/functions/unknown/03a51_func_03a51.asm`](src/functions/unknown/03a51_func_03a51.asm) |
+| `03A51` | `1000:3a51` | verified-role | `read_open_resource_file` | `FUN_1000_3a51` | `03A51–03A5A` | [`src/functions/resource_io/read_open_resource_file.asm`](src/functions/resource_io/read_open_resource_file.asm) |
 | `03A5B` | `1000:3a5b` | verified-role | `load_selected_resource_file` | `FUN_1000_3a5b` | `03A5B–03A95` | [`src/functions/resource_io/load_selected_resource_file.asm`](src/functions/resource_io/load_selected_resource_file.asm) |
 | `03AC4` | `1000:3ac4` | verified-role | `run_grv_vm` | `FUN_1000_3ac4` | `03AC4–03B12`<br>`03B16–03CBE`<br>`03CC2–03E43` | [`src/functions/grv/run_grv_vm.asm`](src/functions/grv/run_grv_vm.asm) |
-| `03E44` | `1000:3e44` | unidentified | `func_03e44` | `FUN_1000_3e44` | `03E44–03E84` | [`src/functions/unknown/03e44_func_03e44.asm`](src/functions/unknown/03e44_func_03e44.asm) |
+| `03E44` | `1000:3e44` | verified-role | `probe_game_disc_archive_availability` | `FUN_1000_3e44` | `03E44–03E84` | [`src/functions/resource_io/probe_game_disc_archive_availability.asm`](src/functions/resource_io/probe_game_disc_archive_availability.asm) |
 | `03E85` | `1000:3e85` | verified-role | `grv_load_child_script` | `FUN_1000_3e85` | `03E85–03EB7` | [`src/functions/grv/grv_load_child_script.asm`](src/functions/grv/grv_load_child_script.asm) |
 | `03EB8` | `1000:3eb8` | verified-role | `grv_return_from_child_script` | `FUN_1000_3eb8` | `03EB8–03EE9` | [`src/functions/grv/grv_return_from_child_script.asm`](src/functions/grv/grv_return_from_child_script.asm) |
 | `03EEA` | `1000:3eea` | verified-role | `grv_check_valid_saves` | `FUN_1000_3eea` | `03EEA–03F22` | [`src/functions/savegame/grv_check_valid_saves.asm`](src/functions/savegame/grv_check_valid_saves.asm) |
@@ -390,11 +391,11 @@ Owned ranges are inclusive linear offsets into the unpacked load image.
 | `042F1` | `1000:42f1` | verified-role | `advance_grv_random_state` | `FUN_1000_42f1` | `042F1–04326` | [`src/functions/grv/advance_grv_random_state.asm`](src/functions/grv/advance_grv_random_state.asm) |
 | `04327` | `1000:4327` | verified-role | `advance_grv_random_state_far` | `FUN_1000_4327` | `04327–0432A` | [`src/functions/grv/advance_grv_random_state_far.asm`](src/functions/grv/advance_grv_random_state_far.asm) |
 | `0432B` | `1000:432b` | verified-role | `grv_play_transition_video_ref` | `FUN_1000_432b` | `0432B–04374` | [`src/functions/grv/grv_play_transition_video_ref.asm`](src/functions/grv/grv_play_transition_video_ref.asm) |
-| `04375` | `1000:4375` | unidentified | `func_04375` | `FUN_1000_4375` | `04375–043C8` | [`src/functions/unknown/04375_func_04375.asm`](src/functions/unknown/04375_func_04375.asm) |
+| `04375` | `1000:4375` | verified-role | `play_named_vdx_resource` | `FUN_1000_4375` | `04375–043C8` | [`src/functions/vdx/play_named_vdx_resource.asm`](src/functions/vdx/play_named_vdx_resource.asm) |
 | `043C9` | `1000:43c9` | unidentified | `func_043c9` | `FUN_1000_43c9` | `043C9–043D1` | [`src/functions/unknown/043c9_func_043c9.asm`](src/functions/unknown/043c9_func_043c9.asm) |
 | `043D2` | `1000:43d2` | verified-role | `grv_play_video_name` | `FUN_1000_43d2` | `043D2–04405` | [`src/functions/grv/grv_play_video_name.asm`](src/functions/grv/grv_play_video_name.asm) |
-| `04406` | `1000:4406` | unidentified | `func_04406` | `FUN_1000_4406` | `04406–04439` | [`src/functions/unknown/04406_func_04406.asm`](src/functions/unknown/04406_func_04406.asm) |
-| `0443A` | `1000:443a` | unidentified | `func_0443a` | `FUN_1000_443a` | `0443A–04449` | [`src/functions/unknown/0443a_func_0443a.asm`](src/functions/unknown/0443a_func_0443a.asm) |
+| `04406` | `1000:4406` | verified-role | `grv_play_video_reference` | `FUN_1000_4406` | `04406–04439` | [`src/functions/grv/grv_play_video_reference.asm`](src/functions/grv/grv_play_video_reference.asm) |
+| `0443A` | `1000:443a` | verified-role | `grv_play_song_reference` | `FUN_1000_443a` | `0443A–04449` | [`src/functions/grv/grv_play_song_reference.asm`](src/functions/grv/grv_play_song_reference.asm) |
 | `0444A` | `1000:444a` | verified-role | `grv_set_background_song` | `FUN_1000_444a` | `0444A–04450` | [`src/functions/grv/grv_set_background_song.asm`](src/functions/grv/grv_set_background_song.asm) |
 | `04451` | `1000:4451` | verified-role | `grv_sleep` | `FUN_1000_4451` | `04451–04460` | [`src/functions/grv/grv_sleep.asm`](src/functions/grv/grv_sleep.asm) |
 | `04461` | `1000:4461` | verified-role | `grv_call_absolute` | `FUN_1000_4461` | `04461–0447A` | [`src/functions/grv/grv_call_absolute.asm`](src/functions/grv/grv_call_absolute.asm) |
@@ -413,34 +414,34 @@ Owned ranges are inclusive linear offsets into the unpacked load image.
 | `047BC` | `1000:47bc` | unidentified | `func_047bc` | `FUN_1000_47bc` | `047BC–047CB` | [`src/functions/unknown/047bc_func_047bc.asm`](src/functions/unknown/047bc_func_047bc.asm) |
 | `047CC` | `1000:47cc` | unidentified | `func_047cc` | `FUN_1000_47cc` | `047CC–047DB` | [`src/functions/unknown/047cc_func_047cc.asm`](src/functions/unknown/047cc_func_047cc.asm) |
 | `047DC` | `1000:47dc` | verified-role | `test_grv_hotspot_rect` | `FUN_1000_47dc` | `047DC–0483D`<br>`04840–04848` | [`src/functions/grv/test_grv_hotspot_rect.asm`](src/functions/grv/test_grv_hotspot_rect.asm) |
-| `04849` | `1000:4849` | unidentified | `func_04849` | `FUN_1000_4849` | `04849–048C8` | [`src/functions/unknown/04849_func_04849.asm`](src/functions/unknown/04849_func_04849.asm) |
-| `048C9` | `1000:48c9` | unidentified | `func_048c9` | `FUN_1000_48c9` | `048C9–04956` | [`src/functions/unknown/048c9_func_048c9.asm`](src/functions/unknown/048c9_func_048c9.asm) |
-| `04957` | `1000:4957` | unidentified | `func_04957` | `FUN_1000_4957` | `04957–0495C` | [`src/functions/unknown/04957_func_04957.asm`](src/functions/unknown/04957_func_04957.asm) |
-| `0495D` | `1000:495d` | unidentified | `func_0495d` | `FUN_1000_495d` | `0495D–04967` | [`src/functions/unknown/0495d_func_0495d.asm`](src/functions/unknown/0495d_func_0495d.asm) |
+| `04849` | `1000:4849` | verified-role | `expand_grv_video_filename` | `FUN_1000_4849` | `04849–048C8` | [`src/functions/grv/expand_grv_video_filename.asm`](src/functions/grv/expand_grv_video_filename.asm) |
+| `048C9` | `1000:48c9` | verified-role | `tokenize_configuration_line` | `FUN_1000_48c9` | `048C9–04956` | [`src/functions/runtime/tokenize_configuration_line.asm`](src/functions/runtime/tokenize_configuration_line.asm) |
+| `04957` | `1000:4957` | verified-role | `skip_nul_terminated_string` | `FUN_1000_4957` | `04957–0495C` | [`src/functions/runtime/skip_nul_terminated_string.asm`](src/functions/runtime/skip_nul_terminated_string.asm) |
+| `0495D` | `1000:495d` | verified-role | `skip_configuration_whitespace` | `FUN_1000_495d` | `0495D–04967` | [`src/functions/runtime/skip_configuration_whitespace.asm`](src/functions/runtime/skip_configuration_whitespace.asm) |
 | `04980` | `1000:4980` | verified-role | `build_32_color_palette_translation` | `FUN_1000_4980` | `04980–04A22` | [`src/functions/vdx/build_32_color_palette_translation.asm`](src/functions/vdx/build_32_color_palette_translation.asm) |
-| `04A23` | `1000:4a23` | unidentified | `func_04a23` | `FUN_1000_4a23` | `04A23–04A54` | [`src/functions/unknown/04a23_func_04a23.asm`](src/functions/unknown/04a23_func_04a23.asm) |
-| `04A55` | `1000:4a55` | unidentified | `func_04a55` | `FUN_1000_4a55` | `04A55–04A7A` | [`src/functions/unknown/04a55_func_04a55.asm`](src/functions/unknown/04a55_func_04a55.asm) |
-| `04A7B` | `1000:4a7b` | unidentified | `func_04a7b` | `FUN_1000_4a7b` | `04A7B–04B67`<br>`04B6B–04BAB`<br>`04BAE–04BF4` | [`src/functions/unknown/04a7b_func_04a7b.asm`](src/functions/unknown/04a7b_func_04a7b.asm) |
-| `04BF5` | `1000:4bf5` | unidentified | `func_04bf5` | `FUN_1000_4bf5` | `04BF5–04C26` | [`src/functions/unknown/04bf5_func_04bf5.asm`](src/functions/unknown/04bf5_func_04bf5.asm) |
-| `04C27` | `1000:4c27` | unidentified | `func_04c27` | `FUN_1000_4c27` | `04C27–04CD1` | [`src/functions/unknown/04c27_func_04c27.asm`](src/functions/unknown/04c27_func_04c27.asm) |
-| `04CD2` | `1000:4cd2` | unidentified | `func_04cd2` | `FUN_1000_4cd2` | `04CD2–04D8B` | [`src/functions/unknown/04cd2_func_04cd2.asm`](src/functions/unknown/04cd2_func_04cd2.asm) |
-| `04D8C` | `1000:4d8c` | unidentified | `func_04d8c` | `FUN_1000_4d8c` | `04D8C–04E1E` | [`src/functions/unknown/04d8c_func_04d8c.asm`](src/functions/unknown/04d8c_func_04d8c.asm) |
-| `04E1F` | `1000:4e1f` | unidentified | `func_04e1f` | `FUN_1000_4e1f` | `04E1F–04EAD` | [`src/functions/unknown/04e1f_func_04e1f.asm`](src/functions/unknown/04e1f_func_04e1f.asm) |
-| `04EAE` | `1000:4eae` | unidentified | `func_04eae` | `FUN_1000_4eae` | `04EAE–04FC6` | [`src/functions/unknown/04eae_func_04eae.asm`](src/functions/unknown/04eae_func_04eae.asm) |
-| `04FC7` | `1000:4fc7` | unidentified | `func_04fc7` | `FUN_1000_4fc7` | `04FC7–04FEA` | [`src/functions/unknown/04fc7_func_04fc7.asm`](src/functions/unknown/04fc7_func_04fc7.asm) |
+| `04A23` | `1000:4a23` | verified-role | `parse_configuration_decimal_word` | `FUN_1000_4a23` | `04A23–04A54` | [`src/functions/runtime/parse_configuration_decimal_word.asm`](src/functions/runtime/parse_configuration_decimal_word.asm) |
+| `04A55` | `1000:4a55` | verified-role | `parse_configuration_hex_word` | `FUN_1000_4a55` | `04A55–04A7A` | [`src/functions/runtime/parse_configuration_hex_word.asm`](src/functions/runtime/parse_configuration_hex_word.asm) |
+| `04A7B` | `1000:4a7b` | verified-role | `update_animated_software_cursor` | `FUN_1000_4a7b` | `04A7B–04B67`<br>`04B6B–04BAB`<br>`04BAE–04BF4` | [`src/functions/cursor/update_animated_software_cursor.asm`](src/functions/cursor/update_animated_software_cursor.asm) |
+| `04BF5` | `1000:4bf5` | verified-role | `erase_software_cursor` | `FUN_1000_4bf5` | `04BF5–04C26` | [`src/functions/cursor/erase_software_cursor.asm`](src/functions/cursor/erase_software_cursor.asm) |
+| `04C27` | `1000:4c27` | verified-role | `draw_cursor_and_save_background_banked` | `FUN_1000_4c27` | `04C27–04CD1` | [`src/functions/cursor/draw_cursor_and_save_background_banked.asm`](src/functions/cursor/draw_cursor_and_save_background_banked.asm) |
+| `04CD2` | `1000:4cd2` | verified-role | `redraw_cursor_frame_banked` | `FUN_1000_4cd2` | `04CD2–04D8B` | [`src/functions/cursor/redraw_cursor_frame_banked.asm`](src/functions/cursor/redraw_cursor_frame_banked.asm) |
+| `04D8C` | `1000:4d8c` | verified-role | `draw_cursor_and_save_background_half_resolution` | `FUN_1000_4d8c` | `04D8C–04E1E` | [`src/functions/cursor/draw_cursor_and_save_background_half_resolution.asm`](src/functions/cursor/draw_cursor_and_save_background_half_resolution.asm) |
+| `04E1F` | `1000:4e1f` | verified-role | `redraw_cursor_frame_half_resolution` | `FUN_1000_4e1f` | `04E1F–04EAD` | [`src/functions/cursor/redraw_cursor_frame_half_resolution.asm`](src/functions/cursor/redraw_cursor_frame_half_resolution.asm) |
+| `04EAE` | `1000:4eae` | verified-role | `restore_cursor_background` | `FUN_1000_4eae` | `04EAE–04FC6` | [`src/functions/cursor/restore_cursor_background.asm`](src/functions/cursor/restore_cursor_background.asm) |
+| `04FC7` | `1000:4fc7` | verified-role | `skip_configuration_crlf_line` | `FUN_1000_4fc7` | `04FC7–04FEA` | [`src/functions/runtime/skip_configuration_crlf_line.asm`](src/functions/runtime/skip_configuration_crlf_line.asm) |
 | `04FEB` | `1000:4feb` | verified-role | `ascii_lowercase_al` | `FUN_1000_4feb` | `04FEB–04FF5` | [`src/functions/runtime/ascii_lowercase_al.asm`](src/functions/runtime/ascii_lowercase_al.asm) |
 | `04FF6` | `1000:4ff6` | verified-role | `compare_ascii_strings_case_insensitive` | `FUN_1000_4ff6` | `04FF6–0500F` | [`src/functions/runtime/compare_ascii_strings_case_insensitive.asm`](src/functions/runtime/compare_ascii_strings_case_insensitive.asm) |
-| `05010` | `1000:5010` | unidentified | `func_05010` | `FUN_1000_5010` | `05010–05017` | [`src/functions/unknown/05010_func_05010.asm`](src/functions/unknown/05010_func_05010.asm) |
-| `05018` | `1000:5018` | unidentified | `func_05018` | `FUN_1000_5018` | `05018–05056` | [`src/functions/unknown/05018_func_05018.asm`](src/functions/unknown/05018_func_05018.asm) |
-| `05057` | `1000:5057` | unidentified | `func_05057` | `FUN_1000_5057` | `05057–0518F`<br>`05192–0519B`<br>`0519E–051A3`<br>`051A6–051AB`<br>`051AE–051C4` | [`src/functions/unknown/05057_func_05057.asm`](src/functions/unknown/05057_func_05057.asm) |
-| `051C5` | `1000:51c5` | unidentified | `func_051c5` | `FUN_1000_51c5` | `051C5–051CA` | [`src/functions/unknown/051c5_func_051c5.asm`](src/functions/unknown/051c5_func_051c5.asm) |
-| `051CB` | `1000:51cb` | unidentified | `func_051cb` | `FUN_1000_51cb` | `051CB–051E4` | [`src/functions/unknown/051cb_func_051cb.asm`](src/functions/unknown/051cb_func_051cb.asm) |
-| `051E5` | `1000:51e5` | unidentified | `func_051e5` | `FUN_1000_51e5` | `051E5–051FE` | [`src/functions/unknown/051e5_func_051e5.asm`](src/functions/unknown/051e5_func_051e5.asm) |
-| `051FF` | `1000:51ff` | unidentified | `func_051ff` | `FUN_1000_51ff` | `051FF–05216` | [`src/functions/unknown/051ff_func_051ff.asm`](src/functions/unknown/051ff_func_051ff.asm) |
-| `05217` | `1000:5217` | unidentified | `func_05217` | `FUN_1000_5217` | `05217–05225` | [`src/functions/unknown/05217_func_05217.asm`](src/functions/unknown/05217_func_05217.asm) |
-| `05226` | `1000:5226` | unidentified | `func_05226` | `FUN_1000_5226` | `05226–05234` | [`src/functions/unknown/05226_func_05226.asm`](src/functions/unknown/05226_func_05226.asm) |
-| `05235` | `1000:5235` | unidentified | `func_05235` | `FUN_1000_5235` | `05235–05350`<br>`05353–0535C`<br>`0535F–05364`<br>`05367–0536C`<br>`0536F–05378` | [`src/functions/unknown/05235_func_05235.asm`](src/functions/unknown/05235_func_05235.asm) |
-| `05379` | `1000:5379` | unidentified | `func_05379` | `FUN_1000_5379` | `05379–05457`<br>`0545A–05463`<br>`05466–0546B`<br>`0546E–05473`<br>`05476–0547F` | [`src/functions/unknown/05379_func_05379.asm`](src/functions/unknown/05379_func_05379.asm) |
+| `05010` | `1000:5010` | verified-role | `copy_config_string_leaving_terminator` | `FUN_1000_5010` | `05010–05017` | [`src/functions/runtime/copy_config_string_leaving_terminator.asm`](src/functions/runtime/copy_config_string_leaving_terminator.asm) |
+| `05018` | `1000:5018` | verified-role | `find_configuration_section` | `FUN_1000_5018` | `05018–05056` | [`src/functions/runtime/find_configuration_section.asm`](src/functions/runtime/find_configuration_section.asm) |
+| `05057` | `1000:5057` | verified-role | `load_groovie_configuration` | `FUN_1000_5057` | `05057–0518F`<br>`05192–0519B`<br>`0519E–051A3`<br>`051A6–051AB`<br>`051AE–051C4` | [`src/functions/runtime/load_groovie_configuration.asm`](src/functions/runtime/load_groovie_configuration.asm) |
+| `051C5` | `1000:51c5` | verified-role | `mark_videocard_configuration_seen` | `FUN_1000_51c5` | `051C5–051CA` | [`src/functions/runtime/mark_videocard_configuration_seen.asm`](src/functions/runtime/mark_videocard_configuration_seen.asm) |
+| `051CB` | `1000:51cb` | verified-role | `configure_dma_buffer_size` | `FUN_1000_51cb` | `051CB–051E4` | [`src/functions/runtime/configure_dma_buffer_size.asm`](src/functions/runtime/configure_dma_buffer_size.asm) |
+| `051E5` | `1000:51e5` | verified-role | `configure_ticks_per_second` | `FUN_1000_51e5` | `051E5–051FE` | [`src/functions/runtime/configure_ticks_per_second.asm`](src/functions/runtime/configure_ticks_per_second.asm) |
+| `051FF` | `1000:51ff` | verified-role | `configure_svga_mode` | `FUN_1000_51ff` | `051FF–05216` | [`src/functions/runtime/configure_svga_mode.asm`](src/functions/runtime/configure_svga_mode.asm) |
+| `05217` | `1000:5217` | verified-role | `configure_program_directory` | `FUN_1000_5217` | `05217–05225` | [`src/functions/runtime/configure_program_directory.asm`](src/functions/runtime/configure_program_directory.asm) |
+| `05226` | `1000:5226` | verified-role | `configure_data_directory` | `FUN_1000_5226` | `05226–05234` | [`src/functions/runtime/configure_data_directory.asm`](src/functions/runtime/configure_data_directory.asm) |
+| `05235` | `1000:5235` | verified-role | `configure_midi_driver` | `FUN_1000_5235` | `05235–05350`<br>`05353–0535C`<br>`0535F–05364`<br>`05367–0536C`<br>`0536F–05378` | [`src/functions/runtime/configure_midi_driver.asm`](src/functions/runtime/configure_midi_driver.asm) |
+| `05379` | `1000:5379` | verified-role | `configure_pcm_driver` | `FUN_1000_5379` | `05379–05457`<br>`0545A–05463`<br>`05466–0546B`<br>`0546E–05473`<br>`05476–0547F` | [`src/functions/runtime/configure_pcm_driver.asm`](src/functions/runtime/configure_pcm_driver.asm) |
 | `05480` | `1000:5480` | decode and draw GRV PRINTSTRING sequence | `decode_and_draw_grv_string` | `FUN_1000_5480` | `05480–054AC` | [`src/functions/grv/decode_and_draw_grv_string.asm`](src/functions/grv/decode_and_draw_grv_string.asm) |
 | `054AD` | `1000:54ad` | unidentified | `func_054ad` | `FUN_1000_54ad` | `054AD–054F8` | [`src/functions/unknown/054ad_func_054ad.asm`](src/functions/unknown/054ad_func_054ad.asm) |
 | `054F9` | `1000:54f9` | unidentified | `func_054f9` | `FUN_1000_54f9` | `054F9–05522` | [`src/functions/unknown/054f9_func_054f9.asm`](src/functions/unknown/054f9_func_054f9.asm) |
@@ -462,31 +463,31 @@ Owned ranges are inclusive linear offsets into the unpacked load image.
 | `05BD1` | `1000:5bd1` | verified-role | `load_and_play_selected_xmi` | `FUN_1000_5bd1` | `05BD1–05C05` | [`src/functions/audio/load_and_play_selected_xmi.asm`](src/functions/audio/load_and_play_selected_xmi.asm) |
 | `05C06` | `1000:5c06` | verified-role | `replace_active_midi_sequence` | `FUN_1000_5c06` | `05C06–05CDD` | [`src/functions/audio/replace_active_midi_sequence.asm`](src/functions/audio/replace_active_midi_sequence.asm) |
 | `05CED` | `1000:5ced` | verified-role | `shutdown_player` | `FUN_1000_5ced` | `05CED–05E8B` | [`src/functions/runtime/shutdown_player.asm`](src/functions/runtime/shutdown_player.asm) |
-| `05E8D` | `1000:5e8d` | unidentified | `func_05e8d` | `FUN_1000_5e8d` | `05E8D–05EA8` | [`src/functions/unknown/05e8d_func_05e8d.asm`](src/functions/unknown/05e8d_func_05e8d.asm) |
-| `05EA9` | `1000:5ea9` | unidentified | `func_05ea9` | `FUN_1000_5ea9` | `05EA9–05EC7` | [`src/functions/unknown/05ea9_func_05ea9.asm`](src/functions/unknown/05ea9_func_05ea9.asm) |
-| `05EC8` | `1000:5ec8` | unidentified | `func_05ec8` | `FUN_1000_5ec8` | `05EC8–05ED4` | [`src/functions/unknown/05ec8_func_05ec8.asm`](src/functions/unknown/05ec8_func_05ec8.asm) |
-| `05ED6` | `1000:5ed6` | unidentified | `func_05ed6` | `FUN_1000_5ed6` | `05ED6–05F1B` | [`src/functions/unknown/05ed6_func_05ed6.asm`](src/functions/unknown/05ed6_func_05ed6.asm) |
-| `05F22` | `1000:5f22` | unidentified | `func_05f22` | `FUN_1000_5f22` | `05F22–05F6B` | [`src/functions/unknown/05f22_func_05f22.asm`](src/functions/unknown/05f22_func_05f22.asm) |
-| `05F6C` | `1000:5f6c` | unidentified | `func_05f6c` | `FUN_1000_5f6c` | `05F6C–05FB5` | [`src/functions/unknown/05f6c_func_05f6c.asm`](src/functions/unknown/05f6c_func_05f6c.asm) |
-| `05FB6` | `1000:5fb6` | unidentified | `func_05fb6` | `FUN_1000_5fb6` | `05FB6–05FD7` | [`src/functions/unknown/05fb6_func_05fb6.asm`](src/functions/unknown/05fb6_func_05fb6.asm) |
-| `05FD8` | `1000:5fd8` | unidentified | `func_05fd8` | `FUN_1000_5fd8` | `05FD8–05FE3` | [`src/functions/unknown/05fd8_func_05fd8.asm`](src/functions/unknown/05fd8_func_05fd8.asm) |
-| `05FE4` | `1000:5fe4` | unidentified | `func_05fe4` | `FUN_1000_5fe4` | `05FE4–0605A`<br>`0605C–06072`<br>`06074–060CF` | [`src/functions/unknown/05fe4_func_05fe4.asm`](src/functions/unknown/05fe4_func_05fe4.asm) |
-| `060D0` | `1000:60d0` | unidentified | `func_060d0` | `FUN_1000_60d0` | `060D0–06157`<br>`0615A–061CE` | [`src/functions/unknown/060d0_func_060d0.asm`](src/functions/unknown/060d0_func_060d0.asm) |
-| `061D0` | `1000:61d0` | unidentified | `func_061d0` | `FUN_1000_61d0` | `061D0–0627A`<br>`0627C–0628E` | [`src/functions/unknown/061d0_func_061d0.asm`](src/functions/unknown/061d0_func_061d0.asm) |
-| `06290` | `1000:6290` | unidentified | `func_06290` | `FUN_1000_6290` | `06290–062E8` | [`src/functions/unknown/06290_func_06290.asm`](src/functions/unknown/06290_func_06290.asm) |
-| `062EA` | `1000:62ea` | unidentified | `func_062ea` | `FUN_1000_62ea` | `062EA–063B3` | [`src/functions/unknown/062ea_func_062ea.asm`](src/functions/unknown/062ea_func_062ea.asm) |
-| `063B4` | `1000:63b4` | unidentified | `func_063b4` | `FUN_1000_63b4` | `063B4–063FA`<br>`063FC–0641B` | [`src/functions/unknown/063b4_func_063b4.asm`](src/functions/unknown/063b4_func_063b4.asm) |
-| `0641C` | `1000:641c` | unidentified | `func_0641c` | `FUN_1000_641c` | `0641C–06434` | [`src/functions/unknown/0641c_func_0641c.asm`](src/functions/unknown/0641c_func_0641c.asm) |
-| `06436` | `1000:6436` | unidentified | `func_06436` | `FUN_1000_6436` | `06436–06456` | [`src/functions/unknown/06436_func_06436.asm`](src/functions/unknown/06436_func_06436.asm) |
-| `06458` | `1000:6458` | unidentified | `func_06458` | `FUN_1000_6458` | `06458–0650E`<br>`06510–06514`<br>`06516–0656A` | [`src/functions/unknown/06458_func_06458.asm`](src/functions/unknown/06458_func_06458.asm) |
-| `0656C` | `1000:656c` | unidentified | `func_0656c` | `FUN_1000_656c` | `0656C–065FC`<br>`065FE–06618`<br>`0661A–06642`<br>`06644–066AE`<br>`066B0–06798`<br>`0679A–067FA`<br>`067FC–06845` | [`src/functions/unknown/0656c_func_0656c.asm`](src/functions/unknown/0656c_func_0656c.asm) |
-| `06846` | `1000:6846` | unidentified | `func_06846` | `FUN_1000_6846` | `06846–0690B`<br>`0690D–06951`<br>`06953–06A6B` | [`src/functions/unknown/06846_func_06846.asm`](src/functions/unknown/06846_func_06846.asm) |
-| `06A6D` | `1000:6a6d` | unidentified | `func_06a6d` | `FUN_1000_6a6d` | `06A6D–06A80` | [`src/functions/unknown/06a6d_func_06a6d.asm`](src/functions/unknown/06a6d_func_06a6d.asm) |
-| `06A81` | `1000:6a81` | unidentified | `func_06a81` | `FUN_1000_6a81` | `06A81–06AE3`<br>`06AE5–06AEE` | [`src/functions/unknown/06a81_func_06a81.asm`](src/functions/unknown/06a81_func_06a81.asm) |
-| `06AEF` | `1000:6aef` | unidentified | `func_06aef` | `FUN_1000_6aef` | `06AEF–06BFE`<br>`06C00–06D0D` | [`src/functions/unknown/06aef_func_06aef.asm`](src/functions/unknown/06aef_func_06aef.asm) |
-| `06D0E` | `1000:6d0e` | unidentified | `func_06d0e` | `FUN_1000_6d0e` | `06D0E–06DA4`<br>`06DA6–06DE2` | [`src/functions/unknown/06d0e_func_06d0e.asm`](src/functions/unknown/06d0e_func_06d0e.asm) |
-| `06DE4` | `1000:6de4` | unidentified | `func_06de4` | `FUN_1000_6de4` | `06DE4–06E0A`<br>`06E0C–06E67` | [`src/functions/unknown/06de4_func_06de4.asm`](src/functions/unknown/06de4_func_06de4.asm) |
-| `06E68` | `1000:6e68` | unidentified | `func_06e68` | `FUN_1000_6e68` | `06E68–06E71` | [`src/functions/unknown/06e68_func_06e68.asm`](src/functions/unknown/06e68_func_06e68.asm) |
+| `05E8D` | `1000:5e8d` | verified-role | `free_dos_memory_segment` | `FUN_1000_5e8d` | `05E8D–05EA8` | [`src/functions/runtime/free_dos_memory_segment.asm`](src/functions/runtime/free_dos_memory_segment.asm) |
+| `05EA9` | `1000:5ea9` | verified-role | `allocate_dos_memory_for_byte_count` | `FUN_1000_5ea9` | `05EA9–05EC7` | [`src/functions/runtime/allocate_dos_memory_for_byte_count.asm`](src/functions/runtime/allocate_dos_memory_for_byte_count.asm) |
+| `05EC8` | `1000:5ec8` | verified-role | `allocate_dos_memory_paragraphs` | `FUN_1000_5ec8` | `05EC8–05ED4` | [`src/functions/runtime/allocate_dos_memory_paragraphs.asm`](src/functions/runtime/allocate_dos_memory_paragraphs.asm) |
+| `05ED6` | `1000:5ed6` | verified-role | `cell_run_grv_puzzle_search` | `FUN_1000_5ed6` | `05ED6–05F1B` | [`src/functions/puzzle/cell_run_grv_puzzle_search.asm`](src/functions/puzzle/cell_run_grv_puzzle_search.asm) |
+| `05F22` | `1000:5f22` | verified-role | `cell_convert_adjacent_pieces` | `FUN_1000_5f22` | `05F22–05F6B` | [`src/functions/puzzle/cell_convert_adjacent_pieces.asm`](src/functions/puzzle/cell_convert_adjacent_pieces.asm) |
+| `05F6C` | `1000:5f6c` | verified-role | `cell_count_board_pieces` | `FUN_1000_5f6c` | `05F6C–05FB5` | [`src/functions/puzzle/cell_count_board_pieces.asm`](src/functions/puzzle/cell_count_board_pieces.asm) |
+| `05FB6` | `1000:5fb6` | verified-role | `cell_begin_forward_move_iteration` | `FUN_1000_5fb6` | `05FB6–05FD7` | [`src/functions/puzzle/cell_begin_forward_move_iteration.asm`](src/functions/puzzle/cell_begin_forward_move_iteration.asm) |
+| `05FD8` | `1000:5fd8` | verified-role | `cell_begin_reverse_move_iteration` | `FUN_1000_5fd8` | `05FD8–05FE3` | [`src/functions/puzzle/cell_begin_reverse_move_iteration.asm`](src/functions/puzzle/cell_begin_reverse_move_iteration.asm) |
+| `05FE4` | `1000:5fe4` | verified-role | `cell_next_forward_move` | `FUN_1000_5fe4` | `05FE4–0605A`<br>`0605C–06072`<br>`06074–060CF` | [`src/functions/puzzle/cell_next_forward_move.asm`](src/functions/puzzle/cell_next_forward_move.asm) |
+| `060D0` | `1000:60d0` | verified-role | `cell_next_forward_move_with_jump_deduplication` | `FUN_1000_60d0` | `060D0–06157`<br>`0615A–061CE` | [`src/functions/puzzle/cell_next_forward_move_with_jump_deduplication.asm`](src/functions/puzzle/cell_next_forward_move_with_jump_deduplication.asm) |
+| `061D0` | `1000:61d0` | verified-role | `cell_next_reverse_move` | `FUN_1000_61d0` | `061D0–0627A`<br>`0627C–0628E` | [`src/functions/puzzle/cell_next_reverse_move.asm`](src/functions/puzzle/cell_next_reverse_move.asm) |
+| `06290` | `1000:6290` | verified-role | `cell_apply_move_to_scratch_board` | `FUN_1000_6290` | `06290–062E8` | [`src/functions/puzzle/cell_apply_move_to_scratch_board.asm`](src/functions/puzzle/cell_apply_move_to_scratch_board.asm) |
+| `062EA` | `1000:62ea` | verified-role | `cell_score_candidate_move` | `FUN_1000_62ea` | `062EA–063B3` | [`src/functions/puzzle/cell_score_candidate_move.asm`](src/functions/puzzle/cell_score_candidate_move.asm) |
+| `063B4` | `1000:63b4` | verified-role | `cell_count_adjacent_clone_opportunities` | `FUN_1000_63b4` | `063B4–063FA`<br>`063FC–0641B` | [`src/functions/puzzle/cell_count_adjacent_clone_opportunities.asm`](src/functions/puzzle/cell_count_adjacent_clone_opportunities.asm) |
+| `0641C` | `1000:641c` | verified-role | `cell_reset_best_move_list` | `FUN_1000_641c` | `0641C–06434` | [`src/functions/puzzle/cell_reset_best_move_list.asm`](src/functions/puzzle/cell_reset_best_move_list.asm) |
+| `06436` | `1000:6436` | verified-role | `cell_append_tied_best_move` | `FUN_1000_6436` | `06436–06456` | [`src/functions/puzzle/cell_append_tied_best_move.asm`](src/functions/puzzle/cell_append_tied_best_move.asm) |
+| `06458` | `1000:6458` | verified-role | `cell_choose_best_move` | `FUN_1000_6458` | `06458–0650E`<br>`06510–06514`<br>`06516–0656A` | [`src/functions/puzzle/cell_choose_best_move.asm`](src/functions/puzzle/cell_choose_best_move.asm) |
+| `0656C` | `1000:656c` | verified-role | `cell_search_recursive` | `FUN_1000_656c` | `0656C–065FC`<br>`065FE–06618`<br>`0661A–06642`<br>`06644–066AE`<br>`066B0–06798`<br>`0679A–067FA`<br>`067FC–06845` | [`src/functions/puzzle/cell_search_recursive.asm`](src/functions/puzzle/cell_search_recursive.asm) |
+| `06846` | `1000:6846` | verified-role | `cell_search_best_move` | `FUN_1000_6846` | `06846–0690B`<br>`0690D–06951`<br>`06953–06A6B` | [`src/functions/puzzle/cell_search_best_move.asm`](src/functions/puzzle/cell_search_best_move.asm) |
+| `06A6D` | `1000:6a6d` | verified-role | `cell_reset_ranked_move_list` | `FUN_1000_6a6d` | `06A6D–06A80` | [`src/functions/puzzle/cell_reset_ranked_move_list.asm`](src/functions/puzzle/cell_reset_ranked_move_list.asm) |
+| `06A81` | `1000:6a81` | verified-role | `cell_insert_ranked_move` | `FUN_1000_6a81` | `06A81–06AE3`<br>`06AE5–06AEE` | [`src/functions/puzzle/cell_insert_ranked_move.asm`](src/functions/puzzle/cell_insert_ranked_move.asm) |
+| `06AEF` | `1000:6aef` | verified-role | `cell_build_ranked_move_list` | `FUN_1000_6aef` | `06AEF–06BFE`<br>`06C00–06D0D` | [`src/functions/puzzle/cell_build_ranked_move_list.asm`](src/functions/puzzle/cell_build_ranked_move_list.asm) |
+| `06D0E` | `1000:6d0e` | verified-role | `cell_search_ranked_moves` | `FUN_1000_6d0e` | `06D0E–06DA4`<br>`06DA6–06DE2` | [`src/functions/puzzle/cell_search_ranked_moves.asm`](src/functions/puzzle/cell_search_ranked_moves.asm) |
+| `06DE4` | `1000:6de4` | verified-role | `cell_dispatch_search_strategy` | `FUN_1000_6de4` | `06DE4–06E0A`<br>`06E0C–06E67` | [`src/functions/puzzle/cell_dispatch_search_strategy.asm`](src/functions/puzzle/cell_dispatch_search_strategy.asm) |
+| `06E68` | `1000:6e68` | verified-role | `cell_random_byte` | `FUN_1000_6e68` | `06E68–06E71` | [`src/functions/puzzle/cell_random_byte.asm`](src/functions/puzzle/cell_random_byte.asm) |
 | `06E72` | `1000:6e72` | unidentified | `func_06e72` | `FUN_1000_6e72` | `06E72–06EB5` | [`src/functions/unknown/06e72_func_06e72.asm`](src/functions/unknown/06e72_func_06e72.asm) |
 | `06EB6` | `1000:6eb6` | unidentified | `func_06eb6` | `FUN_1000_6eb6` | `06EB6–06ED8` | [`src/functions/unknown/06eb6_func_06eb6.asm`](src/functions/unknown/06eb6_func_06eb6.asm) |
 | `06ED9` | `1000:6ed9` | unidentified | `func_06ed9` | `FUN_1000_6ed9` | `06ED9–06FA8` | [`src/functions/unknown/06ed9_func_06ed9.asm`](src/functions/unknown/06ed9_func_06ed9.asm) |
@@ -560,3 +561,90 @@ Owned ranges are inclusive linear offsets into the unpacked load image.
 | `08891` | `1000:8891` | unidentified | `func_08891` | `FUN_1000_8891` | `08891–088D8` | [`src/functions/unknown/08891_func_08891.asm`](src/functions/unknown/08891_func_08891.asm) |
 | `088D9` | `1702:18b9` | unidentified | `func_088d9` | `FUN_1702_18b9` | `088D9–0891C` | [`src/functions/unknown/088d9_func_088d9.asm`](src/functions/unknown/088d9_func_088d9.asm) |
 | `0891D` | `1000:891d` | unidentified | `func_0891d` | `FUN_1000_891d` | `0891D–0892B` | [`src/functions/unknown/0891d_func_0891d.asm`](src/functions/unknown/0891d_func_0891d.asm) |
+
+## Connected semantic recovery pass
+
+This pass identifies 70 additional roles from static instruction behavior and connected callers. These are descriptive names, not recovered original symbols; analyzer boundaries and historical behavior remain intact. No gameplay or regression tests were run. A successful canonical build establishes byte identity, not semantic completeness.
+
+The microscope solver operates on a 7 by 7 board with codes 1 through 4, four piece counters, adjacent clone moves, and distance-two jumps. Its move iterators, conversion, scoring, recursive snapshots, ranked candidates, and strategy dispatch have matching implementations in the two players. The recursive owner cycle supports four codes; a generic two-player minimax label would hide that behavior.
+
+DOS chooses tied moves using the GRV random generator; Win32 retains the first surviving candidate. Strategy dispatch thresholds also differ (DOS 2, Win32 20). DOS passes through board characters other than the two translated piece characters; Win32 normalizes them to zero. These differences remain in source.
+
+The machine-readable [semantic role evidence](../semantic_roles.json) records stable artifact/address identifiers, contracts, direct callers, cross-version counterparts, source paths, and static confidence. The complete function map remains the inventory of all provisional entries. It does not imply that unidentified gaps or indirect targets have been resolved.
+
+| Entry | Role | Contract |
+|---|---|---|
+| `05ED6` | `cell_run_grv_puzzle_search` | Convert the GRV 49-cell input board into native piece codes and dispatch the microscope puzzle search. |
+| `05F22` | `cell_convert_adjacent_pieces` | Visit the destination cell adjacency list; convert occupied neighbors to the moving piece and update per-piece counters. |
+| `05F6C` | `cell_count_board_pieces` | Count piece codes 1 through 4 in the 49-cell board and store four trailing counters. |
+| `05FB6` | `cell_begin_forward_move_iteration` | Reset forward iterator state and copy the board for destination deduplication. |
+| `05FD8` | `cell_begin_reverse_move_iteration` | Reset destination-first move iteration state. |
+| `05FE4` | `cell_next_forward_move` | Enumerate adjacent clone moves followed by distance-two jump moves; deduplicate clone destinations. |
+| `060D0` | `cell_next_forward_move_with_jump_deduplication` | Enumerate clones and jumps while marking yielded destinations in the iterator board. |
+| `061D0` | `cell_next_reverse_move` | Enumerate empty destinations and then neighboring friendly source cells for clone and jump moves. |
+| `06290` | `cell_apply_move_to_scratch_board` | Copy 49 cells and four counters to scratch; apply clone or jump and convert adjacent occupied cells. |
+| `062EA` | `cell_score_candidate_move` | Evaluate candidate piece-count changes, adjacent conversions, and the clone score bias without committing the move. |
+| `063B4` | `cell_count_adjacent_clone_opportunities` | Count friendly-source to empty-neighbor incidences; this is not a count of unique destinations. |
+| `0641C` | `cell_reset_best_move_list` | Store the current source, destination, and move-kind triple as the sole best candidate. |
+| `06436` | `cell_append_tied_best_move` | Append the current source, destination, and move-kind triple to tied candidates. |
+| `06458` | `cell_choose_best_move` | Resolve tied candidate moves, optionally comparing subsequent clone opportunities; DOS uses randomness, Win32 selects the first surviving candidate. |
+| `0656C` | `cell_search_recursive` | Snapshot board and iterator state, cycle through piece owners, recurse or score leaves, prune bounded branches, and restore state. |
+| `06846` | `cell_search_best_move` | Enumerate legal moves, evaluate recursive or leaf scores, accumulate ties, and select a resulting move. |
+| `06A6D` | `cell_reset_ranked_move_list` | Clear ranking state and initialize the linked-list head to FFFF. |
+| `06A81` | `cell_insert_ranked_move` | Store a move triple and score and insert its index into a descending-score linked list. |
+| `06AEF` | `cell_build_ranked_move_list` | Enumerate and evaluate moves to build the score-ranked linked list; the implementation overrides the supplied depth. |
+| `06D0E` | `cell_search_ranked_moves` | Reevaluate ranked candidates with recursive search and select among the resulting tied best moves. |
+| `06DE4` | `cell_dispatch_search_strategy` | Reset abort state and dispatch direct or ranked search according to mode and strategy state; thresholds differ between versions. |
+| `06E68` | `cell_random_byte` | Advance the GRV random state through its far-call helper and return the high random byte as a zero-extended byte. |
+| `04A7B` | `update_animated_software_cursor` | Poll mouse coordinates, advance cursor frames, decode and translate pixels, and restore or redraw saved cursor background. |
+| `04BF5` | `erase_software_cursor` | Restore saved screen pixels when the software cursor is active and visible. |
+| `04C27` | `draw_cursor_and_save_background_banked` | Save underlying banked framebuffer pixels and draw nonzero translated cursor pixels. |
+| `04CD2` | `redraw_cursor_frame_banked` | Redraw an animated cursor frame using saved background for transparent pixels and switching framebuffer banks. |
+| `04D8C` | `draw_cursor_and_save_background_half_resolution` | Save underlying pixels and draw a subsampled cursor in the half-resolution display path. |
+| `04E1F` | `redraw_cursor_frame_half_resolution` | Redraw a subsampled cursor frame using saved underlying pixels. |
+| `04EAE` | `restore_cursor_background` | Restore saved cursor pixels through banked or half-resolution display paths. |
+| `02C32` | `probe_cpu_and_x87_capabilities` | Probe CPU flag behavior and x87 status/control state to assemble the hardware capability mask. |
+| `03590` | `print_hardware_and_memory_diagnostics` | Print detected CPU, mouse, memory, and buffer information using the runtime diagnostic strings. |
+| `048C9` | `tokenize_configuration_line` | Split a configuration line into tokens, handling whitespace, separators, case conversion, and script-variable substitutions. |
+| `04957` | `skip_nul_terminated_string` | Advance SI past the next NUL terminator. |
+| `0495D` | `skip_configuration_whitespace` | Skip spaces and tabs, leaving SI on the first other byte. |
+| `04A23` | `parse_configuration_decimal_word` | Accumulate decimal digits into AX with the literal historical overflow and failure paths; do not assume fully validated input. |
+| `04A55` | `parse_configuration_hex_word` | Accumulate the requested hexadecimal characters into a wrapping 16-bit word; input validation is limited. |
+| `04FC7` | `skip_configuration_crlf_line` | Advance until CR and LF have both appeared; treat DOS EOF byte 1A as a fatal configuration error. |
+| `05010` | `copy_config_string_leaving_terminator` | Copy a NUL-terminated string and leave DI pointing to the written terminator. |
+| `05018` | `find_configuration_section` | Locate a matching bracketed section in the loaded configuration segment; missing sections follow the fatal error path. |
+| `05057` | `load_groovie_configuration` | Allocate a configuration buffer, open groovie.ini with a fallback path, parse main and driver sections, and release the buffer. |
+| `051C5` | `mark_videocard_configuration_seen` | Set the flag recording that videocard configuration was supplied. |
+| `051CB` | `configure_dma_buffer_size` | Parse a decimal buffer size and clamp it to 1000h through 4000h. |
+| `051E5` | `configure_ticks_per_second` | Parse the timing value and clamp it to 60 through 300. |
+| `051FF` | `configure_svga_mode` | Interpret the off prefix and update SVGA-related configuration and seen flags. |
+| `05217` | `configure_program_directory` | Copy the configured program directory into its dedicated buffer. |
+| `05226` | `configure_data_directory` | Copy the configured data directory into its dedicated buffer. |
+| `05235` | `configure_midi_driver` | Resolve the configured MIDI driver section and its IRQ, port, and XMI driver-path settings. |
+| `05379` | `configure_pcm_driver` | Resolve the PCM driver section and its IRQ, DMA, port, and driver-path settings. |
+| `05E8D` | `free_dos_memory_segment` | Release a nonzero ES segment with DOS service 49h, clear ES on success, and take the fatal path on failure. |
+| `05EA9` | `allocate_dos_memory_for_byte_count` | Round CX bytes to paragraphs and allocate with DOS service 48h; preserve the original zero and overflow behavior. |
+| `05EC8` | `allocate_dos_memory_paragraphs` | Allocate BX paragraphs with DOS service 48h and return the segment in AX, or take the fatal error path. |
+| `02D50` | `dispatch_video_bank_switch` | Compare the requested bank with cached state and dispatch through the selected bank-switch handler. |
+| `02D5A` | `synchronize_video_bank_state` | Update the cached bank word and synchronize the configured handler when its selected implementation requires it. |
+| `02F6A` | `call_scaled_video_bank_handler` | Scale the requested bank, select bank window 1, and invoke the configured far bank handler while preserving registers. |
+| `033FF` | `probe_video_memory_bank_separation` | Write distinct test patterns through two bank selections and determine whether the banks expose distinct memory. |
+| `0341A` | `test_video_bank_pattern_pair` | Compare banked test patterns, preserve and restore original pixels, and restore bank zero. |
+| `0345E` | `probe_indexed_register_writable_bits` | Try setting and clearing selected indexed-port register bits while preserving the original register value. |
+| `0348C` | `probe_direct_register_writable_bits` | Try setting and clearing selected direct-port bits while preserving the original port value. |
+| `034A5` | `set_detected_graphics_mode` | Select a BIOS graphics mode from detected hardware flags and establish pitch and height state. |
+| `0358A` | `restore_bios_text_mode` | Invoke BIOS video service to restore text mode 3. |
+| `03671` | `detect_and_reset_mouse_driver` | Reset the mouse driver through INT 33h and record whether a driver responds. |
+| `03756` | `open_named_archive_file` | Construct the requested filename and open it read-only with DOS service 3Dh; return the handle or FFFF. |
+| `0378F` | `resolve_named_resource_reference` | Search fixed-size resource index records case-insensitively and combine archive and record indices into the native reference. |
+| `03A51` | `read_open_resource_file` | Read CX bytes from the current resource handle into DS:DX using DOS service 3Fh. |
+| `03E44` | `probe_game_disc_archive_availability` | Probe the fh.gjd and at.gjd archives and record the resulting disc availability mask. |
+| `04849` | `expand_grv_video_filename` | Expand GRV variable substitutions in a resource name and append the .vdx suffix. |
+| `04406` | `grv_play_video_reference` | Read a script resource word, select its archive, initialize buffers, and load the VDX stream. |
+| `0443A` | `grv_play_song_reference` | Read a script resource word, select the song resource, and invoke song playback. |
+| `00089` | `initialize_vdx_stream_buffers` | Allocate two 1000h-paragraph stream buffers if absent, clear stream state, and enter stream initialization. |
+| `04375` | `play_named_vdx_resource` | Expand and resolve a named video resource, select its archive, and initialize and load the video stream. |
+
+The evidence manifest includes decoded address/opcode/instruction sequences for each promoted role. Its caller lists contain direct numeric near-call edges only; missing far, symbolic, or indirect callers do not imply that a routine is unused. Full calling conventions and original function boundaries still require the persistent analysis project.
+
+Configuration dispatch provides direct naming evidence: `DS:E0DC` is the `midi` key and calls `05235`; `DS:E0E1` is `pcm` and calls `05379`. The MIDI section reads IRQ, port, and XMI path; PCM reads IRQ, DMA, port, and its driver path. The unusual device-name checks remain in their original handler.

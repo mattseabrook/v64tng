@@ -1,0 +1,38 @@
+; Provisional entry from module header or linear decoded direct call; slice end is NOT a proved function end.
+; File offsets 00DCBE–00DD37, inclusive.
+cdi_nodv_entry_00dcbe:
+db 0xAB, 0xB6 ; file 00DCBE
+db 0x42, 0x6E, 0xAB, 0xC2 ; 00DCC0: provisional 68k clr.w -$543e(a6)
+db 0x4E, 0x75 ; 00DCC4: provisional 68k rts 
+db 0x4A, 0x6E, 0xAB, 0xCA ; 00DCC6: provisional 68k tst.w -$5436(a6)
+db 0x67, 0x04 ; 00DCCA: provisional 68k beq.b $dcd0
+db 0x61, 0x00, 0x00, 0x9C ; 00DCCC: provisional 68k bsr.w $dd6a
+db 0x0C, 0x6D, 0x00, 0x03, 0x00, 0x1C ; 00DCD0: provisional 68k cmpi.w #$3, $1c(a5)
+db 0x67, 0x02 ; 00DCD6: provisional 68k beq.b $dcda
+db 0x4E, 0x75 ; 00DCD8: provisional 68k rts 
+db 0x26, 0x79, 0x00, 0x00, 0x00, 0x00 ; 00DCDA: provisional 68k movea.l $0.l, a3
+db 0x24, 0x2B, 0x00, 0x54 ; 00DCE0: provisional 68k move.l $54(a3), d2
+db 0x94, 0xAE, 0xAB, 0xC6 ; 00DCE4: provisional 68k sub.l -$543a(a6), d2
+db 0x0C, 0x82, 0x00, 0x00, 0x00, 0x64 ; 00DCE8: provisional 68k cmpi.l #$64, d2
+db 0x6A, 0x02 ; 00DCEE: provisional 68k bpl.b $dcf2
+db 0x4E, 0x75 ; 00DCF0: provisional 68k rts 
+db 0x4A, 0x6E, 0xAB, 0xE4 ; 00DCF2: provisional 68k tst.w -$541c(a6)
+db 0x66, 0x00, 0x00, 0x3E ; 00DCF6: provisional 68k bne.w $dd36
+db 0x3B, 0x7C, 0x00, 0x02, 0x00, 0x1C ; 00DCFA: provisional 68k move.w #$2, $1c(a5)
+db 0x43, 0xED, 0x00, 0x50 ; 00DD00: provisional 68k lea.l $50(a5), a1
+db 0x45, 0xFA, 0x04, 0x4E ; 00DD04: provisional 68k lea.l $e154(pc), a2
+db 0x47, 0xFA, 0x02, 0xBA ; 00DD08: provisional 68k lea.l $dfc4(pc), a3
+db 0x70, 0x01 ; 00DD0C: provisional 68k moveq #$1, d0
+db 0x4A, 0x6E, 0xAB, 0xC4 ; 00DD0E: provisional 68k tst.w -$543c(a6)
+db 0x66, 0x0C ; 00DD12: provisional 68k bne.b $dd20
+db 0x70, 0x02 ; 00DD14: provisional 68k moveq #$2, d0
+db 0x3B, 0x7C, 0x00, 0x01, 0x00, 0x1C ; 00DD16: provisional 68k move.w #$1, $1c(a5)
+db 0x45, 0xFA, 0x03, 0xA6 ; 00DD1C: provisional 68k lea.l $e0c4(pc), a2
+db 0x2F, 0x0B ; 00DD20: provisional 68k move.l a3, -(a7)
+db 0x2F, 0x3C, 0x00, 0x00, 0x00, 0x00 ; 00DD22: provisional 68k move.l #$0, -(a7)
+db 0x2F, 0x0A ; 00DD28: provisional 68k move.l a2, -(a7)
+db 0x2F, 0x00 ; 00DD2A: provisional 68k move.l d0, -(a7)
+db 0x2F, 0x29, 0x00, 0x2E ; 00DD2C: provisional 68k move.l $2e(a1), -(a7)
+db 0x2F, 0x09 ; 00DD30: provisional 68k move.l a1, -(a7)
+db 0x61, 0x00, 0x13, 0x8E ; 00DD32: provisional 68k bsr.w $f0c2
+db 0x4E, 0x75 ; 00DD36: provisional 68k rts 

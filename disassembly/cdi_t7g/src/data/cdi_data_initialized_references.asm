@@ -1,0 +1,3 @@
+; OS-9 data/code pointer reference lists; exact bytes
+; File offsets 02519A–0251A2, inclusive.
+db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ; file 02519A

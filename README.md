@@ -1,6 +1,6 @@
 # v64tng
 
-Current release: **1.0.20261003.2**
+Current release: **1.0.20261006.2**
 
 [![v64tng build](https://img.shields.io/badge/v64tng%20build-passing-2ea44f?logo=github)](build.sh)
 
@@ -8,7 +8,11 @@ Current release: **1.0.20261003.2**
 
 [![v32tng.exe NASM rebuild](https://img.shields.io/badge/v32tng.exe%20NASM%20rebuild-passing-2ea44f?logo=nasm)](disassembly/v32tng)
 
-[![semantic disassembly](https://img.shields.io/badge/semantic%20disassembly-31.5%25-7c3aed)](#semantic-disassembly-progress)
+[![T7GMac reconstruction](https://img.shields.io/badge/T7GMac%20reconstruction-byte--identical-2ea44f)](disassembly/T7GMac)
+
+[![CD-i reconstruction](https://img.shields.io/badge/CD--i%20reconstruction-byte--identical-2ea44f)](disassembly/cdi_t7g)
+
+[![semantic disassembly](https://img.shields.io/badge/semantic%20disassembly-54.9%25-7c3aed)](#semantic-disassembly-progress)
 
 `v64tng.exe` is a Windows x86_64 executable that is an attempt at re-creating the complete 7th Guest game engine from scratch. It is written in C++23 and uses Vulkan or DirectX for graphics, WASAPI for PCM and software-synthesized audio, WinMM for General MIDI output, and Win32 input handling. The game engine is designed to work placed into the original game directory (*regardless of where you purchased it/what version you have*), and it is required to be used with the original game data files.
 
@@ -16,8 +20,12 @@ Current release: **1.0.20261003.2**
 
 | Original executable                       | Verified semantic roles | Provisional roles remaining | Semantic completeness |      Lossless source-byte coverage |
 | ----------------------------------------- | ----------------------: | --------------------------: | --------------------: | ---------------------------------: |
-| [`V.EXE` 1.30](disassembly/V)             |                88 / 261 |                         173 |             **33.7%** | 101,624 / 101,624 bytes (**100%**) |
-| [`v32tng.exe` 1.02b1](disassembly/v32tng) |               100 / 336 |                         236 |             **29.8%** | 144,896 / 144,896 bytes (**100%**) |
+| [`V.EXE` 1.30](disassembly/V)             |                158 / 261 |                         103 |             **60.5%** | 101,624 / 101,624 bytes (**100%**) |
+| [`v32tng.exe` 1.02b1](disassembly/v32tng) |               170 / 336 |                         166 |             **50.6%** | 144,896 / 144,896 bytes (**100%**) |
+| [`T7GMac` 1.0 (Classic Mac)](disassembly/T7GMac) | 55 / 80 table-backed entries | 25 | 68.8% role coverage | 1,830,912 / 1,830,912 bytes (**100%; byte-identical**) |
+| [Philips CD-i files](disassembly/cdi_t7g) | 1 / 665 candidate entries | Unknown | Initial native recovery | 241,664 / 241,664 bytes (**100%; byte-identical**) |
+
+The connected recovery pass adds 70 static semantic roles to each x86 player, including the microscope puzzle search, cursor rendering, DOS configuration and allocation, and Win32 runtime helpers. Overall, 328 of 597 provisional x86 entries now have verified roles (54.9%). These counts measure identified behavior, not recovered original symbols or proof that every code/data boundary is correct. Both microscope neighbor tables are extracted into named data files. [Curated address/role evidence](disassembly/semantic_roles.json) includes contracts, direct callers, and cross-version matches for this pass and can seed the future wiki.
 
 ---
 
@@ -27,6 +35,8 @@ Current release: **1.0.20261003.2**
 - **Building `v64tng.exe` source?** → [Quick Start Guide](#quick-start-guide)
 - **Build `V.EXE` from source** → [DOS `V.EXE` 1.30 NASM project](disassembly/V)
 - **Build `v32tng.exe` from source** → [Win32 `v32tng.exe` 1.02b1 NASM project](disassembly/v32tng)
+- **Mac disassembly and reconstruction** → [Classic Mac `T7GMac` source project](disassembly/T7GMac)
+- **CD-i disassembly and reconstruction** → [Philips CD-i source project](disassembly/cdi_t7g)
 
 ---
 
@@ -1285,12 +1295,27 @@ surface rather than silently advancing over unknown behavior:
 | Persistence       | Automatic native load/save: exact `0x523`-byte DOS `save.N` and `0x400`-byte Windows `st7g.N` files are detected per slot; existing slots retain their format and new slots use the lossless DOS superset |
 | Input             | Local hotspot declaration order precedes the four persistent edge declarations; the no-hit cursor candidate is style 5 and `v[0x91] == 1` preserves the `0x8000` style bit                                |
 
+The microscope `GAMELOGIC` operation (`42h`) now selects moves from the 49
+native board bytes at `v[0x19..0x49]`, writing source/destination row and column
+to `v[0..3]`. Scripts commit and animate the move. The recovered implementation
+covers neighbor ordering, clone/jump iteration, conversion, signed scoring,
+bounded recursive search, ranked moves, and tie selection. DOS policy is the
+default; Windows policy is available in `CellPuzzle`. Unrecovered Mac strategy
+initialization is excluded. Unknown modes fail explicitly.
+
+`RANDOM` and DOS puzzle ties share the recovered 24-bit feedback generator.
+The modern startup seed comes from the host rather than the DOS timer, so
+individual random choices are not asserted to reproduce a historical session.
+Malformed cursor backreferences, truncated cursor palettes/frames, and invalid
+script instruction/string bounds now fail safely. The source-to-engine mapping
+is recorded in [the semantic audit](disassembly/v64tng_semantic_audit.json).
+
 Presentation commands remain ordered alongside VIDEOREF operations.
 Native Win32 opcode `22h` snapshots the full 640×320 display band into the saved
 background (despite its historical `COPY_BG_TO_FG` name); the DOS helper
 at `02591h` similarly snapshots display through conventional scratch into XMS.
-The current v64tng `GrvCopyBackgroundCommand` still implements the opposite
-copy direction; reconciling its buffer ownership is outstanding fidelity work.
+v64tng now performs that display-to-background snapshot in playback and
+preloading, using the currently displayed indexed and RGB surfaces.
 The historically named `COPY_RECT_TO_BG` (`37h`) restores an indexed background
 rectangle into the foreground, `PRINTSTRING` (`3Ah`) draws the real
 `SPHINX.FNT` indexed glyphs in the top band, and retail
@@ -1367,9 +1392,7 @@ The known non-inert gaps are intentionally visible:
 
 | Opcode(s)                        | Missing native subsystem                                                                                |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `04h`                            | Timed palette fade-out over the current RGB presentation (VM flow is implemented; interpolation is not) |
 | `40h`                            | Video-origin presentation state                                                                         |
-| `42h`                            | Hard-coded microscope/cell puzzle solver                                                                |
 | `4Dh`, `4Eh`                     | CD-audio selection and background-music delay                                                           |
 | `4Fh`–`59h` except hotspot `53h` | Later/reserved Windows and Groovie-v2 extension state                                                   |
 
@@ -2575,24 +2598,52 @@ faithful VDX encoder.
 
 ## Permanent original-player disassemblies
 
-The permanent NASM projects now begin at:
+The permanent disassembly projects now begin at:
 
 - [`disassembly/V`](disassembly/V): DOS version 1.30. It unpacks
   deterministically from the hashed LZEXE original. Its complete lossless NASM
   tree represents the MZ header, relocations, all analyzer-owned instructions,
   and every remaining data byte without `incbin`, then verifies byte-identical
-  unpacked MZ output. The current 261 function boundaries are provisional; 58
-  roles are verified and the remaining 203 names stay address-based.
+  unpacked MZ output. The current 261 function boundaries are provisional; 158
+  roles are verified and the remaining 103 names stay address-based.
 - [`disassembly/v32tng`](disassembly/v32tng): Windows player 1.02b1. Its loose
   VDX open/magic path, game/VDX command dispatch, `SETUPEXEC` handling, and
   `WinMain` message loop retain verified names inside a complete lossless NASM
   tree. All 144,896 PE bytes and 336 provisional function entries are explicit
-  source with no `incbin`; 60 roles are verified and 276 remain address-based.
+  source with no `incbin`; 170 roles are verified and 166 remain address-based.
   The project rebuilds into a byte-identical PE.
 
-Both trees now have complete byte coverage, but byte coverage and semantic
-understanding are tracked separately: runtime traces will refine boundaries
-and names while each canonical `main.asm` byte comparison remains intact.
+- [`disassembly/T7GMac`](disassembly/T7GMac): Classic Macintosh player 1.0,
+  with native Motorola 68k code in its resource fork. Its application and
+  T7GData MacBinary containers rebuild byte-for-byte (1,830,912 and 4,204,288
+  bytes); the rebuilt 4,202,291-byte T7GData data fork also matches exactly.
+  All 671 application resources are inventoried. Eighty jump-table-backed
+  native entries retain ordered source wrappers; 55 have verified roles (68.8%),
+  while 25 remain unknown. An additional internal-routine inventory records
+  204 verified roles and 21 unverified debug-symbol candidates. The application
+  embeds 21 RL indexes, 23 GRV scripts, and `ROB.GJD`; all scripts now have
+  bytecode listings. The embedded `hdisk.rl` maps T7GData to ten VDX files,
+  including `todd.vdx` and `hayes.vdx`. Twenty RL indexes and twenty scripts
+  match the supplied DOS counterparts exactly. NASM emits exact 68k bytes
+  with provisional mnemonics in comments. No native game-function roles are
+  verified; no emulator, gameplay, unit, or regression tests were run.
+
+- [`disassembly/cdi_t7g`](disassembly/cdi_t7g): Philips CD-i OS-9/68K files
+  `cdi_t7g`, `cdi_loader`, and `cdi_nodv`. All 241,664 supplied bytes rebuild
+  exactly, including original headers, initialized data, reference lists, CRCs,
+  and padding. The player file contains an appended `cdi_data` module. There
+  are 665 provisional native entry slices from header entries and decoded
+  direct calls, not 665 proved functions. One ten-byte routine has a supported
+  pointer-accessor role; its embedded 4,286-byte payload and 65,536-byte table
+  remain unknown. NASM emits exact 68k bytes with provisional comments. No
+  emulator, gameplay, unit, or regression tests were run.
+
+All four platform projects have byte-identical builds. Byte coverage and
+semantic understanding are tracked separately. Native Mac function boundaries
+remain provisional, and additional internal entries remain undiscovered. The
+semantic percentage badge above covers the DOS/Win32 function inventories;
+Mac and CD-i native recovery are tracked separately. Detailed evidence, source maps,
+archive extraction, and build instructions are in each project's README.
 
 ## Portable reverse-engineering kit
 

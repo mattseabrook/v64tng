@@ -1,0 +1,65 @@
+; Semantic role: release_player_runtime_resources
+; Contract: Call the player resource-release helpers, including the cursor buffer release helper.
+; Evidence: static instructions and connected callers; original symbol unknown.
+; Analyzer boundaries retained; no runtime validation claimed.
+; PE virtual entry 00408F10
+; Ghidra working symbol: FUN_00408f10
+; Verified static semantic role; analyzer boundary remains provisional.
+; Generated losslessly; preserve byte identity after edits.
+
+%macro emit_release_player_runtime_resources_part_00 0
+    %%fragment_start:
+release_player_runtime_resources:
+    %%insn_00408f10:
+    push ebp ; 00408F10 55
+    %if ($ - %%insn_00408f10) > 1
+        %error "LONG_00408F10"
+    %endif
+    times 1 - ($ - %%insn_00408f10) db 0
+    db 0x8B, 0xEC ; 00408F11 8BEC | mov ebp,esp | encoding preserved
+    %%insn_00408f13:
+    call free_saved_background_buffer ; 00408F13 E87F320000
+    %if ($ - %%insn_00408f13) > 5
+        %error "LONG_00408F13"
+    %endif
+    times 5 - ($ - %%insn_00408f13) db 0
+    %%insn_00408f18:
+    call free_grv_decode_runtime_buffers ; 00408F18 E80C320000
+    %if ($ - %%insn_00408f18) > 5
+        %error "LONG_00408F18"
+    %endif
+    times 5 - ($ - %%insn_00408f18) db 0
+    %%insn_00408f1d:
+    call release_grv_buffers_and_archive_handles ; 00408F1D E84C84FFFF
+    %if ($ - %%insn_00408f1d) > 5
+        %error "LONG_00408F1D"
+    %endif
+    times 5 - ($ - %%insn_00408f1d) db 0
+    %%insn_00408f22:
+    call 0x40441d ; 00408F22 E8F6B4FFFF
+    %if ($ - %%insn_00408f22) > 5
+        %error "LONG_00408F22"
+    %endif
+    times 5 - ($ - %%insn_00408f22) db 0
+    %%insn_00408f27:
+    call free_resource_cache_and_stream_ring ; 00408F27 E88A0B0000
+    %if ($ - %%insn_00408f27) > 5
+        %error "LONG_00408F27"
+    %endif
+    times 5 - ($ - %%insn_00408f27) db 0
+    %%insn_00408f2c:
+    pop ebp ; 00408F2C 5D
+    %if ($ - %%insn_00408f2c) > 1
+        %error "LONG_00408F2C"
+    %endif
+    times 1 - ($ - %%insn_00408f2c) db 0
+    %%insn_00408f2d:
+    ret ; 00408F2D C3
+    %if ($ - %%insn_00408f2d) > 1
+        %error "LONG_00408F2D"
+    %endif
+    times 1 - ($ - %%insn_00408f2d) db 0
+    %if ($ - %%fragment_start) != 30
+        %error "function fragment size drift: 00408F10"
+    %endif
+%endmacro

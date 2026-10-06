@@ -16,6 +16,9 @@
 #include <vector>
 #include <utility>
 
+#include "cell_puzzle.h"
+#include "grv_random.h"
+
 // A view into one hotspot instruction in the mapped GRV image.  Geometry is
 // decoded on demand; no parallel ClickArea/Hotspot object is constructed.
 class GrvHotspotView
@@ -222,7 +225,8 @@ private:
 	std::vector<GrvPresentationCommand> presentationCommands_;
 	bool ended_ = false;
 	std::array<uint16_t, 4> persistentHotspots_{};
-	std::mt19937 random_{std::random_device{}()};
+	GrvRandom random_{std::random_device{}() | 1u};
+	CellPuzzle cellPuzzle_;
 };
 
 #endif // GRV_RUNTIME_H

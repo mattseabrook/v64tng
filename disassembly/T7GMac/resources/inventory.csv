@@ -1,0 +1,672 @@
+type,id,name,attributes,file_length_offset,payload_size,source
+DATA,0,,40,0x000180,3298,src/data/resource_DATA_0.asm
+ZERO,0,,8,0x000E66,208,src/data/resource_ZERO_0.asm
+DREL,0,,40,0x000F3A,294,src/data/resource_DREL_0.asm
+CODE,2,,56,0x001064,26362,src/functions/unknown/code_2_unknown.asm
+CODE,5,,56,0x007762,30058,src/functions/unknown/code_5_unknown.asm
+CODE,4,,56,0x00ECD0,16278,src/functions/unknown/code_4_unknown.asm
+CODE,1,,28,0x012C6A,578,src/functions/unknown/code_1_unknown.asm
+CODE,0,,40,0x012EB0,656,src/data/resource_CODE_0.asm
+SIZE,-1,,0,0x013144,10,src/data/resource_SIZE_-1.asm
+csnd,650,065 Alto Sax (Eb1),0,0x013152,2954,src/data/resource_csnd_650.asm
+csnd,6036,036 (C1) BassDr1,0,0x013CE0,887,src/data/resource_csnd_6036.asm
+csnd,6018,018 (F#-1) Kick,0,0x01405B,2392,src/data/resource_csnd_6018.asm
+csnd,6020,020 (G#-1) PowerTomLow2,0,0x0149B7,5398,src/data/resource_csnd_6020.asm
+csnd,6021,021 (A-1) PowerTomLow1,0,0x015ED1,5715,src/data/resource_csnd_6021.asm
+csnd,6022,022 (A#-1) PowerTomMid2,0,0x017528,4051,src/data/resource_csnd_6022.asm
+csnd,6023,023 (B-1) PowerTomMid1,0,0x0184FF,3745,src/data/resource_csnd_6023.asm
+csnd,6024,024 (C0) PowerTomHi2,0,0x0193A4,2875,src/data/resource_csnd_6024.asm
+csnd,6025,025 (C#0) PowerTomHi1,0,0x019EE3,2694,src/data/resource_csnd_6025.asm
+csnd,6027,027 (D#0) HighQ,0,0x01A96D,762,src/data/resource_csnd_6027.asm
+csnd,6028,028 (E0) Slap,0,0x01AC6B,2354,src/data/resource_csnd_6028.asm
+csnd,6032,032 (G#0) Square Click,0,0x01B5A1,262,src/data/resource_csnd_6032.asm
+csnd,6033,033 (A0) Metronome Click,0,0x01B6AB,642,src/data/resource_csnd_6033.asm
+csnd,6034,034 (A#0) Metronome Bell,0,0x01B931,2111,src/data/resource_csnd_6034.asm
+csnd,6035,035 (B0) Ac BassDr,0,0x01C174,1079,src/data/resource_csnd_6035.asm
+csnd,6040,040 (E1) AcSnare2,0,0x01C5AF,2090,src/data/resource_csnd_6040.asm
+csnd,6041,041 (F1) Low Fl. Tom,0,0x01CDDD,3085,src/data/resource_csnd_6041.asm
+csnd,6043,043 (G1) Hi Fl. Tom,0,0x01D9EE,2299,src/data/resource_csnd_6043.asm
+csnd,6044,044 (G#1) Pedal HH,0,0x01E2ED,1375,src/data/resource_csnd_6044.asm
+csnd,6045,045 (A1) Low Tom,0,0x01E850,2651,src/data/resource_csnd_6045.asm
+csnd,6046,046 (A#1) Open HH,0,0x01F2AF,9583,src/data/resource_csnd_6046.asm
+csnd,6047,047 (B1) Low-Mid-Tom,0,0x021822,2596,src/data/resource_csnd_6047.asm
+csnd,6048,048 (C2) Hi-Mid-Tom,0,0x02224A,2444,src/data/resource_csnd_6048.asm
+csnd,6049,049 (C#2) TopCym1,0,0x022BDA,11267,src/data/resource_csnd_6049.asm
+csnd,6050,050 (D2) High Tom,0,0x0257E1,2083,src/data/resource_csnd_6050.asm
+csnd,6051,051 (D#2) SideCym1,0,0x026008,8802,src/data/resource_csnd_6051.asm
+csnd,6052,052 (E2) ChinaCym.,0,0x02826E,9741,src/data/resource_csnd_6052.asm
+csnd,6053,053 (F1) Ride Bell,0,0x02A87F,7423,src/data/resource_csnd_6053.asm
+csnd,6055,055 (G2) Splash Cym,0,0x02C582,5153,src/data/resource_csnd_6055.asm
+csnd,6056,056 (G#2) Cowbell,0,0x02D9A7,1675,src/data/resource_csnd_6056.asm
+csnd,6057,057 (A2) TopCym2,0,0x02E036,10105,src/data/resource_csnd_6057.asm
+csnd,6058,058 (A#2) Vibraslap,0,0x0307B3,5091,src/data/resource_csnd_6058.asm
+csnd,6059,059 (B2) SideCym2,0,0x031B9A,6964,src/data/resource_csnd_6059.asm
+csnd,6060,060 (C3) Hi Bongo,0,0x0336D2,1435,src/data/resource_csnd_6060.asm
+csnd,6061,061 (C#3) Lo Bongo,0,0x033C71,1501,src/data/resource_csnd_6061.asm
+csnd,6062,062 (D3) Mute Hi Conga,0,0x034252,549,src/data/resource_csnd_6062.asm
+csnd,6063,063 (D#3) Open Hi Conga,0,0x03447B,1643,src/data/resource_csnd_6063.asm
+csnd,6064,064 (E3) Lo Conga,0,0x034AEA,1771,src/data/resource_csnd_6064.asm
+csnd,6065,065 (F3) High Timbale,0,0x0351D9,2127,src/data/resource_csnd_6065.asm
+csnd,6066,066 (F#3) Low Timbale,0,0x035A2C,2750,src/data/resource_csnd_6066.asm
+csnd,6074,074 (D4) Long Guiro,0,0x0364EE,2762,src/data/resource_csnd_6074.asm
+csnd,6075,075 (D#4) Claves,0,0x036FBC,1373,src/data/resource_csnd_6075.asm
+csnd,6079,079 (G4) Open Cuica,0,0x03751D,1866,src/data/resource_csnd_6079.asm
+csnd,6081,081 (A4) Open Triangle,0,0x037C6B,4419,src/data/resource_csnd_6081.asm
+csnd,6086,086 (D5) MuteSurdo,0,0x038DB2,1563,src/data/resource_csnd_6086.asm
+csnd,6087,087 (D#5) Open Surdo,0,0x0393D1,2527,src/data/resource_csnd_6087.asm
+csnd,6088,088 (E5) Elec BD,0,0x039DB4,1519,src/data/resource_csnd_6088.asm
+csnd,6090,090 (F#5) Elec. Lo Tom2,0,0x03A3A7,1887,src/data/resource_csnd_6090.asm
+csnd,6091,091 (G5) Elec. Lo Tom1,0,0x03AB0A,1559,src/data/resource_csnd_6091.asm
+csnd,6092,092 (G#5) ElecMid Tom2,0,0x03B125,1410,src/data/resource_csnd_6092.asm
+csnd,6093,093 (A5) Elec Mid Tom1,0,0x03B6AB,1262,src/data/resource_csnd_6093.asm
+csnd,6094,094 (A#5) Elec Hi Tom2,0,0x03BB9D,982,src/data/resource_csnd_6094.asm
+csnd,6095,095 (B5) Elec Hi Tom1,0,0x03BF77,946,src/data/resource_csnd_6095.asm
+csnd,6098,098 (D6) Brush Slap,0,0x03C32D,2077,src/data/resource_csnd_6098.asm
+csnd,10,001 Bright Piano (C2),0,0x03CB4E,9788,src/data/resource_csnd_10.asm
+csnd,11,001 Bright Piano (C3),0,0x03F18E,6642,src/data/resource_csnd_11.asm
+csnd,12,001 Bright Piano (C4),0,0x040B84,6422,src/data/resource_csnd_12.asm
+csnd,13,001 Bright Piano (C5),0,0x04249E,6058,src/data/resource_csnd_13.asm
+csnd,40,004 Rhodes (C2),0,0x043C4C,3656,src/data/resource_csnd_40.asm
+csnd,41,004 Rhodes (C3),0,0x044A98,4213,src/data/resource_csnd_41.asm
+csnd,42,004 Rhodes (C4),0,0x045B11,4386,src/data/resource_csnd_42.asm
+csnd,80,008 Celesta (C3),0,0x046C37,3534,src/data/resource_csnd_80.asm
+csnd,83,008 Celesta (C6),0,0x047A09,1588,src/data/resource_csnd_83.asm
+csnd,90,009 Glockenspiel (C4),0,0x048041,4961,src/data/resource_csnd_90.asm
+csnd,110,011 Vibraphone (C2),0,0x0493A6,3428,src/data/resource_csnd_110.asm
+csnd,111,011 Vibraphone (C3),0,0x04A10E,4899,src/data/resource_csnd_111.asm
+csnd,112,011 Vibraphone (C4),0,0x04B435,6027,src/data/resource_csnd_112.asm
+csnd,113,011 Vibraphone (C5),0,0x04CBC4,7624,src/data/resource_csnd_113.asm
+csnd,120,012 Marimba (C2),0,0x04E990,3403,src/data/resource_csnd_120.asm
+csnd,121,012 Marimba (C3),0,0x04F6DF,3488,src/data/resource_csnd_121.asm
+csnd,122,012 Marimba (C4),0,0x050483,2851,src/data/resource_csnd_122.asm
+csnd,123,012 Marimba (C5),0,0x050FAA,2948,src/data/resource_csnd_123.asm
+csnd,130,013 Xylophone (C2),0,0x051B32,1725,src/data/resource_csnd_130.asm
+csnd,131,013 Xylophone (C3),0,0x0521F3,1529,src/data/resource_csnd_131.asm
+csnd,132,013 Xylophone (C4),0,0x0527F0,1491,src/data/resource_csnd_132.asm
+csnd,133,013 Xylophone (C5),0,0x052DC7,1448,src/data/resource_csnd_133.asm
+csnd,140,014 Tubular Bells (C3),0,0x053373,5662,src/data/resource_csnd_140.asm
+csnd,160,016 Hammond Organ (C2),0,0x054995,2916,src/data/resource_csnd_160.asm
+csnd,161,016 Hammond Organ (C3),0,0x0554FD,6548,src/data/resource_csnd_161.asm
+csnd,180,018 Rock Organ (C2),0,0x056E95,2661,src/data/resource_csnd_180.asm
+csnd,181,018 Rock Organ (C3),0,0x0578FE,4242,src/data/resource_csnd_181.asm
+csnd,182,018 Rock Organ (C4),0,0x058994,7500,src/data/resource_csnd_182.asm
+csnd,183,018 Rock Organ (C5),0,0x05A6E4,5935,src/data/resource_csnd_183.asm
+csnd,230,023 Tango Accordion (C2),0,0x05BE17,27167,src/data/resource_csnd_230.asm
+csnd,240,024 Guit (nylon) (E2),0,0x06283A,3575,src/data/resource_csnd_240.asm
+csnd,241,024 Guit (nylon) (E3),0,0x063635,4438,src/data/resource_csnd_241.asm
+csnd,242,024 Guit (nylon) (E4),0,0x06478F,2938,src/data/resource_csnd_242.asm
+csnd,260,026 Guit (Jazz) (E1),0,0x06530D,3073,src/data/resource_csnd_260.asm
+csnd,261,026 Guit (jazz) E2,0,0x065F12,3670,src/data/resource_csnd_261.asm
+csnd,262,026 Guit (jazz) (E3),0,0x066D6C,3745,src/data/resource_csnd_262.asm
+csnd,264,026 Guit (Jazz) E1 Sh.,0,0x067C11,2644,src/data/resource_csnd_264.asm
+csnd,270,027 E Guit (clean) (C2),0,0x068669,3568,src/data/resource_csnd_270.asm
+csnd,271,027 E Guit (clean) (C3),0,0x06945D,2885,src/data/resource_csnd_271.asm
+csnd,290,029 Over Guitar (C2),0,0x069FA6,9328,src/data/resource_csnd_290.asm
+csnd,291,029 Over Guitar (C3),0,0x06C41A,8288,src/data/resource_csnd_291.asm
+csnd,293,029 Over Guitar (C5),0,0x06E47E,2024,src/data/resource_csnd_293.asm
+csnd,300,030 Dist Guit (E1),0,0x06EC6A,2818,src/data/resource_csnd_300.asm
+csnd,302,030 Dist Guit (E3),0,0x06F770,5616,src/data/resource_csnd_302.asm
+csnd,320,032 Acou Bass (C1),0,0x070D64,1993,src/data/resource_csnd_320.asm
+csnd,321,032 Acou Bass (C2),0,0x071531,1666,src/data/resource_csnd_321.asm
+csnd,330,033 Elec Bass (finger) (C1),0,0x071BB7,1637,src/data/resource_csnd_330.asm
+csnd,331,033 Elec Bass (finger) (C2),0,0x072220,2406,src/data/resource_csnd_331.asm
+csnd,340,034 Elec Bass (Pick) C1,0,0x072B8A,2750,src/data/resource_csnd_340.asm
+csnd,341,034 Elec Bass (Pick) C2,0,0x07364C,2604,src/data/resource_csnd_341.asm
+csnd,350,035 Fretless Bass (C1),0,0x07407C,1636,src/data/resource_csnd_350.asm
+csnd,351,035 Fretless Bass (C2),0,0x0746E4,2247,src/data/resource_csnd_351.asm
+csnd,360,036 Slap Bass 1 (C1),0,0x074FAF,2980,src/data/resource_csnd_360.asm
+csnd,361,036 Slap Bass 1 (C2),0,0x075B57,3471,src/data/resource_csnd_361.asm
+csnd,370,037 Slap Bass 2 (C1),0,0x0768EA,1965,src/data/resource_csnd_370.asm
+csnd,371,037 Slap Bass 2 (C2),0,0x07709B,1809,src/data/resource_csnd_371.asm
+csnd,380,038 Synth Bass 1 (C1),0,0x0777B0,3048,src/data/resource_csnd_380.asm
+csnd,381,038 Synth Bass 1 (C2),0,0x07839C,3201,src/data/resource_csnd_381.asm
+csnd,390,039 Synth B 2 (E1),0,0x079021,1057,src/data/resource_csnd_390.asm
+csnd,391,039 Synth B 2 (E2),0,0x079446,1473,src/data/resource_csnd_391.asm
+csnd,400,040 Violin (C3),0,0x079A0B,3325,src/data/resource_csnd_400.asm
+csnd,420,042 Cello (C2),0,0x07A70C,2551,src/data/resource_csnd_420.asm
+csnd,421,042 Cello (C3),0,0x07B107,2592,src/data/resource_csnd_421.asm
+csnd,422,042 Cello (C4),0,0x07BB2B,3221,src/data/resource_csnd_422.asm
+csnd,450,045 Pizz (E2),0,0x07C7C4,2137,src/data/resource_csnd_450.asm
+csnd,451,045 Pizz (E3),0,0x07D021,2698,src/data/resource_csnd_451.asm
+csnd,452,045 Pizz (E4),0,0x07DAAF,2947,src/data/resource_csnd_452.asm
+csnd,453,045 Pizz (E5),0,0x07E636,2727,src/data/resource_csnd_453.asm
+csnd,460,046 Harp (C4),0,0x07F0E1,2248,src/data/resource_csnd_460.asm
+csnd,520,052 Choir Aahs (C2),0,0x07F9AD,12202,src/data/resource_csnd_520.asm
+csnd,521,052 Choir Aahs (C3),0,0x08295B,12816,src/data/resource_csnd_521.asm
+csnd,560,056 Trumpet (C3),0,0x085B6F,2152,src/data/resource_csnd_560.asm
+csnd,561,056 Trumpet (C4),0,0x0863DB,2630,src/data/resource_csnd_561.asm
+csnd,562,056 Trumpet (C5),0,0x086E25,1769,src/data/resource_csnd_562.asm
+csnd,580,058 Tuba (C1),0,0x087512,1250,src/data/resource_csnd_580.asm
+csnd,581,058 Tuba (C2),0,0x0879F8,1947,src/data/resource_csnd_581.asm
+csnd,600,060 Horn (C2),0,0x088197,2490,src/data/resource_csnd_600.asm
+csnd,601,060 Horn (C3),0,0x088B55,2147,src/data/resource_csnd_601.asm
+csnd,602,060 Horn (C4),0,0x0893BC,1937,src/data/resource_csnd_602.asm
+csnd,640,064 Soprano Sax (Bb3),0,0x089B51,1430,src/data/resource_csnd_640.asm
+csnd,660,066 Tenor Sax (C2),0,0x08A0EB,2124,src/data/resource_csnd_660.asm
+csnd,671,067 Bari Sax (Bb2),0,0x08A93B,2204,src/data/resource_csnd_671.asm
+csnd,700,070 Bassoon (F1),0,0x08B1DB,2513,src/data/resource_csnd_700.asm
+csnd,710,071 Clarinet (E2),0,0x08BBB0,3573,src/data/resource_csnd_710.asm
+csnd,711,071 Clarinet (E3),0,0x08C9A9,2927,src/data/resource_csnd_711.asm
+csnd,720,072 Piccolo (C3),0,0x08D51C,2191,src/data/resource_csnd_720.asm
+csnd,740,074 Recorder (C3),0,0x08DDAF,1363,src/data/resource_csnd_740.asm
+csnd,741,074 Recorder (C4),0,0x08E306,1515,src/data/resource_csnd_741.asm
+csnd,750,075 Pan Flute (C3),0,0x08E8F5,4781,src/data/resource_csnd_750.asm
+csnd,751,075 Pan Flute (C4),0,0x08FBA6,3342,src/data/resource_csnd_751.asm
+csnd,780,078 Whistle (C3),0,0x0908B8,1931,src/data/resource_csnd_780.asm
+csnd,781,078 Whistle (C4),0,0x091047,2722,src/data/resource_csnd_781.asm
+csnd,782,078 Whistle (C5),0,0x091AED,2874,src/data/resource_csnd_782.asm
+csnd,790,079 Ocarina (C5),0,0x09262B,4281,src/data/resource_csnd_790.asm
+csnd,800,080 Lead 1 (C2),0,0x0936E8,5524,src/data/resource_csnd_800.asm
+csnd,801,080 Lead 1 (C3),0,0x094C80,5882,src/data/resource_csnd_801.asm
+csnd,802,080 Lead 1 (C4),0,0x09637E,6408,src/data/resource_csnd_802.asm
+csnd,810,081 Lead 2 (C2),0,0x097C8A,4971,src/data/resource_csnd_810.asm
+csnd,811,081 Lead 2 (C3),0,0x098FF9,4524,src/data/resource_csnd_811.asm
+csnd,812,081 Lead 2 (C4),0,0x09A1A9,3233,src/data/resource_csnd_812.asm
+csnd,813,081 Lead 2 (C5),0,0x09AE4E,2916,src/data/resource_csnd_813.asm
+csnd,820,082 Lead 3 (C3),0,0x09B9B6,6030,src/data/resource_csnd_820.asm
+csnd,821,082 Lead 3 (C4),0,0x09D148,4509,src/data/resource_csnd_821.asm
+csnd,822,082 Lead 3 (C5),0,0x09E2E9,3198,src/data/resource_csnd_822.asm
+csnd,830,083 Lead 4 (C3),0,0x09EF6B,12773,src/data/resource_csnd_830.asm
+csnd,831,083 Lead 4 (C4),0,0x0A2154,7855,src/data/resource_csnd_831.asm
+csnd,832,083 Lead 4 (C5),0,0x0A4007,5957,src/data/resource_csnd_832.asm
+csnd,840,084 Lead 5 (C2),0,0x0A5750,8301,src/data/resource_csnd_840.asm
+csnd,841,084 Lead 5 (C3),0,0x0A77C1,5813,src/data/resource_csnd_841.asm
+csnd,843,084 Lead 5 (C5),0,0x0A8E7A,6552,src/data/resource_csnd_843.asm
+csnd,850,085 Lead 6 (C3),0,0x0AA816,8111,src/data/resource_csnd_850.asm
+csnd,851,085 Lead 6 (C4),0,0x0AC7C9,13263,src/data/resource_csnd_851.asm
+csnd,880,088 Pad 1 (A3),0,0x0AFB9C,11062,src/data/resource_csnd_880.asm
+csnd,1050,105 Banjo (G2),0,0x0B26D6,2533,src/data/resource_csnd_1050.asm
+csnd,1051,105 Banjo (G3),0,0x0B30BF,2358,src/data/resource_csnd_1051.asm
+csnd,1052,105 Banjo (G4),0,0x0B39F9,3057,src/data/resource_csnd_1052.asm
+csnd,1080,108 Kalimba (C3),0,0x0B45EE,2201,src/data/resource_csnd_1080.asm
+csnd,1081,108 Kalimba (C4),0,0x0B4E8B,2678,src/data/resource_csnd_1081.asm
+csnd,1082,108 Kalimba (C5),0,0x0B5905,2791,src/data/resource_csnd_1082.asm
+csnd,1120,112 Tinkle Bell (C2),0,0x0B63F0,3946,src/data/resource_csnd_1120.asm
+csnd,1121,112 Tinkle Bell (C3),0,0x0B735E,6091,src/data/resource_csnd_1121.asm
+csnd,1122,112 Tinkle Bell (C4),0,0x0B8B2D,7232,src/data/resource_csnd_1122.asm
+csnd,1140,114 Steel Dr. (G2),0,0x0BA771,3024,src/data/resource_csnd_1140.asm
+csnd,1141,114 Steel Dr. (G3),0,0x0BB345,3193,src/data/resource_csnd_1141.asm
+csnd,1142,114 Steel Dr. (G4),0,0x0BBFC2,3366,src/data/resource_csnd_1142.asm
+csnd,1160,116 Taiko Drum (C4),0,0x0BCCEC,1507,src/data/resource_csnd_1160.asm
+csnd,0,000 Piano (C2),0,0x0BD2D3,9221,src/data/resource_csnd_0.asm
+csnd,1,000 Piano (C3),0,0x0BF6DC,9892,src/data/resource_csnd_1.asm
+csnd,2,000 Piano (C4),0,0x0C1D84,7634,src/data/resource_csnd_2.asm
+csnd,3,000 Piano (C5),0,0x0C3B5A,4363,src/data/resource_csnd_3.asm
+csnd,4700,104 (G#6) Timpani F,0,0x0C4C69,3937,src/data/resource_csnd_4700.asm
+csnd,4701,111 (D#7) Timpani c,0,0x0C5BCE,3808,src/data/resource_csnd_4701.asm
+csnd,4702,116 (G#7) Timpani f(2),0,0x0C6AB2,3401,src/data/resource_csnd_4702.asm
+snd ,6019,019 (G-1) Gated SD,0,0x0C77FF,4617,src/data/resource_snd__6019.asm
+snd ,6029,029 (F0) Scratch Push,0,0x0C8A0C,1728,src/data/resource_snd__6029.asm
+snd ,6030,030 (F#0) Scratch Pull,0,0x0C90D0,1887,src/data/resource_snd__6030.asm
+snd ,6031,031 (G0) Sticks,0,0x0C9833,633,src/data/resource_snd__6031.asm
+snd ,6037,037 (C#1) SideStick,0,0x0C9AB0,1043,src/data/resource_snd__6037.asm
+snd ,6038,038 (D1) AcSnare1,0,0x0C9EC7,2112,src/data/resource_snd__6038.asm
+snd ,6039,039 (D#1) HandClap,0,0x0CA70B,1834,src/data/resource_snd__6039.asm
+snd ,6042,042 (F#1) CloseHH,0,0x0CAE39,1003,src/data/resource_snd__6042.asm
+snd ,6054,054 (F#2) TAMBOURINE,0,0x0CB228,1667,src/data/resource_snd__6054.asm
+snd ,6067,067 (G3) High Agogo,0,0x0CB8AF,1078,src/data/resource_snd__6067.asm
+snd ,6068,068 (G#3) Low Agogo,0,0x0CBCE9,1428,src/data/resource_snd__6068.asm
+snd ,6069,069 (A3) Cabasa,0,0x0CC281,708,src/data/resource_snd__6069.asm
+snd ,6070,070 (A#3) Maracas,0,0x0CC549,209,src/data/resource_snd__6070.asm
+snd ,6071,071 (B3) Short Whistle,0,0x0CC61E,1498,src/data/resource_snd__6071.asm
+snd ,6072,072 (C4) Long Whistle,0,0x0CCBFC,7803,src/data/resource_snd__6072.asm
+snd ,6073,073 (C#4) Short Guiro,0,0x0CEA7B,1800,src/data/resource_snd__6073.asm
+snd ,6076,076 (E4) Hi Wood Block,0,0x0CF187,150,src/data/resource_snd__6076.asm
+snd ,6077,077 (F4) Low Wood Block,0,0x0CF221,172,src/data/resource_snd__6077.asm
+snd ,6078,078 (F#4) Mute Cuica,0,0x0CF2D1,1573,src/data/resource_snd__6078.asm
+snd ,6080,080 (G#4) Mute Triangle,0,0x0CF8FA,1149,src/data/resource_snd__6080.asm
+snd ,6082,082 (A#4) Shaker,0,0x0CFD7B,383,src/data/resource_snd__6082.asm
+snd ,6083,083 (B4) Jingle Bell,0,0x0CFEFE,3108,src/data/resource_snd__6083.asm
+snd ,6084,084 (C5) Bell Tree,0,0x0D0B26,6340,src/data/resource_snd__6084.asm
+snd ,6085,085 (C#5) Castanets,0,0x0D23EE,130,src/data/resource_snd__6085.asm
+snd ,6089,089 (F5) Elec SD,0,0x0D2474,1077,src/data/resource_snd__6089.asm
+snd ,6096,096 (C6) Reverse Cymbal,0,0x0D28AD,9415,src/data/resource_snd__6096.asm
+snd ,6097,097 (C#6) Brush Tap,0,0x0D4D78,832,src/data/resource_snd__6097.asm
+snd ,6099,099 (D#2) Brush Swirl,0,0x0D50BC,6649,src/data/resource_snd__6099.asm
+snd ,43,004 Rhodes (C5),0,0x0D6AB9,4569,src/data/resource_snd__43.asm
+snd ,60,006 Harpsi (C2),0,0x0D7C96,4238,src/data/resource_snd__60.asm
+snd ,61,006 Harpsi (C3),0,0x0D8D28,4204,src/data/resource_snd__61.asm
+snd ,62,006 Harpsi (C4),0,0x0D9D98,3758,src/data/resource_snd__62.asm
+snd ,63,006 Harpsi (C5),0,0x0DAC4A,3268,src/data/resource_snd__63.asm
+snd ,81,008 Celesta (C4),0,0x0DB912,2797,src/data/resource_snd__81.asm
+snd ,82,008 Celesta (C5),0,0x0DC403,2428,src/data/resource_snd__82.asm
+snd ,141,014 Tubular Bells (C4),0,0x0DCD83,7913,src/data/resource_snd__141.asm
+snd ,162,016 Hammond Organ (C4),0,0x0DEC70,13846,src/data/resource_snd__162.asm
+snd ,163,016 Hammond Organ (C5),0,0x0E228A,8407,src/data/resource_snd__163.asm
+snd ,184,018 Rock Organ (C6),0,0x0E4365,5522,src/data/resource_snd__184.asm
+snd ,190,019 Church Organ (C3),0,0x0E58FB,25038,src/data/resource_snd__190.asm
+snd ,191,019 Church Organ (C4),0,0x0EBACD,13038,src/data/resource_snd__191.asm
+snd ,192,019 Church Organ (C5),0,0x0EEDBF,7474,src/data/resource_snd__192.asm
+snd ,210,021 Accordion (C2),0,0x0F0AF5,24986,src/data/resource_snd__210.asm
+snd ,211,021 Accordion (C3),0,0x0F6C93,17570,src/data/resource_snd__211.asm
+snd ,212,021 Accordion (C4),0,0x0FB139,11365,src/data/resource_snd__212.asm
+snd ,231,023 Tango Accordion (C3),0,0x0FDDA2,18468,src/data/resource_snd__231.asm
+snd ,232,023 Tango Accordion (C4),0,0x1025CA,12165,src/data/resource_snd__232.asm
+snd ,263,026 Guit (jazz) (E4),0,0x105553,4495,src/data/resource_snd__263.asm
+snd ,272,027 E Guit (clean) (C4),0,0x1066E6,3083,src/data/resource_snd__272.asm
+snd ,273,027 E Guit (clean) (C5),0,0x1072F5,2538,src/data/resource_snd__273.asm
+snd ,292,029 Over Guitar (C4),0,0x107CE3,5534,src/data/resource_snd__292.asm
+snd ,301,030 Dist Guit (E2),0,0x109285,4716,src/data/resource_snd__301.asm
+snd ,303,030 Dist Guit (E4),0,0x10A4F5,1624,src/data/resource_snd__303.asm
+snd ,304,030 Dist Guit (E4),0,0x10AB51,4290,src/data/resource_snd__304.asm
+snd ,401,040 Violin (C4),0,0x10BC17,4938,src/data/resource_snd__401.asm
+snd ,402,040 Violin (C5),0,0x10CF65,4538,src/data/resource_snd__402.asm
+snd ,403,040 Violin (C6),0,0x10E123,3088,src/data/resource_snd__403.asm
+snd ,461,046 Harp (C5),0,0x10ED37,2420,src/data/resource_snd__461.asm
+snd ,462,046 Harp (C6),0,0x10F6AF,2114,src/data/resource_snd__462.asm
+snd ,480,048 String (G3),0,0x10FEF5,8947,src/data/resource_snd__480.asm
+snd ,481,048 String (G4),0,0x1121EC,11238,src/data/resource_snd__481.asm
+snd ,482,048 String (G5),0,0x114DD6,10438,src/data/resource_snd__482.asm
+snd ,522,052 Choir Aahs (C4),0,0x1176A0,9682,src/data/resource_snd__522.asm
+snd ,590,059 Muted (C3),0,0x119C76,3554,src/data/resource_snd__590.asm
+snd ,591,059 Muted (C4),0,0x11AA5C,2873,src/data/resource_snd__591.asm
+snd ,641,064 Soprano Sax (Bb4),0,0x11B599,1452,src/data/resource_snd__641.asm
+snd ,651,065 Alto Sax (Eb2),0,0x11BB49,1458,src/data/resource_snd__651.asm
+snd ,652,065 Alto Sax (Eb3),0,0x11C0FF,1638,src/data/resource_snd__652.asm
+snd ,661,066 Tenor Sax (C3),0,0x11C769,3639,src/data/resource_snd__661.asm
+snd ,670,067 Bari Sax (Bb1),0,0x11D5A4,1710,src/data/resource_snd__670.asm
+snd ,680,068 Oboe (G3),0,0x11DC56,3403,src/data/resource_snd__680.asm
+snd ,681,068 Oboe (G4),0,0x11E9A5,3838,src/data/resource_snd__681.asm
+snd ,701,070 Bassoon (F2),0,0x11F8A7,2979,src/data/resource_snd__701.asm
+snd ,702,070 Bassoon (F3),0,0x12044E,3010,src/data/resource_snd__702.asm
+snd ,712,071 Clarinet (E4),0,0x121014,2293,src/data/resource_snd__712.asm
+snd ,721,072 Piccolo (C4),0,0x12190D,2013,src/data/resource_snd__721.asm
+snd ,722,072 Piccolo (C5),0,0x1220EE,1891,src/data/resource_snd__722.asm
+snd ,723,072 Piccolo (C6),0,0x122855,2053,src/data/resource_snd__723.asm
+snd ,730,073 Flute (G3),0,0x12305E,2665,src/data/resource_snd__730.asm
+snd ,731,073 Flute (G4),0,0x123ACB,1898,src/data/resource_snd__731.asm
+snd ,732,073 Flute (G5),0,0x124239,1665,src/data/resource_snd__732.asm
+snd ,742,074 Recorder (C5),0,0x1248BE,2408,src/data/resource_snd__742.asm
+snd ,743,074 Recorder (C6),0,0x12522A,1574,src/data/resource_snd__743.asm
+snd ,752,075 Pan Flute (C5),0,0x125854,3102,src/data/resource_snd__752.asm
+snd ,783,078 Whistle (C6),0,0x126476,3008,src/data/resource_snd__783.asm
+snd ,803,080 Lead 1 (C5),0,0x12703A,4022,src/data/resource_snd__803.asm
+snd ,804,080 Lead 1 (C6),0,0x127FF4,1790,src/data/resource_snd__804.asm
+snd ,814,081 Lead 2 (C6),0,0x1286F6,2144,src/data/resource_snd__814.asm
+snd ,823,082 Lead 3 (C6),0,0x128F5A,3724,src/data/resource_snd__823.asm
+snd ,833,083 Lead 4 (C6),0,0x129DEA,3307,src/data/resource_snd__833.asm
+snd ,842,084 Lead 5 (C4),0,0x12AAD9,6596,src/data/resource_snd__842.asm
+snd ,852,085 Lead 6 (C5),0,0x12C4A1,4567,src/data/resource_snd__852.asm
+snd ,853,085 Lead 6 (C6),0,0x12D67C,4393,src/data/resource_snd__853.asm
+snd ,860,086 Lead 7 (C5),0,0x12E7A9,32874,src/data/resource_snd__860.asm
+snd ,881,088 Pad 1 (A4),0,0x136817,8274,src/data/resource_snd__881.asm
+snd ,882,088 Pad 1 (A5),0,0x13886D,9192,src/data/resource_snd__882.asm
+snd ,1123,112 Tinklebell (C5),0,0x13AC59,6158,src/data/resource_snd__1123.asm
+ALRT,128,,0,0x13C46B,12,src/data/resource_ALRT_128.asm
+ALRT,129,,0,0x13C47B,12,src/data/resource_ALRT_129.asm
+ALRT,130,,0,0x13C48B,12,src/data/resource_ALRT_130.asm
+ALRT,131,,0,0x13C49B,12,src/data/resource_ALRT_131.asm
+ALRT,132,,0,0x13C4AB,12,src/data/resource_ALRT_132.asm
+ALRT,133,,0,0x13C4BB,12,src/data/resource_ALRT_133.asm
+ALRT,134,,0,0x13C4CB,12,src/data/resource_ALRT_134.asm
+ALRT,135,,0,0x13C4DB,12,src/data/resource_ALRT_135.asm
+ALRT,136,,0,0x13C4EB,12,src/data/resource_ALRT_136.asm
+ALRT,137,,0,0x13C4FB,12,src/data/resource_ALRT_137.asm
+ALRT,138,,0,0x13C50B,12,src/data/resource_ALRT_138.asm
+ALRT,139,,0,0x13C51B,12,src/data/resource_ALRT_139.asm
+DITL,128,,0,0x13C52B,156,src/data/resource_DITL_128.asm
+DITL,129,,0,0x13C5CB,170,src/data/resource_DITL_129.asm
+DITL,130,,0,0x13C679,128,src/data/resource_DITL_130.asm
+DITL,131,,0,0x13C6FD,222,src/data/resource_DITL_131.asm
+DITL,132,,0,0x13C7DF,278,src/data/resource_DITL_132.asm
+DITL,133,,0,0x13C8F9,266,src/data/resource_DITL_133.asm
+DITL,134,,0,0x13CA07,266,src/data/resource_DITL_134.asm
+DITL,135,,0,0x13CB15,256,src/data/resource_DITL_135.asm
+DITL,136,,0,0x13CC19,180,src/data/resource_DITL_136.asm
+DITL,137,,0,0x13CCD1,110,src/data/resource_DITL_137.asm
+DITL,139,,0,0x13CD43,144,src/data/resource_DITL_139.asm
+DITL,138,,0,0x13CDD7,182,src/data/resource_DITL_138.asm
+Midi,24,GU27.MID,0,0x13CE91,398,src/data/resource_Midi_24.asm
+Midi,70,sgu39v2.mid,0,0x13D023,5892,src/data/resource_Midi_70.asm
+cmid,0,AGU16.MID,0,0x13E72B,5778,src/data/resource_cmid_0.asm
+cmid,1,AGU32.MID,0,0x13FDC1,5376,src/data/resource_cmid_1.asm
+cmid,2,AGU38.MID,0,0x1412C5,3520,src/data/resource_cmid_2.asm
+cmid,3,AGU50.MID,0,0x142089,11686,src/data/resource_cmid_3.asm
+cmid,8,GU11A.MID,0,0x144E33,623,src/data/resource_cmid_8.asm
+cmid,9,GU11B.MID,0,0x1450A6,626,src/data/resource_cmid_9.asm
+cmid,10,GU12.MID,0,0x14531C,1269,src/data/resource_cmid_10.asm
+cmid,11,GU15.MID,0,0x145815,2249,src/data/resource_cmid_11.asm
+cmid,12,GU16.MID,0,0x1460E2,10809,src/data/resource_cmid_12.asm
+cmid,13,GU16B.MID,0,0x148B1F,2339,src/data/resource_cmid_13.asm
+cmid,14,GU17.MID,0,0x149446,1316,src/data/resource_cmid_14.asm
+cmid,15,GU18.MID,0,0x14996E,3767,src/data/resource_cmid_15.asm
+cmid,16,GU19.MID,0,0x14A829,1989,src/data/resource_cmid_16.asm
+cmid,17,GU20.MID,0,0x14AFF2,2130,src/data/resource_cmid_17.asm
+cmid,18,GU21.MID,0,0x14B848,4248,src/data/resource_cmid_18.asm
+cmid,19,GU22.MID,0,0x14C8E4,1939,src/data/resource_cmid_19.asm
+cmid,20,GU23.MID,0,0x14D07B,4822,src/data/resource_cmid_20.asm
+cmid,21,GU24.MID,0,0x14E355,2458,src/data/resource_cmid_21.asm
+cmid,22,GU25.MID,0,0x14ECF3,2455,src/data/resource_cmid_22.asm
+cmid,23,GU26.MID,0,0x14F68E,701,src/data/resource_cmid_23.asm
+cmid,25,GU28.MID,0,0x14F94F,2815,src/data/resource_cmid_25.asm
+cmid,26,GU29.MID,0,0x150452,1449,src/data/resource_cmid_26.asm
+cmid,27,GU30.MID,0,0x1509FF,3613,src/data/resource_cmid_27.asm
+cmid,28,GU31.MID,0,0x151820,2735,src/data/resource_cmid_28.asm
+cmid,29,GU32.MID,0,0x1522D3,5501,src/data/resource_cmid_29.asm
+cmid,30,GU33.MID,0,0x153854,2841,src/data/resource_cmid_30.asm
+cmid,31,GU34.MID,0,0x154371,1307,src/data/resource_cmid_31.asm
+cmid,32,GU35.MID,0,0x154890,746,src/data/resource_cmid_32.asm
+cmid,33,GU36.MID,0,0x154B7E,2144,src/data/resource_cmid_33.asm
+cmid,34,GU37.MID,0,0x1553E2,2021,src/data/resource_cmid_34.asm
+cmid,35,GU38.MID,0,0x155BCB,3498,src/data/resource_cmid_35.asm
+cmid,37,GU40.MID,0,0x156979,2444,src/data/resource_cmid_37.asm
+cmid,38,GU41.MID,0,0x157309,8375,src/data/resource_cmid_38.asm
+cmid,39,GU42.MID,0,0x1593C4,1017,src/data/resource_cmid_39.asm
+cmid,40,GU43.MID,0,0x1597C1,2238,src/data/resource_cmid_40.asm
+cmid,41,GU44.MID,0,0x15A083,3680,src/data/resource_cmid_41.asm
+cmid,42,GU45.MID,0,0x15AEE7,1250,src/data/resource_cmid_42.asm
+cmid,43,GU46.MID,0,0x15B3CD,1678,src/data/resource_cmid_43.asm
+cmid,44,GU47.MID,0,0x15BA5F,2490,src/data/resource_cmid_44.asm
+cmid,45,GU48.MID,0,0x15C41D,1385,src/data/resource_cmid_45.asm
+cmid,46,GU49.MID,0,0x15C98A,2765,src/data/resource_cmid_46.asm
+cmid,4,GU5.MID,0,0x15D45B,2099,src/data/resource_cmid_4.asm
+cmid,47,GU50.MID,0,0x15DC92,11881,src/data/resource_cmid_47.asm
+cmid,48,GU51.MID,0,0x160AFF,8800,src/data/resource_cmid_48.asm
+cmid,49,GU52.MID,0,0x162D63,1166,src/data/resource_cmid_49.asm
+cmid,50,GU53.MID,0,0x1631F5,5021,src/data/resource_cmid_50.asm
+cmid,51,GU54.MID,0,0x164596,1223,src/data/resource_cmid_51.asm
+cmid,52,GU55.MID,0,0x164A61,2192,src/data/resource_cmid_52.asm
+cmid,53,GU56.MID,0,0x1652F5,11625,src/data/resource_cmid_53.asm
+cmid,54,GU58.MID,0,0x168062,3140,src/data/resource_cmid_54.asm
+cmid,55,GU59.MID,0,0x168CAA,1115,src/data/resource_cmid_55.asm
+cmid,56,GU60.MID,0,0x169109,2235,src/data/resource_cmid_56.asm
+cmid,57,GU61.MID,0,0x1699C8,3452,src/data/resource_cmid_57.asm
+cmid,58,GU63.MID,0,0x16A748,4461,src/data/resource_cmid_58.asm
+cmid,59,GU67.MID,0,0x16B8B9,865,src/data/resource_cmid_59.asm
+cmid,60,GU68.MID,0,0x16BC1E,388,src/data/resource_cmid_60.asm
+cmid,61,GU69.MID,0,0x16BDA6,805,src/data/resource_cmid_61.asm
+cmid,62,GU70.MID,0,0x16C0CF,877,src/data/resource_cmid_62.asm
+cmid,63,GU71.MID,0,0x16C440,3933,src/data/resource_cmid_63.asm
+cmid,64,GU72.MID,0,0x16D3A1,5908,src/data/resource_cmid_64.asm
+cmid,65,GU73.MID,0,0x16EAB9,4454,src/data/resource_cmid_65.asm
+cmid,66,GU74.MID,0,0x16FC23,558,src/data/resource_cmid_66.asm
+cmid,67,GU75.MID,0,0x16FE55,3618,src/data/resource_cmid_67.asm
+cmid,68,GU76.MID,0,0x170C7B,1593,src/data/resource_cmid_68.asm
+cmid,6,GU8.MID,0,0x1712B8,1319,src/data/resource_cmid_6.asm
+cmid,7,GU9.MID,0,0x1717E3,2218,src/data/resource_cmid_7.asm
+MBAR,128,,4,0x172091,6,src/data/resource_MBAR_128.asm
+SMOD,0,Volume Scaler/Clipper,0,0x17209B,456,src/data/resource_SMOD_0.asm
+SMOD,3,Low-Pass Filter,0,0x172267,178,src/data/resource_SMOD_3.asm
+SMOD,1,Square-O-Matic,0,0x17231D,176,src/data/resource_SMOD_1.asm
+SMOD,2,Triangulizer,0,0x1723D1,152,src/data/resource_SMOD_2.asm
+SONG,1000,agu16,0,0x17246D,22,src/data/resource_SONG_1000.asm
+SONG,1001,agu32,0,0x172487,22,src/data/resource_SONG_1001.asm
+SONG,1002,agu38,0,0x1724A1,22,src/data/resource_SONG_1002.asm
+SONG,1003,agu50,0,0x1724BB,22,src/data/resource_SONG_1003.asm
+SONG,1004,gu5,0,0x1724D5,18,src/data/resource_SONG_1004.asm
+SONG,1005,gu6,0,0x1724EB,18,src/data/resource_SONG_1005.asm
+SONG,1006,gu8,0,0x172501,18,src/data/resource_SONG_1006.asm
+SONG,1007,gu9,0,0x172517,22,src/data/resource_SONG_1007.asm
+SONG,1008,gu11a,0,0x172531,18,src/data/resource_SONG_1008.asm
+SONG,1009,gu11b,0,0x172547,18,src/data/resource_SONG_1009.asm
+SONG,1010,gu12,0,0x17255D,18,src/data/resource_SONG_1010.asm
+SONG,1011,gu15,0,0x172573,22,src/data/resource_SONG_1011.asm
+SONG,1012,gu16,0,0x17258D,22,src/data/resource_SONG_1012.asm
+SONG,1013,gu16b,0,0x1725A7,22,src/data/resource_SONG_1013.asm
+SONG,1014,gu17,0,0x1725C1,18,src/data/resource_SONG_1014.asm
+SONG,1015,gu18,0,0x1725D7,22,src/data/resource_SONG_1015.asm
+SONG,1016,gu19,0,0x1725F1,18,src/data/resource_SONG_1016.asm
+SONG,1017,gu20,0,0x172607,22,src/data/resource_SONG_1017.asm
+SONG,1018,gu21,0,0x172621,22,src/data/resource_SONG_1018.asm
+SONG,1019,gu22,0,0x17263B,22,src/data/resource_SONG_1019.asm
+SONG,1020,gu23,0,0x172655,22,src/data/resource_SONG_1020.asm
+SONG,1021,gu24,0,0x17266F,22,src/data/resource_SONG_1021.asm
+SONG,1022,gu25,0,0x172689,22,src/data/resource_SONG_1022.asm
+SONG,1023,gu26,0,0x1726A3,18,src/data/resource_SONG_1023.asm
+SONG,1024,gu27,0,0x1726B9,18,src/data/resource_SONG_1024.asm
+SONG,1025,gu28,0,0x1726CF,22,src/data/resource_SONG_1025.asm
+SONG,1026,gu29,0,0x1726E9,22,src/data/resource_SONG_1026.asm
+SONG,1027,gu30,0,0x172703,22,src/data/resource_SONG_1027.asm
+SONG,1028,gu31,0,0x17271D,22,src/data/resource_SONG_1028.asm
+SONG,1029,gu32,0,0x172737,22,src/data/resource_SONG_1029.asm
+SONG,1030,gu33,0,0x172751,22,src/data/resource_SONG_1030.asm
+SONG,1031,gu34,0,0x17276B,22,src/data/resource_SONG_1031.asm
+SONG,1032,gu35,0,0x172785,22,src/data/resource_SONG_1032.asm
+SONG,1033,gu36,0,0x17279F,22,src/data/resource_SONG_1033.asm
+SONG,1034,gu37,0,0x1727B9,22,src/data/resource_SONG_1034.asm
+SONG,1035,gu38,0,0x1727D3,22,src/data/resource_SONG_1035.asm
+SONG,1036,gu39,0,0x1727ED,22,src/data/resource_SONG_1036.asm
+SONG,1037,gu40,0,0x172807,18,src/data/resource_SONG_1037.asm
+SONG,1038,gu41,0,0x17281D,22,src/data/resource_SONG_1038.asm
+SONG,1039,gu42,0,0x172837,18,src/data/resource_SONG_1039.asm
+SONG,1057,gu61,0,0x17284D,22,src/data/resource_SONG_1057.asm
+SONG,1041,gu44,0,0x172867,22,src/data/resource_SONG_1041.asm
+SONG,1042,gu45,0,0x172881,22,src/data/resource_SONG_1042.asm
+SONG,1043,gu46,0,0x17289B,22,src/data/resource_SONG_1043.asm
+SONG,1044,gu47,0,0x1728B5,18,src/data/resource_SONG_1044.asm
+SONG,1045,gu48,0,0x1728CB,18,src/data/resource_SONG_1045.asm
+SONG,1046,gu49,0,0x1728E1,22,src/data/resource_SONG_1046.asm
+SONG,1047,gu50,0,0x1728FB,22,src/data/resource_SONG_1047.asm
+SONG,1048,gu51,0,0x172915,22,src/data/resource_SONG_1048.asm
+SONG,1049,gu52,0,0x17292F,22,src/data/resource_SONG_1049.asm
+SONG,1050,gu53,0,0x172949,22,src/data/resource_SONG_1050.asm
+SONG,1051,gu54,0,0x172963,18,src/data/resource_SONG_1051.asm
+SONG,1052,gu55,0,0x172979,22,src/data/resource_SONG_1052.asm
+SONG,1053,gu56,0,0x172993,22,src/data/resource_SONG_1053.asm
+SONG,1054,gu58,0,0x1729AD,22,src/data/resource_SONG_1054.asm
+SONG,1056,gu60,0,0x1729C7,22,src/data/resource_SONG_1056.asm
+SONG,1040,gu43,0,0x1729E1,22,src/data/resource_SONG_1040.asm
+SONG,1055,gu59,0,0x1729FB,22,src/data/resource_SONG_1055.asm
+SONG,1058,gu63,0,0x172A15,22,src/data/resource_SONG_1058.asm
+SONG,1059,gu67,0,0x172A2F,22,src/data/resource_SONG_1059.asm
+SONG,1060,gu68,0,0x172A49,18,src/data/resource_SONG_1060.asm
+SONG,1061,gu69,0,0x172A5F,22,src/data/resource_SONG_1061.asm
+SONG,1062,gu70,0,0x172A79,22,src/data/resource_SONG_1062.asm
+SONG,1063,gu71,0,0x172A93,18,src/data/resource_SONG_1063.asm
+SONG,1064,gu72,0,0x172AA9,22,src/data/resource_SONG_1064.asm
+SONG,1065,gu73,0,0x172AC3,18,src/data/resource_SONG_1065.asm
+SONG,1066,gu74,0,0x172AD9,18,src/data/resource_SONG_1066.asm
+SONG,1067,gu75,0,0x172AEF,22,src/data/resource_SONG_1067.asm
+SONG,1068,gu76,0,0x172B09,22,src/data/resource_SONG_1068.asm
+INST,1,Bright Piano,0,0x172B23,54,src/data/resource_INST_1.asm
+INST,2,Electric Grand Piano,0,0x172B5D,54,src/data/resource_INST_2.asm
+INST,3,Honky-tonk Piano,0,0x172B97,54,src/data/resource_INST_3.asm
+INST,4,Rhodes Piano,0,0x172BD1,54,src/data/resource_INST_4.asm
+INST,5,Chorused Piano,0,0x172C0B,54,src/data/resource_INST_5.asm
+INST,6,Harpsichord,0,0x172C45,54,src/data/resource_INST_6.asm
+INST,7,Clavinet,0,0x172C7F,54,src/data/resource_INST_7.asm
+INST,8,Celesta,0,0x172CB9,54,src/data/resource_INST_8.asm
+INST,9,Glockenspiel,0,0x172CF3,22,src/data/resource_INST_9.asm
+INST,10,Music Box,0,0x172D0D,54,src/data/resource_INST_10.asm
+INST,11,Vibraphone,0,0x172D47,54,src/data/resource_INST_11.asm
+INST,12,Marimba,0,0x172D81,54,src/data/resource_INST_12.asm
+INST,13,Xylophone,0,0x172DBB,54,src/data/resource_INST_13.asm
+INST,14,Tubular Bells,0,0x172DF5,38,src/data/resource_INST_14.asm
+INST,15,Dulcimer,0,0x172E1F,22,src/data/resource_INST_15.asm
+INST,16,Hammond Organ,0,0x172E39,54,src/data/resource_INST_16.asm
+INST,17,Percussive Organ,0,0x172E73,54,src/data/resource_INST_17.asm
+INST,18,Rock Organ,0,0x172EAD,62,src/data/resource_INST_18.asm
+INST,19,Church Organ,0,0x172EEF,46,src/data/resource_INST_19.asm
+INST,20,Reed Organ,0,0x172F21,46,src/data/resource_INST_20.asm
+INST,21,Accordion,0,0x172F53,46,src/data/resource_INST_21.asm
+INST,22,Harmonica,0,0x172F85,46,src/data/resource_INST_22.asm
+INST,23,Tango Accordion,0,0x172FB7,46,src/data/resource_INST_23.asm
+INST,24,Acou Guit (nylon),0,0x172FE9,46,src/data/resource_INST_24.asm
+INST,25,Acou Guit (steel),0,0x17301B,46,src/data/resource_INST_25.asm
+INST,26,Elec Guit (jazz),0,0x17304D,54,src/data/resource_INST_26.asm
+INST,27,Elec Guit (clean),0,0x173087,54,src/data/resource_INST_27.asm
+INST,28,Elec Guit (muted),0,0x1730C1,54,src/data/resource_INST_28.asm
+INST,29,Overdriven Guit,0,0x1730FB,54,src/data/resource_INST_29.asm
+INST,30,Distortion Guit,0,0x173135,54,src/data/resource_INST_30.asm
+INST,31,Guitar Harmonics,0,0x17316F,54,src/data/resource_INST_31.asm
+INST,32,Acou Bass,0,0x1731A9,38,src/data/resource_INST_32.asm
+INST,33,Elec Bass (finger),0,0x1731D3,38,src/data/resource_INST_33.asm
+INST,34,Elec Bass (pick),0,0x1731FD,38,src/data/resource_INST_34.asm
+INST,35,Fretless Bass,0,0x173227,38,src/data/resource_INST_35.asm
+INST,36,Slap Bass 1,0,0x173251,38,src/data/resource_INST_36.asm
+INST,37,Slap Bass 2,0,0x17327B,38,src/data/resource_INST_37.asm
+INST,38,Synth Bass 1,0,0x1732A5,38,src/data/resource_INST_38.asm
+INST,39,Synth Bass 2,0,0x1732CF,38,src/data/resource_INST_39.asm
+INST,40,Violin,0,0x1732F9,54,src/data/resource_INST_40.asm
+INST,41,Viola,0,0x173333,46,src/data/resource_INST_41.asm
+INST,42,Cello,0,0x173365,46,src/data/resource_INST_42.asm
+INST,43,Contrabass,0,0x173397,46,src/data/resource_INST_43.asm
+INST,44,Tremolo Strings,0,0x1733C9,46,src/data/resource_INST_44.asm
+INST,45,Pizzicato Str,0,0x1733FB,54,src/data/resource_INST_45.asm
+INST,46,Orchestral Harp,0,0x173435,46,src/data/resource_INST_46.asm
+INST,48,String Ens. 1,0,0x173467,46,src/data/resource_INST_48.asm
+INST,49,String Ens. 2,0,0x173499,46,src/data/resource_INST_49.asm
+INST,50,Synth Strings 1,0,0x1734CB,46,src/data/resource_INST_50.asm
+INST,51,Synth Strings 2,0,0x1734FD,46,src/data/resource_INST_51.asm
+INST,52,Choir Aahs,0,0x17352F,46,src/data/resource_INST_52.asm
+INST,55,Orchestral Hit,0,0x173561,22,src/data/resource_INST_55.asm
+INST,56,Trumpet,0,0x17357B,46,src/data/resource_INST_56.asm
+INST,57,Trombone,0,0x1735AD,46,src/data/resource_INST_57.asm
+INST,58,Tuba,0,0x1735DF,38,src/data/resource_INST_58.asm
+INST,59,Muted Trumpet,0,0x173609,38,src/data/resource_INST_59.asm
+INST,60,French Horn,0,0x173633,46,src/data/resource_INST_60.asm
+INST,61,Brass Section,0,0x173665,46,src/data/resource_INST_61.asm
+INST,62,Synth Brass 1,0,0x173697,46,src/data/resource_INST_62.asm
+INST,63,Synth Brass 2,0,0x1736C9,46,src/data/resource_INST_63.asm
+INST,64,Soprano Sax,0,0x1736FB,38,src/data/resource_INST_64.asm
+INST,65,Alto Sax,0,0x173725,46,src/data/resource_INST_65.asm
+INST,66,Tenor Sax,0,0x173757,38,src/data/resource_INST_66.asm
+INST,67,Baritone Sax,0,0x173781,38,src/data/resource_INST_67.asm
+INST,68,Oboe,0,0x1737AB,38,src/data/resource_INST_68.asm
+INST,69,English Horn,0,0x1737D5,38,src/data/resource_INST_69.asm
+INST,70,Bassoon,0,0x1737FF,46,src/data/resource_INST_70.asm
+INST,71,Clarinet,0,0x173831,46,src/data/resource_INST_71.asm
+INST,72,Piccolo,0,0x173863,54,src/data/resource_INST_72.asm
+INST,73,Flute,0,0x17389D,46,src/data/resource_INST_73.asm
+INST,74,Recorder,0,0x1738CF,54,src/data/resource_INST_74.asm
+INST,75,Pan Flute,0,0x173909,46,src/data/resource_INST_75.asm
+INST,76,Bottle Blow,0,0x17393B,46,src/data/resource_INST_76.asm
+INST,77,Shakuhachi,0,0x17396D,46,src/data/resource_INST_77.asm
+INST,78,Whistle,0,0x17399F,54,src/data/resource_INST_78.asm
+INST,79,Ocarina,0,0x1739D9,22,src/data/resource_INST_79.asm
+INST,80,Lead 1 (square),0,0x1739F3,62,src/data/resource_INST_80.asm
+INST,81,Lead 2 (sawtooth),0,0x173A35,62,src/data/resource_INST_81.asm
+INST,82,Lead 3 (caliope lead),0,0x173A77,54,src/data/resource_INST_82.asm
+INST,83,Lead 4 (chiff lead),0,0x173AB1,54,src/data/resource_INST_83.asm
+INST,84,Lead 5 (charang),0,0x173AEB,54,src/data/resource_INST_84.asm
+INST,85,Lead 6 (voice),0,0x173B25,54,src/data/resource_INST_85.asm
+INST,86,Lead 7 (fifth),0,0x173B5F,22,src/data/resource_INST_86.asm
+INST,87,Lead 8 (brass + lead),0,0x173B79,22,src/data/resource_INST_87.asm
+INST,88,Pad 1 (new age),0,0x173B93,46,src/data/resource_INST_88.asm
+INST,89,Pad 2 (warm),0,0x173BC5,46,src/data/resource_INST_89.asm
+INST,90,Pad 3 (polysynth),0,0x173BF7,46,src/data/resource_INST_90.asm
+INST,91,Pad 4 (choir),0,0x173C29,46,src/data/resource_INST_91.asm
+INST,92,Pad 5 (bowed),0,0x173C5B,46,src/data/resource_INST_92.asm
+INST,93,Pad 6 (metallic),0,0x173C8D,46,src/data/resource_INST_93.asm
+INST,94,Pad 7 (halo),0,0x173CBF,46,src/data/resource_INST_94.asm
+INST,95,Pad 8 (sweep),0,0x173CF1,46,src/data/resource_INST_95.asm
+INST,96,FX 1 (rain),0,0x173D23,22,src/data/resource_INST_96.asm
+INST,97,FX 2 (soundtrack),0,0x173D3D,22,src/data/resource_INST_97.asm
+INST,98,FX 3 (crystal),0,0x173D57,22,src/data/resource_INST_98.asm
+INST,99,FX 4 (atmosphere),0,0x173D71,22,src/data/resource_INST_99.asm
+INST,100,FX 5 (brightness),0,0x173D8B,22,src/data/resource_INST_100.asm
+INST,101,FX 6 (goblins),0,0x173DA5,22,src/data/resource_INST_101.asm
+INST,102,FX 7 (echoes),0,0x173DBF,22,src/data/resource_INST_102.asm
+INST,103,FX 8 (sci-fi),0,0x173DD9,22,src/data/resource_INST_103.asm
+INST,104,Sitar,0,0x173DF3,46,src/data/resource_INST_104.asm
+INST,105,Banjo,0,0x173E25,46,src/data/resource_INST_105.asm
+INST,106,Shamisen,0,0x173E57,22,src/data/resource_INST_106.asm
+INST,107,Koto,0,0x173E71,22,src/data/resource_INST_107.asm
+INST,108,Kalimba,0,0x173E8B,46,src/data/resource_INST_108.asm
+INST,109,Bagpipe,0,0x173EBD,38,src/data/resource_INST_109.asm
+INST,110,Fiddle,0,0x173EE7,54,src/data/resource_INST_110.asm
+INST,111,Shanai,0,0x173F21,46,src/data/resource_INST_111.asm
+INST,112,Tinkle Bell,0,0x173F53,54,src/data/resource_INST_112.asm
+INST,113,Agogo,0,0x173F8D,38,src/data/resource_INST_113.asm
+INST,114,Steel Drum,0,0x173FB7,46,src/data/resource_INST_114.asm
+INST,115,Woodblock,0,0x173FE9,38,src/data/resource_INST_115.asm
+INST,116,Taiko Drum,0,0x174013,22,src/data/resource_INST_116.asm
+INST,117,Melodic Tom,0,0x17402D,22,src/data/resource_INST_117.asm
+INST,118,Synth Drum,0,0x174047,22,src/data/resource_INST_118.asm
+INST,119,Reverse Cymbal,0,0x174061,22,src/data/resource_INST_119.asm
+INST,120,Guitar Fret Noise,0,0x17407B,22,src/data/resource_INST_120.asm
+INST,121,Breath Noise,0,0x174095,22,src/data/resource_INST_121.asm
+INST,122,Seashore,0,0x1740AF,22,src/data/resource_INST_122.asm
+INST,123,Bird Tweet,0,0x1740C9,22,src/data/resource_INST_123.asm
+INST,124,Telephone Ring,0,0x1740E3,22,src/data/resource_INST_124.asm
+INST,125,Helicopter,0,0x1740FD,22,src/data/resource_INST_125.asm
+INST,127,Gunshot,0,0x174117,22,src/data/resource_INST_127.asm
+INST,0,Acoustic Piano,0,0x174131,54,src/data/resource_INST_0.asm
+INST,47,Timpani,0,0x17416B,46,src/data/resource_INST_47.asm
+INST,126,Percussion,0,0x17419D,678,src/data/resource_INST_126.asm
+INST,53,Voice Oohs,0,0x174447,46,src/data/resource_INST_53.asm
+INST,54,Synth Voice,0,0x174479,46,src/data/resource_INST_54.asm
+MDRV,11,MIDI Synth 3.37 12/9/93,0,0x1744AB,13013,src/data/resource_MDRV_11.asm
+T7GM,0,Owner resource,0,0x177784,42,src/data/embedded_owner_resource_0.asm
+T7GM,32302,at.rl,0,0x1777B2,760,src/data/embedded_at_rl_32302.asm
+T7GM,32303,b.rl,0,0x177AAE,2800,src/data/embedded_b_rl_32303.asm
+T7GM,32304,ch.rl,0,0x1785A2,1620,src/data/embedded_ch_rl_32304.asm
+T7GM,32305,d.rl,0,0x178BFA,7100,src/data/embedded_d_rl_32305.asm
+T7GM,32306,dr.rl,0,0x17A7BA,2140,src/data/embedded_dr_rl_32306.asm
+T7GM,32307,fh.rl,0,0x17B01A,3960,src/data/embedded_fh_rl_32307.asm
+T7GM,32308,ga.rl,0,0x17BF96,2860,src/data/embedded_ga_rl_32308.asm
+T7GM,32309,hdisk.rl,0,0x17CAC6,200,src/data/embedded_hdisk_rl_32309.asm
+T7GM,32310,htbd.rl,0,0x17CB92,3960,src/data/embedded_htbd_rl_32310.asm
+T7GM,32311,intro.rl,0,0x17DB0E,1960,src/data/embedded_intro_rl_32311.asm
+T7GM,32312,jhek.rl,0,0x17E2BA,4760,src/data/embedded_jhek_rl_32312.asm
+T7GM,32313,k.rl,0,0x17F556,16360,src/data/embedded_k_rl_32313.asm
+T7GM,32314,la.rl,0,0x183542,2500,src/data/embedded_la_rl_32314.asm
+T7GM,32315,li.rl,0,0x183F0A,2000,src/data/embedded_li_rl_32315.asm
+T7GM,32316,mb.rl,0,0x1846DE,1280,src/data/embedded_mb_rl_32316.asm
+T7GM,32317,mc.rl,0,0x184BE2,2240,src/data/embedded_mc_rl_32317.asm
+T7GM,32318,mu.rl,0,0x1854A6,860,src/data/embedded_mu_rl_32318.asm
+T7GM,32319,n.rl,0,0x185806,10920,src/data/embedded_n_rl_32319.asm
+T7GM,32320,p.rl,0,0x1882B2,880,src/data/embedded_p_rl_32320.asm
+T7GM,32321,xmi.rl,0,0x188626,1420,src/data/embedded_xmi_rl_32321.asm
+T7GM,32322,gamwav.rl,0,0x188BB6,3700,src/data/embedded_gamwav_rl_32322.asm
+T7GM,32323,at.grv,0,0x189A2E,6725,src/data/embedded_at_grv_32323.asm
+T7GM,32324,B.GRV,0,0x18B477,2388,src/data/embedded_b_grv_32324.asm
+T7GM,32325,CH.GRV,0,0x18BDCF,7365,src/data/embedded_ch_grv_32325.asm
+T7GM,32326,CR.GRV,0,0x18DA98,1654,src/data/embedded_cr_grv_32326.asm
+T7GM,32327,D.GRV,0,0x18E112,2100,src/data/embedded_d_grv_32327.asm
+T7GM,32328,DEMO.GRV,0,0x18E94A,466,src/data/embedded_demo_grv_32328.asm
+T7GM,32329,DR.GRV,0,0x18EB20,5546,src/data/embedded_dr_grv_32329.asm
+T7GM,32330,EK.GRV,0,0x1900CE,3169,src/data/embedded_ek_grv_32330.asm
+T7GM,32331,F.GRV,0,0x190D33,1349,src/data/embedded_f_grv_32331.asm
+T7GM,32332,GA.GRV,0,0x19127C,2442,src/data/embedded_ga_grv_32332.asm
+T7GM,32333,GRATE.GRV,0,0x191C0A,1086,src/data/embedded_grate_grv_32333.asm
+T7GM,32334,H.GRV,0,0x19204C,3140,src/data/embedded_h_grv_32334.asm
+T7GM,32335,HM.GRV,0,0x192C94,5153,src/data/embedded_hm_grv_32335.asm
+T7GM,32336,JH.GRV,0,0x1940B9,3224,src/data/embedded_jh_grv_32336.asm
+T7GM,32337,K.GRV,0,0x194D55,1873,src/data/embedded_k_grv_32337.asm
+T7GM,32339,LI.GRV,0,0x1954AA,2168,src/data/embedded_li_grv_32339.asm
+T7GM,32340,MAZE.GRV,0,0x195D26,3652,src/data/embedded_maze_grv_32340.asm
+T7GM,32341,MB.GRV,0,0x196B6E,3981,src/data/embedded_mb_grv_32341.asm
+T7GM,32342,MU.GRV,0,0x197AFF,1354,src/data/embedded_mu_grv_32342.asm
+T7GM,32343,N.GRV,0,0x19804D,842,src/data/embedded_n_grv_32343.asm
+T7GM,32344,P.GRV,0,0x19839B,1125,src/data/embedded_p_grv_32344.asm
+T7GM,32346,ROB.GJD,0,0x198804,47668,src/data/embedded_rob_gjd_32346.asm
+T7GM,32338,LA.GRV,0,0x1A423C,6524,src/data/embedded_la_grv_32338.asm
+T7GM,32345,script.grv,0,0x1A5BBC,17191,src/data/embedded_script_grv_32345.asm
+T7GM,20000,lut,0,0x1A9EE7,65536,src/data/embedded_lut_20000.asm
+T7GM,32423,Gump,0,0x1B9EEB,24,src/data/embedded_gump_32423.asm
+wctb,128,,0,0x1B9F07,48,src/data/resource_wctb_128.asm
+BNDL,128,,0,0x1B9F3B,28,src/data/resource_BNDL_128.asm
+CDEF,256,ViewCtl,0,0x1B9F5B,16,src/data/resource_CDEF_256.asm
+CURS,257,,0,0x1B9F6F,68,src/data/resource_CURS_257.asm
+CURS,300,,0,0x1B9FB7,68,src/data/resource_CURS_300.asm
+CURS,301,,0,0x1B9FFF,68,src/data/resource_CURS_301.asm
+CURS,302,,0,0x1BA047,68,src/data/resource_CURS_302.asm
+CURS,303,,0,0x1BA08F,68,src/data/resource_CURS_303.asm
+CURS,304,,0,0x1BA0D7,68,src/data/resource_CURS_304.asm
+CURS,305,,0,0x1BA11F,68,src/data/resource_CURS_305.asm
+CURS,306,,0,0x1BA167,68,src/data/resource_CURS_306.asm
+FREF,128,,0,0x1BA1AF,7,src/data/resource_FREF_128.asm
+hmnu,128,,0,0x1BA1BA,56,src/data/resource_hmnu_128.asm
+hmnu,129,File,0,0x1BA1F6,228,src/data/resource_hmnu_129.asm
+hmnu,130,Edit,0,0x1BA2DE,140,src/data/resource_hmnu_130.asm
+hmnu,131,Game,0,0x1BA36E,76,src/data/resource_hmnu_131.asm
+icl4,128,,0,0x1BA3BE,512,src/data/resource_icl4_128.asm
+icl8,128,,0,0x1BA5C2,1024,src/data/resource_icl8_128.asm
+ICN#,128,,0,0x1BA9C6,256,src/data/resource_ICN__128.asm
+ics#,128,,0,0x1BAACA,64,src/data/resource_ics__128.asm
+ics4,128,,0,0x1BAB0E,128,src/data/resource_ics4_128.asm
+ics8,128,,0,0x1BAB92,256,src/data/resource_ics8_128.asm
+MENU,128,,4,0x1BAC96,50,src/data/resource_MENU_128.asm
+MENU,129,,4,0x1BACCC,84,src/data/resource_MENU_129.asm
+SICN,128,,0,0x1BAD24,32,src/data/resource_SICN_128.asm
+STR ,-16396,,0,0x1BAD48,7,src/data/resource_STR__-16396.asm
+STR#,367,,32,0x1BAD53,178,src/data/resource_STR__367.asm
+STR#,128,,0,0x1BAE09,3,src/data/resource_STR__128.asm
+STR#,129,,0,0x1BAE10,28,src/data/resource_STR__129.asm
+STR#,368,,32,0x1BAE30,6,src/data/resource_STR__368.asm
+STR#,500,,4,0x1BAE3A,4,src/data/resource_STR__500.asm
+vers,1,,32,0x1BAE42,14,src/data/resource_vers_1.asm
+WIND,128,,36,0x1BAE54,25,src/data/resource_WIND_128.asm
+SIZE,1,,0,0x1BAE71,10,src/data/resource_SIZE_1.asm
+SIZE,0,,0,0x1BAE7F,10,src/data/resource_SIZE_0.asm

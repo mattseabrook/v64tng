@@ -1,0 +1,983 @@
+; Provisional entry from module header or linear decoded direct call; slice end is NOT a proved function end.
+; File offsets 00AF26–00BADB, inclusive.
+cdi_nodv_entry_00af26:
+db 0x0C, 0x6C, 0x00, 0x01, 0x00, 0x02 ; 00AF26: provisional 68k cmpi.w #$1, $2(a4)
+db 0x67, 0x26 ; 00AF2C: provisional 68k beq.b $af54
+db 0x0C, 0x6C, 0x00, 0x03, 0x00, 0x02 ; 00AF2E: provisional 68k cmpi.w #$3, $2(a4)
+db 0x66, 0x1C ; 00AF34: provisional 68k bne.b $af52
+db 0x26, 0x79, 0x00, 0x00, 0x00, 0x00 ; 00AF36: provisional 68k movea.l $0.l, a3
+db 0x24, 0x2B, 0x00, 0x54 ; 00AF3C: provisional 68k move.l $54(a3), d2
+db 0x94, 0xAC, 0x00, 0x16 ; 00AF40: provisional 68k sub.l $16(a4), d2
+db 0xB4, 0xAC, 0x00, 0x12 ; 00AF44: provisional 68k cmp.l $12(a4), d2
+db 0x6B, 0x08 ; 00AF48: provisional 68k bmi.b $af52
+db 0x39, 0x7C, 0x00, 0x01, 0x00, 0x02 ; 00AF4A: provisional 68k move.w #$1, $2(a4)
+db 0x60, 0x02 ; 00AF50: provisional 68k bra.b $af54
+db 0x4E, 0x75 ; 00AF52: provisional 68k rts 
+db 0x26, 0x6C, 0x00, 0x22 ; 00AF54: provisional 68k movea.l $22(a4), a3
+db 0x3E, 0x1B ; 00AF58: provisional 68k move.w (a3)+, d7
+db 0xDE, 0x47 ; 00AF5A: provisional 68k add.w d7, d7
+db 0x3E, 0x3B, 0x70, 0x0C ; 00AF5C: provisional 68k move.w $af6a(pc, d7.w), d7
+db 0x4E, 0xFB, 0x70, 0x08 ; 00AF60: provisional 68k jmp $af6a(pc, d7.w)
+db 0x29, 0x4B, 0x00, 0x22 ; 00AF64: provisional 68k move.l a3, $22(a4)
+db 0x4E, 0x75 ; 00AF68: provisional 68k rts 
+db 0x00, 0xB8, 0x00, 0xBC, 0x00, 0xC0, 0x00, 0xC4 ; 00AF6A: provisional 68k ori.l #$bc00c0, $c4.w
+db 0x00, 0xEE, 0x00, 0xFC ; file 00AF72
+db 0x01, 0x18 ; 00AF76: provisional 68k btst.l d0, (a0)+
+db 0x01, 0x36, 0x01, 0x4E ; 00AF78: provisional 68k btst.l d0, ([a6])
+db 0x01, 0x86 ; 00AF7C: provisional 68k bclr.b d0, d6
+db 0x01, 0x86 ; 00AF7E: provisional 68k bclr.b d0, d6
+db 0x01, 0x98 ; 00AF80: provisional 68k bclr.b d0, (a0)+
+db 0x01, 0xA6 ; 00AF82: provisional 68k bclr.b d0, -(a6)
+db 0x01, 0xAA, 0x01, 0xAE ; 00AF84: provisional 68k bclr.b d0, $1ae(a2)
+db 0x01, 0xB2, 0x01, 0xCA, 0x01, 0x6A ; 00AF88: provisional 68k bclr.b d0, ([], $16a)
+db 0x01, 0xE2 ; 00AF8E: provisional 68k bset.b d0, -(a2)
+db 0x02, 0x0A ; file 00AF90
+db 0x02, 0x2A, 0x02, 0x60, 0x02, 0x8E ; 00AF92: provisional 68k andi.b #$60, $28e(a2)
+db 0x02, 0x9E, 0x02, 0xAE, 0x01, 0x8A ; 00AF98: provisional 68k andi.l #$2ae018a, (a6)+
+db 0x03, 0x38, 0x03, 0x54 ; 00AF9E: provisional 68k btst.l d1, $354.w
+db 0x03, 0x5C ; 00AFA2: provisional 68k bchg.b d1, (a4)+
+db 0x03, 0x64 ; 00AFA4: provisional 68k bchg.b d1, -(a4)
+db 0x03, 0x6C, 0x03, 0xB2 ; 00AFA6: provisional 68k bchg.b d1, $3b2(a4)
+db 0x03, 0xE2 ; 00AFAA: provisional 68k bset.b d1, -(a2)
+db 0x04, 0x6E, 0x04, 0x7E, 0x04, 0x9E ; 00AFAC: provisional 68k subi.w #$47e, $49e(a6)
+db 0x04, 0xE8 ; file 00AFB2
+db 0x04, 0xB8, 0x04, 0xC8, 0x04, 0xF8, 0x05, 0x2C ; 00AFB4: provisional 68k subi.l #$4c804f8, $52c.w
+db 0x05, 0x3C, 0x03, 0xCC, 0x04, 0x20 ; 00AFBC: provisional 68k btst.l d2, #$3cc0420
+db 0x01, 0x2C, 0x00, 0xCE ; 00AFC2: provisional 68k btst.l d0, $ce(a4)
+db 0xB5, 0xD4 ; 00AFC6: provisional 68k cmpa.l (a4), a2
+db 0xB5, 0xFC, 0x06, 0xBA, 0x06, 0xD8 ; 00AFC8: provisional 68k cmpa.l #$6ba06d8, a2
+db 0x06, 0xF6 ; file 00AFCE
+db 0x07, 0x1C ; 00AFD0: provisional 68k btst.l d3, (a4)+
+db 0x07, 0xA4 ; 00AFD2: provisional 68k bclr.b d3, -(a4)
+db 0x08, 0xD2 ; file 00AFD4
+db 0x09, 0x1E ; 00AFD6: provisional 68k btst.l d4, (a6)+
+db 0x09, 0x46 ; 00AFD8: provisional 68k bchg.b d4, d6
+db 0x09, 0x60 ; 00AFDA: provisional 68k bchg.b d4, -(a0)
+db 0x03, 0x9C ; 00AFDC: provisional 68k bclr.b d1, (a4)+
+db 0x09, 0x9E ; 00AFDE: provisional 68k bclr.b d4, (a6)+
+db 0x07, 0x44 ; 00AFE0: provisional 68k bchg.b d3, d4
+db 0x07, 0x5E ; 00AFE2: provisional 68k bchg.b d3, (a6)+
+db 0x05, 0xAC, 0x05, 0x4C ; 00AFE4: provisional 68k bclr.b d2, $54c(a4)
+db 0x05, 0x70, 0x06, 0x08 ; 00AFE8: provisional 68k bchg.b d2, $8(a0, d0.w)
+db 0x06, 0x22, 0x02, 0xBE ; 00AFEC: provisional 68k addi.b #$be, -(a2)
+db 0x09, 0x7A ; file 00AFF0
+db 0x09, 0xAE, 0x09, 0xFE ; 00AFF2: provisional 68k bclr.b d4, $9fe(a6)
+db 0x0A, 0x1C, 0x02, 0xCE ; 00AFF6: provisional 68k eori.b #$ce, (a4)+
+db 0x02, 0xD2, 0x02, 0xD6, 0x02, 0xF0 ; file 00AFFA
+db 0x03, 0x0A, 0x09, 0xD6 ; 00B000: provisional 68k movep.w $9d6(a2), d1
+db 0x0A, 0x42, 0x0A, 0x68 ; 00B004: provisional 68k eori.w #$a68, d2
+db 0x07, 0x86 ; 00B008: provisional 68k bclr.b d3, d6
+db 0x0A, 0x94, 0x04, 0x5E, 0x0A, 0xB2 ; 00B00A: provisional 68k eori.l #$45e0ab2, (a4)
+db 0x0A, 0xEE, 0x0A, 0xF6, 0x08, 0x82 ; file 00B010
+db 0x0B, 0x10 ; 00B016: provisional 68k btst.l d5, (a0)
+db 0x04, 0x66, 0x0B, 0x3A ; 00B018: provisional 68k subi.w #$b3a, -(a6)
+db 0x0B, 0x20 ; 00B01C: provisional 68k btst.l d5, -(a0)
+db 0x08, 0x0C ; file 00B01E
+db 0x06, 0x5A, 0x60, 0x00 ; 00B020: provisional 68k addi.w #$6000, (a2)+
+db 0xFF, 0x40 ; 00B024: provisional 68k dc.w $ff40
+db 0x60, 0x00, 0xFF, 0x30 ; 00B026: provisional 68k bra.w $af58
+db 0x60, 0x00, 0xFF, 0x2C ; 00B02A: provisional 68k bra.w $af58
+db 0x39, 0x7C, 0x00, 0x02, 0x00, 0x02 ; 00B02E: provisional 68k move.w #$2, $2(a4)
+db 0x60, 0x00, 0xFF, 0x2E ; 00B034: provisional 68k bra.w $af64
+db 0x2F, 0x08 ; 00B038: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x0B, 0xB6 ; 00B03A: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B03E: provisional 68k addq.w #$2, a3
+db 0x41, 0xEE, 0x80, 0x5E ; 00B040: provisional 68k lea.l -$7fa2(a6), a0
+db 0xC0, 0xFC, 0x00, 0x7A ; 00B044: provisional 68k mulu.w #$7a, d0
+db 0x41, 0xF0, 0x08, 0x00 ; 00B048: provisional 68k lea.l (a0, d0.l), a0
+db 0x31, 0x7C, 0x00, 0x02, 0x00, 0x02 ; 00B04C: provisional 68k move.w #$2, $2(a0)
+db 0x20, 0x5F ; 00B052: provisional 68k movea.l (a7)+, a0
+db 0x60, 0x00, 0xFF, 0x02 ; 00B054: provisional 68k bra.w $af58
+db 0x70, 0x00 ; 00B058: provisional 68k moveq #$0, d0
+db 0x30, 0x13 ; 00B05A: provisional 68k move.w (a3), d0
+db 0xD0, 0xAC, 0x00, 0x1E ; 00B05C: provisional 68k add.l $1e(a4), d0
+db 0x26, 0x40 ; 00B060: provisional 68k movea.l d0, a3
+db 0x60, 0x00, 0xFF, 0x00 ; 00B062: provisional 68k bra.w $af64
+db 0x2F, 0x08 ; 00B066: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x0B, 0x88 ; 00B068: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B06C: provisional 68k addq.w #$2, a3
+db 0x41, 0xFA, 0x00, 0x10 ; 00B06E: provisional 68k lea.l $b080(pc), a0
+db 0x10, 0x80 ; 00B072: provisional 68k move.b d0, (a0)
+db 0x48, 0x50 ; 00B074: provisional 68k pea.l (a0)
+db 0x61, 0x00, 0x1B, 0x58 ; 00B076: provisional 68k bsr.w $cbd0
+db 0x20, 0x5F ; 00B07A: provisional 68k movea.l (a7)+, a0
+db 0x60, 0x00, 0xFE, 0xDA ; 00B07C: provisional 68k bra.w $af58
+db 0x30, 0x00 ; 00B080: provisional 68k move.w d0, d0
+db 0x61, 0x00, 0x0B, 0x6E ; 00B082: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B086: provisional 68k addq.w #$2, a3
+db 0x42, 0xE7 ; 00B088: provisional 68k dc.w $42e7
+db 0x3F, 0x00 ; 00B08A: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x1A, 0x90 ; 00B08C: provisional 68k bsr.w $cb1e
+db 0x44, 0xDF ; 00B090: provisional 68k move.w (a7)+, ccr
+db 0x60, 0x00, 0xFE, 0xC4 ; 00B092: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x0B, 0x5A ; 00B096: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B09A: provisional 68k addq.w #$2, a3
+db 0x60, 0x00, 0xFE, 0xBA ; 00B09C: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x0B, 0x50 ; 00B0A0: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B0A4: provisional 68k addq.w #$2, a3
+db 0xD0, 0x40 ; 00B0A6: provisional 68k add.w d0, d0
+db 0x32, 0x00 ; 00B0A8: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x0B, 0x46 ; 00B0AA: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B0AE: provisional 68k addq.w #$2, a3
+db 0x39, 0x80, 0x10, 0x5A ; 00B0B0: provisional 68k move.w d0, $5a(a4, d1.w)
+db 0x60, 0x00, 0xFE, 0xA2 ; 00B0B4: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x0B, 0x38 ; 00B0B8: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B0BC: provisional 68k addq.w #$2, a3
+db 0xD0, 0x40 ; 00B0BE: provisional 68k add.w d0, d0
+db 0x32, 0x00 ; 00B0C0: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x0B, 0x2E ; 00B0C2: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B0C6: provisional 68k addq.w #$2, a3
+db 0x41, 0xEE, 0xA6, 0x7E ; 00B0C8: provisional 68k lea.l -$5982(a6), a0
+db 0x31, 0x80, 0x10, 0x00 ; 00B0CC: provisional 68k move.w d0, (a0, d1.w)
+db 0x60, 0x00, 0xFE, 0x86 ; 00B0D0: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x0B, 0x1C ; 00B0D4: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B0D8: provisional 68k addq.w #$2, a3
+db 0xD0, 0x40 ; 00B0DA: provisional 68k add.w d0, d0
+db 0x32, 0x00 ; 00B0DC: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x0B, 0x12 ; 00B0DE: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B0E2: provisional 68k addq.w #$2, a3
+db 0x20, 0x6C, 0x00, 0x1E ; 00B0E4: provisional 68k movea.l $1e(a4), a0
+db 0x31, 0x80, 0x10, 0x00 ; 00B0E8: provisional 68k move.w d0, (a0, d1.w)
+db 0x60, 0x00, 0xFE, 0x6A ; 00B0EC: provisional 68k bra.w $af58
+db 0x60, 0x00, 0xFE, 0x66 ; 00B0F0: provisional 68k bra.w $af58
+db 0x30, 0x1B ; 00B0F4: provisional 68k move.w (a3)+, d0
+db 0x61, 0x00, 0x17, 0xF8 ; 00B0F6: provisional 68k bsr.w $c8f0
+db 0x61, 0x00, 0x17, 0xD4 ; 00B0FA: provisional 68k bsr.w $c8d0
+db 0x60, 0x00, 0xFE, 0x58 ; 00B0FE: provisional 68k bra.w $af58
+db 0x30, 0x1B ; 00B102: provisional 68k move.w (a3)+, d0
+db 0x61, 0x00, 0x18, 0x40 ; 00B104: provisional 68k bsr.w $c946
+db 0x61, 0x00, 0x17, 0xC6 ; 00B108: provisional 68k bsr.w $c8d0
+db 0x60, 0x00, 0xFE, 0x4A ; 00B10C: provisional 68k bra.w $af58
+db 0x60, 0x00, 0xFE, 0x46 ; 00B110: provisional 68k bra.w $af58
+db 0x60, 0x00, 0xFE, 0x42 ; 00B114: provisional 68k bra.w $af58
+db 0x60, 0x00, 0xFE, 0x3E ; 00B118: provisional 68k bra.w $af58
+db 0x72, 0x00 ; 00B11C: provisional 68k moveq #$0, d1
+db 0x32, 0x1B ; 00B11E: provisional 68k move.w (a3)+, d1
+db 0xD2, 0xAC, 0x00, 0x1E ; 00B120: provisional 68k add.l $1e(a4), d1
+db 0x61, 0x00, 0x0A, 0xCC ; 00B124: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B128: provisional 68k addq.w #$2, a3
+db 0x66, 0x00, 0xFE, 0x2C ; 00B12A: provisional 68k bne.w $af58
+db 0x26, 0x41 ; 00B12E: provisional 68k movea.l d1, a3
+db 0x60, 0x00, 0xFE, 0x26 ; 00B130: provisional 68k bra.w $af58
+db 0x72, 0x00 ; 00B134: provisional 68k moveq #$0, d1
+db 0x32, 0x1B ; 00B136: provisional 68k move.w (a3)+, d1
+db 0xD2, 0xAC, 0x00, 0x1E ; 00B138: provisional 68k add.l $1e(a4), d1
+db 0x61, 0x00, 0x0A, 0xB4 ; 00B13C: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B140: provisional 68k addq.w #$2, a3
+db 0x66, 0x00, 0xFE, 0x14 ; 00B142: provisional 68k bne.w $af58
+db 0x26, 0x41 ; 00B146: provisional 68k movea.l d1, a3
+db 0x60, 0x00, 0xFE, 0x1A ; 00B148: provisional 68k bra.w $af64
+db 0x61, 0x00, 0x0A, 0xA4 ; 00B14C: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B150: provisional 68k addq.w #$2, a3
+db 0x48, 0xC0 ; 00B152: provisional 68k ext.l d0
+db 0x29, 0x40, 0x00, 0x12 ; 00B154: provisional 68k move.l d0, $12(a4)
+db 0x30, 0x3C, 0x00, 0x54 ; 00B158: provisional 68k move.w #$54, d0
+db 0x22, 0x3C, 0x80, 0x00, 0x00, 0x04 ; 00B15C: provisional 68k move.l #$80000004, d1
+db 0x4E, 0x40, 0x00, 0x27 ; 00B162: provisional 68k trap #0 ; OS-9 service word $0027
+db 0x29, 0x42, 0x00, 0x16 ; 00B166: provisional 68k move.l d2, $16(a4)
+db 0x39, 0x7C, 0x00, 0x03, 0x00, 0x02 ; 00B16A: provisional 68k move.w #$3, $2(a4)
+db 0x60, 0x00, 0xFD, 0xF2 ; 00B170: provisional 68k bra.w $af64
+db 0x61, 0x00, 0x0A, 0x7C ; 00B174: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B178: provisional 68k addq.w #$2, a3
+db 0x41, 0xEE, 0x80, 0x5E ; 00B17A: provisional 68k lea.l -$7fa2(a6), a0
+db 0xC0, 0xFC, 0x00, 0x7A ; 00B17E: provisional 68k mulu.w #$7a, d0
+db 0x0C, 0x70, 0x00, 0x03, 0x08, 0x02 ; 00B182: provisional 68k cmpi.w #$3, $2(a0, d0.l)
+db 0x66, 0x06 ; 00B188: provisional 68k bne.b $b190
+db 0x31, 0xBC, 0x00, 0x01, 0x08, 0x02 ; 00B18A: provisional 68k move.w #$1, $2(a0, d0.l)
+db 0x60, 0x00, 0xFD, 0xC6 ; 00B190: provisional 68k bra.w $af58
+db 0x30, 0x2C, 0x00, 0x2A ; 00B194: provisional 68k move.w $2a(a4), d0
+db 0xB0, 0x6C, 0x00, 0x2C ; 00B198: provisional 68k cmp.w $2c(a4), d0
+db 0x67, 0x22 ; 00B19C: provisional 68k beq.b $b1c0
+db 0x32, 0x00 ; 00B19E: provisional 68k move.w d0, d1
+db 0xE5, 0x41 ; 00B1A0: provisional 68k asl.w #$2, d1
+db 0x39, 0x74, 0x10, 0x2E, 0x00, 0x28 ; 00B1A2: provisional 68k move.w $2e(a4, d1.w), $28(a4)
+db 0x39, 0x74, 0x10, 0x30, 0x00, 0x26 ; 00B1A8: provisional 68k move.w $30(a4, d1.w), $26(a4)
+db 0x48, 0xC0 ; 00B1AE: provisional 68k ext.l d0
+db 0x52, 0x40 ; 00B1B0: provisional 68k addq.w #$1, d0
+db 0x80, 0xFC, 0x00, 0x04 ; 00B1B2: provisional 68k divu.w #$4, d0
+db 0x48, 0x40 ; 00B1B6: provisional 68k swap d0
+db 0x39, 0x40, 0x00, 0x2A ; 00B1B8: provisional 68k move.w d0, $2a(a4)
+db 0x60, 0x00, 0xFD, 0x9A ; 00B1BC: provisional 68k bra.w $af58
+db 0x39, 0x7C, 0x00, 0x04, 0x00, 0x02 ; 00B1C0: provisional 68k move.w #$4, $2(a4)
+db 0x60, 0x00, 0xFD, 0x9C ; 00B1C6: provisional 68k bra.w $af64
+db 0x61, 0x00, 0x0A, 0x26 ; 00B1CA: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B1CE: provisional 68k addq.w #$2, a3
+db 0x41, 0xEE, 0x80, 0x5E ; 00B1D0: provisional 68k lea.l -$7fa2(a6), a0
+db 0xC0, 0xFC, 0x00, 0x7A ; 00B1D4: provisional 68k mulu.w #$7a, d0
+db 0x48, 0x70, 0x08, 0x00 ; 00B1D8: provisional 68k pea.l (a0, d0.l)
+db 0x61, 0x00, 0x0A, 0x14 ; 00B1DC: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B1E0: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B1E2: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x0A, 0x0C ; 00B1E4: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B1E8: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B1EA: provisional 68k move.w d0, d1
+db 0x34, 0x1F ; 00B1EC: provisional 68k move.w (a7)+, d2
+db 0x20, 0x1F ; 00B1EE: provisional 68k move.l (a7)+, d0
+db 0x61, 0x00, 0x14, 0xE2 ; 00B1F0: provisional 68k bsr.w $c6d4
+db 0x60, 0x00, 0xFD, 0x62 ; 00B1F4: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x09, 0xF8 ; 00B1F8: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B1FC: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B1FE: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x57, 0x78 ; 00B200: provisional 68k bsr.w $1097a
+db 0x60, 0x00, 0xFD, 0x52 ; 00B204: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x09, 0xE8 ; 00B208: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B20C: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B20E: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x54, 0xFC ; 00B210: provisional 68k bsr.w $1070e
+db 0x60, 0x00, 0xFD, 0x42 ; 00B214: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x09, 0xD8 ; 00B218: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B21C: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B21E: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x55, 0x0A ; 00B220: provisional 68k bsr.w $1072c
+db 0x60, 0x00, 0xFD, 0x32 ; 00B224: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x09, 0xC8 ; 00B228: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B22C: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B22E: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x58, 0xD8 ; 00B230: provisional 68k bsr.w $10b0a
+db 0x60, 0x00, 0xFD, 0x22 ; 00B234: provisional 68k bra.w $af58
+db 0x60, 0x00, 0xFD, 0x1E ; 00B238: provisional 68k bra.w $af58
+db 0x60, 0x00, 0xFD, 0x1A ; 00B23C: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x09, 0xB0 ; 00B240: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B244: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B246: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x09, 0xA8 ; 00B248: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B24C: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B24E: provisional 68k move.w d0, -(a7)
+db 0x3F, 0x01 ; 00B250: provisional 68k move.w d1, -(a7)
+db 0x61, 0x00, 0x51, 0x78 ; 00B252: provisional 68k bsr.w $103cc
+db 0x60, 0x00, 0xFD, 0x00 ; 00B256: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x09, 0x96 ; 00B25A: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B25E: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B260: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x09, 0x8E ; 00B262: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B266: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B268: provisional 68k move.w d0, -(a7)
+db 0x3F, 0x01 ; 00B26A: provisional 68k move.w d1, -(a7)
+db 0x61, 0x00, 0x51, 0x8C ; 00B26C: provisional 68k bsr.w $103fa
+db 0x60, 0x00, 0xFC, 0xE6 ; 00B270: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x09, 0x7C ; 00B274: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B278: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B27A: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x09, 0x74 ; 00B27C: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B280: provisional 68k addq.w #$2, a3
+db 0x34, 0x00 ; 00B282: provisional 68k move.w d0, d2
+db 0x61, 0x00, 0x09, 0x6C ; 00B284: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B288: provisional 68k addq.w #$2, a3
+db 0x36, 0x00 ; 00B28A: provisional 68k move.w d0, d3
+db 0x61, 0x00, 0x09, 0x64 ; 00B28C: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B290: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B292: provisional 68k move.w d0, -(a7)
+db 0x3F, 0x03 ; 00B294: provisional 68k move.w d3, -(a7)
+db 0x3F, 0x02 ; 00B296: provisional 68k move.w d2, -(a7)
+db 0x3F, 0x01 ; 00B298: provisional 68k move.w d1, -(a7)
+db 0x61, 0x00, 0x51, 0xA8 ; 00B29A: provisional 68k bsr.w $10444
+db 0x60, 0x00, 0xFC, 0xB8 ; 00B29E: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x09, 0x4E ; 00B2A2: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B2A6: provisional 68k addq.w #$2, a3
+db 0x20, 0x6C, 0x00, 0x1E ; 00B2A8: provisional 68k movea.l $1e(a4), a0
+db 0xC0, 0xBC, 0x00, 0x00, 0xFF, 0xFF ; 00B2AC: provisional 68k and.l #$ffff, d0
+db 0xD1, 0xC0 ; 00B2B2: provisional 68k adda.l d0, a0
+db 0x48, 0x50 ; 00B2B4: provisional 68k pea.l (a0)
+db 0x61, 0x00, 0x19, 0x18 ; 00B2B6: provisional 68k bsr.w $cbd0
+db 0x60, 0x00, 0xFC, 0x9C ; 00B2BA: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x18, 0xF6 ; 00B2BE: provisional 68k bsr.w $cbb6
+db 0x60, 0x00, 0xFC, 0x94 ; 00B2C2: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x53, 0x22 ; 00B2C6: provisional 68k bsr.w $105ea
+db 0x60, 0x00, 0xFC, 0x8C ; 00B2CA: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x53, 0x3A ; 00B2CE: provisional 68k bsr.w $1060a
+db 0x60, 0x00, 0xFC, 0x84 ; 00B2D2: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x09, 0x1A ; 00B2D6: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B2DA: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B2DC: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x09, 0x12 ; 00B2DE: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B2E2: provisional 68k addq.w #$2, a3
+db 0xE1, 0x81 ; 00B2E4: provisional 68k asl.l #$8, d1
+db 0x12, 0x00 ; 00B2E6: provisional 68k move.b d0, d1
+db 0x61, 0x00, 0x09, 0x08 ; 00B2E8: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B2EC: provisional 68k addq.w #$2, a3
+db 0xE1, 0x81 ; 00B2EE: provisional 68k asl.l #$8, d1
+db 0x12, 0x00 ; 00B2F0: provisional 68k move.b d0, d1
+db 0x61, 0x00, 0x08, 0xFE ; 00B2F2: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B2F6: provisional 68k addq.w #$2, a3
+db 0xE1, 0x81 ; 00B2F8: provisional 68k asl.l #$8, d1
+db 0x12, 0x00 ; 00B2FA: provisional 68k move.b d0, d1
+db 0x2F, 0x01 ; 00B2FC: provisional 68k move.l d1, -(a7)
+db 0x61, 0x00, 0x53, 0x2A ; 00B2FE: provisional 68k bsr.w $1062a
+db 0x60, 0x00, 0xFC, 0x54 ; 00B302: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x08, 0xEA ; 00B306: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B30A: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B30C: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x5D, 0x12 ; 00B30E: provisional 68k bsr.w $11022
+db 0x2F, 0x08 ; 00B312: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x5C, 0x4E ; 00B314: provisional 68k bsr.w $10f64
+db 0x60, 0x00, 0xFC, 0x3E ; 00B318: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x08, 0xD4 ; 00B31C: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B320: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B322: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x5C, 0xFC ; 00B324: provisional 68k bsr.w $11022
+db 0x42, 0xE7 ; 00B328: provisional 68k dc.w $42e7
+db 0x2F, 0x08 ; 00B32A: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x5E, 0x26 ; 00B32C: provisional 68k bsr.w $11154
+db 0x44, 0xDF ; 00B330: provisional 68k move.w (a7)+, ccr
+db 0x60, 0x00, 0xFC, 0x24 ; 00B332: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x08, 0xBA ; 00B336: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B33A: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B33C: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x5C, 0xE2 ; 00B33E: provisional 68k bsr.w $11022
+db 0x2F, 0x08 ; 00B342: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x5F, 0x7C ; 00B344: provisional 68k bsr.w $112c2
+db 0x60, 0x00, 0xFC, 0x0E ; 00B348: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x08, 0xA4 ; 00B34C: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B350: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B352: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x5C, 0xCC ; 00B354: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x08, 0x98 ; 00B358: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B35C: provisional 68k addq.w #$2, a3
+db 0x4A, 0x40 ; 00B35E: provisional 68k tst.w d0
+db 0x67, 0x12 ; 00B360: provisional 68k beq.b $b374
+db 0x43, 0xFA, 0x13, 0x70 ; 00B362: provisional 68k lea.l $c6d4(pc), a1
+db 0x2F, 0x0C ; 00B366: provisional 68k move.l a4, -(a7)
+db 0x2F, 0x09 ; 00B368: provisional 68k move.l a1, -(a7)
+db 0x2F, 0x08 ; 00B36A: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x26, 0xAC ; 00B36C: provisional 68k bsr.w $da1a
+db 0x60, 0x00, 0xFB, 0xE6 ; 00B370: provisional 68k bra.w $af58
+db 0x2F, 0x3C, 0x00, 0x00, 0x00, 0x00 ; 00B374: provisional 68k move.l #$0, -(a7)
+db 0x2F, 0x3C, 0x00, 0x00, 0x00, 0x00 ; 00B37A: provisional 68k move.l #$0, -(a7)
+db 0x2F, 0x08 ; 00B380: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x26, 0x96 ; 00B382: provisional 68k bsr.w $da1a
+db 0x60, 0x00, 0xFB, 0xD0 ; 00B386: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x08, 0x66 ; 00B38A: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B38E: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B390: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x5C, 0x8E ; 00B392: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x08, 0x5A ; 00B396: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B39A: provisional 68k addq.w #$2, a3
+db 0x4A, 0x40 ; 00B39C: provisional 68k tst.w d0
+db 0x67, 0x12 ; 00B39E: provisional 68k beq.b $b3b2
+db 0x43, 0xFA, 0x13, 0x32 ; 00B3A0: provisional 68k lea.l $c6d4(pc), a1
+db 0x2F, 0x0C ; 00B3A4: provisional 68k move.l a4, -(a7)
+db 0x2F, 0x09 ; 00B3A6: provisional 68k move.l a1, -(a7)
+db 0x2F, 0x08 ; 00B3A8: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x20, 0xF6 ; 00B3AA: provisional 68k bsr.w $d4a2
+db 0x60, 0x00, 0xFB, 0xA8 ; 00B3AE: provisional 68k bra.w $af58
+db 0x2F, 0x3C, 0x00, 0x00, 0x00, 0x00 ; 00B3B2: provisional 68k move.l #$0, -(a7)
+db 0x2F, 0x3C, 0x00, 0x00, 0x00, 0x00 ; 00B3B8: provisional 68k move.l #$0, -(a7)
+db 0x2F, 0x08 ; 00B3BE: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x20, 0xE0 ; 00B3C0: provisional 68k bsr.w $d4a2
+db 0x60, 0x00, 0xFB, 0x92 ; 00B3C4: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x1F, 0x58 ; 00B3C8: provisional 68k bsr.w $d322
+db 0x60, 0x00, 0xFB, 0x8A ; 00B3CC: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x1F, 0x86 ; 00B3D0: provisional 68k bsr.w $d358
+db 0x60, 0x00, 0xFB, 0x82 ; 00B3D4: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x08, 0x18 ; 00B3D8: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B3DC: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B3DE: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x31, 0x40 ; 00B3E0: provisional 68k bsr.w $e522
+db 0x60, 0x00, 0xFB, 0x72 ; 00B3E4: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x08, 0x08 ; 00B3E8: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B3EC: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B3EE: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x08, 0x00 ; 00B3F0: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B3F4: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B3F6: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x5C, 0x28 ; 00B3F8: provisional 68k bsr.w $11022
+db 0x2F, 0x08 ; 00B3FC: provisional 68k move.l a0, -(a7)
+db 0x3F, 0x01 ; 00B3FE: provisional 68k move.w d1, -(a7)
+db 0x61, 0x00, 0x2E, 0xFE ; 00B400: provisional 68k bsr.w $e300
+db 0x60, 0x00, 0xFB, 0x52 ; 00B404: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x07, 0xE8 ; 00B408: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B40C: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B40E: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x07, 0xE0 ; 00B410: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B414: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B416: provisional 68k move.w d0, -(a7)
+db 0x3F, 0x01 ; 00B418: provisional 68k move.w d1, -(a7)
+db 0x61, 0x00, 0x32, 0x6C ; 00B41A: provisional 68k bsr.w $e688
+db 0x60, 0x00, 0xFB, 0x38 ; 00B41E: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x07, 0xCE ; 00B422: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B426: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B428: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x30, 0xBA ; 00B42A: provisional 68k bsr.w $e4e6
+db 0x60, 0x00, 0xFB, 0x28 ; 00B42E: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x07, 0xBE ; 00B432: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B436: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B438: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x07, 0xB6 ; 00B43A: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B43E: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B440: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x5B, 0xDE ; 00B442: provisional 68k bsr.w $11022
+db 0x2F, 0x08 ; 00B446: provisional 68k move.l a0, -(a7)
+db 0x3F, 0x01 ; 00B448: provisional 68k move.w d1, -(a7)
+db 0x61, 0x00, 0x2F, 0x46 ; 00B44A: provisional 68k bsr.w $e392
+db 0x60, 0x00, 0xFB, 0x08 ; 00B44E: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x07, 0x9E ; 00B452: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B456: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B458: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x32, 0xB0 ; 00B45A: provisional 68k bsr.w $e70c
+db 0x60, 0x00, 0xFA, 0xF8 ; 00B45E: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x33, 0xF2 ; 00B462: provisional 68k bsr.w $e856
+db 0x2F, 0x08 ; 00B466: provisional 68k move.l a0, -(a7)
+db 0x2F, 0x01 ; 00B468: provisional 68k move.l d1, -(a7)
+db 0x2F, 0x08 ; 00B46A: provisional 68k move.l a0, -(a7)
+db 0x20, 0x79, 0x00, 0x00, 0x00, 0x00 ; 00B46C: provisional 68k movea.l $0.l, a0
+db 0x20, 0x28, 0x00, 0x54 ; 00B472: provisional 68k move.l $54(a0), d0
+db 0x20, 0x5F ; 00B476: provisional 68k movea.l (a7)+, a0
+db 0x2F, 0x08 ; 00B478: provisional 68k move.l a0, -(a7)
+db 0x20, 0x79, 0x00, 0x00, 0x00, 0x00 ; 00B47A: provisional 68k movea.l $0.l, a0
+db 0x22, 0x28, 0x00, 0x54 ; 00B480: provisional 68k move.l $54(a0), d1
+db 0x20, 0x5F ; 00B484: provisional 68k movea.l (a7)+, a0
+db 0x92, 0x80 ; 00B486: provisional 68k sub.l d0, d1
+db 0x0C, 0x41, 0x00, 0x02 ; 00B488: provisional 68k cmpi.w #$2, d1
+db 0x6B, 0xEA ; 00B48C: provisional 68k bmi.b $b478
+db 0x22, 0x1F ; 00B48E: provisional 68k move.l (a7)+, d1
+db 0x20, 0x5F ; 00B490: provisional 68k movea.l (a7)+, a0
+db 0x60, 0x00, 0xFA, 0xC4 ; 00B492: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x07, 0x5A ; 00B496: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B49A: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B49C: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x30, 0xA8 ; 00B49E: provisional 68k bsr.w $e548
+db 0x60, 0x00, 0xFA, 0xB4 ; 00B4A2: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x07, 0x4A ; 00B4A6: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B4AA: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B4AC: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x30, 0xF0 ; 00B4AE: provisional 68k bsr.w $e5a0
+db 0x60, 0x00, 0xFA, 0xA4 ; 00B4B2: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x07, 0x3A ; 00B4B6: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B4BA: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B4BC: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x07, 0x32 ; 00B4BE: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B4C2: provisional 68k addq.w #$2, a3
+db 0x34, 0x00 ; 00B4C4: provisional 68k move.w d0, d2
+db 0x61, 0x00, 0x07, 0x2A ; 00B4C6: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B4CA: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B4CC: provisional 68k move.w d0, -(a7)
+db 0x3F, 0x02 ; 00B4CE: provisional 68k move.w d2, -(a7)
+db 0x3F, 0x01 ; 00B4D0: provisional 68k move.w d1, -(a7)
+db 0x61, 0x00, 0x31, 0x78 ; 00B4D2: provisional 68k bsr.w $e64c
+db 0x60, 0x00, 0xFA, 0x80 ; 00B4D6: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x07, 0x16 ; 00B4DA: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B4DE: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B4E0: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x07, 0x0E ; 00B4E2: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B4E6: provisional 68k addq.w #$2, a3
+db 0x34, 0x00 ; 00B4E8: provisional 68k move.w d0, d2
+db 0x42, 0x83 ; 00B4EA: provisional 68k clr.l d3
+db 0x61, 0x00, 0x07, 0x04 ; 00B4EC: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B4F0: provisional 68k addq.w #$2, a3
+db 0x16, 0x00 ; 00B4F2: provisional 68k move.b d0, d3
+db 0xE1, 0x43 ; 00B4F4: provisional 68k asl.w #$8, d3
+db 0x61, 0x00, 0x06, 0xFA ; 00B4F6: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B4FA: provisional 68k addq.w #$2, a3
+db 0x86, 0x00 ; 00B4FC: provisional 68k or.b d0, d3
+db 0xE1, 0x83 ; 00B4FE: provisional 68k asl.l #$8, d3
+db 0x61, 0x00, 0x06, 0xF0 ; 00B500: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B504: provisional 68k addq.w #$2, a3
+db 0x86, 0x00 ; 00B506: provisional 68k or.b d0, d3
+db 0x2F, 0x03 ; 00B508: provisional 68k move.l d3, -(a7)
+db 0x3F, 0x02 ; 00B50A: provisional 68k move.w d2, -(a7)
+db 0x3F, 0x01 ; 00B50C: provisional 68k move.w d1, -(a7)
+db 0x61, 0x00, 0x31, 0x06 ; 00B50E: provisional 68k bsr.w $e616
+db 0x60, 0x00, 0xFA, 0x44 ; 00B512: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x06, 0xDA ; 00B516: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B51A: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B51C: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x06, 0xD2 ; 00B51E: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B522: provisional 68k addq.w #$2, a3
+db 0x34, 0x00 ; 00B524: provisional 68k move.w d0, d2
+db 0x42, 0x83 ; 00B526: provisional 68k clr.l d3
+db 0x61, 0x00, 0x06, 0xC8 ; 00B528: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B52C: provisional 68k addq.w #$2, a3
+db 0x16, 0x00 ; 00B52E: provisional 68k move.b d0, d3
+db 0xE1, 0x43 ; 00B530: provisional 68k asl.w #$8, d3
+db 0x61, 0x00, 0x06, 0xBE ; 00B532: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B536: provisional 68k addq.w #$2, a3
+db 0x86, 0x00 ; 00B538: provisional 68k or.b d0, d3
+db 0xE1, 0x83 ; 00B53A: provisional 68k asl.l #$8, d3
+db 0x61, 0x00, 0x06, 0xB4 ; 00B53C: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B540: provisional 68k addq.w #$2, a3
+db 0x86, 0x00 ; 00B542: provisional 68k or.b d0, d3
+db 0x42, 0x84 ; 00B544: provisional 68k clr.l d4
+db 0x61, 0x00, 0x06, 0xAA ; 00B546: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B54A: provisional 68k addq.w #$2, a3
+db 0x18, 0x00 ; 00B54C: provisional 68k move.b d0, d4
+db 0xE1, 0x44 ; 00B54E: provisional 68k asl.w #$8, d4
+db 0x61, 0x00, 0x06, 0xA0 ; 00B550: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B554: provisional 68k addq.w #$2, a3
+db 0x88, 0x00 ; 00B556: provisional 68k or.b d0, d4
+db 0xE1, 0x84 ; 00B558: provisional 68k asl.l #$8, d4
+db 0x61, 0x00, 0x06, 0x96 ; 00B55A: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B55E: provisional 68k addq.w #$2, a3
+db 0x88, 0x00 ; 00B560: provisional 68k or.b d0, d4
+db 0x2F, 0x04 ; 00B562: provisional 68k move.l d4, -(a7)
+db 0x2F, 0x03 ; 00B564: provisional 68k move.l d3, -(a7)
+db 0x3F, 0x02 ; 00B566: provisional 68k move.w d2, -(a7)
+db 0x3F, 0x01 ; 00B568: provisional 68k move.w d1, -(a7)
+db 0x61, 0x00, 0x30, 0x66 ; 00B56A: provisional 68k bsr.w $e5d2
+db 0x60, 0x00, 0xF9, 0xE8 ; 00B56E: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x06, 0x7E ; 00B572: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B576: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B578: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x06, 0x76 ; 00B57A: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B57E: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B580: provisional 68k move.w d0, -(a7)
+db 0x3F, 0x01 ; 00B582: provisional 68k move.w d1, -(a7)
+db 0x61, 0x00, 0x31, 0x02 ; 00B584: provisional 68k bsr.w $e688
+db 0x60, 0x00, 0xF9, 0xCE ; 00B588: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x06, 0x64 ; 00B58C: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B590: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B592: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x06, 0x5C ; 00B594: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B598: provisional 68k addq.w #$2, a3
+db 0x34, 0x00 ; 00B59A: provisional 68k move.w d0, d2
+db 0x61, 0x00, 0x06, 0x54 ; 00B59C: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B5A0: provisional 68k addq.w #$2, a3
+db 0x36, 0x00 ; 00B5A2: provisional 68k move.w d0, d3
+db 0x61, 0x00, 0x06, 0x4C ; 00B5A4: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B5A8: provisional 68k addq.w #$2, a3
+db 0x38, 0x00 ; 00B5AA: provisional 68k move.w d0, d4
+db 0x61, 0x00, 0x06, 0x44 ; 00B5AC: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B5B0: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B5B2: provisional 68k move.w d0, -(a7)
+db 0x3F, 0x04 ; 00B5B4: provisional 68k move.w d4, -(a7)
+db 0x3F, 0x03 ; 00B5B6: provisional 68k move.w d3, -(a7)
+db 0x3F, 0x02 ; 00B5B8: provisional 68k move.w d2, -(a7)
+db 0x3F, 0x01 ; 00B5BA: provisional 68k move.w d1, -(a7)
+db 0x61, 0x00, 0x30, 0xE8 ; 00B5BC: provisional 68k bsr.w $e6a6
+db 0x60, 0x00, 0xF9, 0x96 ; 00B5C0: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x06, 0x2C ; 00B5C4: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B5C8: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B5CA: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x45, 0x5E ; 00B5CC: provisional 68k bsr.w $fb2c
+db 0x60, 0x00, 0xF9, 0x86 ; 00B5D0: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x06, 0x1C ; 00B5D4: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B5D8: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B5DA: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x5A, 0x44 ; 00B5DC: provisional 68k bsr.w $11022
+db 0x2F, 0x08 ; 00B5E0: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x06, 0x0E ; 00B5E2: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B5E6: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B5E8: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x5A, 0x36 ; 00B5EA: provisional 68k bsr.w $11022
+db 0x20, 0x1F ; 00B5EE: provisional 68k move.l (a7)+, d0
+db 0x2F, 0x08 ; 00B5F0: provisional 68k move.l a0, -(a7)
+db 0x2F, 0x00 ; 00B5F2: provisional 68k move.l d0, -(a7)
+db 0x61, 0x00, 0x71, 0x42 ; 00B5F4: provisional 68k bsr.w $12738
+db 0x60, 0x00, 0xF9, 0x5E ; 00B5F8: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x05, 0xF4 ; 00B5FC: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B600: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B602: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x5A, 0x1C ; 00B604: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x05, 0xE8 ; 00B608: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B60C: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B60E: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x05, 0xE0 ; 00B610: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B614: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B616: provisional 68k move.w d0, -(a7)
+db 0x3F, 0x01 ; 00B618: provisional 68k move.w d1, -(a7)
+db 0x2F, 0x08 ; 00B61A: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x6F, 0x28 ; 00B61C: provisional 68k bsr.w $12546
+db 0x60, 0x00, 0xF9, 0x36 ; 00B620: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x05, 0xCC ; 00B624: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B628: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B62A: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x59, 0xF4 ; 00B62C: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x05, 0xC0 ; 00B630: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B634: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B636: provisional 68k move.w d0, -(a7)
+db 0x2F, 0x08 ; 00B638: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x6F, 0x54 ; 00B63A: provisional 68k bsr.w $12590
+db 0x60, 0x00, 0xF9, 0x18 ; 00B63E: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x05, 0xAE ; 00B642: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B646: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B648: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x59, 0xD6 ; 00B64A: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x05, 0xA2 ; 00B64E: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B652: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B654: provisional 68k move.w d0, -(a7)
+db 0x2F, 0x08 ; 00B656: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x6F, 0x5C ; 00B658: provisional 68k bsr.w $125b6
+db 0x60, 0x00, 0xF8, 0xFA ; 00B65C: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x05, 0x90 ; 00B660: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B664: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B666: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x59, 0xB8 ; 00B668: provisional 68k bsr.w $11022
+db 0x22, 0x48 ; 00B66C: provisional 68k movea.l a0, a1
+db 0x61, 0x00, 0x05, 0x82 ; 00B66E: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B672: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B674: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x59, 0xAA ; 00B676: provisional 68k bsr.w $11022
+db 0x2F, 0x08 ; 00B67A: provisional 68k move.l a0, -(a7)
+db 0x2F, 0x09 ; 00B67C: provisional 68k move.l a1, -(a7)
+db 0x61, 0x00, 0x77, 0x60 ; 00B67E: provisional 68k bsr.w $12de0
+db 0x60, 0x00, 0xF8, 0xD4 ; 00B682: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x05, 0x6A ; 00B686: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B68A: provisional 68k addq.w #$2, a3
+db 0x61, 0x00, 0x05, 0x64 ; 00B68C: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B690: provisional 68k addq.w #$2, a3
+db 0x61, 0x00, 0x05, 0x5E ; 00B692: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B696: provisional 68k addq.w #$2, a3
+db 0x61, 0x00, 0x05, 0x58 ; 00B698: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B69C: provisional 68k addq.w #$2, a3
+db 0x61, 0x00, 0x05, 0x52 ; 00B69E: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B6A2: provisional 68k addq.w #$2, a3
+db 0x61, 0x00, 0x05, 0x4C ; 00B6A4: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B6A8: provisional 68k addq.w #$2, a3
+db 0x60, 0x00, 0xF8, 0xAC ; 00B6AA: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x05, 0x42 ; 00B6AE: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B6B2: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B6B4: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x59, 0x6A ; 00B6B6: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x05, 0x36 ; 00B6BA: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B6BE: provisional 68k addq.w #$2, a3
+db 0x11, 0x40, 0x00, 0x2E ; 00B6C0: provisional 68k move.b d0, $2e(a0)
+db 0x60, 0x00, 0xF8, 0x92 ; 00B6C4: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x05, 0x28 ; 00B6C8: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B6CC: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B6CE: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x59, 0x50 ; 00B6D0: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x05, 0x1C ; 00B6D4: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B6D8: provisional 68k addq.w #$2, a3
+db 0x4A, 0x40 ; 00B6DA: provisional 68k tst.w d0
+db 0x67, 0x08 ; 00B6DC: provisional 68k beq.b $b6e6
+db 0x42, 0x28, 0x00, 0x2F ; 00B6DE: provisional 68k clr.b $2f(a0)
+db 0x60, 0x00, 0xF8, 0x74 ; 00B6E2: provisional 68k bra.w $af58
+db 0x11, 0x7C, 0x00, 0x01, 0x00, 0x2F ; 00B6E6: provisional 68k move.b #$1, $2f(a0)
+db 0x60, 0x00, 0xF8, 0x6A ; 00B6EC: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x05, 0x00 ; 00B6F0: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B6F4: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B6F6: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x59, 0x28 ; 00B6F8: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x04, 0xF4 ; 00B6FC: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B700: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B702: provisional 68k move.w d0, -(a7)
+db 0x2F, 0x08 ; 00B704: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x6F, 0x6A ; 00B706: provisional 68k bsr.w $12672
+db 0x60, 0x00, 0xF8, 0x4C ; 00B70A: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x04, 0xE2 ; 00B70E: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B712: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B714: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x59, 0x0A ; 00B716: provisional 68k bsr.w $11022
+db 0x22, 0x48 ; 00B71A: provisional 68k movea.l a0, a1
+db 0x61, 0x00, 0x04, 0xD4 ; 00B71C: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B720: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B722: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x58, 0xFC ; 00B724: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x04, 0xC8 ; 00B728: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B72C: provisional 68k addq.w #$2, a3
+db 0x4A, 0x40 ; 00B72E: provisional 68k tst.w d0
+db 0x67, 0x20 ; 00B730: provisional 68k beq.b $b752
+db 0x45, 0xFA, 0x0F, 0xA0 ; 00B732: provisional 68k lea.l $c6d4(pc), a2
+db 0x3F, 0x3C, 0x00, 0x80 ; 00B736: provisional 68k move.w #$80, -(a7)
+db 0x3F, 0x3C, 0x00, 0x80 ; 00B73A: provisional 68k move.w #$80, -(a7)
+db 0x3F, 0x3C, 0x00, 0x10 ; 00B73E: provisional 68k move.w #$10, -(a7)
+db 0x2F, 0x0C ; 00B742: provisional 68k move.l a4, -(a7)
+db 0x2F, 0x0A ; 00B744: provisional 68k move.l a2, -(a7)
+db 0x2F, 0x08 ; 00B746: provisional 68k move.l a0, -(a7)
+db 0x2F, 0x09 ; 00B748: provisional 68k move.l a1, -(a7)
+db 0x61, 0x00, 0x70, 0x4E ; 00B74A: provisional 68k bsr.w $1279a
+db 0x60, 0x00, 0xF8, 0x08 ; 00B74E: provisional 68k bra.w $af58
+db 0x3F, 0x3C, 0x00, 0x80 ; 00B752: provisional 68k move.w #$80, -(a7)
+db 0x3F, 0x3C, 0x00, 0x80 ; 00B756: provisional 68k move.w #$80, -(a7)
+db 0x3F, 0x3C, 0x00, 0x10 ; 00B75A: provisional 68k move.w #$10, -(a7)
+db 0x2F, 0x3C, 0x00, 0x00, 0x00, 0x00 ; 00B75E: provisional 68k move.l #$0, -(a7)
+db 0x2F, 0x3C, 0x00, 0x00, 0x00, 0x00 ; 00B764: provisional 68k move.l #$0, -(a7)
+db 0x2F, 0x08 ; 00B76A: provisional 68k move.l a0, -(a7)
+db 0x2F, 0x09 ; 00B76C: provisional 68k move.l a1, -(a7)
+db 0x61, 0x00, 0x70, 0x2A ; 00B76E: provisional 68k bsr.w $1279a
+db 0x60, 0x00, 0xF7, 0xE4 ; 00B772: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x04, 0x7A ; 00B776: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B77A: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B77C: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x58, 0xA2 ; 00B77E: provisional 68k bsr.w $11022
+db 0x22, 0x48 ; 00B782: provisional 68k movea.l a0, a1
+db 0x61, 0x00, 0x04, 0x6C ; 00B784: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B788: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B78A: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x58, 0x94 ; 00B78C: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x04, 0x60 ; 00B790: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B794: provisional 68k addq.w #$2, a3
+db 0x38, 0x00 ; 00B796: provisional 68k move.w d0, d4
+db 0x61, 0x00, 0x04, 0x58 ; 00B798: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B79C: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B79E: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x04, 0x50 ; 00B7A0: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B7A4: provisional 68k addq.w #$2, a3
+db 0x34, 0x00 ; 00B7A6: provisional 68k move.w d0, d2
+db 0x61, 0x00, 0x04, 0x48 ; 00B7A8: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B7AC: provisional 68k addq.w #$2, a3
+db 0x36, 0x00 ; 00B7AE: provisional 68k move.w d0, d3
+db 0x4A, 0x44 ; 00B7B0: provisional 68k tst.w d4
+db 0x67, 0x1A ; 00B7B2: provisional 68k beq.b $b7ce
+db 0x45, 0xFA, 0x0F, 0x1E ; 00B7B4: provisional 68k lea.l $c6d4(pc), a2
+db 0x3F, 0x03 ; 00B7B8: provisional 68k move.w d3, -(a7)
+db 0x3F, 0x02 ; 00B7BA: provisional 68k move.w d2, -(a7)
+db 0x3F, 0x01 ; 00B7BC: provisional 68k move.w d1, -(a7)
+db 0x2F, 0x0C ; 00B7BE: provisional 68k move.l a4, -(a7)
+db 0x2F, 0x0A ; 00B7C0: provisional 68k move.l a2, -(a7)
+db 0x2F, 0x08 ; 00B7C2: provisional 68k move.l a0, -(a7)
+db 0x2F, 0x09 ; 00B7C4: provisional 68k move.l a1, -(a7)
+db 0x61, 0x00, 0x6F, 0xD2 ; 00B7C6: provisional 68k bsr.w $1279a
+db 0x60, 0x00, 0xF7, 0x8C ; 00B7CA: provisional 68k bra.w $af58
+db 0x3F, 0x03 ; 00B7CE: provisional 68k move.w d3, -(a7)
+db 0x3F, 0x02 ; 00B7D0: provisional 68k move.w d2, -(a7)
+db 0x3F, 0x01 ; 00B7D2: provisional 68k move.w d1, -(a7)
+db 0x2F, 0x3C, 0x00, 0x00, 0x00, 0x00 ; 00B7D4: provisional 68k move.l #$0, -(a7)
+db 0x2F, 0x3C, 0x00, 0x00, 0x00, 0x00 ; 00B7DA: provisional 68k move.l #$0, -(a7)
+db 0x2F, 0x08 ; 00B7E0: provisional 68k move.l a0, -(a7)
+db 0x2F, 0x09 ; 00B7E2: provisional 68k move.l a1, -(a7)
+db 0x61, 0x00, 0x6F, 0xB4 ; 00B7E4: provisional 68k bsr.w $1279a
+db 0x60, 0x00, 0xF7, 0x6E ; 00B7E8: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x04, 0x04 ; 00B7EC: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B7F0: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B7F2: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x58, 0x2C ; 00B7F4: provisional 68k bsr.w $11022
+db 0x22, 0x48 ; 00B7F8: provisional 68k movea.l a0, a1
+db 0x61, 0x00, 0x03, 0xF6 ; 00B7FA: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B7FE: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B800: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x58, 0x1E ; 00B802: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x03, 0xEA ; 00B806: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B80A: provisional 68k addq.w #$2, a3
+db 0x4A, 0x40 ; 00B80C: provisional 68k tst.w d0
+db 0x67, 0x14 ; 00B80E: provisional 68k beq.b $b824
+db 0x45, 0xFA, 0x0E, 0xC2 ; 00B810: provisional 68k lea.l $c6d4(pc), a2
+db 0x2F, 0x0C ; 00B814: provisional 68k move.l a4, -(a7)
+db 0x2F, 0x0A ; 00B816: provisional 68k move.l a2, -(a7)
+db 0x2F, 0x08 ; 00B818: provisional 68k move.l a0, -(a7)
+db 0x2F, 0x09 ; 00B81A: provisional 68k move.l a1, -(a7)
+db 0x61, 0x00, 0x6F, 0x46 ; 00B81C: provisional 68k bsr.w $12764
+db 0x60, 0x00, 0xF7, 0x36 ; 00B820: provisional 68k bra.w $af58
+db 0x2F, 0x3C, 0x00, 0x00, 0x00, 0x00 ; 00B824: provisional 68k move.l #$0, -(a7)
+db 0x2F, 0x3C, 0x00, 0x00, 0x00, 0x00 ; 00B82A: provisional 68k move.l #$0, -(a7)
+db 0x2F, 0x08 ; 00B830: provisional 68k move.l a0, -(a7)
+db 0x2F, 0x09 ; 00B832: provisional 68k move.l a1, -(a7)
+db 0x61, 0x00, 0x6F, 0x2E ; 00B834: provisional 68k bsr.w $12764
+db 0x60, 0x00, 0xF7, 0x1E ; 00B838: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x03, 0xB4 ; 00B83C: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B840: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B842: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x57, 0xDC ; 00B844: provisional 68k bsr.w $11022
+db 0x22, 0x48 ; 00B848: provisional 68k movea.l a0, a1
+db 0x61, 0x00, 0x03, 0xA6 ; 00B84A: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B84E: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B850: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x57, 0xCE ; 00B852: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x03, 0x9A ; 00B856: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B85A: provisional 68k addq.w #$2, a3
+db 0x4A, 0x40 ; 00B85C: provisional 68k tst.w d0
+db 0x67, 0x16 ; 00B85E: provisional 68k beq.b $b876
+db 0x24, 0x48 ; 00B860: provisional 68k movea.l a0, a2
+db 0x3F, 0x00 ; 00B862: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x57, 0xBC ; 00B864: provisional 68k bsr.w $11022
+db 0x2F, 0x08 ; 00B868: provisional 68k move.l a0, -(a7)
+db 0x2F, 0x0A ; 00B86A: provisional 68k move.l a2, -(a7)
+db 0x2F, 0x09 ; 00B86C: provisional 68k move.l a1, -(a7)
+db 0x4E, 0xAE, 0xD1, 0x34 ; 00B86E: provisional 68k jsr -$2ecc(a6)
+db 0x60, 0x00, 0xF6, 0xE4 ; 00B872: provisional 68k bra.w $af58
+db 0x2F, 0x3C, 0x00, 0x00, 0x00, 0x00 ; 00B876: provisional 68k move.l #$0, -(a7)
+db 0x2F, 0x08 ; 00B87C: provisional 68k move.l a0, -(a7)
+db 0x2F, 0x09 ; 00B87E: provisional 68k move.l a1, -(a7)
+db 0x4E, 0xAE, 0xD1, 0x34 ; 00B880: provisional 68k jsr -$2ecc(a6)
+db 0x60, 0x00, 0xF6, 0xD2 ; 00B884: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x03, 0x68 ; 00B888: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B88C: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B88E: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x57, 0x90 ; 00B890: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x03, 0x5C ; 00B894: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B898: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B89A: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x03, 0x54 ; 00B89C: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B8A0: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B8A2: provisional 68k move.w d0, -(a7)
+db 0x3F, 0x01 ; 00B8A4: provisional 68k move.w d1, -(a7)
+db 0x2F, 0x08 ; 00B8A6: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x7F, 0xF8 ; 00B8A8: provisional 68k bsr.w $138a2
+db 0x60, 0x00, 0xF6, 0xAA ; 00B8AC: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x03, 0x40 ; 00B8B0: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B8B4: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B8B6: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x57, 0x68 ; 00B8B8: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x03, 0x34 ; 00B8BC: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B8C0: provisional 68k addq.w #$2, a3
+db 0x31, 0x40, 0x00, 0x26 ; 00B8C2: provisional 68k move.w d0, $26(a0)
+db 0x60, 0x00, 0xF6, 0x90 ; 00B8C6: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x03, 0x26 ; 00B8CA: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B8CE: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B8D0: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x57, 0x4E ; 00B8D2: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x03, 0x1A ; 00B8D6: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B8DA: provisional 68k addq.w #$2, a3
+db 0x31, 0x40, 0x00, 0x28 ; 00B8DC: provisional 68k move.w d0, $28(a0)
+db 0x60, 0x00, 0xF6, 0x76 ; 00B8E0: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x03, 0x0C ; 00B8E4: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B8E8: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B8EA: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x03, 0x04 ; 00B8EC: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B8F0: provisional 68k addq.w #$2, a3
+db 0x34, 0x00 ; 00B8F2: provisional 68k move.w d0, d2
+db 0x61, 0x00, 0x02, 0xFC ; 00B8F4: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B8F8: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B8FA: provisional 68k move.w d0, -(a7)
+db 0x3F, 0x02 ; 00B8FC: provisional 68k move.w d2, -(a7)
+db 0x3F, 0x01 ; 00B8FE: provisional 68k move.w d1, -(a7)
+db 0x4E, 0xAE, 0xD1, 0x3A ; 00B900: provisional 68k jsr -$2ec6(a6)
+db 0x60, 0x00, 0xF6, 0x52 ; 00B904: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x02, 0xE8 ; 00B908: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B90C: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B90E: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x53, 0x9A ; 00B910: provisional 68k bsr.w $10cac
+db 0x60, 0x00, 0xF6, 0x42 ; 00B914: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x02, 0xD8 ; 00B918: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B91C: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B91E: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x57, 0x00 ; 00B920: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x02, 0xCC ; 00B924: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B928: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B92A: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x02, 0xC4 ; 00B92C: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B930: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B932: provisional 68k move.w d0, -(a7)
+db 0x3F, 0x01 ; 00B934: provisional 68k move.w d1, -(a7)
+db 0x2F, 0x08 ; 00B936: provisional 68k move.l a0, -(a7)
+db 0x4E, 0xAE, 0xD1, 0x22 ; 00B938: provisional 68k jsr -$2ede(a6)
+db 0x60, 0x00, 0xF6, 0x1A ; 00B93C: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x02, 0xB0 ; 00B940: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B944: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B946: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x56, 0xD8 ; 00B948: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x02, 0xA4 ; 00B94C: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B950: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00B952: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x02, 0x9C ; 00B954: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B958: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B95A: provisional 68k move.w d0, -(a7)
+db 0x3F, 0x01 ; 00B95C: provisional 68k move.w d1, -(a7)
+db 0x2F, 0x08 ; 00B95E: provisional 68k move.l a0, -(a7)
+db 0x4E, 0xAE, 0xD1, 0x2E ; 00B960: provisional 68k jsr -$2ed2(a6)
+db 0x60, 0x00, 0xF5, 0xF2 ; 00B964: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x02, 0x88 ; 00B968: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B96C: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B96E: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x56, 0xB0 ; 00B970: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x02, 0x7C ; 00B974: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B978: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B97A: provisional 68k move.w d0, -(a7)
+db 0x2F, 0x08 ; 00B97C: provisional 68k move.l a0, -(a7)
+db 0x4E, 0xAE, 0xD1, 0x1C ; 00B97E: provisional 68k jsr -$2ee4(a6)
+db 0x60, 0x00, 0xF5, 0xD4 ; 00B982: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x02, 0x6A ; 00B986: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B98A: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B98C: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x56, 0x92 ; 00B98E: provisional 68k bsr.w $11022
+db 0x22, 0x48 ; 00B992: provisional 68k movea.l a0, a1
+db 0x61, 0x00, 0x02, 0x5C ; 00B994: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B998: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B99A: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x56, 0x84 ; 00B99C: provisional 68k bsr.w $11022
+db 0x2F, 0x08 ; 00B9A0: provisional 68k move.l a0, -(a7)
+db 0x2F, 0x09 ; 00B9A2: provisional 68k move.l a1, -(a7)
+db 0x4E, 0xAE, 0xD1, 0x28 ; 00B9A4: provisional 68k jsr -$2ed8(a6)
+db 0x60, 0x00, 0xF5, 0xAE ; 00B9A8: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x02, 0x44 ; 00B9AC: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B9B0: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B9B2: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x56, 0x6C ; 00B9B4: provisional 68k bsr.w $11022
+db 0x22, 0x48 ; 00B9B8: provisional 68k movea.l a0, a1
+db 0x61, 0x00, 0x02, 0x36 ; 00B9BA: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B9BE: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B9C0: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x56, 0x5E ; 00B9C2: provisional 68k bsr.w $11022
+db 0x2F, 0x08 ; 00B9C6: provisional 68k move.l a0, -(a7)
+db 0x2F, 0x09 ; 00B9C8: provisional 68k move.l a1, -(a7)
+db 0x61, 0x00, 0x55, 0xE8 ; 00B9CA: provisional 68k bsr.w $10fb4
+db 0x60, 0x00, 0xF5, 0x88 ; 00B9CE: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x02, 0x1E ; 00B9D2: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B9D6: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00B9D8: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x56, 0x46 ; 00B9DA: provisional 68k bsr.w $11022
+db 0x22, 0x48 ; 00B9DE: provisional 68k movea.l a0, a1
+db 0x61, 0x00, 0x02, 0x10 ; 00B9E0: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00B9E4: provisional 68k addq.w #$2, a3
+db 0x20, 0x6C, 0x00, 0x1E ; 00B9E6: provisional 68k movea.l $1e(a4), a0
+db 0xC0, 0xBC, 0x00, 0x00, 0xFF, 0xFF ; 00B9EA: provisional 68k and.l #$ffff, d0
+db 0xD1, 0xC0 ; 00B9F0: provisional 68k adda.l d0, a0
+db 0x2F, 0x08 ; 00B9F2: provisional 68k move.l a0, -(a7)
+db 0x2F, 0x09 ; 00B9F4: provisional 68k move.l a1, -(a7)
+db 0x61, 0x00, 0x57, 0xAA ; 00B9F6: provisional 68k bsr.w $111a2
+db 0x60, 0x00, 0xF5, 0x5C ; 00B9FA: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x01, 0xF2 ; 00B9FE: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00BA02: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00BA04: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x56, 0x1A ; 00BA06: provisional 68k bsr.w $11022
+db 0x61, 0x00, 0x01, 0xE6 ; 00BA0A: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00BA0E: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00BA10: provisional 68k move.w d0, -(a7)
+db 0x2F, 0x08 ; 00BA12: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x60, 0xD4 ; 00BA14: provisional 68k bsr.w $11aea
+db 0x60, 0x00, 0xF5, 0x3E ; 00BA18: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x01, 0xD4 ; 00BA1C: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00BA20: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00BA22: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x55, 0xFC ; 00BA24: provisional 68k bsr.w $11022
+db 0x2F, 0x08 ; 00BA28: provisional 68k move.l a0, -(a7)
+db 0x61, 0x00, 0x01, 0xC6 ; 00BA2A: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00BA2E: provisional 68k addq.w #$2, a3
+db 0x22, 0x6C, 0x00, 0x1E ; 00BA30: provisional 68k movea.l $1e(a4), a1
+db 0xC0, 0xBC, 0x00, 0x00, 0xFF, 0xFF ; 00BA34: provisional 68k and.l #$ffff, d0
+db 0xD3, 0xC0 ; 00BA3A: provisional 68k adda.l d0, a1
+db 0x20, 0x1F ; 00BA3C: provisional 68k move.l (a7)+, d0
+db 0x2F, 0x09 ; 00BA3E: provisional 68k move.l a1, -(a7)
+db 0x2F, 0x00 ; 00BA40: provisional 68k move.l d0, -(a7)
+db 0x61, 0x00, 0x79, 0x8C ; 00BA42: provisional 68k bsr.w $133d0
+db 0x43, 0xFA, 0x0C, 0x8C ; 00BA46: provisional 68k lea.l $c6d4(pc), a1
+db 0x2F, 0x0C ; 00BA4A: provisional 68k move.l a4, -(a7)
+db 0x2F, 0x09 ; 00BA4C: provisional 68k move.l a1, -(a7)
+db 0x2F, 0x00 ; 00BA4E: provisional 68k move.l d0, -(a7)
+db 0x61, 0x00, 0x24, 0x52 ; 00BA50: provisional 68k bsr.w $dea4
+db 0x60, 0x00, 0xF5, 0x02 ; 00BA54: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x27, 0x66 ; 00BA58: provisional 68k bsr.w $e1c0
+db 0x60, 0x00, 0xF4, 0xFA ; 00BA5C: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x01, 0x90 ; 00BA60: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00BA64: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00BA66: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x01, 0x88 ; 00BA68: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00BA6C: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00BA6E: provisional 68k move.w d0, -(a7)
+db 0x3F, 0x01 ; 00BA70: provisional 68k move.w d1, -(a7)
+db 0x61, 0x00, 0x27, 0x7E ; 00BA72: provisional 68k bsr.w $e1f2
+db 0x60, 0x00, 0xF4, 0xE0 ; 00BA76: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x01, 0x76 ; 00BA7A: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00BA7E: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00BA80: provisional 68k move.w d0, -(a7)
+db 0x61, 0x00, 0x23, 0xBE ; 00BA82: provisional 68k bsr.w $de42
+db 0x60, 0x00, 0xF4, 0xD0 ; 00BA86: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x01, 0x66 ; 00BA8A: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00BA8E: provisional 68k addq.w #$2, a3
+db 0x32, 0x00 ; 00BA90: provisional 68k move.w d0, d1
+db 0x61, 0x00, 0x01, 0x5E ; 00BA92: provisional 68k bsr.w $bbf2
+db 0x54, 0x4B ; 00BA96: provisional 68k addq.w #$2, a3
+db 0x3F, 0x00 ; 00BA98: provisional 68k move.w d0, -(a7)
+db 0x3F, 0x01 ; 00BA9A: provisional 68k move.w d1, -(a7)
+db 0x61, 0x00, 0x23, 0xE8 ; 00BA9C: provisional 68k bsr.w $de86
+db 0x60, 0x00, 0xF4, 0xB6 ; 00BAA0: provisional 68k bra.w $af58
+db 0x61, 0x00, 0x01, 0x4C ; 00BAA4: provisional 68k bsr.w $bbf2
+db 0x32, 0x00 ; 00BAA8: provisional 68k move.w d0, d1
+db 0x4E, 0x40, 0x00, 0x06 ; 00BAAA: provisional 68k trap #0 ; OS-9 service word $0006
+db 0x61, 0x00, 0x11, 0x06 ; 00BAAE: provisional 68k bsr.w $cbb6
+db 0x42, 0xE7 ; 00BAB2: provisional 68k dc.w $42e7
+db 0x48, 0x7A, 0x00, 0x08 ; 00BAB4: provisional 68k pea.l $babe(pc)
+db 0x61, 0x00, 0x11, 0x16 ; 00BAB8: provisional 68k bsr.w $cbd0
+db 0x60, 0x10 ; 00BABC: provisional 68k bra.b $bace
+db 0x46, 0x24 ; 00BABE: provisional 68k not.b -(a4)
+db 0x45, 0x78 ; file 00BAC0
+db 0x69, 0x74 ; 00BAC2: provisional 68k bvs.b $bb38
+db 0x20, 0x66 ; 00BAC4: provisional 68k movea.l -(a6), a0
+db 0x61, 0x69 ; 00BAC6: provisional 68k bsr.b $bb31
+db 0x6C, 0x65 ; 00BAC8: provisional 68k bge.b $bb2f
+db 0x64, 0x21 ; 00BACA: provisional 68k bcc.b $baed
+db 0x20, 0x00 ; 00BACC: provisional 68k move.l d0, d0
+db 0x3F, 0x01 ; 00BACE: provisional 68k move.w d1, -(a7)
+db 0x61, 0x00, 0x10, 0x4C ; 00BAD0: provisional 68k bsr.w $cb1e
+db 0x44, 0xDF ; 00BAD4: provisional 68k move.w (a7)+, ccr
+db 0x61, 0x00, 0x10, 0xDE ; 00BAD6: provisional 68k bsr.w $cbb6
+db 0x60, 0xD6 ; 00BADA: provisional 68k bra.b $bab2

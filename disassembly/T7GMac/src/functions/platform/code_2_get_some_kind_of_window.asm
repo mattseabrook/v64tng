@@ -1,0 +1,87 @@
+; verified-role: Native GetSomeKindOfWindow routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.
+; Original native symbol: GetSomeKindOfWindow; evidence file offset 0x6a64.
+; Exact bytes retained; instruction decoding remains provisional where inline data may occur.
+mac_code_2_get_some_kind_of_window:
+db 0x4E, 0x56, 0xFE, 0xE4 ; file 006964 | 68k link.w a6, #$fee4
+db 0x48, 0xE7, 0x00, 0x38 ; file 006968 | 68k movem.l a2-a4, -(a7)
+db 0x26, 0x6E, 0x00, 0x0E ; file 00696C | 68k movea.l $e(a6), a3
+db 0x99, 0xCC ; file 006970 | 68k suba.l a4, a4
+db 0x4A, 0x6D, 0xDE, 0x0E ; file 006972 | 68k tst.w -$21f2(a5)
+db 0x66, 0x04 ; file 006976 | 68k bne.b $5914
+db 0x42, 0x2E, 0x00, 0x1A ; file 006978 | 68k clr.b $1a(a6)
+db 0x20, 0x0B ; file 00697C | 68k move.l a3, d0
+db 0x66, 0x0A ; file 00697E | 68k bne.b $5922
+db 0x20, 0x3C, 0x00, 0x00, 0x00, 0x9C ; file 006980 | 68k move.l #$9c, d0
+db 0xA1, 0x1E ; file 006986 | 68k dc.w $a11e
+db 0x26, 0x48 ; file 006988 | 68k movea.l a0, a3
+db 0x20, 0x0B ; file 00698A | 68k move.l a3, d0
+db 0x67, 0x00, 0x00, 0xCC ; file 00698C | 68k beq.w $59f2
+db 0x48, 0x6E, 0xFE, 0xEC ; file 006990 | 68k pea.l -$114(a6)
+db 0x3F, 0x2E, 0x00, 0x0C ; file 006994 | 68k move.w $c(a6), -(a7)
+db 0x2F, 0x3C, 0x57, 0x49, 0x4E, 0x44 ; file 006998 | 68k move.l #$57494e44, -(a7)
+db 0x4E, 0xBA, 0xFB, 0xDC ; file 00699E | 68k jsr $5514(pc)
+db 0x24, 0x40 ; file 0069A2 | 68k movea.l d0, a2
+db 0x20, 0x0A ; file 0069A4 | 68k move.l a2, d0
+db 0x4F, 0xEF, 0x00, 0x0A ; file 0069A6 | 68k lea.l $a(a7), a7
+db 0x67, 0x00, 0x00, 0xA6 ; file 0069AA | 68k beq.w $59ea
+db 0x20, 0x52 ; file 0069AE | 68k movea.l (a2), a0
+db 0x43, 0xEE, 0xFE, 0xEE ; file 0069B0 | 68k lea.l -$112(a6), a1
+db 0x70, 0x43 ; file 0069B4 | 68k moveq #$43, d0
+db 0x22, 0xD8 ; file 0069B6 | 68k move.l (a0)+, (a1)+
+db 0x51, 0xC8, 0xFF, 0xFC ; file 0069B8 | 68k dbra d0, $594e
+db 0x32, 0xD8 ; file 0069BC | 68k move.w (a0)+, (a1)+
+db 0x1D, 0x7C, 0x00, 0x54, 0xFF, 0x01 ; file 0069BE | 68k move.b #$54, -$ff(a6)
+db 0x70, 0x54 ; file 0069C4 | 68k moveq #$54, d0
+db 0x67, 0x16 ; file 0069C6 | 68k beq.b $5976
+db 0x48, 0x6E, 0xFE, 0xE4 ; file 0069C8 | 68k pea.l -$11c(a6)
+db 0x4E, 0xBA, 0xFE, 0x5C ; file 0069CC | 68k jsr $57c2(pc)
+db 0x2D, 0x6E, 0xFE, 0xE4, 0xFE, 0xEE ; file 0069D0 | 68k move.l -$11c(a6), -$112(a6)
+db 0x2D, 0x6E, 0xFE, 0xE8, 0xFE, 0xF2 ; file 0069D6 | 68k move.l -$118(a6), -$10e(a6)
+db 0x58, 0x8F ; file 0069DC | 68k addq.l #$4, a7
+db 0x4A, 0x2E, 0x00, 0x1A ; file 0069DE | 68k tst.b $1a(a6)
+db 0x67, 0x24 ; file 0069E2 | 68k beq.b $59a0
+db 0x42, 0xA7 ; file 0069E4 | 68k clr.l -(a7)
+db 0x2F, 0x0B ; file 0069E6 | 68k move.l a3, -(a7)
+db 0x48, 0x6E, 0xFE, 0xEE ; file 0069E8 | 68k pea.l -$112(a6)
+db 0x48, 0x6E, 0xFF, 0x00 ; file 0069EC | 68k pea.l -$100(a6)
+db 0x42, 0x27 ; file 0069F0 | 68k clr.b -(a7)
+db 0x3F, 0x2E, 0xFE, 0xF6 ; file 0069F2 | 68k move.w -$10a(a6), -(a7)
+db 0x2F, 0x2E, 0x00, 0x16 ; file 0069F6 | 68k move.l $16(a6), -(a7)
+db 0x1F, 0x2E, 0xFE, 0xFA ; file 0069FA | 68k move.b -$106(a6), -(a7)
+db 0x2F, 0x2E, 0xFE, 0xFC ; file 0069FE | 68k move.l -$104(a6), -(a7)
+db 0xAA, 0x45 ; file 006A02 | 68k dc.w $aa45
+db 0x28, 0x5F ; file 006A04 | 68k movea.l (a7)+, a4
+db 0x60, 0x22 ; file 006A06 | 68k bra.b $59c2
+db 0x42, 0xA7 ; file 006A08 | 68k clr.l -(a7)
+db 0x2F, 0x0B ; file 006A0A | 68k move.l a3, -(a7)
+db 0x48, 0x6E, 0xFE, 0xEE ; file 006A0C | 68k pea.l -$112(a6)
+db 0x48, 0x6E, 0xFF, 0x00 ; file 006A10 | 68k pea.l -$100(a6)
+db 0x42, 0x27 ; file 006A14 | 68k clr.b -(a7)
+db 0x3F, 0x2E, 0xFE, 0xF6 ; file 006A16 | 68k move.w -$10a(a6), -(a7)
+db 0x2F, 0x2E, 0x00, 0x16 ; file 006A1A | 68k move.l $16(a6), -(a7)
+db 0x1F, 0x2E, 0xFE, 0xFA ; file 006A1E | 68k move.b -$106(a6), -(a7)
+db 0x2F, 0x2E, 0xFE, 0xFC ; file 006A22 | 68k move.l -$104(a6), -(a7)
+db 0xA9, 0x13 ; file 006A26 | 68k dc.w $a913
+db 0x28, 0x5F ; file 006A28 | 68k movea.l (a7)+, a4
+db 0x20, 0x0C ; file 006A2A | 68k move.l a4, d0
+db 0x67, 0x24 ; file 006A2C | 68k beq.b $59ea
+db 0x4A, 0xAE, 0x00, 0x08 ; file 006A2E | 68k tst.l $8(a6)
+db 0x67, 0x14 ; file 006A32 | 68k beq.b $59e0
+db 0x2F, 0x2E, 0x00, 0x12 ; file 006A34 | 68k move.l $12(a6), -(a7)
+db 0x2F, 0x0C ; file 006A38 | 68k move.l a4, -(a7)
+db 0x48, 0x6E, 0xFE, 0xE4 ; file 006A3A | 68k pea.l -$11c(a6)
+db 0x20, 0x6E, 0x00, 0x08 ; file 006A3E | 68k movea.l $8(a6), a0
+db 0x4E, 0x90 ; file 006A42 | 68k jsr (a0)
+db 0x4F, 0xEF, 0x00, 0x0C ; file 006A44 | 68k lea.l $c(a7), a7
+db 0x4A, 0x2E, 0xFE, 0xF8 ; file 006A48 | 68k tst.b -$108(a6)
+db 0x67, 0x04 ; file 006A4C | 68k beq.b $59ea
+db 0x2F, 0x0C ; file 006A4E | 68k move.l a4, -(a7)
+db 0xA9, 0x15 ; file 006A50 | 68k dc.w $a915
+db 0x20, 0x0C ; file 006A52 | 68k move.l a4, d0
+db 0x66, 0x04 ; file 006A54 | 68k bne.b $59f2
+db 0x20, 0x4B ; file 006A56 | 68k movea.l a3, a0
+db 0xA0, 0x1F ; file 006A58 | 68k dc.w $a01f
+db 0x20, 0x0C ; file 006A5A | 68k move.l a4, d0
+db 0x4C, 0xDF, 0x1C, 0x00 ; file 006A5C | 68k movem.l (a7)+, a2-a4
+db 0x4E, 0x5E ; file 006A60 | 68k unlk a6
+db 0x4E, 0x75 ; file 006A62 | 68k rts 

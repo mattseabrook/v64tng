@@ -1,0 +1,84 @@
+; verified-role: Native OpenDocEventHandler routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.
+; Original native symbol: OpenDocEventHandler; evidence file offset 0x5332.
+; Exact bytes retained; instruction decoding remains provisional where inline data may occur.
+mac_code_2_open_doc_event_handler:
+db 0x4E, 0x56, 0xFF, 0x9A ; file 005242 | 68k link.w a6, #$ff9a
+db 0x48, 0xE7, 0x03, 0x00 ; file 005246 | 68k movem.l d6-d7, -(a7)
+db 0x42, 0xAE, 0xFF, 0xFC ; file 00524A | 68k clr.l -$4(a6)
+db 0x42, 0x67 ; file 00524E | 68k clr.w -(a7)
+db 0x2F, 0x2E, 0x00, 0x08 ; file 005250 | 68k move.l $8(a6), -(a7)
+db 0x2F, 0x3C, 0x2D, 0x2D, 0x2D, 0x2D ; file 005254 | 68k move.l #$2d2d2d2d, -(a7)
+db 0x2F, 0x3C, 0x6C, 0x69, 0x73, 0x74 ; file 00525A | 68k move.l #$6c697374, -(a7)
+db 0x48, 0x6E, 0xFF, 0xF8 ; file 005260 | 68k pea.l -$8(a6)
+db 0x30, 0x3C, 0x08, 0x12 ; file 005264 | 68k move.w #$812, d0
+db 0xA8, 0x16 ; file 005268 | 68k dc.w $a816
+db 0x3E, 0x1F ; file 00526A | 68k move.w (a7)+, d7
+db 0x67, 0x06 ; file 00526C | 68k beq.b $420c
+db 0x30, 0x07 ; file 00526E | 68k move.w d7, d0
+db 0x60, 0x00, 0x00, 0xB8 ; file 005270 | 68k bra.w $42c2
+db 0x2F, 0x2E, 0x00, 0x08 ; file 005274 | 68k move.l $8(a6), -(a7)
+db 0x4E, 0xBA, 0xFD, 0xC2 ; file 005278 | 68k jsr $3fd4(pc)
+db 0x4A, 0x00 ; file 00527C | 68k tst.b d0
+db 0x58, 0x8F ; file 00527E | 68k addq.l #$4, a7
+db 0x66, 0x00, 0x00, 0x90 ; file 005280 | 68k bne.w $42aa
+db 0x42, 0x67 ; file 005284 | 68k clr.w -(a7)
+db 0x48, 0x6E, 0xFF, 0xF8 ; file 005286 | 68k pea.l -$8(a6)
+db 0x48, 0x6E, 0xFF, 0xAE ; file 00528A | 68k pea.l -$52(a6)
+db 0x30, 0x3C, 0x04, 0x07 ; file 00528E | 68k move.w #$407, d0
+db 0xA8, 0x16 ; file 005292 | 68k dc.w $a816
+db 0x3E, 0x1F ; file 005294 | 68k move.w (a7)+, d7
+db 0x4A, 0x47 ; file 005296 | 68k tst.w d7
+db 0x66, 0x78 ; file 005298 | 68k bne.b $42aa
+db 0x7C, 0x01 ; file 00529A | 68k moveq #$1, d6
+db 0x60, 0x68 ; file 00529C | 68k bra.b $429e
+db 0x42, 0x67 ; file 00529E | 68k clr.w -(a7)
+db 0x48, 0x6E, 0xFF, 0xF8 ; file 0052A0 | 68k pea.l -$8(a6)
+db 0x30, 0x46 ; file 0052A4 | 68k movea.w d6, a0
+db 0x2F, 0x08 ; file 0052A6 | 68k move.l a0, -(a7)
+db 0x2F, 0x3C, 0x66, 0x73, 0x73, 0x20 ; file 0052A8 | 68k move.l #$66737320, -(a7)
+db 0x48, 0x6E, 0xFF, 0xAA ; file 0052AE | 68k pea.l -$56(a6)
+db 0x48, 0x6E, 0xFF, 0xA6 ; file 0052B2 | 68k pea.l -$5a(a6)
+db 0x48, 0x6E, 0xFF, 0xB2 ; file 0052B6 | 68k pea.l -$4e(a6)
+db 0x48, 0x78, 0x00, 0x46 ; file 0052BA | 68k pea.l $46.w
+db 0x48, 0x6E, 0xFF, 0xA2 ; file 0052BE | 68k pea.l -$5e(a6)
+db 0x30, 0x3C, 0x10, 0x0A ; file 0052C2 | 68k move.w #$100a, d0
+db 0xA8, 0x16 ; file 0052C6 | 68k dc.w $a816
+db 0x3E, 0x1F ; file 0052C8 | 68k move.w (a7)+, d7
+db 0x4A, 0x47 ; file 0052CA | 68k tst.w d7
+db 0x66, 0x44 ; file 0052CC | 68k bne.b $42aa
+db 0x1F, 0x3C, 0x00, 0x03 ; file 0052CE | 68k move.b #$3, -(a7)
+db 0x48, 0x6E, 0xFF, 0xB2 ; file 0052D2 | 68k pea.l -$4e(a6)
+db 0x48, 0x6E, 0xFF, 0x9E ; file 0052D6 | 68k pea.l -$62(a6)
+db 0x4E, 0xBA, 0x04, 0x12 ; file 0052DA | 68k jsr $4686(pc)
+db 0x3E, 0x00 ; file 0052DE | 68k move.w d0, d7
+db 0x4A, 0x47 ; file 0052E0 | 68k tst.w d7
+db 0x4F, 0xEF, 0x00, 0x0A ; file 0052E2 | 68k lea.l $a(a7), a7
+db 0x66, 0x2A ; file 0052E6 | 68k bne.b $42aa
+db 0x48, 0x6E, 0xFF, 0x9A ; file 0052E8 | 68k pea.l -$66(a6)
+db 0x2F, 0x2E, 0xFF, 0x9E ; file 0052EC | 68k move.l -$62(a6), -(a7)
+db 0x4E, 0xBA, 0x22, 0xD8 ; file 0052F0 | 68k jsr $6562(pc)
+db 0x3E, 0x00 ; file 0052F4 | 68k move.w d0, d7
+db 0x50, 0x8F ; file 0052F6 | 68k addq.l #$8, a7
+db 0x67, 0x0A ; file 0052F8 | 68k beq.b $429c
+db 0x2F, 0x2E, 0xFF, 0x9E ; file 0052FA | 68k move.l -$62(a6), -(a7)
+db 0x4E, 0xBA, 0x02, 0xE8 ; file 0052FE | 68k jsr $4580(pc)
+db 0x58, 0x8F ; file 005302 | 68k addq.l #$4, a7
+db 0x52, 0x46 ; file 005304 | 68k addq.w #$1, d6
+db 0x30, 0x46 ; file 005306 | 68k movea.w d6, a0
+db 0xB1, 0xEE, 0xFF, 0xAE ; file 005308 | 68k cmpa.l -$52(a6), a0
+db 0x6E, 0x04 ; file 00530C | 68k bgt.b $42aa
+db 0x4A, 0x47 ; file 00530E | 68k tst.w d7
+db 0x67, 0x8C ; file 005310 | 68k beq.b $4236
+db 0x42, 0x67 ; file 005312 | 68k clr.w -(a7)
+db 0x48, 0x6E, 0xFF, 0xF8 ; file 005314 | 68k pea.l -$8(a6)
+db 0x30, 0x3C, 0x02, 0x04 ; file 005318 | 68k move.w #$204, d0
+db 0xA8, 0x16 ; file 00531C | 68k dc.w $a816
+db 0x3C, 0x1F ; file 00531E | 68k move.w (a7)+, d6
+db 0x4A, 0x47 ; file 005320 | 68k tst.w d7
+db 0x67, 0x04 ; file 005322 | 68k beq.b $42c0
+db 0x30, 0x07 ; file 005324 | 68k move.w d7, d0
+db 0x60, 0x02 ; file 005326 | 68k bra.b $42c2
+db 0x30, 0x06 ; file 005328 | 68k move.w d6, d0
+db 0x4C, 0xDF, 0x00, 0xC0 ; file 00532A | 68k movem.l (a7)+, d6-d7
+db 0x4E, 0x5E ; file 00532E | 68k unlk a6
+db 0x4E, 0x75 ; file 005330 | 68k rts 

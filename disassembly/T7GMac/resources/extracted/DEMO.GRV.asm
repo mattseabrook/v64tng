@@ -1,0 +1,172 @@
+; DEMO.GRV
+; size=466 instructions=169 input_loops=0
+
+0000  01                                     RESERVED_01                   
+0001  1A 00 01 B1 0E 00                      STRCMP_NE_JMP                 start=v[0x100], values=[1], target=0x000E
+0007  02 46 4C                               PLAYSONG                      ref=0x4C46 (XMI[70]=?)
+000A  09 03 1C                               VIDEOREF                      ref=0x1C03 (HDISK[3]=?)
+000D  29                                     STOP_OR_WAIT_MIDI             
+000E  1A 00 01 B2 18 00                      STRCMP_NE_JMP                 start=v[0x100], values=[2], target=0x0018
+0014  02 45 4C                               PLAYSONG                      ref=0x4C45 (XMI[69]=?)
+0017  29                                     STOP_OR_WAIT_MIDI             
+0018  1A 00 01 B0 24 00                      STRCMP_NE_JMP                 start=v[0x100], values=[0], target=0x0024
+001E  08 0C 4C                               SETBACKGROUNDSONG             ref=0x4C0C (XMI[12]=?)
+0021  15 27 00                               JMP                           target=0x0027
+0024  08 00 4C                               SETBACKGROUNDSONG             ref=0x4C00 (XMI[0]=?)
+0027  1A 00 01 B1 33 00                      STRCMP_NE_JMP                 start=v[0x100], values=[1], target=0x0033
+002D  02 24 4C                               PLAYSONG                      ref=0x4C24 (XMI[36]=?)
+0030  15 36 00                               JMP                           target=0x0036
+0033  02 35 4C                               PLAYSONG                      ref=0x4C35 (XMI[53]=?)
+0036  03                                     FADEIN_NEXT_VIDEO             
+0037  19 90 01                               SLEEP                         ticks=0x0190
+003A  09 04 1C                               VIDEOREF                      ref=0x1C04 (HDISK[4]=?)
+003D  19 C8 00                               SLEEP                         ticks=0x00C8
+0040  19 C8 00                               SLEEP                         ticks=0x00C8
+0043  19 C8 00                               SLEEP                         ticks=0x00C8
+0046  04                                     PALFADEOUT                    
+0047  03                                     FADEIN_NEXT_VIDEO             
+0048  09 03 1C                               VIDEOREF                      ref=0x1C03 (HDISK[3]=?)
+004B  19 2C 01                               SLEEP                         ticks=0x012C
+004E  19 2C 01                               SLEEP                         ticks=0x012C
+0051  04                                     PALFADEOUT                    
+0052  03                                     FADEIN_NEXT_VIDEO             
+0053  09 02 1C                               VIDEOREF                      ref=0x1C02 (HDISK[2]=?)
+0056  19 C8 00                               SLEEP                         ticks=0x00C8
+0059  02 42 4C                               PLAYSONG                      ref=0x4C42 (XMI[66]=?)
+005C  09 02 24                               VIDEOREF                      ref=0x2402 (INTRO[2]=?)
+005F  06                                     VIDEOFLAG6_ON                 
+0060  09 03 24                               VIDEOREF                      ref=0x2403 (INTRO[3]=?)
+0063  02 3F 4C                               PLAYSONG                      ref=0x4C3F (XMI[63]=?)
+0066  19 C8 00                               SLEEP                         ticks=0x00C8
+0069  09 04 24                               VIDEOREF                      ref=0x2404 (INTRO[4]=?)
+006C  19 C8 00                               SLEEP                         ticks=0x00C8
+006F  06                                     VIDEOFLAG6_ON                 
+0070  09 05 24                               VIDEOREF                      ref=0x2405 (INTRO[5]=?)
+0073  19 C8 00                               SLEEP                         ticks=0x00C8
+0076  09 06 24                               VIDEOREF                      ref=0x2406 (INTRO[6]=?)
+0079  19 C8 00                               SLEEP                         ticks=0x00C8
+007C  06                                     VIDEOFLAG6_ON                 
+007D  09 07 24                               VIDEOREF                      ref=0x2407 (INTRO[7]=?)
+0080  19 C8 00                               SLEEP                         ticks=0x00C8
+0083  09 08 24                               VIDEOREF                      ref=0x2408 (INTRO[8]=?)
+0086  19 C8 00                               SLEEP                         ticks=0x00C8
+0089  06                                     VIDEOFLAG6_ON                 
+008A  31 00 00 C4 09                         MIDI_CONTROL                  value=0x0000, time=0x09C4
+008F  02 40 4C                               PLAYSONG                      ref=0x4C40 (XMI[64]=?)
+0092  09 09 24                               VIDEOREF                      ref=0x2409 (INTRO[9]=?)
+0095  19 C8 00                               SLEEP                         ticks=0x00C8
+0098  09 0A 24                               VIDEOREF                      ref=0x240A (INTRO[10]=?)
+009B  19 2C 01                               SLEEP                         ticks=0x012C
+009E  06                                     VIDEOFLAG6_ON                 
+009F  09 0B 24                               VIDEOREF                      ref=0x240B (INTRO[11]=?)
+00A2  19 2C 01                               SLEEP                         ticks=0x012C
+00A5  09 0C 24                               VIDEOREF                      ref=0x240C (INTRO[12]=?)
+00A8  19 64 00                               SLEEP                         ticks=0x0064
+00AB  06                                     VIDEOFLAG6_ON                 
+00AC  09 0D 24                               VIDEOREF                      ref=0x240D (INTRO[13]=?)
+00AF  19 64 00                               SLEEP                         ticks=0x0064
+00B2  02 41 4C                               PLAYSONG                      ref=0x4C41 (XMI[65]=?)
+00B5  09 0E 24                               VIDEOREF                      ref=0x240E (INTRO[14]=?)
+00B8  19 64 00                               SLEEP                         ticks=0x0064
+00BB  06                                     VIDEOFLAG6_ON                 
+00BC  09 0F 24                               VIDEOREF                      ref=0x240F (INTRO[15]=?)
+00BF  19 64 00                               SLEEP                         ticks=0x0064
+00C2  09 10 24                               VIDEOREF                      ref=0x2410 (INTRO[16]=?)
+00C5  19 64 00                               SLEEP                         ticks=0x0064
+00C8  06                                     VIDEOFLAG6_ON                 
+00C9  09 11 24                               VIDEOREF                      ref=0x2411 (INTRO[17]=?)
+00CC  19 64 00                               SLEEP                         ticks=0x0064
+00CF  09 12 24                               VIDEOREF                      ref=0x2412 (INTRO[18]=?)
+00D2  19 64 00                               SLEEP                         ticks=0x0064
+00D5  06                                     VIDEOFLAG6_ON                 
+00D6  09 13 24                               VIDEOREF                      ref=0x2413 (INTRO[19]=?)
+00D9  19 C8 00                               SLEEP                         ticks=0x00C8
+00DC  09 14 24                               VIDEOREF                      ref=0x2414 (INTRO[20]=?)
+00DF  19 64 00                               SLEEP                         ticks=0x0064
+00E2  06                                     VIDEOFLAG6_ON                 
+00E3  09 36 34                               VIDEOREF                      ref=0x3436 (LI[54]=?)
+00E6  03                                     FADEIN_NEXT_VIDEO             
+00E7  09 41 14                               VIDEOREF                      ref=0x1441 (FH[65]=?)
+00EA  09 15 14                               VIDEOREF                      ref=0x1415 (FH[21]=?)
+00ED  19 FF 00                               SLEEP                         ticks=0x00FF
+00F0  09 00 14                               VIDEOREF                      ref=0x1400 (FH[0]=?)
+00F3  09 25 14                               VIDEOREF                      ref=0x1425 (FH[37]=?)
+00F6  09 26 14                               VIDEOREF                      ref=0x1426 (FH[38]=?)
+00F9  09 01 14                               VIDEOREF                      ref=0x1401 (FH[1]=?)
+00FC  09 0C 14                               VIDEOREF                      ref=0x140C (FH[12]=?)
+00FF  02 1F 4C                               PLAYSONG                      ref=0x4C1F (XMI[31]=?)
+0102  09 5F 10                               VIDEOREF                      ref=0x105F (DR[95]=?)
+0105  09 63 10                               VIDEOREF                      ref=0x1063 (DR[99]=?)
+0108  02 10 4C                               PLAYSONG                      ref=0x4C10 (XMI[16]=?)
+010B  09 07 10                               VIDEOREF                      ref=0x1007 (DR[7]=?)
+010E  02 0A 4C                               PLAYSONG                      ref=0x4C0A (XMI[10]=?)
+0111  09 69 10                               VIDEOREF                      ref=0x1069 (DR[105]=?)
+0114  09 6A 10                               VIDEOREF                      ref=0x106A (DR[106]=?)
+0117  02 07 4C                               PLAYSONG                      ref=0x4C07 (XMI[7]=?)
+011A  09 0B 10                               VIDEOREF                      ref=0x100B (DR[11]=?)
+011D  02 3A 4C                               PLAYSONG                      ref=0x4C3A (XMI[58]=?)
+0120  09 62 10                               VIDEOREF                      ref=0x1062 (DR[98]=?)
+0123  09 60 10                               VIDEOREF                      ref=0x1060 (DR[96]=?)
+0126  09 5E 10                               VIDEOREF                      ref=0x105E (DR[94]=?)
+0129  02 35 4C                               PLAYSONG                      ref=0x4C35 (XMI[53]=?)
+012C  03                                     FADEIN_NEXT_VIDEO             
+012D  09 2B 14                               VIDEOREF                      ref=0x142B (FH[43]=?)
+0130  09 0B 14                               VIDEOREF                      ref=0x140B (FH[11]=?)
+0133  09 12 14                               VIDEOREF                      ref=0x1412 (FH[18]=?)
+0136  02 20 4C                               PLAYSONG                      ref=0x4C20 (XMI[32]=?)
+0139  03                                     FADEIN_NEXT_VIDEO             
+013A  05                                     FIRSTFRAME_NEXT_VIDEO         
+013B  09 00 2C                               VIDEOREF                      ref=0x2C00 (K[0]=?)
+013E  02 06 4C                               PLAYSONG                      ref=0x4C06 (XMI[6]=?)
+0141  09 07 2C                               VIDEOREF                      ref=0x2C07 (K[7]=?)
+0144  09 00 2C                               VIDEOREF                      ref=0x2C00 (K[0]=?)
+0147  09 17 2C                               VIDEOREF                      ref=0x2C17 (K[23]=?)
+014A  09 14 2C                               VIDEOREF                      ref=0x2C14 (K[20]=?)
+014D  1A 00 01 B0 59 01                      STRCMP_NE_JMP                 start=v[0x100], values=[0], target=0x0159
+0153  02 02 4C                               PLAYSONG                      ref=0x4C02 (XMI[2]=?)
+0156  15 5C 01                               JMP                           target=0x015C
+0159  02 23 4C                               PLAYSONG                      ref=0x4C23 (XMI[35]=?)
+015C  09 06 2C                               VIDEOREF                      ref=0x2C06 (K[6]=?)
+015F  09 0B 2C                               VIDEOREF                      ref=0x2C0B (K[11]=?)
+0162  09 05 2C                               VIDEOREF                      ref=0x2C05 (K[5]=?)
+0165  29                                     STOP_OR_WAIT_MIDI             
+0166  1A 00 01 B0 72 01                      STRCMP_NE_JMP                 start=v[0x100], values=[0], target=0x0172
+016C  02 00 4C                               PLAYSONG                      ref=0x4C00 (XMI[0]=?)
+016F  15 75 01                               JMP                           target=0x0175
+0172  02 0C 4C                               PLAYSONG                      ref=0x4C0C (XMI[12]=?)
+0175  09 10 2C                               VIDEOREF                      ref=0x2C10 (K[16]=?)
+0178  09 04 2C                               VIDEOREF                      ref=0x2C04 (K[4]=?)
+017B  04                                     PALFADEOUT                    
+017C  02 29 4C                               PLAYSONG                      ref=0x4C29 (XMI[41]=?)
+017F  03                                     FADEIN_NEXT_VIDEO             
+0180  09 00 34                               VIDEOREF                      ref=0x3400 (LI[0]=?)
+0183  09 07 34                               VIDEOREF                      ref=0x3407 (LI[7]=?)
+0186  09 06 34                               VIDEOREF                      ref=0x3406 (LI[6]=?)
+0189  09 27 34                               VIDEOREF                      ref=0x3427 (LI[39]=?)
+018C  02 28 4C                               PLAYSONG                      ref=0x4C28 (XMI[40]=?)
+018F  09 2F 34                               VIDEOREF                      ref=0x342F (LI[47]=?)
+0192  02 27 4C                               PLAYSONG                      ref=0x4C27 (XMI[39]=?)
+0195  09 0D 34                               VIDEOREF                      ref=0x340D (LI[13]=?)
+0198  02 3B 4C                               PLAYSONG                      ref=0x4C3B (XMI[59]=?)
+019B  09 33 34                               VIDEOREF                      ref=0x3433 (LI[51]=?)
+019E  09 30 34                               VIDEOREF                      ref=0x3430 (LI[48]=?)
+01A1  09 08 34                               VIDEOREF                      ref=0x3408 (LI[8]=?)
+01A4  1A 00 01 B0 B0 01                      STRCMP_NE_JMP                 start=v[0x100], values=[0], target=0x01B0
+01AA  02 00 4C                               PLAYSONG                      ref=0x4C00 (XMI[0]=?)
+01AD  15 B3 01                               JMP                           target=0x01B3
+01B0  02 0C 4C                               PLAYSONG                      ref=0x4C0C (XMI[12]=?)
+01B3  03                                     FADEIN_NEXT_VIDEO             
+01B4  09 04 04                               VIDEOREF                      ref=0x0404 (B[4]=?)
+01B7  09 05 04                               VIDEOREF                      ref=0x0405 (B[5]=?)
+01BA  09 03 04                               VIDEOREF                      ref=0x0403 (B[3]=?)
+01BD  09 0A 04                               VIDEOREF                      ref=0x040A (B[10]=?)
+01C0  29                                     STOP_OR_WAIT_MIDI             
+01C1  09 03 1C                               VIDEOREF                      ref=0x1C03 (HDISK[3]=?)
+01C4  04                                     PALFADEOUT                    
+01C5  03                                     FADEIN_NEXT_VIDEO             
+01C6  09 29 48                               VIDEOREF                      ref=0x4829 (P[41]=?)
+01C9  04                                     PALFADEOUT                    
+01CA  03                                     FADEIN_NEXT_VIDEO             
+01CB  09 9D 14                               VIDEOREF                      ref=0x149D (FH[157]=?)
+01CE  04                                     PALFADEOUT                    
+01CF  15 00 00                               JMP                           target=0x0000

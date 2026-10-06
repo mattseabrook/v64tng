@@ -9,7 +9,7 @@ bits 16
 ; Functions
 ; Generated function macro inventory.
 %include "src/functions/runtime/entry.asm"
-%include "src/functions/unknown/00089_func_00089.asm"
+%include "src/functions/vdx/initialize_vdx_stream_buffers.asm"
 %include "src/functions/runtime/standalone_vdx_or_diagnostics.asm"
 %include "src/functions/resource_io/open_vdx_file_or_borrow_archive_handle.asm"
 %include "src/functions/resource_io/close_vdx_file_unless_archive_borrowed.asm"
@@ -35,27 +35,27 @@ bits 16
 %include "src/functions/unknown/028ad_func_028ad.asm"
 %include "src/functions/unknown/0293b_func_0293b.asm"
 %include "src/functions/vdx/stream_media_buffer.asm"
-%include "src/functions/unknown/02c32_func_02c32.asm"
-%include "src/functions/unknown/02d50_func_02d50.asm"
-%include "src/functions/unknown/02d5a_func_02d5a.asm"
-%include "src/functions/unknown/02f6a_func_02f6a.asm"
+%include "src/functions/runtime/probe_cpu_and_x87_capabilities.asm"
+%include "src/functions/platform/dispatch_video_bank_switch.asm"
+%include "src/functions/platform/synchronize_video_bank_state.asm"
+%include "src/functions/platform/call_scaled_video_bank_handler.asm"
 %include "src/functions/platform/detect_video_hardware.asm"
 %include "src/functions/unknown/033b7_func_033b7.asm"
-%include "src/functions/unknown/033ff_func_033ff.asm"
-%include "src/functions/unknown/0341a_func_0341a.asm"
-%include "src/functions/unknown/0345e_func_0345e.asm"
-%include "src/functions/unknown/0348c_func_0348c.asm"
-%include "src/functions/unknown/034a5_func_034a5.asm"
-%include "src/functions/unknown/0358a_func_0358a.asm"
-%include "src/functions/unknown/03590_func_03590.asm"
-%include "src/functions/unknown/03671_func_03671.asm"
+%include "src/functions/platform/probe_video_memory_bank_separation.asm"
+%include "src/functions/platform/test_video_bank_pattern_pair.asm"
+%include "src/functions/platform/probe_indexed_register_writable_bits.asm"
+%include "src/functions/platform/probe_direct_register_writable_bits.asm"
+%include "src/functions/platform/set_detected_graphics_mode.asm"
+%include "src/functions/platform/restore_bios_text_mode.asm"
+%include "src/functions/runtime/print_hardware_and_memory_diagnostics.asm"
+%include "src/functions/platform/detect_and_reset_mouse_driver.asm"
 %include "src/functions/platform/query_xms.asm"
 %include "src/functions/platform/format_memory_diagnostic.asm"
-%include "src/functions/unknown/03756_func_03756.asm"
+%include "src/functions/resource_io/open_named_archive_file.asm"
 %include "src/functions/unknown/0376a_func_0376a.asm"
 %include "src/functions/unknown/03774_func_03774.asm"
 %include "src/functions/unknown/0377e_func_0377e.asm"
-%include "src/functions/unknown/0378f_func_0378f.asm"
+%include "src/functions/resource_io/resolve_named_resource_reference.asm"
 %include "src/functions/resource_io/save_selected_archive_context.asm"
 %include "src/functions/resource_io/restore_selected_archive_context.asm"
 %include "src/functions/resource_io/select_grv_video_resource.asm"
@@ -64,10 +64,10 @@ bits 16
 %include "src/functions/resource_io/build_resource_filename.asm"
 %include "src/functions/resource_io/open_resource_read_only.asm"
 %include "src/functions/resource_io/close_resource_file.asm"
-%include "src/functions/unknown/03a51_func_03a51.asm"
+%include "src/functions/resource_io/read_open_resource_file.asm"
 %include "src/functions/resource_io/load_selected_resource_file.asm"
 %include "src/functions/grv/run_grv_vm.asm"
-%include "src/functions/unknown/03e44_func_03e44.asm"
+%include "src/functions/resource_io/probe_game_disc_archive_availability.asm"
 %include "src/functions/grv/grv_load_child_script.asm"
 %include "src/functions/grv/grv_return_from_child_script.asm"
 %include "src/functions/savegame/grv_check_valid_saves.asm"
@@ -99,11 +99,11 @@ bits 16
 %include "src/functions/grv/advance_grv_random_state.asm"
 %include "src/functions/grv/advance_grv_random_state_far.asm"
 %include "src/functions/grv/grv_play_transition_video_ref.asm"
-%include "src/functions/unknown/04375_func_04375.asm"
+%include "src/functions/vdx/play_named_vdx_resource.asm"
 %include "src/functions/unknown/043c9_func_043c9.asm"
 %include "src/functions/grv/grv_play_video_name.asm"
-%include "src/functions/unknown/04406_func_04406.asm"
-%include "src/functions/unknown/0443a_func_0443a.asm"
+%include "src/functions/grv/grv_play_video_reference.asm"
+%include "src/functions/grv/grv_play_song_reference.asm"
 %include "src/functions/grv/grv_set_background_song.asm"
 %include "src/functions/grv/grv_sleep.asm"
 %include "src/functions/grv/grv_call_absolute.asm"
@@ -122,34 +122,34 @@ bits 16
 %include "src/functions/unknown/047bc_func_047bc.asm"
 %include "src/functions/unknown/047cc_func_047cc.asm"
 %include "src/functions/grv/test_grv_hotspot_rect.asm"
-%include "src/functions/unknown/04849_func_04849.asm"
-%include "src/functions/unknown/048c9_func_048c9.asm"
-%include "src/functions/unknown/04957_func_04957.asm"
-%include "src/functions/unknown/0495d_func_0495d.asm"
+%include "src/functions/grv/expand_grv_video_filename.asm"
+%include "src/functions/runtime/tokenize_configuration_line.asm"
+%include "src/functions/runtime/skip_nul_terminated_string.asm"
+%include "src/functions/runtime/skip_configuration_whitespace.asm"
 %include "src/functions/vdx/build_32_color_palette_translation.asm"
-%include "src/functions/unknown/04a23_func_04a23.asm"
-%include "src/functions/unknown/04a55_func_04a55.asm"
-%include "src/functions/unknown/04a7b_func_04a7b.asm"
-%include "src/functions/unknown/04bf5_func_04bf5.asm"
-%include "src/functions/unknown/04c27_func_04c27.asm"
-%include "src/functions/unknown/04cd2_func_04cd2.asm"
-%include "src/functions/unknown/04d8c_func_04d8c.asm"
-%include "src/functions/unknown/04e1f_func_04e1f.asm"
-%include "src/functions/unknown/04eae_func_04eae.asm"
-%include "src/functions/unknown/04fc7_func_04fc7.asm"
+%include "src/functions/runtime/parse_configuration_decimal_word.asm"
+%include "src/functions/runtime/parse_configuration_hex_word.asm"
+%include "src/functions/cursor/update_animated_software_cursor.asm"
+%include "src/functions/cursor/erase_software_cursor.asm"
+%include "src/functions/cursor/draw_cursor_and_save_background_banked.asm"
+%include "src/functions/cursor/redraw_cursor_frame_banked.asm"
+%include "src/functions/cursor/draw_cursor_and_save_background_half_resolution.asm"
+%include "src/functions/cursor/redraw_cursor_frame_half_resolution.asm"
+%include "src/functions/cursor/restore_cursor_background.asm"
+%include "src/functions/runtime/skip_configuration_crlf_line.asm"
 %include "src/functions/runtime/ascii_lowercase_al.asm"
 %include "src/functions/runtime/compare_ascii_strings_case_insensitive.asm"
-%include "src/functions/unknown/05010_func_05010.asm"
-%include "src/functions/unknown/05018_func_05018.asm"
-%include "src/functions/unknown/05057_func_05057.asm"
-%include "src/functions/unknown/051c5_func_051c5.asm"
-%include "src/functions/unknown/051cb_func_051cb.asm"
-%include "src/functions/unknown/051e5_func_051e5.asm"
-%include "src/functions/unknown/051ff_func_051ff.asm"
-%include "src/functions/unknown/05217_func_05217.asm"
-%include "src/functions/unknown/05226_func_05226.asm"
-%include "src/functions/unknown/05235_func_05235.asm"
-%include "src/functions/unknown/05379_func_05379.asm"
+%include "src/functions/runtime/copy_config_string_leaving_terminator.asm"
+%include "src/functions/runtime/find_configuration_section.asm"
+%include "src/functions/runtime/load_groovie_configuration.asm"
+%include "src/functions/runtime/mark_videocard_configuration_seen.asm"
+%include "src/functions/runtime/configure_dma_buffer_size.asm"
+%include "src/functions/runtime/configure_ticks_per_second.asm"
+%include "src/functions/runtime/configure_svga_mode.asm"
+%include "src/functions/runtime/configure_program_directory.asm"
+%include "src/functions/runtime/configure_data_directory.asm"
+%include "src/functions/runtime/configure_midi_driver.asm"
+%include "src/functions/runtime/configure_pcm_driver.asm"
 %include "src/functions/grv/decode_and_draw_grv_string.asm"
 %include "src/functions/unknown/054ad_func_054ad.asm"
 %include "src/functions/unknown/054f9_func_054f9.asm"
@@ -171,31 +171,31 @@ bits 16
 %include "src/functions/audio/load_and_play_selected_xmi.asm"
 %include "src/functions/audio/replace_active_midi_sequence.asm"
 %include "src/functions/runtime/shutdown_player.asm"
-%include "src/functions/unknown/05e8d_func_05e8d.asm"
-%include "src/functions/unknown/05ea9_func_05ea9.asm"
-%include "src/functions/unknown/05ec8_func_05ec8.asm"
-%include "src/functions/unknown/05ed6_func_05ed6.asm"
-%include "src/functions/unknown/05f22_func_05f22.asm"
-%include "src/functions/unknown/05f6c_func_05f6c.asm"
-%include "src/functions/unknown/05fb6_func_05fb6.asm"
-%include "src/functions/unknown/05fd8_func_05fd8.asm"
-%include "src/functions/unknown/05fe4_func_05fe4.asm"
-%include "src/functions/unknown/060d0_func_060d0.asm"
-%include "src/functions/unknown/061d0_func_061d0.asm"
-%include "src/functions/unknown/06290_func_06290.asm"
-%include "src/functions/unknown/062ea_func_062ea.asm"
-%include "src/functions/unknown/063b4_func_063b4.asm"
-%include "src/functions/unknown/0641c_func_0641c.asm"
-%include "src/functions/unknown/06436_func_06436.asm"
-%include "src/functions/unknown/06458_func_06458.asm"
-%include "src/functions/unknown/0656c_func_0656c.asm"
-%include "src/functions/unknown/06846_func_06846.asm"
-%include "src/functions/unknown/06a6d_func_06a6d.asm"
-%include "src/functions/unknown/06a81_func_06a81.asm"
-%include "src/functions/unknown/06aef_func_06aef.asm"
-%include "src/functions/unknown/06d0e_func_06d0e.asm"
-%include "src/functions/unknown/06de4_func_06de4.asm"
-%include "src/functions/unknown/06e68_func_06e68.asm"
+%include "src/functions/runtime/free_dos_memory_segment.asm"
+%include "src/functions/runtime/allocate_dos_memory_for_byte_count.asm"
+%include "src/functions/runtime/allocate_dos_memory_paragraphs.asm"
+%include "src/functions/puzzle/cell_run_grv_puzzle_search.asm"
+%include "src/functions/puzzle/cell_convert_adjacent_pieces.asm"
+%include "src/functions/puzzle/cell_count_board_pieces.asm"
+%include "src/functions/puzzle/cell_begin_forward_move_iteration.asm"
+%include "src/functions/puzzle/cell_begin_reverse_move_iteration.asm"
+%include "src/functions/puzzle/cell_next_forward_move.asm"
+%include "src/functions/puzzle/cell_next_forward_move_with_jump_deduplication.asm"
+%include "src/functions/puzzle/cell_next_reverse_move.asm"
+%include "src/functions/puzzle/cell_apply_move_to_scratch_board.asm"
+%include "src/functions/puzzle/cell_score_candidate_move.asm"
+%include "src/functions/puzzle/cell_count_adjacent_clone_opportunities.asm"
+%include "src/functions/puzzle/cell_reset_best_move_list.asm"
+%include "src/functions/puzzle/cell_append_tied_best_move.asm"
+%include "src/functions/puzzle/cell_choose_best_move.asm"
+%include "src/functions/puzzle/cell_search_recursive.asm"
+%include "src/functions/puzzle/cell_search_best_move.asm"
+%include "src/functions/puzzle/cell_reset_ranked_move_list.asm"
+%include "src/functions/puzzle/cell_insert_ranked_move.asm"
+%include "src/functions/puzzle/cell_build_ranked_move_list.asm"
+%include "src/functions/puzzle/cell_search_ranked_moves.asm"
+%include "src/functions/puzzle/cell_dispatch_search_strategy.asm"
+%include "src/functions/puzzle/cell_random_byte.asm"
 %include "src/functions/unknown/06e72_func_06e72.asm"
 %include "src/functions/unknown/06eb6_func_06eb6.asm"
 %include "src/functions/unknown/06ed9_func_06ed9.asm"
@@ -280,7 +280,12 @@ bits 16
 %include "src/data/unresolved_initialized_tables_and_templates.asm"
 %include "src/data/unresolved_pre_configuration_runtime_data.asm"
 %include "src/data/groovie_configuration_strings.asm"
-%include "src/data/unresolved_lookup_structures.asm"
+%include "src/data/unresolved_pre_cell_neighbor_tables.asm"
+%include "src/data/cell_adjacent_neighbor_lists.asm"
+%include "src/data/cell_distance_two_neighbor_lists.asm"
+%include "src/data/cell_adjacent_neighbor_pointers.asm"
+%include "src/data/cell_distance_two_neighbor_pointers.asm"
+%include "src/data/unresolved_post_cell_neighbor_tables.asm"
 %include "src/data/zero_initialized_static_workspace_1724c_17c2d.asm"
 %include "src/data/unresolved_initialized_word.asm"
 %include "src/data/zero_initialized_static_workspace_17c30_18151.asm"
@@ -434,7 +439,7 @@ load_image_start:
     ; 0007E..00088 function
     emit_entry_part_01
     ; 00089..000D0 function
-    emit_func_00089_part_00
+    emit_initialize_vdx_stream_buffers_part_00
     ; 000D1..001E0 function
     emit_standalone_vdx_or_diagnostics_part_00
     ; 001E1..00209 function
@@ -596,27 +601,27 @@ load_image_start:
     ; 02BE8..02C31 gap
     emit_gap_028_02be8
     ; 02C32..02CBF function
-    emit_func_02c32_part_00
+    emit_probe_cpu_and_x87_capabilities_part_00
     ; 02CC0..02CE8 gap
     emit_gap_029_02cc0
     ; 02CE9..02CF4 function
-    emit_func_02c32_part_01
+    emit_probe_cpu_and_x87_capabilities_part_01
     ; 02CF5..02D08 gap
     emit_gap_030_02cf5
     ; 02D09..02D4E function
-    emit_func_02c32_part_02
+    emit_probe_cpu_and_x87_capabilities_part_02
     ; 02D4F..02D4F gap
     emit_gap_031_02d4f
     ; 02D50..02D58 function
-    emit_func_02d50_part_00
+    emit_dispatch_video_bank_switch_part_00
     ; 02D59..02D59 gap
     emit_gap_032_02d59
     ; 02D5A..02D79 function
-    emit_func_02d5a_part_00
+    emit_synchronize_video_bank_state_part_00
     ; 02D7A..02F69 gap
     emit_gap_033_02d7a
     ; 02F6A..02F82 function
-    emit_func_02f6a_part_00
+    emit_call_scaled_video_bank_handler_part_00
     ; 02F83..02F83 gap
     emit_gap_034_02f83
     ; 02F84..033B6 function
@@ -624,23 +629,23 @@ load_image_start:
     ; 033B7..033FE function
     emit_func_033b7_part_00
     ; 033FF..03419 function
-    emit_func_033ff_part_00
+    emit_probe_video_memory_bank_separation_part_00
     ; 0341A..03452 function
-    emit_func_0341a_part_00
+    emit_test_video_bank_pattern_pair_part_00
     ; 03453..0345D gap
     emit_gap_035_03453
     ; 0345E..0348B function
-    emit_func_0345e_part_00
+    emit_probe_indexed_register_writable_bits_part_00
     ; 0348C..034A4 function
-    emit_func_0348c_part_00
+    emit_probe_direct_register_writable_bits_part_00
     ; 034A5..03589 function
-    emit_func_034a5_part_00
+    emit_set_detected_graphics_mode_part_00
     ; 0358A..0358F function
-    emit_func_0358a_part_00
+    emit_restore_bios_text_mode_part_00
     ; 03590..03670 function
-    emit_func_03590_part_00
+    emit_print_hardware_and_memory_diagnostics_part_00
     ; 03671..03687 function
-    emit_func_03671_part_00
+    emit_detect_and_reset_mouse_driver_part_00
     ; 03688..0368B gap
     emit_gap_036_03688
     ; 0368C..036D1 function
@@ -648,7 +653,7 @@ load_image_start:
     ; 036D2..03755 function
     emit_format_memory_diagnostic_part_00
     ; 03756..03769 function
-    emit_func_03756_part_00
+    emit_open_named_archive_file_part_00
     ; 0376A..03773 function
     emit_func_0376a_part_00
     ; 03774..0377D function
@@ -658,7 +663,7 @@ load_image_start:
     ; 03785..0378E gap
     emit_gap_037_03785
     ; 0378F..0382C function
-    emit_func_0378f_part_00
+    emit_resolve_named_resource_reference_part_00
     ; 0382D..03837 function
     emit_save_selected_archive_context_part_00
     ; 03838..03889 function
@@ -678,7 +683,7 @@ load_image_start:
     ; 03A47..03A50 function
     emit_close_resource_file_part_00
     ; 03A51..03A5A function
-    emit_func_03a51_part_00
+    emit_read_open_resource_file_part_00
     ; 03A5B..03A95 function
     emit_load_selected_resource_file_part_00
     ; 03A96..03AC3 gap
@@ -694,7 +699,7 @@ load_image_start:
     ; 03CC2..03E43 function
     emit_run_grv_vm_part_02
     ; 03E44..03E84 function
-    emit_func_03e44_part_00
+    emit_probe_game_disc_archive_availability_part_00
     ; 03E85..03EB7 function
     emit_grv_load_child_script_part_00
     ; 03EB8..03EE9 function
@@ -758,15 +763,15 @@ load_image_start:
     ; 0432B..04374 function
     emit_grv_play_transition_video_ref_part_00
     ; 04375..043C8 function
-    emit_func_04375_part_00
+    emit_play_named_vdx_resource_part_00
     ; 043C9..043D1 function
     emit_func_043c9_part_00
     ; 043D2..04405 function
     emit_grv_play_video_name_part_00
     ; 04406..04439 function
-    emit_func_04406_part_00
+    emit_grv_play_video_reference_part_00
     ; 0443A..04449 function
-    emit_func_0443a_part_00
+    emit_grv_play_song_reference_part_00
     ; 0444A..04450 function
     emit_grv_set_background_song_part_00
     ; 04451..04460 function
@@ -808,119 +813,119 @@ load_image_start:
     ; 04840..04848 function
     emit_test_grv_hotspot_rect_part_01
     ; 04849..048C8 function
-    emit_func_04849_part_00
+    emit_expand_grv_video_filename_part_00
     ; 048C9..04956 function
-    emit_func_048c9_part_00
+    emit_tokenize_configuration_line_part_00
     ; 04957..0495C function
-    emit_func_04957_part_00
+    emit_skip_nul_terminated_string_part_00
     ; 0495D..04967 function
-    emit_func_0495d_part_00
+    emit_skip_configuration_whitespace_part_00
     ; 04968..0497F gap
     emit_gap_043_04968
     ; 04980..04A22 function
     emit_build_32_color_palette_translation_part_00
     ; 04A23..04A54 function
-    emit_func_04a23_part_00
+    emit_parse_configuration_decimal_word_part_00
     ; 04A55..04A7A function
-    emit_func_04a55_part_00
+    emit_parse_configuration_hex_word_part_00
     ; 04A7B..04B67 function
-    emit_func_04a7b_part_00
+    emit_update_animated_software_cursor_part_00
     ; 04B68..04B6A gap
     emit_gap_044_04b68
     ; 04B6B..04BAB function
-    emit_func_04a7b_part_01
+    emit_update_animated_software_cursor_part_01
     ; 04BAC..04BAD gap
     emit_gap_045_04bac
     ; 04BAE..04BF4 function
-    emit_func_04a7b_part_02
+    emit_update_animated_software_cursor_part_02
     ; 04BF5..04C26 function
-    emit_func_04bf5_part_00
+    emit_erase_software_cursor_part_00
     ; 04C27..04CD1 function
-    emit_func_04c27_part_00
+    emit_draw_cursor_and_save_background_banked_part_00
     ; 04CD2..04D8B function
-    emit_func_04cd2_part_00
+    emit_redraw_cursor_frame_banked_part_00
     ; 04D8C..04E1E function
-    emit_func_04d8c_part_00
+    emit_draw_cursor_and_save_background_half_resolution_part_00
     ; 04E1F..04EAD function
-    emit_func_04e1f_part_00
+    emit_redraw_cursor_frame_half_resolution_part_00
     ; 04EAE..04FC6 function
-    emit_func_04eae_part_00
+    emit_restore_cursor_background_part_00
     ; 04FC7..04FEA function
-    emit_func_04fc7_part_00
+    emit_skip_configuration_crlf_line_part_00
     ; 04FEB..04FF5 function
     emit_ascii_lowercase_al_part_00
     ; 04FF6..0500F function
     emit_compare_ascii_strings_case_insensitive_part_00
     ; 05010..05017 function
-    emit_func_05010_part_00
+    emit_copy_config_string_leaving_terminator_part_00
     ; 05018..05056 function
-    emit_func_05018_part_00
+    emit_find_configuration_section_part_00
     ; 05057..0518F function
-    emit_func_05057_part_00
+    emit_load_groovie_configuration_part_00
     ; 05190..05191 gap
     emit_gap_046_05190
     ; 05192..0519B function
-    emit_func_05057_part_01
+    emit_load_groovie_configuration_part_01
     ; 0519C..0519D gap
     emit_gap_047_0519c
     ; 0519E..051A3 function
-    emit_func_05057_part_02
+    emit_load_groovie_configuration_part_02
     ; 051A4..051A5 gap
     emit_gap_048_051a4
     ; 051A6..051AB function
-    emit_func_05057_part_03
+    emit_load_groovie_configuration_part_03
     ; 051AC..051AD gap
     emit_gap_049_051ac
     ; 051AE..051C4 function
-    emit_func_05057_part_04
+    emit_load_groovie_configuration_part_04
     ; 051C5..051CA function
-    emit_func_051c5_part_00
+    emit_mark_videocard_configuration_seen_part_00
     ; 051CB..051E4 function
-    emit_func_051cb_part_00
+    emit_configure_dma_buffer_size_part_00
     ; 051E5..051FE function
-    emit_func_051e5_part_00
+    emit_configure_ticks_per_second_part_00
     ; 051FF..05216 function
-    emit_func_051ff_part_00
+    emit_configure_svga_mode_part_00
     ; 05217..05225 function
-    emit_func_05217_part_00
+    emit_configure_program_directory_part_00
     ; 05226..05234 function
-    emit_func_05226_part_00
+    emit_configure_data_directory_part_00
     ; 05235..05350 function
-    emit_func_05235_part_00
+    emit_configure_midi_driver_part_00
     ; 05351..05352 gap
     emit_gap_050_05351
     ; 05353..0535C function
-    emit_func_05235_part_01
+    emit_configure_midi_driver_part_01
     ; 0535D..0535E gap
     emit_gap_051_0535d
     ; 0535F..05364 function
-    emit_func_05235_part_02
+    emit_configure_midi_driver_part_02
     ; 05365..05366 gap
     emit_gap_052_05365
     ; 05367..0536C function
-    emit_func_05235_part_03
+    emit_configure_midi_driver_part_03
     ; 0536D..0536E gap
     emit_gap_053_0536d
     ; 0536F..05378 function
-    emit_func_05235_part_04
+    emit_configure_midi_driver_part_04
     ; 05379..05457 function
-    emit_func_05379_part_00
+    emit_configure_pcm_driver_part_00
     ; 05458..05459 gap
     emit_gap_054_05458
     ; 0545A..05463 function
-    emit_func_05379_part_01
+    emit_configure_pcm_driver_part_01
     ; 05464..05465 gap
     emit_gap_055_05464
     ; 05466..0546B function
-    emit_func_05379_part_02
+    emit_configure_pcm_driver_part_02
     ; 0546C..0546D gap
     emit_gap_056_0546c
     ; 0546E..05473 function
-    emit_func_05379_part_03
+    emit_configure_pcm_driver_part_03
     ; 05474..05475 gap
     emit_gap_057_05474
     ; 05476..0547F function
-    emit_func_05379_part_04
+    emit_configure_pcm_driver_part_04
     ; 05480..054AC function
     emit_decode_and_draw_grv_string_part_00
     ; 054AD..054F8 function
@@ -972,151 +977,151 @@ load_image_start:
     ; 05E8C..05E8C gap
     emit_gap_061_05e8c
     ; 05E8D..05EA8 function
-    emit_func_05e8d_part_00
+    emit_free_dos_memory_segment_part_00
     ; 05EA9..05EC7 function
-    emit_func_05ea9_part_00
+    emit_allocate_dos_memory_for_byte_count_part_00
     ; 05EC8..05ED4 function
-    emit_func_05ec8_part_00
+    emit_allocate_dos_memory_paragraphs_part_00
     ; 05ED5..05ED5 gap
     emit_gap_062_05ed5
     ; 05ED6..05F1B function
-    emit_func_05ed6_part_00
+    emit_cell_run_grv_puzzle_search_part_00
     ; 05F1C..05F21 gap
     emit_gap_063_05f1c
     ; 05F22..05F6B function
-    emit_func_05f22_part_00
+    emit_cell_convert_adjacent_pieces_part_00
     ; 05F6C..05FB5 function
-    emit_func_05f6c_part_00
+    emit_cell_count_board_pieces_part_00
     ; 05FB6..05FD7 function
-    emit_func_05fb6_part_00
+    emit_cell_begin_forward_move_iteration_part_00
     ; 05FD8..05FE3 function
-    emit_func_05fd8_part_00
+    emit_cell_begin_reverse_move_iteration_part_00
     ; 05FE4..0605A function
-    emit_func_05fe4_part_00
+    emit_cell_next_forward_move_part_00
     ; 0605B..0605B gap
     emit_gap_064_0605b
     ; 0605C..06072 function
-    emit_func_05fe4_part_01
+    emit_cell_next_forward_move_part_01
     ; 06073..06073 gap
     emit_gap_065_06073
     ; 06074..060CF function
-    emit_func_05fe4_part_02
+    emit_cell_next_forward_move_part_02
     ; 060D0..06157 function
-    emit_func_060d0_part_00
+    emit_cell_next_forward_move_with_jump_deduplication_part_00
     ; 06158..06159 gap
     emit_gap_066_06158
     ; 0615A..061CE function
-    emit_func_060d0_part_01
+    emit_cell_next_forward_move_with_jump_deduplication_part_01
     ; 061CF..061CF gap
     emit_gap_067_061cf
     ; 061D0..0627A function
-    emit_func_061d0_part_00
+    emit_cell_next_reverse_move_part_00
     ; 0627B..0627B gap
     emit_gap_068_0627b
     ; 0627C..0628E function
-    emit_func_061d0_part_01
+    emit_cell_next_reverse_move_part_01
     ; 0628F..0628F gap
     emit_gap_069_0628f
     ; 06290..062E8 function
-    emit_func_06290_part_00
+    emit_cell_apply_move_to_scratch_board_part_00
     ; 062E9..062E9 gap
     emit_gap_070_062e9
     ; 062EA..063B3 function
-    emit_func_062ea_part_00
+    emit_cell_score_candidate_move_part_00
     ; 063B4..063FA function
-    emit_func_063b4_part_00
+    emit_cell_count_adjacent_clone_opportunities_part_00
     ; 063FB..063FB gap
     emit_gap_071_063fb
     ; 063FC..0641B function
-    emit_func_063b4_part_01
+    emit_cell_count_adjacent_clone_opportunities_part_01
     ; 0641C..06434 function
-    emit_func_0641c_part_00
+    emit_cell_reset_best_move_list_part_00
     ; 06435..06435 gap
     emit_gap_072_06435
     ; 06436..06456 function
-    emit_func_06436_part_00
+    emit_cell_append_tied_best_move_part_00
     ; 06457..06457 gap
     emit_gap_073_06457
     ; 06458..0650E function
-    emit_func_06458_part_00
+    emit_cell_choose_best_move_part_00
     ; 0650F..0650F gap
     emit_gap_074_0650f
     ; 06510..06514 function
-    emit_func_06458_part_01
+    emit_cell_choose_best_move_part_01
     ; 06515..06515 gap
     emit_gap_075_06515
     ; 06516..0656A function
-    emit_func_06458_part_02
+    emit_cell_choose_best_move_part_02
     ; 0656B..0656B gap
     emit_gap_076_0656b
     ; 0656C..065FC function
-    emit_func_0656c_part_00
+    emit_cell_search_recursive_part_00
     ; 065FD..065FD gap
     emit_gap_077_065fd
     ; 065FE..06618 function
-    emit_func_0656c_part_01
+    emit_cell_search_recursive_part_01
     ; 06619..06619 gap
     emit_gap_078_06619
     ; 0661A..06642 function
-    emit_func_0656c_part_02
+    emit_cell_search_recursive_part_02
     ; 06643..06643 gap
     emit_gap_079_06643
     ; 06644..066AE function
-    emit_func_0656c_part_03
+    emit_cell_search_recursive_part_03
     ; 066AF..066AF gap
     emit_gap_080_066af
     ; 066B0..06798 function
-    emit_func_0656c_part_04
+    emit_cell_search_recursive_part_04
     ; 06799..06799 gap
     emit_gap_081_06799
     ; 0679A..067FA function
-    emit_func_0656c_part_05
+    emit_cell_search_recursive_part_05
     ; 067FB..067FB gap
     emit_gap_082_067fb
     ; 067FC..06845 function
-    emit_func_0656c_part_06
+    emit_cell_search_recursive_part_06
     ; 06846..0690B function
-    emit_func_06846_part_00
+    emit_cell_search_best_move_part_00
     ; 0690C..0690C gap
     emit_gap_083_0690c
     ; 0690D..06951 function
-    emit_func_06846_part_01
+    emit_cell_search_best_move_part_01
     ; 06952..06952 gap
     emit_gap_084_06952
     ; 06953..06A6B function
-    emit_func_06846_part_02
+    emit_cell_search_best_move_part_02
     ; 06A6C..06A6C gap
     emit_gap_085_06a6c
     ; 06A6D..06A80 function
-    emit_func_06a6d_part_00
+    emit_cell_reset_ranked_move_list_part_00
     ; 06A81..06AE3 function
-    emit_func_06a81_part_00
+    emit_cell_insert_ranked_move_part_00
     ; 06AE4..06AE4 gap
     emit_gap_086_06ae4
     ; 06AE5..06AEE function
-    emit_func_06a81_part_01
+    emit_cell_insert_ranked_move_part_01
     ; 06AEF..06BFE function
-    emit_func_06aef_part_00
+    emit_cell_build_ranked_move_list_part_00
     ; 06BFF..06BFF gap
     emit_gap_087_06bff
     ; 06C00..06D0D function
-    emit_func_06aef_part_01
+    emit_cell_build_ranked_move_list_part_01
     ; 06D0E..06DA4 function
-    emit_func_06d0e_part_00
+    emit_cell_search_ranked_moves_part_00
     ; 06DA5..06DA5 gap
     emit_gap_088_06da5
     ; 06DA6..06DE2 function
-    emit_func_06d0e_part_01
+    emit_cell_search_ranked_moves_part_01
     ; 06DE3..06DE3 gap
     emit_gap_089_06de3
     ; 06DE4..06E0A function
-    emit_func_06de4_part_00
+    emit_cell_dispatch_search_strategy_part_00
     ; 06E0B..06E0B gap
     emit_gap_090_06e0b
     ; 06E0C..06E67 function
-    emit_func_06de4_part_01
+    emit_cell_dispatch_search_strategy_part_01
     ; 06E68..06E71 function
-    emit_func_06e68_part_00
+    emit_cell_random_byte_part_00
     ; 06E72..06EB5 function
     emit_func_06e72_part_00
     ; 06EB6..06ED8 function
@@ -1382,7 +1387,12 @@ load_image_start:
     ; 169F8..16A89 verified Groovie configuration strings
     emit_groovie_configuration_strings_169f8_16a89
     ; 16A8A..1724B unresolved initialized lookup structures
-    emit_unresolved_lookup_structures
+emit_unresolved_pre_cell_neighbor_tables
+emit_cell_adjacent_neighbor_lists
+emit_cell_distance_two_neighbor_lists
+emit_cell_adjacent_neighbor_pointers
+emit_cell_distance_two_neighbor_pointers
+emit_unresolved_post_cell_neighbor_tables
     ; 1724C..17C2D verified zero-initialized static workspace
     emit_zero_initialized_static_workspace_1724c_17c2d
     ; 17C2E..17C2F unresolved initialized word (C8 C8)

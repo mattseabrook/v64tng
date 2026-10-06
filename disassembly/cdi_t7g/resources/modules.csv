@@ -1,0 +1,5 @@
+file,module,file_offset,bytes,entry_module_offset,static_memory_bytes,stack_bytes,idata_module_offset,initialized_destination,initialized_bytes,irefs_module_offset,crc_hex,sha256
+cdi_t7g,cdi_t7g,0x000000,82040,0x000050,91162,1500,0x013ED6,20544,298,0x014008,9974e9,c6276321e0da4b77fa0ec7db5691ecbf27401c303f6cf87e1bb2d764c5b3796d
+cdi_t7g,cdi_data,0x014078,69934,0x000052,0,32,0x01111A,0,0,0x011122,c0a29c,d6efe95e718c2a7b4540b42a8460add6f9bbf21e8b91e6482c75bbdf8d5b7a6c
+cdi_loader,cdi_loader,0x000000,868,0x000054,34,2000,0x00034E,32,2,0x000358,1b7d91,f3e63d20dd99a8e20a0a6e138d93ee2cfffc9821dbff6c75574e06fed95f8f04
+cdi_nodv,cdi_nodv,0x000000,85728,0x000052,91144,2000,0x014D56,20544,280,0x014E76,0469ff,fcfbdd9aee11c3abd2dbe9eb0aa2e179523e843d9785c166d74d538a7ad71584

@@ -1,0 +1,34 @@
+; verified-role: Native ConvertOldToNewSFReply routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.
+; Original native symbol: ConvertOldToNewSFReply; evidence file offset 0x5a62.
+; Exact bytes retained; instruction decoding remains provisional where inline data may occur.
+mac_code_2_convert_old_to_new_sfreply:
+db 0x4E, 0x56, 0xFF, 0xFC ; file 0059F6 | 68k link.w a6, #$fffc
+db 0x48, 0xE7, 0x01, 0x18 ; file 0059FA | 68k movem.l d7/a3-a4, -(a7)
+db 0x26, 0x6E, 0x00, 0x08 ; file 0059FE | 68k movea.l $8(a6), a3
+db 0x28, 0x6E, 0x00, 0x0C ; file 005A02 | 68k movea.l $c(a6), a4
+db 0x18, 0x93 ; file 005A06 | 68k move.b (a3), (a4)
+db 0x19, 0x6B, 0x00, 0x01, 0x00, 0x01 ; file 005A08 | 68k move.b $1(a3), $1(a4)
+db 0x29, 0x6B, 0x00, 0x02, 0x00, 0x02 ; file 005A0E | 68k move.l $2(a3), $2(a4)
+db 0x42, 0x67 ; file 005A14 | 68k clr.w -(a7)
+db 0x3F, 0x2B, 0x00, 0x06 ; file 005A16 | 68k move.w $6(a3), -(a7)
+db 0x48, 0x6C, 0x00, 0x06 ; file 005A1A | 68k pea.l $6(a4)
+db 0x48, 0x6C, 0x00, 0x08 ; file 005A1E | 68k pea.l $8(a4)
+db 0x48, 0x6E, 0xFF, 0xFC ; file 005A22 | 68k pea.l -$4(a6)
+db 0x4E, 0xAD, 0x01, 0xEA ; file 005A26 | 68k jsr $1ea(a5)
+db 0x3E, 0x1F ; file 005A2A | 68k move.w (a7)+, d7
+db 0x41, 0xEB, 0x00, 0x0A ; file 005A2C | 68k lea.l $a(a3), a0
+db 0x43, 0xEC, 0x00, 0x0C ; file 005A30 | 68k lea.l $c(a4), a1
+db 0x70, 0x00 ; file 005A34 | 68k moveq #$0, d0
+db 0x10, 0x2B, 0x00, 0x0A ; file 005A36 | 68k move.b $a(a3), d0
+db 0x52, 0x40 ; file 005A3A | 68k addq.w #$1, d0
+db 0x48, 0xC0 ; file 005A3C | 68k ext.l d0
+db 0xA0, 0x2E ; file 005A3E | 68k dc.w $a02e
+db 0x39, 0x7C, 0xFF, 0xFF, 0x00, 0x4C ; file 005A40 | 68k move.w #$ffff, $4c(a4)
+db 0x42, 0x6C, 0x00, 0x4E ; file 005A46 | 68k clr.w $4e(a4)
+db 0x42, 0x2C, 0x00, 0x50 ; file 005A4A | 68k clr.b $50(a4)
+db 0x42, 0x2C, 0x00, 0x51 ; file 005A4E | 68k clr.b $51(a4)
+db 0x42, 0xAC, 0x00, 0x52 ; file 005A52 | 68k clr.l $52(a4)
+db 0x42, 0x6C, 0x00, 0x56 ; file 005A56 | 68k clr.w $56(a4)
+db 0x4C, 0xDF, 0x18, 0x80 ; file 005A5A | 68k movem.l (a7)+, d7/a3-a4
+db 0x4E, 0x5E ; file 005A5E | 68k unlk a6
+db 0x4E, 0x75 ; file 005A60 | 68k rts 

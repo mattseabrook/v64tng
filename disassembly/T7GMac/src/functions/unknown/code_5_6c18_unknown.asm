@@ -1,0 +1,5 @@
+; Ordered emission slice; jump-table boundaries are not original function boundaries.
+code_5_func_6c18:
+%include "src/functions/vdx/code_5_clear_screen.asm"
+db 0x8B, 0x43, 0x6C, 0x65, 0x61, 0x72, 0x53, 0x63, 0x72, 0x65, 0x65, 0x6E, 0x00, 0x00, 0x4E, 0x75 ; file 00E3D2 | unidentified bytes/code
+db 0x4E, 0x75 ; file 00E3E2 | unidentified bytes/code

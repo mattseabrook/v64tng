@@ -1,0 +1,476 @@
+code_resource,payload_offset,file_offset,stack_frame_displacement,evidence
+2,0x0004,0x00106C,0,unverified LINK pattern
+2,0x0040,0x0010A8,-4,unverified LINK pattern
+2,0x00BE,0x001126,0,unverified LINK pattern
+2,0x01C4,0x00122C,0,unverified LINK pattern
+2,0x01DA,0x001242,-8,unverified LINK pattern
+2,0x028E,0x0012F6,-2,unverified LINK pattern
+2,0x02A8,0x001310,-4,unverified LINK pattern
+2,0x02C2,0x00132A,-4,unverified LINK pattern
+2,0x02F0,0x001358,-8,unverified LINK pattern
+2,0x0322,0x00138A,0,unverified LINK pattern
+2,0x0370,0x0013D8,0,unverified LINK pattern
+2,0x03BC,0x001424,0,unverified LINK pattern
+2,0x0438,0x0014A0,0,unverified LINK pattern
+2,0x045C,0x0014C4,0,unverified LINK pattern
+2,0x047E,0x0014E6,0,unverified LINK pattern
+2,0x048E,0x0014F6,0,unverified LINK pattern
+2,0x04B0,0x001518,0,unverified LINK pattern
+2,0x0560,0x0015C8,-2,unverified LINK pattern
+2,0x0588,0x0015F0,0,unverified LINK pattern
+2,0x059E,0x001606,-6,unverified LINK pattern
+2,0x05E6,0x00164E,-6,unverified LINK pattern
+2,0x062E,0x001696,0,unverified LINK pattern
+2,0x0692,0x0016FA,0,unverified LINK pattern
+2,0x0736,0x00179E,0,unverified LINK pattern
+2,0x0776,0x0017DE,0,unverified LINK pattern
+2,0x07C4,0x00182C,0,unverified LINK pattern
+2,0x07EA,0x001852,0,unverified LINK pattern
+2,0x0804,0x00186C,0,unverified LINK pattern
+2,0x081E,0x001886,0,unverified LINK pattern
+2,0x0838,0x0018A0,0,unverified LINK pattern
+2,0x0852,0x0018BA,0,unverified LINK pattern
+2,0x086C,0x0018D4,0,unverified LINK pattern
+2,0x0886,0x0018EE,0,unverified LINK pattern
+2,0x08A0,0x001908,0,unverified LINK pattern
+2,0x08BA,0x001922,0,unverified LINK pattern
+2,0x08D4,0x00193C,0,unverified LINK pattern
+2,0x08EE,0x001956,0,unverified LINK pattern
+2,0x0908,0x001970,-2,unverified LINK pattern
+2,0x092C,0x001994,-2,unverified LINK pattern
+2,0x0952,0x0019BA,0,unverified LINK pattern
+2,0x0962,0x0019CA,0,unverified LINK pattern
+2,0x0972,0x0019DA,0,unverified LINK pattern
+2,0x0986,0x0019EE,-306,unverified LINK pattern
+2,0x09BE,0x001A26,-562,unverified LINK pattern
+2,0x0A08,0x001A70,-20,unverified LINK pattern
+2,0x0A4A,0x001AB2,-4,unverified LINK pattern
+2,0x0A70,0x001AD8,-80,unverified LINK pattern
+2,0x0AF4,0x001B5C,0,unverified LINK pattern
+2,0x0B0E,0x001B76,0,unverified LINK pattern
+2,0x0B92,0x001BFA,-306,unverified LINK pattern
+2,0x0CB2,0x001D1A,-80,unverified LINK pattern
+2,0x0D20,0x001D88,-50,jump-table entry
+2,0x0E7A,0x001EE2,-336,unverified LINK pattern
+2,0x0F4C,0x001FB4,0,unverified LINK pattern
+2,0x0F90,0x001FF8,0,unverified LINK pattern
+2,0x10BC,0x002124,0,unverified LINK pattern
+2,0x112C,0x002194,0,unverified LINK pattern
+2,0x1144,0x0021AC,0,unverified LINK pattern
+2,0x1160,0x0021C8,-4,unverified LINK pattern
+2,0x1188,0x0021F0,-4,unverified LINK pattern
+2,0x11B8,0x002220,0,unverified LINK pattern
+2,0x12FE,0x002366,0,unverified LINK pattern
+2,0x136E,0x0023D6,0,unverified LINK pattern
+2,0x13CC,0x002434,-4,unverified LINK pattern
+2,0x1400,0x002468,-4,unverified LINK pattern
+2,0x148A,0x0024F2,0,unverified LINK pattern
+2,0x14A2,0x00250A,0,unverified LINK pattern
+2,0x14B6,0x00251E,0,unverified LINK pattern
+2,0x14CE,0x002536,0,unverified LINK pattern
+2,0x14E6,0x00254E,0,unverified LINK pattern
+2,0x14FA,0x002562,0,unverified LINK pattern
+2,0x1512,0x00257A,0,unverified LINK pattern
+2,0x1538,0x0025A0,0,unverified LINK pattern
+2,0x15BE,0x002626,0,unverified LINK pattern
+2,0x1612,0x00267A,0,unverified LINK pattern
+2,0x1706,0x00276E,-4,unverified LINK pattern
+2,0x1750,0x0027B8,-38,unverified LINK pattern
+2,0x1776,0x0027DE,0,unverified LINK pattern
+2,0x178E,0x0027F6,-568,unverified LINK pattern
+2,0x1D4C,0x002DB4,0,unverified LINK pattern
+2,0x1DA2,0x002E0A,0,unverified LINK pattern
+2,0x1DF0,0x002E58,-4,unverified LINK pattern
+2,0x1E32,0x002E9A,-4,unverified LINK pattern
+2,0x1E74,0x002EDC,0,unverified LINK pattern
+2,0x1EAE,0x002F16,-40,unverified LINK pattern
+2,0x2676,0x0036DE,0,unverified LINK pattern
+2,0x26AA,0x003712,0,unverified LINK pattern
+2,0x26DE,0x003746,0,unverified LINK pattern
+2,0x2712,0x00377A,0,unverified LINK pattern
+2,0x2748,0x0037B0,0,unverified LINK pattern
+2,0x27A6,0x00380E,0,unverified LINK pattern
+2,0x27D8,0x003840,0,unverified LINK pattern
+2,0x2800,0x003868,0,unverified LINK pattern
+2,0x2822,0x00388A,-4,unverified LINK pattern
+2,0x2844,0x0038AC,0,unverified LINK pattern
+2,0x287C,0x0038E4,0,jump-table entry
+2,0x2886,0x0038EE,0,unverified LINK pattern
+2,0x289E,0x003906,-38,unverified LINK pattern
+2,0x28D8,0x003940,0,unverified LINK pattern
+2,0x28F0,0x003958,-38,unverified LINK pattern
+2,0x2914,0x00397C,0,unverified LINK pattern
+2,0x292C,0x003994,0,unverified LINK pattern
+2,0x2946,0x0039AE,0,unverified LINK pattern
+2,0x2AF2,0x003B5A,-4,unverified LINK pattern
+2,0x2B9C,0x003C04,0,unverified LINK pattern
+2,0x2BBC,0x003C24,0,unverified LINK pattern
+2,0x2BDC,0x003C44,0,unverified LINK pattern
+2,0x2BFC,0x003C64,0,unverified LINK pattern
+2,0x2C1C,0x003C84,0,unverified LINK pattern
+2,0x2C3C,0x003CA4,0,unverified LINK pattern
+2,0x2C5C,0x003CC4,0,unverified LINK pattern
+2,0x2C7A,0x003CE2,-10,unverified LINK pattern
+2,0x2CB6,0x003D1E,0,unverified LINK pattern
+2,0x2CDA,0x003D42,0,unverified LINK pattern
+2,0x2CFA,0x003D62,0,unverified LINK pattern
+2,0x2D1A,0x003D82,0,unverified LINK pattern
+2,0x2D3A,0x003DA2,-40,unverified LINK pattern
+2,0x2DCC,0x003E34,-40,unverified LINK pattern
+2,0x2F22,0x003F8A,-20,unverified LINK pattern
+2,0x2FA8,0x004010,-30,unverified LINK pattern
+2,0x3076,0x0040DE,-20,unverified LINK pattern
+2,0x3124,0x00418C,-34,unverified LINK pattern
+2,0x3226,0x00428E,0,unverified LINK pattern
+2,0x324A,0x0042B2,-10,unverified LINK pattern
+2,0x32EA,0x004352,-10,unverified LINK pattern
+2,0x334C,0x0043B4,-10,unverified LINK pattern
+2,0x33AE,0x004416,-10,unverified LINK pattern
+2,0x33D6,0x00443E,-30,unverified LINK pattern
+2,0x34A4,0x00450C,-10,unverified LINK pattern
+2,0x34CC,0x004534,-10,unverified LINK pattern
+2,0x34F4,0x00455C,-12,unverified LINK pattern
+2,0x3560,0x0045C8,-12,unverified LINK pattern
+2,0x35CC,0x004634,-32,unverified LINK pattern
+2,0x3682,0x0046EA,-10,unverified LINK pattern
+2,0x36AA,0x004712,-12,unverified LINK pattern
+2,0x3716,0x00477E,-10,unverified LINK pattern
+2,0x376A,0x0047D2,-32,unverified LINK pattern
+2,0x3828,0x004890,-12,unverified LINK pattern
+2,0x38BC,0x004924,-12,unverified LINK pattern
+2,0x3950,0x0049B8,-20,unverified LINK pattern
+2,0x39BA,0x004A22,-14,jump-table entry
+2,0x3B8C,0x004BF4,-10,unverified LINK pattern
+2,0x3BDC,0x004C44,-12,unverified LINK pattern
+2,0x3C30,0x004C98,-10,unverified LINK pattern
+2,0x3C58,0x004CC0,-12,unverified LINK pattern
+2,0x3CAC,0x004D14,-10,unverified LINK pattern
+2,0x3D06,0x004D6E,0,jump-table entry
+2,0x3D2E,0x004D96,-334,unverified LINK pattern
+2,0x3DFC,0x004E64,-4,unverified LINK pattern
+2,0x3EAC,0x004F14,-270,unverified LINK pattern
+2,0x3FD4,0x00503C,-28,unverified LINK pattern
+2,0x403C,0x0050A4,-6,jump-table entry
+2,0x40B4,0x00511C,-2,jump-table entry
+2,0x410E,0x005176,-2,jump-table entry
+2,0x4188,0x0051F0,-2,jump-table entry
+2,0x41DA,0x005242,-102,unverified LINK pattern
+2,0x42E2,0x00534A,-2,jump-table entry
+2,0x42FE,0x005366,0,unverified LINK pattern
+2,0x4316,0x00537E,0,jump-table entry
+2,0x4336,0x00539E,0,unverified LINK pattern
+2,0x435A,0x0053C2,0,unverified LINK pattern
+2,0x4372,0x0053DA,-2,jump-table entry
+2,0x4392,0x0053FA,0,unverified LINK pattern
+2,0x43A8,0x005410,0,unverified LINK pattern
+2,0x43C4,0x00542C,0,unverified LINK pattern
+2,0x43E2,0x00544A,-40,unverified LINK pattern
+2,0x4506,0x00556E,-4,jump-table entry
+2,0x453C,0x0055A4,-16,unverified LINK pattern
+2,0x4580,0x0055E8,0,unverified LINK pattern
+2,0x45D4,0x00563C,0,unverified LINK pattern
+2,0x45F8,0x005660,-256,unverified LINK pattern
+2,0x4686,0x0056EE,-166,unverified LINK pattern
+2,0x4832,0x00589A,-348,unverified LINK pattern
+2,0x498E,0x0059F6,-4,unverified LINK pattern
+2,0x4A14,0x005A7C,0,unverified LINK pattern
+2,0x4AC2,0x005B2A,-98,unverified LINK pattern
+2,0x4B3E,0x005BA6,-334,unverified LINK pattern
+2,0x4BB8,0x005C20,0,unverified LINK pattern
+2,0x4BD6,0x005C3E,0,unverified LINK pattern
+2,0x4BF0,0x005C58,0,unverified LINK pattern
+2,0x4C18,0x005C80,-22,unverified LINK pattern
+2,0x4C36,0x005C9E,-26,unverified LINK pattern
+2,0x4C56,0x005CBE,-18,unverified LINK pattern
+2,0x4C7A,0x005CE2,-288,unverified LINK pattern
+2,0x4D80,0x005DE8,0,unverified LINK pattern
+2,0x4E64,0x005ECC,-8,unverified LINK pattern
+2,0x4F10,0x005F78,0,unverified LINK pattern
+2,0x4F4A,0x005FB2,-262,unverified LINK pattern
+2,0x5056,0x0060BE,-18,jump-table entry
+2,0x510C,0x006174,0,unverified LINK pattern
+2,0x514C,0x0061B4,-40,jump-table entry
+2,0x5224,0x00628C,0,unverified LINK pattern
+2,0x5278,0x0062E0,0,unverified LINK pattern
+2,0x52CE,0x006336,0,unverified LINK pattern
+2,0x52F2,0x00635A,0,unverified LINK pattern
+2,0x5320,0x006388,0,unverified LINK pattern
+2,0x5344,0x0063AC,-514,unverified LINK pattern
+2,0x53D0,0x006438,-114,unverified LINK pattern
+2,0x5480,0x0064E8,0,unverified LINK pattern
+2,0x54C4,0x00652C,0,unverified LINK pattern
+2,0x5514,0x00657C,0,unverified LINK pattern
+2,0x5560,0x0065C8,-4,unverified LINK pattern
+2,0x55BE,0x006626,-10,unverified LINK pattern
+2,0x5650,0x0066B8,0,unverified LINK pattern
+2,0x5688,0x0066F0,-14,unverified LINK pattern
+2,0x56C6,0x00672E,-4,unverified LINK pattern
+2,0x56FC,0x006764,-16,unverified LINK pattern
+2,0x5728,0x006790,-8,unverified LINK pattern
+2,0x576E,0x0067D6,-122,unverified LINK pattern
+2,0x57C2,0x00682A,-4,jump-table entry
+2,0x5818,0x006880,-8,unverified LINK pattern
+2,0x58A4,0x00690C,-8,unverified LINK pattern
+2,0x58FC,0x006964,-284,unverified LINK pattern
+2,0x5A12,0x006A7A,0,unverified LINK pattern
+2,0x5A46,0x006AAE,0,unverified LINK pattern
+2,0x5A6A,0x006AD2,-12,unverified LINK pattern
+2,0x5AC2,0x006B2A,0,unverified LINK pattern
+2,0x5B10,0x006B78,-8,unverified LINK pattern
+2,0x5B42,0x006BAA,-8,unverified LINK pattern
+2,0x5B98,0x006C00,-24,unverified LINK pattern
+2,0x5C0E,0x006C76,-20,unverified LINK pattern
+2,0x5CCC,0x006D34,0,unverified LINK pattern
+2,0x5D0E,0x006D76,-6,unverified LINK pattern
+2,0x5E06,0x006E6E,0,jump-table entry
+2,0x5E34,0x006E9C,0,unverified LINK pattern
+2,0x5E60,0x006EC8,0,unverified LINK pattern
+2,0x5E8C,0x006EF4,-4,unverified LINK pattern
+2,0x5EC0,0x006F28,-4,unverified LINK pattern
+2,0x5F08,0x006F70,-26,unverified LINK pattern
+2,0x5F9E,0x007006,-14,jump-table entry
+2,0x5FD8,0x007040,0,unverified LINK pattern
+2,0x6072,0x0070DA,0,unverified LINK pattern
+2,0x60D4,0x00713C,-16,unverified LINK pattern
+2,0x6114,0x00717C,-4,unverified LINK pattern
+2,0x614A,0x0071B2,-14,unverified LINK pattern
+2,0x618A,0x0071F2,-16,jump-table entry
+2,0x61B4,0x00721C,-514,unverified LINK pattern
+2,0x62A8,0x007310,0,unverified LINK pattern
+2,0x62E6,0x00734E,0,unverified LINK pattern
+2,0x633C,0x0073A4,-14,unverified LINK pattern
+2,0x6380,0x0073E8,-4,unverified LINK pattern
+2,0x63E6,0x00744E,-44,unverified LINK pattern
+2,0x6562,0x0075CA,-4,unverified LINK pattern
+2,0x65FE,0x007666,-256,unverified LINK pattern
+2,0x6646,0x0076AE,0,unverified LINK pattern
+2,0x66A8,0x007710,-6,unverified LINK pattern
+2,0x66CE,0x007736,-4,jump-table entry
+5,0x0004,0x00776A,-82,jump-table entry
+5,0x0288,0x0079EE,0,unverified LINK pattern
+5,0x02D2,0x007A38,-4,unverified LINK pattern
+5,0x0300,0x007A66,-8,unverified LINK pattern
+5,0x037A,0x007AE0,-10,unverified LINK pattern
+5,0x03B8,0x007B1E,0,unverified LINK pattern
+5,0x040A,0x007B70,0,unverified LINK pattern
+5,0x04B0,0x007C16,0,jump-table entry
+5,0x05BE,0x007D24,0,jump-table entry
+5,0x06F2,0x007E58,0,jump-table entry
+5,0x07E4,0x007F4A,0,unverified LINK pattern
+5,0x085A,0x007FC0,0,unverified LINK pattern
+5,0x095E,0x0080C4,0,unverified LINK pattern
+5,0x0A1C,0x008182,0,unverified LINK pattern
+5,0x0B3C,0x0082A2,-12,unverified LINK pattern
+5,0x0F2E,0x008694,-8,unverified LINK pattern
+5,0x11C6,0x00892C,0,unverified LINK pattern
+5,0x1250,0x0089B6,-6,unverified LINK pattern
+5,0x14AE,0x008C14,-4,unverified LINK pattern
+5,0x15A4,0x008D0A,0,unverified LINK pattern
+5,0x15FC,0x008D62,0,unverified LINK pattern
+5,0x19DA,0x009140,-4,unverified LINK pattern
+5,0x1A44,0x0091AA,-10,unverified LINK pattern
+5,0x1BAC,0x009312,-12,unverified LINK pattern
+5,0x1BFE,0x009364,-2,unverified LINK pattern
+5,0x1DE8,0x00954E,-4,unverified LINK pattern
+5,0x2032,0x009798,-4,unverified LINK pattern
+5,0x20B4,0x00981A,-28,jump-table entry
+5,0x23A4,0x009B0A,-30,unverified LINK pattern
+5,0x2670,0x009DD6,-4,unverified LINK pattern
+5,0x26EE,0x009E54,-16,unverified LINK pattern
+5,0x2724,0x009E8A,-14,unverified LINK pattern
+5,0x3830,0x00AF96,-2,unverified LINK pattern
+5,0x3844,0x00AFAA,-2,unverified LINK pattern
+5,0x3858,0x00AFBE,0,unverified LINK pattern
+5,0x3A38,0x00B19E,-4,unverified LINK pattern
+5,0x3A86,0x00B1EC,-4,unverified LINK pattern
+5,0x3AD6,0x00B23C,0,unverified LINK pattern
+5,0x3B86,0x00B2EC,0,unverified LINK pattern
+5,0x3C3C,0x00B3A2,0,unverified LINK pattern
+5,0x3C6E,0x00B3D4,0,unverified LINK pattern
+5,0x3D12,0x00B478,-24,unverified LINK pattern
+5,0x3D6C,0x00B4D2,-262,unverified LINK pattern
+5,0x3E1A,0x00B580,-262,unverified LINK pattern
+5,0x3E72,0x00B5D8,-264,unverified LINK pattern
+5,0x3F08,0x00B66E,-266,unverified LINK pattern
+5,0x3FBA,0x00B720,-8,unverified LINK pattern
+5,0x400A,0x00B770,-8,unverified LINK pattern
+5,0x40B6,0x00B81C,-4,unverified LINK pattern
+5,0x419C,0x00B902,-6,unverified LINK pattern
+5,0x41F4,0x00B95A,-14,unverified LINK pattern
+5,0x4260,0x00B9C6,-18,unverified LINK pattern
+5,0x4368,0x00BACE,-10,unverified LINK pattern
+5,0x439E,0x00BB04,-8,unverified LINK pattern
+5,0x43DA,0x00BB40,0,unverified LINK pattern
+5,0x43FE,0x00BB64,0,unverified LINK pattern
+5,0x4422,0x00BB88,0,unverified LINK pattern
+5,0x4452,0x00BBB8,0,jump-table entry
+5,0x44AC,0x00BC12,0,unverified LINK pattern
+5,0x4502,0x00BC68,0,unverified LINK pattern
+5,0x4524,0x00BC8A,0,unverified LINK pattern
+5,0x4564,0x00BCCA,0,jump-table entry
+5,0x4594,0x00BCFA,0,unverified LINK pattern
+5,0x45F6,0x00BD5C,-274,jump-table entry
+5,0x4742,0x00BEA8,-8,unverified LINK pattern
+5,0x4786,0x00BEEC,-20,unverified LINK pattern
+5,0x47A0,0x00BF06,0,unverified LINK pattern
+5,0x47DC,0x00BF42,-12,unverified LINK pattern
+5,0x48A6,0x00C00C,-48,unverified LINK pattern
+5,0x4B14,0x00C27A,-82,unverified LINK pattern
+5,0x4C00,0x00C366,-48,unverified LINK pattern
+5,0x4EDC,0x00C642,-14,unverified LINK pattern
+5,0x523A,0x00C9A0,-34,unverified LINK pattern
+5,0x6A88,0x00E1EE,-774,unverified LINK pattern
+5,0x6B82,0x00E2E8,-14,jump-table entry
+5,0x6C18,0x00E37E,-120,jump-table entry
+5,0x6C80,0x00E3E6,-4,unverified LINK pattern
+5,0x6D28,0x00E48E,-8,unverified LINK pattern
+5,0x6FA0,0x00E706,-30,unverified LINK pattern
+5,0x701E,0x00E784,-36,unverified LINK pattern
+5,0x7128,0x00E88E,-20,unverified LINK pattern
+5,0x73E0,0x00EB46,-18,unverified LINK pattern
+5,0x74DC,0x00EC42,-4,unverified LINK pattern
+4,0x016E,0x00EE42,0,jump-table entry
+4,0x03B8,0x00F08C,-50,jump-table entry
+4,0x03F8,0x00F0CC,-50,jump-table entry
+4,0x0418,0x00F0EC,-50,unverified LINK pattern
+4,0x045A,0x00F12E,-50,jump-table entry
+4,0x0534,0x00F208,-32,unverified LINK pattern
+4,0x05A0,0x00F274,0,jump-table entry
+4,0x05E6,0x00F2BA,-132,jump-table entry
+4,0x0744,0x00F418,-122,jump-table entry
+4,0x079E,0x00F472,-122,jump-table entry
+4,0x0824,0x00F4F8,-122,jump-table entry
+4,0x0864,0x00F538,-52,unverified LINK pattern
+4,0x08B6,0x00F58A,-52,unverified LINK pattern
+4,0x08E4,0x00F5B8,-52,jump-table entry
+4,0x0940,0x00F614,0,unverified LINK pattern
+4,0x09CA,0x00F69E,0,unverified LINK pattern
+4,0x0A22,0x00F6F6,0,unverified LINK pattern
+4,0x0A7A,0x00F74E,0,unverified LINK pattern
+4,0x0ABC,0x00F790,0,unverified LINK pattern
+4,0x0AFA,0x00F7CE,0,unverified LINK pattern
+4,0x0B20,0x00F7F4,-16,unverified LINK pattern
+4,0x0BC0,0x00F894,-16,unverified LINK pattern
+4,0x0C12,0x00F8E6,0,unverified LINK pattern
+4,0x0C56,0x00F92A,0,unverified LINK pattern
+4,0x0C6E,0x00F942,-18,jump-table entry
+4,0x0DF8,0x00FACC,-288,unverified LINK pattern
+4,0x0FC0,0x00FC94,0,unverified LINK pattern
+4,0x1038,0x00FD0C,0,unverified LINK pattern
+4,0x104E,0x00FD22,0,unverified LINK pattern
+4,0x1066,0x00FD3A,-6,unverified LINK pattern
+4,0x10C6,0x00FD9A,0,unverified LINK pattern
+4,0x10FA,0x00FDCE,0,unverified LINK pattern
+4,0x114A,0x00FE1E,-4,unverified LINK pattern
+4,0x11CA,0x00FE9E,-14,jump-table entry
+4,0x1214,0x00FEE8,-10,unverified LINK pattern
+4,0x12F2,0x00FFC6,-4,unverified LINK pattern
+4,0x131C,0x00FFF0,-10,unverified LINK pattern
+4,0x1458,0x01012C,-4,unverified LINK pattern
+4,0x14A4,0x010178,-4,unverified LINK pattern
+4,0x14F6,0x0101CA,-6,unverified LINK pattern
+4,0x1550,0x010224,-20,unverified LINK pattern
+4,0x15A6,0x01027A,-4,unverified LINK pattern
+4,0x1630,0x010304,-4,unverified LINK pattern
+4,0x16F0,0x0103C4,0,unverified LINK pattern
+4,0x1756,0x01042A,-4,unverified LINK pattern
+4,0x17C4,0x010498,0,unverified LINK pattern
+4,0x1814,0x0104E8,-4,unverified LINK pattern
+4,0x1844,0x010518,0,unverified LINK pattern
+4,0x1868,0x01053C,0,unverified LINK pattern
+4,0x188C,0x010560,0,unverified LINK pattern
+4,0x18B0,0x010584,0,unverified LINK pattern
+4,0x18D4,0x0105A8,0,unverified LINK pattern
+4,0x1906,0x0105DA,0,unverified LINK pattern
+4,0x1938,0x01060C,0,unverified LINK pattern
+4,0x194C,0x010620,-2,unverified LINK pattern
+4,0x1994,0x010668,-2,unverified LINK pattern
+4,0x19DC,0x0106B0,-2,unverified LINK pattern
+4,0x1A24,0x0106F8,-2,unverified LINK pattern
+4,0x1A6C,0x010740,-2,unverified LINK pattern
+4,0x1AB4,0x010788,0,unverified LINK pattern
+4,0x1ABC,0x010790,0,unverified LINK pattern
+4,0x1AF2,0x0107C6,0,jump-table entry
+4,0x1DCC,0x010AA0,-6,unverified LINK pattern
+4,0x1E0E,0x010AE2,-40,jump-table entry
+4,0x201E,0x010CF2,-12,jump-table entry
+4,0x2062,0x010D36,0,unverified LINK pattern
+4,0x20A2,0x010D76,-2,unverified LINK pattern
+4,0x2108,0x010DDC,0,unverified LINK pattern
+4,0x2214,0x010EE8,0,unverified LINK pattern
+4,0x2278,0x010F4C,0,unverified LINK pattern
+4,0x2286,0x010F5A,0,unverified LINK pattern
+4,0x22A8,0x010F7C,0,unverified LINK pattern
+4,0x22CA,0x010F9E,0,unverified LINK pattern
+4,0x2308,0x010FDC,0,unverified LINK pattern
+4,0x233A,0x01100E,0,unverified LINK pattern
+4,0x23D4,0x0110A8,-20,unverified LINK pattern
+4,0x2498,0x01116C,0,unverified LINK pattern
+4,0x2504,0x0111D8,0,unverified LINK pattern
+4,0x2522,0x0111F6,0,unverified LINK pattern
+4,0x253E,0x011212,-16,unverified LINK pattern
+4,0x2610,0x0112E4,-8,unverified LINK pattern
+4,0x2696,0x01136A,0,unverified LINK pattern
+4,0x270C,0x0113E0,-2,unverified LINK pattern
+4,0x27D6,0x0114AA,0,unverified LINK pattern
+4,0x2812,0x0114E6,0,unverified LINK pattern
+4,0x2834,0x011508,-118,unverified LINK pattern
+4,0x28A0,0x011574,0,jump-table entry
+4,0x28CE,0x0115A2,0,jump-table entry
+4,0x2910,0x0115E4,0,unverified LINK pattern
+4,0x2A08,0x0116DC,-2,unverified LINK pattern
+4,0x2A3E,0x011712,-16,jump-table entry
+4,0x2BFE,0x0118D2,0,unverified LINK pattern
+4,0x2C0C,0x0118E0,0,unverified LINK pattern
+4,0x2C36,0x01190A,-8,unverified LINK pattern
+4,0x2C9E,0x011972,-20,unverified LINK pattern
+4,0x2E20,0x011AF4,0,unverified LINK pattern
+4,0x2E80,0x011B54,-2,unverified LINK pattern
+4,0x2EF0,0x011BC4,0,unverified LINK pattern
+4,0x2F2C,0x011C00,0,unverified LINK pattern
+4,0x2F56,0x011C2A,-2,unverified LINK pattern
+4,0x2F92,0x011C66,0,unverified LINK pattern
+4,0x2FA0,0x011C74,0,unverified LINK pattern
+4,0x2FD0,0x011CA4,0,unverified LINK pattern
+4,0x2FE0,0x011CB4,-6,unverified LINK pattern
+4,0x30C0,0x011D94,0,unverified LINK pattern
+4,0x3100,0x011DD4,-18,unverified LINK pattern
+4,0x31D6,0x011EAA,-2,unverified LINK pattern
+4,0x3228,0x011EFC,-2,unverified LINK pattern
+4,0x327C,0x011F50,-2,unverified LINK pattern
+4,0x32EC,0x011FC0,-8,unverified LINK pattern
+4,0x3398,0x01206C,0,unverified LINK pattern
+4,0x33C0,0x012094,0,unverified LINK pattern
+4,0x33E8,0x0120BC,0,unverified LINK pattern
+4,0x3406,0x0120DA,0,unverified LINK pattern
+4,0x342E,0x012102,0,unverified LINK pattern
+4,0x3456,0x01212A,0,unverified LINK pattern
+4,0x347E,0x012152,-4,unverified LINK pattern
+4,0x34E6,0x0121BA,-6,unverified LINK pattern
+4,0x353A,0x01220E,0,unverified LINK pattern
+4,0x3548,0x01221C,0,unverified LINK pattern
+4,0x357A,0x01224E,0,unverified LINK pattern
+4,0x35B8,0x01228C,0,unverified LINK pattern
+4,0x3628,0x0122FC,0,unverified LINK pattern
+4,0x3662,0x012336,0,unverified LINK pattern
+4,0x368C,0x012360,0,unverified LINK pattern
+4,0x36FE,0x0123D2,0,unverified LINK pattern
+4,0x3792,0x012466,0,unverified LINK pattern
+4,0x383E,0x012512,-2,unverified LINK pattern
+4,0x38CC,0x0125A0,0,unverified LINK pattern
+4,0x3946,0x01261A,-2,unverified LINK pattern
+4,0x3990,0x012664,0,unverified LINK pattern
+4,0x39D4,0x0126A8,0,unverified LINK pattern
+4,0x3A10,0x0126E4,-4,unverified LINK pattern
+4,0x3A56,0x01272A,-2,unverified LINK pattern
+4,0x3A8A,0x01275E,0,unverified LINK pattern
+4,0x3AD8,0x0127AC,-8,unverified LINK pattern
+4,0x3B24,0x0127F8,-2,unverified LINK pattern
+4,0x3B46,0x01281A,0,unverified LINK pattern
+4,0x3B7C,0x012850,0,unverified LINK pattern
+4,0x3BA4,0x012878,0,unverified LINK pattern
+4,0x3CFA,0x0129CE,0,unverified LINK pattern
+4,0x3D2A,0x0129FE,0,unverified LINK pattern
+4,0x3D8C,0x012A60,-8,unverified LINK pattern
+4,0x3E12,0x012AE6,0,jump-table entry
+4,0x3EC8,0x012B9C,-2,unverified LINK pattern

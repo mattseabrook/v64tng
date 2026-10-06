@@ -1,0 +1,744 @@
+file,module,module_offset,ascii_string
+cdi_t7g,cdi_t7g,0x000048,cdi_t7g
+cdi_t7g,cdi_t7g,0x000201,Vgreen
+cdi_t7g,cdi_t7g,0x00021E,Nucdi_data
+cdi_t7g,cdi_t7g,0x000232,get_dmodules: Couldn't find module
+cdi_t7g,cdi_t7g,0x000439,CSCSD?
+cdi_t7g,cdi_t7g,0x000482,NuSBJAg
+cdi_t7g,cdi_t7g,0x00057A,fmv_wnd
+cdi_t7g,cdi_t7g,0x0005E1,   ***000888DDD
+cdi_t7g,cdi_t7g,0x000815,   ***000888DDD4<P
+cdi_t7g,cdi_t7g,0x000A6B,"   ***000888DDD(,H"
+cdi_t7g,cdi_t7g,0x000A8B,PHPxHPX
+cdi_t7g,cdi_t7g,0x000CD3,   ***000888DDD
+cdi_t7g,cdi_t7g,0x000F6F,   ***000888DDD
+cdi_t7g,cdi_t7g,0x000F84,hptDHt
+cdi_t7g,cdi_t7g,0x000F8D,DLT$(D
+cdi_t7g,cdi_t7g,0x001225,   ***000888DDD
+cdi_t7g,cdi_t7g,0x00123D,`dt88l08D
+cdi_t7g,cdi_t7g,0x001521,   ***000888DDD08D
+cdi_t7g,cdi_t7g,0x001539,`dt88t
+cdi_t7g,cdi_t7g,0x0016CB,"   ***000888DDD,4<"
+cdi_t7g,cdi_t7g,0x001873,"   ***000888DDD,4<"
+cdi_t7g,cdi_t7g,0x00188B,"XXt,,l"
+cdi_t7g,cdi_t7g,0x001A23,   ***000888DDD048
+cdi_t7g,cdi_t7g,0x001BE1,   ***000888DDD048x|
+cdi_t7g,cdi_t7g,0x001D99,"   ***000888DDD,44"
+cdi_t7g,cdi_t7g,0x001F79,   ***000888DDD08D
+cdi_t7g,cdi_t7g,0x001F91,`dt88t
+cdi_t7g,cdi_t7g,0x00211F,"   ***000888DDD,4<"
+cdi_t7g,cdi_t7g,0x0022C7,"   ***000888DDD,4<"
+cdi_t7g,cdi_t7g,0x0022DF,"XXt,,l"
+cdi_t7g,cdi_t7g,0x002477,   ***000888DDD048
+cdi_t7g,cdi_t7g,0x002631,   ***000888DDD048x|
+cdi_t7g,cdi_t7g,0x0027E9,"   ***000888DDD,44"
+cdi_t7g,cdi_t7g,0x0029C9,"   ***000888DDD,4L"
+cdi_t7g,cdi_t7g,0x002C6F,   ***000888DDD$(T
+cdi_t7g,cdi_t7g,0x002C8A,HPX@Dx
+cdi_t7g,cdi_t7g,0x002F1B,   ***000888DDD$(T
+cdi_t7g,cdi_t7g,0x002F36,LT\<<|tx
+cdi_t7g,cdi_t7g,0x0031C7,   ***000888DDD4<X
+cdi_t7g,cdi_t7g,0x003475,   ***000888DDD8<X
+cdi_t7g,cdi_t7g,0x00371D,   ***000888DDD$(P
+cdi_t7g,cdi_t7g,0x003A35,   ***000888DDD
+cdi_t7g,cdi_t7g,0x003EEF,   ***000888DDD$
+cdi_t7g,cdi_t7g,0x004363,   ***000888DDD
+cdi_t7g,cdi_t7g,0x004379,8hHD@@<4
+cdi_t7g,cdi_t7g,0x004383,"x@Dd4,("
+cdi_t7g,cdi_t7g,0x0047A9,   ***000888DDD 
+cdi_t7g,cdi_t7g,0x0047BF,4hHDDD@8
+cdi_t7g,cdi_t7g,0x0047C9,|<Hl80(
+cdi_t7g,cdi_t7g,0x004BDB,   ***000888DDD$
+cdi_t7g,cdi_t7g,0x004BF0,t\LD88
+cdi_t7g,cdi_t7g,0x005029,"   ***000888DDD,$ "
+cdi_t7g,cdi_t7g,0x00503E,|ldlXH
+cdi_t7g,cdi_t7g,0x0054B7,   ***000888DDD
+cdi_t7g,cdi_t7g,0x0054CA,|dlXHD44
+cdi_t7g,cdi_t7g,0x00599D,   ***000888DDD
+cdi_t7g,cdi_t7g,0x005D3D,   ***000888DDD
+cdi_t7g,cdi_t7g,0x0060EF,   ***000888DDDTXl
+cdi_t7g,cdi_t7g,0x0064D5,   ***000888DDD
+cdi_t7g,cdi_t7g,0x0066A1,   ***000888DDD
+cdi_t7g,cdi_t7g,0x00686D,   ***000888DDD
+cdi_t7g,cdi_t7g,0x006A33,   ***000888DDD
+cdi_t7g,cdi_t7g,0x006A4E,PT\@DH4`x8<D
+cdi_t7g,cdi_t7g,0x006BFB,   ***000888DDDLPT
+cdi_t7g,cdi_t7g,0x006C17,4`8`x48D
+cdi_t7g,cdi_t7g,0x006DBD,   ***000888DDD
+cdi_t7g,cdi_t7g,0x006DDB,xxx8<D
+cdi_t7g,cdi_t7g,0x006FAD,   ***000888DDD(
+cdi_t7g,cdi_t7g,0x006FBF,ppp|L4
+cdi_t7g,cdi_t7g,0x006FC8,"d<,\LH"
+cdi_t7g,cdi_t7g,0x007383,   ***000888DDDD<4
+cdi_t7g,cdi_t7g,0x00760D,   ***000888DDD<40
+cdi_t7g,cdi_t7g,0x0078B7,   ***000888DDD@<4
+cdi_t7g,cdi_t7g,0x007B6F,   ***000888DDD@<4
+cdi_t7g,cdi_t7g,0x007E2F,   ***000888DDD\TH
+cdi_t7g,cdi_t7g,0x008398,rtgreen
+cdi_t7g,cdi_t7g,0x0083A6,rtgreen
+cdi_t7g,cdi_t7g,0x008D20,qhy_pic
+cdi_t7g,cdi_t7g,0x008D28,qhy_pic
+cdi_t7g,cdi_t7g,0x008D30,qhy_pic
+cdi_t7g,cdi_t7g,0x009D95,Jrtgreen
+cdi_t7g,cdi_t7g,0x009D9E,rtgreen
+cdi_t7g,cdi_t7g,0x009DA6,rtgreen
+cdi_t7g,cdi_t7g,0x009DAE,rtgreen
+cdi_t7g,cdi_t7g,0x009DB6,rtgreen
+cdi_t7g,cdi_t7g,0x00A019,NNu La
+cdi_t7g,cdi_t7g,0x00A519,ZTKJ@g
+cdi_t7g,cdi_t7g,0x00A8AC,TKJ@g E
+cdi_t7g,cdi_t7g,0x00AC3E,F$Exit failed! 
+cdi_t7g,cdi_t7g,0x00ACBD,">g ""@#H"
+cdi_t7g,cdi_t7g,0x00AD6F,NNuBGB@<
+cdi_t7g,cdi_t7g,0x00B264,"aTe&0,"
+cdi_t7g,cdi_t7g,0x00B633,Lasset_parent: Not implemented yet!
+cdi_t7g,cdi_t7g,0x00B7DA,TK(_ _8
+cdi_t7g,cdi_t7g,0x00B837,Hnvr_???: Not supported yet
+cdi_t7g,cdi_t7g,0x00B8CA,hi_event: lwm = 
+cdi_t7g,cdi_t7g,0x00B8F2, hwm = 
+cdi_t7g,cdi_t7g,0x00B914,event / value = 
+cdi_t7g,cdi_t7g,0x00B996,Hotspots:- 
+cdi_t7g,cdi_t7g,0x00B9BC,x/y = 
+cdi_t7g,cdi_t7g,0x00B9F2, dimensions = 
+cdi_t7g,cdi_t7g,0x00BA37,Hhi_event: fifo overflow
+cdi_t7g,cdi_t7g,0x00BB4F,0hi_allcoate: Error
+cdi_t7g,cdi_t7g,0x00BBC4,Hi Text Spaces: 
+cdi_t7g,cdi_t7g,0x00BC37,Hget_object: No more objects
+cdi_t7g,cdi_t7g,0x00BC92,Nu$00000000
+cdi_t7g,cdi_t7g,0x00BCE2,Nu$0000
+cdi_t7g,cdi_t7g,0x00BD7C,Nu _HPa
+cdi_t7g,cdi_t7g,0x00BDBE,err_initialise: 
+cdi_t7g,cdi_t7g,0x00BDD3,BNu/cd/errors.txt
+cdi_t7g,cdi_t7g,0x00BDFA,<null>
+cdi_t7g,cdi_t7g,0x00BE07,"Z @""Hp"
+cdi_t7g,cdi_t7g,0x00BE30,d-nodes = 
+cdi_t7g,cdi_t7g,0x00BE54, <circular>
+cdi_t7g,cdi_t7g,0x00BE98,dnlistA
+cdi_t7g,cdi_t7g,0x00BED0,dnlistB
+cdi_t7g,cdi_t7g,0x00BF08,dnlistS
+cdi_t7g,cdi_t7g,0x00BF42,dnlistF
+cdi_t7g,cdi_t7g,0x00BF59,&dnde_initialise : Problems in video plane 1 memory
+cdi_t7g,cdi_t7g,0x00BF94,dnde_initialise : Problems in video plane 2 memory
+cdi_t7g,cdi_t7g,0x00BFCE,dnde_initialise : Problems in system memory
+cdi_t7g,cdi_t7g,0x00C000,dnde_initialise : Problems in fmv memory
+cdi_t7g,cdi_t7g,0x00C03B,Ddnde_allocate: In use!
+cdi_t7g,cdi_t7g,0x00C071,"""""HU@k"
+cdi_t7g,cdi_t7g,0x00C0BE,dnde_allocate: Free nodes = 
+cdi_t7g,cdi_t7g,0x00C0F4, wanted 
+cdi_t7g,cdi_t7g,0x00C157,(dnde_allocate
+cdi_t7g,cdi_t7g,0x00C18A,dnde_deallocate: In use!
+cdi_t7g,cdi_t7g,0x00C1B2,"g*""H$i"
+cdi_t7g,cdi_t7g,0x00C23D,Bsgm_new : Ran out if signal id's
+cdi_t7g,cdi_t7g,0x00C2D6,"NuJAk,"
+cdi_t7g,cdi_t7g,0x00C392,`&>>> S P U R I O U S   S I G N A L   
+cdi_t7g,cdi_t7g,0x00C400,TONu2<
+cdi_t7g,cdi_t7g,0x00C40B,tsgm_mvt: 
+cdi_t7g,cdi_t7g,0x00C43A,TONu2<
+cdi_t7g,cdi_t7g,0x00C445,:sgm_mat: 
+cdi_t7g,cdi_t7g,0x00C46E,mvman:
+cdi_t7g,cdi_t7g,0x00C484,cur_mv
+cdi_t7g,cdi_t7g,0x00C4CA,mvm_off: !!!
+cdi_t7g,cdi_t7g,0x00C4E0,g6*@Jm
+cdi_t7g,cdi_t7g,0x00C594,mvm_initialise: ???
+cdi_t7g,cdi_t7g,0x00C5AE,Nu*@Jn
+cdi_t7g,cdi_t7g,0x00C75A,mv_play: Zod error value = 
+cdi_t7g,cdi_t7g,0x00C78A,mv_play: Something went wrong!
+cdi_t7g,cdi_t7g,0x00C7D0,NuNuNu=|
+cdi_t7g,cdi_t7g,0x00C8F0,mvm_handler: Unexpected event
+cdi_t7g,cdi_t7g,0x00C915,jmvm_handler: Data Error
+cdi_t7g,cdi_t7g,0x00C9BB,0NuNu0.
+cdi_t7g,cdi_t7g,0x00CA3D,Bopen_mpegv : 
+cdi_t7g,cdi_t7g,0x00CA6E,mam_initialise: ???
+cdi_t7g,cdi_t7g,0x00CAC2,open_mpega : 
+cdi_t7g,cdi_t7g,0x00CB8A,create_smaps: 
+cdi_t7g,cdi_t7g,0x00CBF9,"X`""smap_play: Error, still playing "
+cdi_t7g,cdi_t7g,0x00CC35,Jsmap: 
+cdi_t7g,cdi_t7g,0x00CCAC,>>> WARNING - sme_out: 
+cdi_t7g,cdi_t7g,0x00CD3F,@open_audio : 
+cdi_t7g,cdi_t7g,0x00CD58,badman:
+cdi_t7g,cdi_t7g,0x00CD6E,buffer_size
+cdi_t7g,cdi_t7g,0x00CD96,cur_bad
+cdi_t7g,cdi_t7g,0x00CDBE,cur_bad statue
+cdi_t7g,cdi_t7g,0x00CE26,g0*@0.
+cdi_t7g,cdi_t7g,0x00CEE6,&_Nu&y
+cdi_t7g,cdi_t7g,0x00D0C6,badplay
+cdi_t7g,cdi_t7g,0x00D137,Hma_cntrl: 
+cdi_t7g,cdi_t7g,0x00D16A,NuNuNuJ
+cdi_t7g,cdi_t7g,0x00D194,audio_srv: Unexpected event
+cdi_t7g,cdi_t7g,0x00D20F,paudio_srv: cur_bad = 0 
+cdi_t7g,cdi_t7g,0x00D2B4,preload_done: Error on ma_play
+cdi_t7g,cdi_t7g,0x00D2EE,srv_eof: cur_bad = 0 
+cdi_t7g,cdi_t7g,0x00D3CE,dsp_cur
+cdi_t7g,cdi_t7g,0x00D434,dsp_shd
+cdi_t7g,cdi_t7g,0x00D4BC,\ONu2<
+cdi_t7g,cdi_t7g,0x00D4C8,dsp_add: Display array full
+cdi_t7g,cdi_t7g,0x00D574,Trying to remove 
+cdi_t7g,cdi_t7g,0x00D5A0,Other dsp:-
+cdi_t7g,cdi_t7g,0x00D5E8,dsp_remove: Object not in dsp
+cdi_t7g,cdi_t7g,0x00D612,Number of objects in dsp
+cdi_t7g,cdi_t7g,0x00D6E4,TONu;|
+cdi_t7g,cdi_t7g,0x00D735,ZSG$Y/
+cdi_t7g,cdi_t7g,0x00D9BA,TONu2<
+cdi_t7g,cdi_t7g,0x00D9C6,dsp_exec: Error
+cdi_t7g,cdi_t7g,0x00D9F6,dsp_cur
+cdi_t7g,cdi_t7g,0x00DA0A,dsp_shd
+cdi_t7g,cdi_t7g,0x00DB1F,`layer_pic: Unsupported type
+cdi_t7g,cdi_t7g,0x00DBDC,",0""HZI?"
+cdi_t7g,cdi_t7g,0x00DE14,Nu8CSG&
+cdi_t7g,cdi_t7g,0x00DE40,Nu8CSG&
+cdi_t7g,cdi_t7g,0x00DF64,debug_range: range = 
+cdi_t7g,cdi_t7g,0x00DFB0,gfman:
+cdi_t7g,cdi_t7g,0x00DFC6,gfm_status
+cdi_t7g,cdi_t7g,0x00DFEE,gpos_error
+cdi_t7g,cdi_t7g,0x00E016,cur_pcb
+cdi_t7g,cdi_t7g,0x00E06E,gfm_wait_idle: 
+cdi_t7g,cdi_t7g,0x00E0FE,rtgreen
+cdi_t7g,cdi_t7g,0x00E180,gfm_open_green: Error opening file
+cdi_t7g,cdi_t7g,0x00E23A,Nugpos
+cdi_t7g,cdi_t7g,0x00E2C6,gfm_play Already busy: 
+cdi_t7g,cdi_t7g,0x00E2FE,ss_play 
+cdi_t7g,cdi_t7g,0x00E315,jdel_play: Error returned from ss_play
+cdi_t7g,cdi_t7g,0x00E341,>gfm_play: Error from I$Seek
+cdi_t7g,cdi_t7g,0x00E390,gfm_abort 
+cdi_t7g,cdi_t7g,0x00E3AC,gfm_abort: error
+cdi_t7g,cdi_t7g,0x00E430,>>> play_trg
+cdi_t7g,cdi_t7g,0x00E45E, _Nu=|
+cdi_t7g,cdi_t7g,0x00E668,avman:
+cdi_t7g,cdi_t7g,0x00E67E,avm_state
+cdi_t7g,cdi_t7g,0x00E6A4,cur_av
+cdi_t7g,cdi_t7g,0x00E6EE,"g""*@/<"
+cdi_t7g,cdi_t7g,0x00E7D8,avm_play: Still busy from last play
+cdi_t7g,cdi_t7g,0x00E82A,avm_state = 
+cdi_t7g,cdi_t7g,0x00E84D,2avm_eor_srv: Illegal state
+cdi_t7g,cdi_t7g,0x00E8C0,avm_refresh: Ilegal state
+cdi_t7g,cdi_t7g,0x00EA3F,@create_objects: Object event value list full
+cdi_t7g,cdi_t7g,0x00EB3B,Dcrt_pic: Data palette list full!
+cdi_t7g,cdi_t7g,0x00ECD6, vid_interlace : 
+cdi_t7g,cdi_t7g,0x00ED2D,Rvid_on: 
+cdi_t7g,cdi_t7g,0x00ED59,&vid_off : 
+cdi_t7g,cdi_t7g,0x00EDEA,lctbfr A
+cdi_t7g,cdi_t7g,0x00EE3E,lctbfr B
+cdi_t7g,cdi_t7g,0x00EEEA,create_dcp_a : 
+cdi_t7g,cdi_t7g,0x00EFF0,write_pa_dcp : 
+cdi_t7g,cdi_t7g,0x00F088,create_dcp_b : 
+cdi_t7g,cdi_t7g,0x00F18A,write_pb_dcp : 
+cdi_t7g,cdi_t7g,0x00F1EE,Error code = 
+cdi_t7g,cdi_t7g,0x00F20D,rfix_lct_line: 
+cdi_t7g,cdi_t7g,0x00F39F,8NuBCA
+cdi_t7g,cdi_t7g,0x00F44F,0vid_initialise : 
+cdi_t7g,cdi_t7g,0x00F4AE,open_video : 
+cdi_t7g,cdi_t7g,0x00F507,xset_vid_mem_addr:
+cdi_t7g,cdi_t7g,0x00F75D,"""open_ptr : "
+cdi_t7g,cdi_t7g,0x00F922, _Nu0.
+cdi_t7g,cdi_t7g,0x00FC01,~get_hspot : Ran out of hotspots!
+cdi_t7g,cdi_t7g,0x00FC3A,HotSpot Free List
+cdi_t7g,cdi_t7g,0x00FCC4, status = 
+cdi_t7g,cdi_t7g,0x00FCF8,TONuRGJ
+cdi_t7g,cdi_t7g,0x00FD46, status = 
+cdi_t7g,cdi_t7g,0x00FDFC,TATBTC
+cdi_t7g,cdi_t7g,0x00FFCA,objman:
+cdi_t7g,cdi_t7g,0x00FFE4,big total
+cdi_t7g,cdi_t7g,0x01000A,big free
+cdi_t7g,cdi_t7g,0x010034,small total
+cdi_t7g,cdi_t7g,0x01005C,small free
+cdi_t7g,cdi_t7g,0x0100BE,obj_create : Couldn't create object:
+cdi_t7g,cdi_t7g,0x010284,obj_pcb: null object
+cdi_t7g,cdi_t7g,0x0102AE,<null>
+cdi_t7g,cdi_t7g,0x0102EC,object = <null>
+cdi_t7g,cdi_t7g,0x01034D,2: Name too long
+cdi_t7g,cdi_t7g,0x010384,<null>
+cdi_t7g,cdi_t7g,0x0104F8,SGNuNqK
+cdi_t7g,cdi_t7g,0x01053E,rootroot
+cdi_t7g,cdi_t7g,0x01061E,Object type = 
+cdi_t7g,cdi_t7g,0x010642, size = 
+cdi_t7g,cdi_t7g,0x01065D,"""get_object: Ran out of big objects!"
+cdi_t7g,cdi_t7g,0x01068A,get_object: Ran out of small objects!
+cdi_t7g,cdi_t7g,0x0106BC,object sizeof :
+cdi_t7g,cdi_t7g,0x0106E2,get_object: Object too big
+cdi_t7g,cdi_t7g,0x01070A,root - 
+cdi_t7g,cdi_t7g,0x010717,VNuNuHz
+cdi_t7g,cdi_t7g,0x010726,root_destroy : Killing object
+cdi_t7g,cdi_t7g,0x01076E,lctbfr - 
+cdi_t7g,cdi_t7g,0x01077E,NuNuHz
+cdi_t7g,cdi_t7g,0x01078A,` lctbfr_destroy : Killing object
+cdi_t7g,cdi_t7g,0x01084A,lctbfr_scanline: 
+cdi_t7g,cdi_t7g,0x010870,lctbfr_scanline: Scanline doesn't exist!
+cdi_t7g,cdi_t7g,0x01090A,NuNuBm
+cdi_t7g,cdi_t7g,0x010978,e@Nu2<
+cdi_t7g,cdi_t7g,0x010984,dnlist_create : Couldn't allocate from source dnlist
+cdi_t7g,cdi_t7g,0x0109C4,"`""dnlsit_create : Failed on plane "
+cdi_t7g,cdi_t7g,0x0109FE,dnlist_create : Couldn't malloc d-nodes
+cdi_t7g,cdi_t7g,0x010A80,>>> ROM MEMORY USED <<<
+cdi_t7g,cdi_t7g,0x010B15,4(JPL|
+cdi_t7g,cdi_t7g,0x010B31,4&JSE$K'M
+cdi_t7g,cdi_t7g,0x010B7E,"`""dnlist_destroy : Killing object"
+cdi_t7g,cdi_t7g,0x010BAE,dnlist - 
+cdi_t7g,cdi_t7g,0x010C1A,dnlist_mplane: plane id = 
+cdi_t7g,cdi_t7g,0x010C49,6dnlist_mplane: Illegal plane
+cdi_t7g,cdi_t7g,0x010C96,dnlist_cnf: Failed!
+cdi_t7g,cdi_t7g,0x010CFE,trash_dnodes: 
+cdi_t7g,cdi_t7g,0x010D15,jtrash_dnodes: F$SRtMem
+cdi_t7g,cdi_t7g,0x010DA2,frag_create : record too big for d-node!!!
+cdi_t7g,cdi_t7g,0x010DD8,frag - 
+cdi_t7g,cdi_t7g,0x010DE6,NuNu/-
+cdi_t7g,cdi_t7g,0x010E5D,"""ibfr_create : Too many records to fit in indecies frag!"
+cdi_t7g,cdi_t7g,0x010ED6,ibfr - 
+cdi_t7g,cdi_t7g,0x010EE4,NuNu/-
+cdi_t7g,cdi_t7g,0x010F5C,rgb data
+cdi_t7g,cdi_t7g,0x010F8C,plte - 
+cdi_t7g,cdi_t7g,0x01104C,rgb data
+cdi_t7g,cdi_t7g,0x01109E,PONuB@`
+cdi_t7g,cdi_t7g,0x011102,rgb data
+cdi_t7g,cdi_t7g,0x01116E,plte_write_data : Data doesn't fit in palette
+cdi_t7g,cdi_t7g,0x0112A6,pic_create : Picture type not implemented yet
+cdi_t7g,cdi_t7g,0x0112DE,ibfr_create : Too many records to fit in indecies frag
+cdi_t7g,cdi_t7g,0x0116B4,pic - 
+cdi_t7g,cdi_t7g,0x011702,PONu;@
+cdi_t7g,cdi_t7g,0x011758,\ONu2-
+cdi_t7g,cdi_t7g,0x0117D2,NuNu/-
+cdi_t7g,cdi_t7g,0x01182D,"Rpic_clear: Can't clear this picture type, dozzy!"
+cdi_t7g,cdi_t7g,0x01194C,XKXLPMQ
+cdi_t7g,cdi_t7g,0x011974,&S(T$m
+cdi_t7g,cdi_t7g,0x011D54,        00000000000@@@@@@@@PPPPPPP``````````pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp&S*l
+cdi_t7g,cdi_t7g,0x011F0D,rNu*H(Ia
+cdi_t7g,cdi_t7g,0x011F30,Nu*H(Ia
+cdi_t7g,cdi_t7g,0x011FCA,PONu2<
+cdi_t7g,cdi_t7g,0x011FD6,pic_paste: Unsupported source type
+cdi_t7g,cdi_t7g,0x01205F, paste_yuv: Unsupported destination type
+cdi_t7g,cdi_t7g,0x0120BA,paste_qhy: Unsupported destination type
+cdi_t7g,cdi_t7g,0x01211F,NSFSG?
+cdi_t7g,cdi_t7g,0x012143,<paste_dyuv: Unsupported destination type
+cdi_t7g,cdi_t7g,0x01219D,NSFSG?
+cdi_t7g,cdi_t7g,0x0121C2,paste_cl8: Unsupported destination type
+cdi_t7g,cdi_t7g,0x012217,NSFSG?
+cdi_t7g,cdi_t7g,0x012232,NuSG$X
+cdi_t7g,cdi_t7g,0x01230B,tpaste_cl4: Unsupported destination type
+cdi_t7g,cdi_t7g,0x012388,NuBFBG
+cdi_t7g,cdi_t7g,0x012402,dsp - 
+cdi_t7g,cdi_t7g,0x01240F,^NuNuHz
+cdi_t7g,cdi_t7g,0x01241E,dsp_destroy : Killing object
+cdi_t7g,cdi_t7g,0x01246C,smap_create : Couldn't allocate d-nodes
+cdi_t7g,cdi_t7g,0x0124B4,smap - 
+cdi_t7g,cdi_t7g,0x0124C2,NuNu/-
+cdi_t7g,cdi_t7g,0x012514,gdir - 
+cdi_t7g,cdi_t7g,0x012521,LNuNuHz
+cdi_t7g,cdi_t7g,0x012530,gdir_destroy : Killing object
+cdi_t7g,cdi_t7g,0x0125FE,find_file: File not found
+cdi_t7g,cdi_t7g,0x01273B,2NuNuJm
+cdi_t7g,cdi_t7g,0x01280B,bNuNu?-
+cdi_t7g,cdi_t7g,0x012888,spr_create : Sprite type not implemented yet
+cdi_t7g,cdi_t7g,0x0129C0,spr_pcb : Sprite type not implemented yet
+cdi_t7g,cdi_t7g,0x012A04,sprite - 
+cdi_t7g,cdi_t7g,0x012A13,ZNuNu/-
+cdi_t7g,cdi_t7g,0x012AB6,spr_paste: Unsupported sprite type
+cdi_t7g,cdi_t7g,0x012AEE,paste_cl8_msk: Not implemented yet!
+cdi_t7g,cdi_t7g,0x012B25,Zpaste_cl8_trans: Not implemented yet!
+cdi_t7g,cdi_t7g,0x012B69,NSFSGH
+cdi_t7g,cdi_t7g,0x012BCC,BCSEHAHB2
+cdi_t7g,cdi_t7g,0x012BE1,OSFSGH
+cdi_t7g,cdi_t7g,0x012BEA,HAHBSDj
+cdi_t7g,cdi_t7g,0x012C3C,HAHB$_L
+cdi_t7g,cdi_t7g,0x012C73,OSFSGH
+cdi_t7g,cdi_t7g,0x012CCD,OSESFSGH
+cdi_t7g,cdi_t7g,0x0131B8,"  !!!""""""##$$$%%%&&'''((())***+++,,---...//000111223334445566677788999:::;;<<<===>>???@@@AABBBCCCDDEEEFFFGGHHHIIIJJKKKLLLMMNNNOOOPPQQQRRRSSTTTUUUVVWWWXXXYYZZZ[[[\\]]]^^^__"
+cdi_t7g,cdi_t7g,0x0132A2,"  !!""""##$$%%&&''(())**++,,--..//00112233445566778899::;;<<==>>??@@AABBCCDDEEFFGGHHIIJJKKLLMMNNOOPPQQRRSSTTUUVVWWXXYYZZ[[\\]]^^__``aabbccddeeffgghhiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~"
+cdi_t7g,cdi_t7g,0x013396," !!""##$$%&&'(())*++,--../0012233455677889::;<<==>??@AABBCDDEFFGGHIIJKKLLMNNOPPQQRSSTUUVVWXXYZZ[[\]]^__``abbcddeefgghiijjkllmnnoopqqrssttuvvwxxyyz{{|}}~~"
+cdi_t7g,cdi_t7g,0x01348D," !!""#$$%&''()**+,--./00123345667899:;<<=>??@ABBCDEEFGHHIJKKLMNNOPQQRSTTUVWWXYZZ[\]]^_``abccdeffghiijkllmnoopqrrstuuvwxxyz{{|}~~"
+cdi_t7g,cdi_t7g,0x013587," !""##$%&'()**+,-./011234567889:;<=>??@ABCDEFFGHIJKLMMNOPQRSTTUVWXYZ[[\]^_`abbcdefghiijklmnoppqrstuvwwxyz{|}~~"
+cdi_t7g,cdi_t7g,0x013682," !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+cdi_t7g,cdi_t7g,0x0137C4,paste_cl4q_no_mask: Not visible!
+cdi_t7g,cdi_t7g,0x0138FC,RIJAg0`
+cdi_t7g,cdi_t7g,0x013A01,~paste_cl4q_mask: Not visible!
+cdi_t7g,cdi_t7g,0x013A7C,RJTMRI`DJ
+cdi_t7g,cdi_t7g,0x013AAE,RITMJAg
+cdi_t7g,cdi_t7g,0x013BDE,cellspr
+cdi_t7g,cdi_t7g,0x013C0B,tcell_create: Unsuported type
+cdi_t7g,cdi_t7g,0x013C31,Ncell_create: Unsuported resolution
+cdi_t7g,cdi_t7g,0x013C5F, cell_pcb : Not implemented yet
+cdi_t7g,cdi_t7g,0x013C8A,cell - 
+cdi_t7g,cdi_t7g,0x013C98,NuNu2<
+cdi_t7g,cdi_t7g,0x013CA4,cell_destroy: Not implemented yet
+cdi_t7g,cdi_t7g,0x013DF9,@NuNuHz
+cdi_t7g,cdi_t7g,0x013E08,bad - 
+cdi_t7g,cdi_t7g,0x013E15,XNuNu/-
+cdi_t7g,cdi_t7g,0x013E67,V Jr N@
+cdi_t7g,cdi_t7g,0x013EC2,csd_dsd: 
+cdi_t7g,cdi_t7g,0x013ECC,/nvr/csd
+cdi_t7g,cdi_t7g,0x01400B,0QfQ`QZQTQNQHQBQ<Q6Q0Q*Q$Q
+cdi_t7g,cdi_t7g,0x01405A,P|PvPpPjPdP^PXPRPL
+cdi_t7g,cdi_data,0x000047,"""cdi_data"
+cdi_loader,cdi_loader,0x000047,Xcdi_loader
+cdi_loader,cdi_loader,0x0000AC,BD _N@
+cdi_loader,cdi_loader,0x0000B8,cdi_t7g
+cdi_loader,cdi_loader,0x0000C0,cdi_nodv
+cdi_loader,cdi_loader,0x0000DC,nothing
+cdi_loader,cdi_loader,0x00012E,Nu$00000000
+cdi_loader,cdi_loader,0x00017E,Nu$0000
+cdi_loader,cdi_loader,0x000250,err_initialise: 
+cdi_loader,cdi_loader,0x000271, Nu/cd/errors.txt
+cdi_loader,cdi_loader,0x0002C7,V Jr N@
+cdi_loader,cdi_loader,0x00032E,csd_dsd: 
+cdi_loader,cdi_loader,0x000344,/nvr/csd
+cdi_nodv,cdi_nodv,0x000046,Nvcdi_nodv
+cdi_nodv,cdi_nodv,0x00025F,CSCSD?
+cdi_nodv,cdi_nodv,0x0002A8,NuSBJAg
+cdi_nodv,cdi_nodv,0x001461,   ***000888DDD
+cdi_nodv,cdi_nodv,0x001695,   ***000888DDD4<P
+cdi_nodv,cdi_nodv,0x0018EB,"   ***000888DDD(,H"
+cdi_nodv,cdi_nodv,0x00190B,PHPxHPX
+cdi_nodv,cdi_nodv,0x001B53,   ***000888DDD
+cdi_nodv,cdi_nodv,0x001DEF,   ***000888DDD
+cdi_nodv,cdi_nodv,0x001E04,hptDHt
+cdi_nodv,cdi_nodv,0x001E0D,DLT$(D
+cdi_nodv,cdi_nodv,0x0020A5,   ***000888DDD
+cdi_nodv,cdi_nodv,0x0020BD,`dt88l08D
+cdi_nodv,cdi_nodv,0x0023A1,   ***000888DDD08D
+cdi_nodv,cdi_nodv,0x0023B9,`dt88t
+cdi_nodv,cdi_nodv,0x00254B,"   ***000888DDD,4<"
+cdi_nodv,cdi_nodv,0x0026F3,"   ***000888DDD,4<"
+cdi_nodv,cdi_nodv,0x00270B,"XXt,,l"
+cdi_nodv,cdi_nodv,0x0028A3,   ***000888DDD048
+cdi_nodv,cdi_nodv,0x002A61,   ***000888DDD048x|
+cdi_nodv,cdi_nodv,0x002C19,"   ***000888DDD,44"
+cdi_nodv,cdi_nodv,0x002DF9,   ***000888DDD08D
+cdi_nodv,cdi_nodv,0x002E11,`dt88t
+cdi_nodv,cdi_nodv,0x002F9F,"   ***000888DDD,4<"
+cdi_nodv,cdi_nodv,0x003147,"   ***000888DDD,4<"
+cdi_nodv,cdi_nodv,0x00315F,"XXt,,l"
+cdi_nodv,cdi_nodv,0x0032F7,   ***000888DDD048
+cdi_nodv,cdi_nodv,0x0034B1,   ***000888DDD048x|
+cdi_nodv,cdi_nodv,0x003669,"   ***000888DDD,44"
+cdi_nodv,cdi_nodv,0x003849,"   ***000888DDD,4L"
+cdi_nodv,cdi_nodv,0x003AEF,   ***000888DDD$(T
+cdi_nodv,cdi_nodv,0x003B0A,HPX@Dx
+cdi_nodv,cdi_nodv,0x003D9B,   ***000888DDD$(T
+cdi_nodv,cdi_nodv,0x003DB6,LT\<<|tx
+cdi_nodv,cdi_nodv,0x004047,   ***000888DDD4<X
+cdi_nodv,cdi_nodv,0x0042F5,   ***000888DDD8<X
+cdi_nodv,cdi_nodv,0x00459D,   ***000888DDD$(P
+cdi_nodv,cdi_nodv,0x0048B5,   ***000888DDD
+cdi_nodv,cdi_nodv,0x004D6F,   ***000888DDD$
+cdi_nodv,cdi_nodv,0x0051E3,   ***000888DDD
+cdi_nodv,cdi_nodv,0x0051F9,8hHD@@<4
+cdi_nodv,cdi_nodv,0x005203,"x@Dd4,("
+cdi_nodv,cdi_nodv,0x005629,   ***000888DDD 
+cdi_nodv,cdi_nodv,0x00563F,4hHDDD@8
+cdi_nodv,cdi_nodv,0x005649,|<Hl80(
+cdi_nodv,cdi_nodv,0x005A5B,   ***000888DDD$
+cdi_nodv,cdi_nodv,0x005A70,t\LD88
+cdi_nodv,cdi_nodv,0x005EA9,"   ***000888DDD,$ "
+cdi_nodv,cdi_nodv,0x005EBE,|ldlXH
+cdi_nodv,cdi_nodv,0x006337,   ***000888DDD
+cdi_nodv,cdi_nodv,0x00634A,|dlXHD44
+cdi_nodv,cdi_nodv,0x00681D,   ***000888DDD
+cdi_nodv,cdi_nodv,0x006BBD,   ***000888DDD
+cdi_nodv,cdi_nodv,0x006F6F,   ***000888DDDTXl
+cdi_nodv,cdi_nodv,0x007355,   ***000888DDD
+cdi_nodv,cdi_nodv,0x007521,   ***000888DDD
+cdi_nodv,cdi_nodv,0x0076ED,   ***000888DDD
+cdi_nodv,cdi_nodv,0x0078B3,   ***000888DDD
+cdi_nodv,cdi_nodv,0x0078CE,PT\@DH4`x8<D
+cdi_nodv,cdi_nodv,0x007A7B,   ***000888DDDLPT
+cdi_nodv,cdi_nodv,0x007A97,4`8`x48D
+cdi_nodv,cdi_nodv,0x007C3D,   ***000888DDD
+cdi_nodv,cdi_nodv,0x007C5B,xxx8<D
+cdi_nodv,cdi_nodv,0x007E2D,   ***000888DDD(
+cdi_nodv,cdi_nodv,0x007E3F,ppp|L4
+cdi_nodv,cdi_nodv,0x007E48,"d<,\LH"
+cdi_nodv,cdi_nodv,0x008203,   ***000888DDDD<4
+cdi_nodv,cdi_nodv,0x00848D,   ***000888DDD<40
+cdi_nodv,cdi_nodv,0x008737,   ***000888DDD@<4
+cdi_nodv,cdi_nodv,0x0089EF,   ***000888DDD@<4
+cdi_nodv,cdi_nodv,0x008CAF,   ***000888DDD\TH
+cdi_nodv,cdi_nodv,0x009218,rtgreen
+cdi_nodv,cdi_nodv,0x009226,rtgreen
+cdi_nodv,cdi_nodv,0x009BA0,qhy_pic
+cdi_nodv,cdi_nodv,0x009BA8,qhy_pic
+cdi_nodv,cdi_nodv,0x009BB0,qhy_pic
+cdi_nodv,cdi_nodv,0x00AC15,Jrtgreen
+cdi_nodv,cdi_nodv,0x00AC1E,rtgreen
+cdi_nodv,cdi_nodv,0x00AC26,rtgreen
+cdi_nodv,cdi_nodv,0x00AC2E,rtgreen
+cdi_nodv,cdi_nodv,0x00AC36,rtgreen
+cdi_nodv,cdi_nodv,0x00AE99,NNu La
+cdi_nodv,cdi_nodv,0x00B399,ZTKJ@g
+cdi_nodv,cdi_nodv,0x00B72C,TKJ@g E
+cdi_nodv,cdi_nodv,0x00BABE,F$Exit failed! 
+cdi_nodv,cdi_nodv,0x00BB3D,">g ""@#H"
+cdi_nodv,cdi_nodv,0x00BBEF,NNuBGB@<
+cdi_nodv,cdi_nodv,0x00C0E4,"aTe&0,"
+cdi_nodv,cdi_nodv,0x00C4B3,Lasset_parent: Not implemented yet!
+cdi_nodv,cdi_nodv,0x00C65A,TK(_ _8
+cdi_nodv,cdi_nodv,0x00C6B7,Hnvr_???: Not supported yet
+cdi_nodv,cdi_nodv,0x00C74A,hi_event: lwm = 
+cdi_nodv,cdi_nodv,0x00C772, hwm = 
+cdi_nodv,cdi_nodv,0x00C794,event / value = 
+cdi_nodv,cdi_nodv,0x00C816,Hotspots:- 
+cdi_nodv,cdi_nodv,0x00C83C,x/y = 
+cdi_nodv,cdi_nodv,0x00C872, dimensions = 
+cdi_nodv,cdi_nodv,0x00C8B7,Hhi_event: fifo overflow
+cdi_nodv,cdi_nodv,0x00C9CF,0hi_allcoate: Error
+cdi_nodv,cdi_nodv,0x00CA44,Hi Text Spaces: 
+cdi_nodv,cdi_nodv,0x00CAB7,Hget_object: No more objects
+cdi_nodv,cdi_nodv,0x00CB12,Nu$00000000
+cdi_nodv,cdi_nodv,0x00CB62,Nu$0000
+cdi_nodv,cdi_nodv,0x00CBFC,Nu _HPa
+cdi_nodv,cdi_nodv,0x00CC3E,err_initialise: 
+cdi_nodv,cdi_nodv,0x00CC53,BNu/cd/errors.txt
+cdi_nodv,cdi_nodv,0x00CC7A,<null>
+cdi_nodv,cdi_nodv,0x00CC87,"Z @""Hp"
+cdi_nodv,cdi_nodv,0x00CCB0,d-nodes = 
+cdi_nodv,cdi_nodv,0x00CCD4, <circular>
+cdi_nodv,cdi_nodv,0x00CD18,dnlistA
+cdi_nodv,cdi_nodv,0x00CD50,dnlistB
+cdi_nodv,cdi_nodv,0x00CD88,dnlistS
+cdi_nodv,cdi_nodv,0x00CDC2,dnlistF
+cdi_nodv,cdi_nodv,0x00CDD9,&dnde_initialise : Problems in video plane 1 memory
+cdi_nodv,cdi_nodv,0x00CE14,dnde_initialise : Problems in video plane 2 memory
+cdi_nodv,cdi_nodv,0x00CE4E,dnde_initialise : Problems in system memory
+cdi_nodv,cdi_nodv,0x00CE80,dnde_initialise : Problems in fmv memory
+cdi_nodv,cdi_nodv,0x00CEBB,Ddnde_allocate: In use!
+cdi_nodv,cdi_nodv,0x00CEF1,"""""HU@k"
+cdi_nodv,cdi_nodv,0x00CF3E,dnde_allocate: Free nodes = 
+cdi_nodv,cdi_nodv,0x00CF74, wanted 
+cdi_nodv,cdi_nodv,0x00CFD7,(dnde_allocate
+cdi_nodv,cdi_nodv,0x00D00A,dnde_deallocate: In use!
+cdi_nodv,cdi_nodv,0x00D032,"g*""H$i"
+cdi_nodv,cdi_nodv,0x00D0BD,Bsgm_new : Ran out if signal id's
+cdi_nodv,cdi_nodv,0x00D156,"NuJAk,"
+cdi_nodv,cdi_nodv,0x00D212,`&>>> S P U R I O U S   S I G N A L   
+cdi_nodv,cdi_nodv,0x00D280,TONu2<
+cdi_nodv,cdi_nodv,0x00D28B,tsgm_mvt: 
+cdi_nodv,cdi_nodv,0x00D2BA,TONu2<
+cdi_nodv,cdi_nodv,0x00D2C5,:sgm_mat: 
+cdi_nodv,cdi_nodv,0x00D2EE,mvman:
+cdi_nodv,cdi_nodv,0x00D304,cur_mv
+cdi_nodv,cdi_nodv,0x00D34A,mvm_off: !!!
+cdi_nodv,cdi_nodv,0x00D360,g6*@Jm
+cdi_nodv,cdi_nodv,0x00D414,mvm_initialise: ???
+cdi_nodv,cdi_nodv,0x00D42E,Nu*@Jn
+cdi_nodv,cdi_nodv,0x00D5DA,mv_play: Zod error value = 
+cdi_nodv,cdi_nodv,0x00D60A,mv_play: Something went wrong!
+cdi_nodv,cdi_nodv,0x00D650,NuNuNu=|
+cdi_nodv,cdi_nodv,0x00D770,mvm_handler: Unexpected event
+cdi_nodv,cdi_nodv,0x00D795,jmvm_handler: Data Error
+cdi_nodv,cdi_nodv,0x00D83B,0NuNu0.
+cdi_nodv,cdi_nodv,0x00D8BD,Bopen_mpegv : 
+cdi_nodv,cdi_nodv,0x00D8EE,mam_initialise: ???
+cdi_nodv,cdi_nodv,0x00D942,open_mpega : 
+cdi_nodv,cdi_nodv,0x00DA0A,create_smaps: 
+cdi_nodv,cdi_nodv,0x00DA79,"X`""smap_play: Error, still playing "
+cdi_nodv,cdi_nodv,0x00DAB5,Jsmap: 
+cdi_nodv,cdi_nodv,0x00DB2C,>>> WARNING - sme_out: 
+cdi_nodv,cdi_nodv,0x00DBBF,@open_audio : 
+cdi_nodv,cdi_nodv,0x00DBD8,badman:
+cdi_nodv,cdi_nodv,0x00DBEE,buffer_size
+cdi_nodv,cdi_nodv,0x00DC16,cur_bad
+cdi_nodv,cdi_nodv,0x00DC3E,cur_bad statue
+cdi_nodv,cdi_nodv,0x00DCA6,g0*@0.
+cdi_nodv,cdi_nodv,0x00DD66,&_Nu&y
+cdi_nodv,cdi_nodv,0x00DF46,badplay
+cdi_nodv,cdi_nodv,0x00DFB7,Hma_cntrl: 
+cdi_nodv,cdi_nodv,0x00DFEA,NuNuNuJ
+cdi_nodv,cdi_nodv,0x00E014,audio_srv: Unexpected event
+cdi_nodv,cdi_nodv,0x00E08F,paudio_srv: cur_bad = 0 
+cdi_nodv,cdi_nodv,0x00E134,preload_done: Error on ma_play
+cdi_nodv,cdi_nodv,0x00E16E,srv_eof: cur_bad = 0 
+cdi_nodv,cdi_nodv,0x00E24E,dsp_cur
+cdi_nodv,cdi_nodv,0x00E2B4,dsp_shd
+cdi_nodv,cdi_nodv,0x00E33C,\ONu2<
+cdi_nodv,cdi_nodv,0x00E348,dsp_add: Display array full
+cdi_nodv,cdi_nodv,0x00E3F4,Trying to remove 
+cdi_nodv,cdi_nodv,0x00E420,Other dsp:-
+cdi_nodv,cdi_nodv,0x00E468,dsp_remove: Object not in dsp
+cdi_nodv,cdi_nodv,0x00E492,Number of objects in dsp
+cdi_nodv,cdi_nodv,0x00E564,TONu;|
+cdi_nodv,cdi_nodv,0x00E5B5,ZSG$Y/
+cdi_nodv,cdi_nodv,0x00E83A,TONu2<
+cdi_nodv,cdi_nodv,0x00E846,dsp_exec: Error
+cdi_nodv,cdi_nodv,0x00E876,dsp_cur
+cdi_nodv,cdi_nodv,0x00E88A,dsp_shd
+cdi_nodv,cdi_nodv,0x00E99F,`layer_pic: Unsupported type
+cdi_nodv,cdi_nodv,0x00EA5C,",0""HZI?"
+cdi_nodv,cdi_nodv,0x00EC94,Nu8CSG&
+cdi_nodv,cdi_nodv,0x00ECC0,Nu8CSG&
+cdi_nodv,cdi_nodv,0x00EDE4,debug_range: range = 
+cdi_nodv,cdi_nodv,0x00EE30,gfman:
+cdi_nodv,cdi_nodv,0x00EE46,gfm_status
+cdi_nodv,cdi_nodv,0x00EE6E,gpos_error
+cdi_nodv,cdi_nodv,0x00EE96,cur_pcb
+cdi_nodv,cdi_nodv,0x00EEEE,gfm_wait_idle: 
+cdi_nodv,cdi_nodv,0x00EF7E,rtgreen
+cdi_nodv,cdi_nodv,0x00F000,gfm_open_green: Error opening file
+cdi_nodv,cdi_nodv,0x00F0BA,Nugpos
+cdi_nodv,cdi_nodv,0x00F146,gfm_play Already busy: 
+cdi_nodv,cdi_nodv,0x00F17E,ss_play 
+cdi_nodv,cdi_nodv,0x00F195,jdel_play: Error returned from ss_play
+cdi_nodv,cdi_nodv,0x00F1C1,>gfm_play: Error from I$Seek
+cdi_nodv,cdi_nodv,0x00F210,gfm_abort 
+cdi_nodv,cdi_nodv,0x00F22C,gfm_abort: error
+cdi_nodv,cdi_nodv,0x00F2B0,>>> play_trg
+cdi_nodv,cdi_nodv,0x00F2DE, _Nu=|
+cdi_nodv,cdi_nodv,0x00F4E8,avman:
+cdi_nodv,cdi_nodv,0x00F4FE,avm_state
+cdi_nodv,cdi_nodv,0x00F524,cur_av
+cdi_nodv,cdi_nodv,0x00F56E,"g""*@/<"
+cdi_nodv,cdi_nodv,0x00F658,avm_play: Still busy from last play
+cdi_nodv,cdi_nodv,0x00F6AA,avm_state = 
+cdi_nodv,cdi_nodv,0x00F6CD,2avm_eor_srv: Illegal state
+cdi_nodv,cdi_nodv,0x00F740,avm_refresh: Ilegal state
+cdi_nodv,cdi_nodv,0x00F8BF,@create_objects: Object event value list full
+cdi_nodv,cdi_nodv,0x00F9BB,Dcrt_pic: Data palette list full!
+cdi_nodv,cdi_nodv,0x00FB56, vid_interlace : 
+cdi_nodv,cdi_nodv,0x00FBAD,Rvid_on: 
+cdi_nodv,cdi_nodv,0x00FBD9,&vid_off : 
+cdi_nodv,cdi_nodv,0x00FC6A,lctbfr A
+cdi_nodv,cdi_nodv,0x00FCBE,lctbfr B
+cdi_nodv,cdi_nodv,0x00FD6A,create_dcp_a : 
+cdi_nodv,cdi_nodv,0x00FE70,write_pa_dcp : 
+cdi_nodv,cdi_nodv,0x00FF08,create_dcp_b : 
+cdi_nodv,cdi_nodv,0x01000A,write_pb_dcp : 
+cdi_nodv,cdi_nodv,0x01006E,Error code = 
+cdi_nodv,cdi_nodv,0x01008D,rfix_lct_line: 
+cdi_nodv,cdi_nodv,0x01021F,8NuBCA
+cdi_nodv,cdi_nodv,0x0102CF,0vid_initialise : 
+cdi_nodv,cdi_nodv,0x01032E,open_video : 
+cdi_nodv,cdi_nodv,0x010387,xset_vid_mem_addr:
+cdi_nodv,cdi_nodv,0x0105DD,"""open_ptr : "
+cdi_nodv,cdi_nodv,0x0107A2, _Nu0.
+cdi_nodv,cdi_nodv,0x010A81,~get_hspot : Ran out of hotspots!
+cdi_nodv,cdi_nodv,0x010ABA,HotSpot Free List
+cdi_nodv,cdi_nodv,0x010B44, status = 
+cdi_nodv,cdi_nodv,0x010B78,TONuRGJ
+cdi_nodv,cdi_nodv,0x010BC6, status = 
+cdi_nodv,cdi_nodv,0x010C7C,TATBTC
+cdi_nodv,cdi_nodv,0x010E4A,objman:
+cdi_nodv,cdi_nodv,0x010E64,big total
+cdi_nodv,cdi_nodv,0x010E8A,big free
+cdi_nodv,cdi_nodv,0x010EB4,small total
+cdi_nodv,cdi_nodv,0x010EDC,small free
+cdi_nodv,cdi_nodv,0x010F3E,obj_create : Couldn't create object:
+cdi_nodv,cdi_nodv,0x011104,obj_pcb: null object
+cdi_nodv,cdi_nodv,0x01112E,<null>
+cdi_nodv,cdi_nodv,0x01116C,object = <null>
+cdi_nodv,cdi_nodv,0x0111CD,2: Name too long
+cdi_nodv,cdi_nodv,0x011204,<null>
+cdi_nodv,cdi_nodv,0x011378,SGNuNqK
+cdi_nodv,cdi_nodv,0x0113BE,rootroot
+cdi_nodv,cdi_nodv,0x01149E,Object type = 
+cdi_nodv,cdi_nodv,0x0114C2, size = 
+cdi_nodv,cdi_nodv,0x0114DD,"""get_object: Ran out of big objects!"
+cdi_nodv,cdi_nodv,0x01150A,get_object: Ran out of small objects!
+cdi_nodv,cdi_nodv,0x01153C,object sizeof :
+cdi_nodv,cdi_nodv,0x011562,get_object: Object too big
+cdi_nodv,cdi_nodv,0x01158A,root - 
+cdi_nodv,cdi_nodv,0x011597,VNuNuHz
+cdi_nodv,cdi_nodv,0x0115A6,root_destroy : Killing object
+cdi_nodv,cdi_nodv,0x0115EE,lctbfr - 
+cdi_nodv,cdi_nodv,0x0115FE,NuNuHz
+cdi_nodv,cdi_nodv,0x01160A,` lctbfr_destroy : Killing object
+cdi_nodv,cdi_nodv,0x0116CA,lctbfr_scanline: 
+cdi_nodv,cdi_nodv,0x0116F0,lctbfr_scanline: Scanline doesn't exist!
+cdi_nodv,cdi_nodv,0x01178A,NuNuBm
+cdi_nodv,cdi_nodv,0x0117F8,e@Nu2<
+cdi_nodv,cdi_nodv,0x011804,dnlist_create : Couldn't allocate from source dnlist
+cdi_nodv,cdi_nodv,0x011844,"`""dnlsit_create : Failed on plane "
+cdi_nodv,cdi_nodv,0x01187E,dnlist_create : Couldn't malloc d-nodes
+cdi_nodv,cdi_nodv,0x011900,>>> ROM MEMORY USED <<<
+cdi_nodv,cdi_nodv,0x011995,4(JPL|
+cdi_nodv,cdi_nodv,0x0119B1,4&JSE$K'M
+cdi_nodv,cdi_nodv,0x0119FE,"`""dnlist_destroy : Killing object"
+cdi_nodv,cdi_nodv,0x011A2E,dnlist - 
+cdi_nodv,cdi_nodv,0x011A9A,dnlist_mplane: plane id = 
+cdi_nodv,cdi_nodv,0x011AC9,6dnlist_mplane: Illegal plane
+cdi_nodv,cdi_nodv,0x011B16,dnlist_cnf: Failed!
+cdi_nodv,cdi_nodv,0x011B7E,trash_dnodes: 
+cdi_nodv,cdi_nodv,0x011B95,jtrash_dnodes: F$SRtMem
+cdi_nodv,cdi_nodv,0x011C22,frag_create : record too big for d-node!!!
+cdi_nodv,cdi_nodv,0x011C58,frag - 
+cdi_nodv,cdi_nodv,0x011C66,NuNu/-
+cdi_nodv,cdi_nodv,0x011CDD,"""ibfr_create : Too many records to fit in indecies frag!"
+cdi_nodv,cdi_nodv,0x011D56,ibfr - 
+cdi_nodv,cdi_nodv,0x011D64,NuNu/-
+cdi_nodv,cdi_nodv,0x011DDC,rgb data
+cdi_nodv,cdi_nodv,0x011E0C,plte - 
+cdi_nodv,cdi_nodv,0x011ECC,rgb data
+cdi_nodv,cdi_nodv,0x011F1E,PONuB@`
+cdi_nodv,cdi_nodv,0x011F82,rgb data
+cdi_nodv,cdi_nodv,0x011FEE,plte_write_data : Data doesn't fit in palette
+cdi_nodv,cdi_nodv,0x012126,pic_create : Picture type not implemented yet
+cdi_nodv,cdi_nodv,0x01215E,ibfr_create : Too many records to fit in indecies frag
+cdi_nodv,cdi_nodv,0x012534,pic - 
+cdi_nodv,cdi_nodv,0x012582,PONu;@
+cdi_nodv,cdi_nodv,0x0125D8,\ONu2-
+cdi_nodv,cdi_nodv,0x012652,NuNu/-
+cdi_nodv,cdi_nodv,0x0126AD,"Rpic_clear: Can't clear this picture type, dozzy!"
+cdi_nodv,cdi_nodv,0x0127CC,XKXLPMQ
+cdi_nodv,cdi_nodv,0x0127F4,&S(T$m
+cdi_nodv,cdi_nodv,0x012BD4,        00000000000@@@@@@@@PPPPPPP``````````pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp&S*l
+cdi_nodv,cdi_nodv,0x012D8D,rNu*H(Ia
+cdi_nodv,cdi_nodv,0x012DB0,Nu*H(Ia
+cdi_nodv,cdi_nodv,0x012E4A,PONu2<
+cdi_nodv,cdi_nodv,0x012E56,pic_paste: Unsupported source type
+cdi_nodv,cdi_nodv,0x012EDF, paste_yuv: Unsupported destination type
+cdi_nodv,cdi_nodv,0x012F3A,paste_qhy: Unsupported destination type
+cdi_nodv,cdi_nodv,0x012F9F,NSFSG?
+cdi_nodv,cdi_nodv,0x012FC3,<paste_dyuv: Unsupported destination type
+cdi_nodv,cdi_nodv,0x01301D,NSFSG?
+cdi_nodv,cdi_nodv,0x013042,paste_cl8: Unsupported destination type
+cdi_nodv,cdi_nodv,0x013097,NSFSG?
+cdi_nodv,cdi_nodv,0x0130B2,NuSG$X
+cdi_nodv,cdi_nodv,0x01318B,tpaste_cl4: Unsupported destination type
+cdi_nodv,cdi_nodv,0x013208,NuBFBG
+cdi_nodv,cdi_nodv,0x013282,dsp - 
+cdi_nodv,cdi_nodv,0x01328F,^NuNuHz
+cdi_nodv,cdi_nodv,0x01329E,dsp_destroy : Killing object
+cdi_nodv,cdi_nodv,0x0132EC,smap_create : Couldn't allocate d-nodes
+cdi_nodv,cdi_nodv,0x013334,smap - 
+cdi_nodv,cdi_nodv,0x013342,NuNu/-
+cdi_nodv,cdi_nodv,0x013394,gdir - 
+cdi_nodv,cdi_nodv,0x0133A1,LNuNuHz
+cdi_nodv,cdi_nodv,0x0133B0,gdir_destroy : Killing object
+cdi_nodv,cdi_nodv,0x01347E,find_file: File not found
+cdi_nodv,cdi_nodv,0x0135BB,2NuNuJm
+cdi_nodv,cdi_nodv,0x01368B,bNuNu?-
+cdi_nodv,cdi_nodv,0x013708,spr_create : Sprite type not implemented yet
+cdi_nodv,cdi_nodv,0x013840,spr_pcb : Sprite type not implemented yet
+cdi_nodv,cdi_nodv,0x013884,sprite - 
+cdi_nodv,cdi_nodv,0x013893,ZNuNu/-
+cdi_nodv,cdi_nodv,0x013936,spr_paste: Unsupported sprite type
+cdi_nodv,cdi_nodv,0x01396E,paste_cl8_msk: Not implemented yet!
+cdi_nodv,cdi_nodv,0x0139A5,Zpaste_cl8_trans: Not implemented yet!
+cdi_nodv,cdi_nodv,0x0139E9,NSFSGH
+cdi_nodv,cdi_nodv,0x013A4C,BCSEHAHB2
+cdi_nodv,cdi_nodv,0x013A61,OSFSGH
+cdi_nodv,cdi_nodv,0x013A6A,HAHBSDj
+cdi_nodv,cdi_nodv,0x013ABC,HAHB$_L
+cdi_nodv,cdi_nodv,0x013AF3,OSFSGH
+cdi_nodv,cdi_nodv,0x013B4D,OSESFSGH
+cdi_nodv,cdi_nodv,0x014038,"  !!!""""""##$$$%%%&&'''((())***+++,,---...//000111223334445566677788999:::;;<<<===>>???@@@AABBBCCCDDEEEFFFGGHHHIIIJJKKKLLLMMNNNOOOPPQQQRRRSSTTTUUUVVWWWXXXYYZZZ[[[\\]]]^^^__"
+cdi_nodv,cdi_nodv,0x014122,"  !!""""##$$%%&&''(())**++,,--..//00112233445566778899::;;<<==>>??@@AABBCCDDEEFFGGHHIIJJKKLLMMNNOOPPQQRRSSTTUUVVWWXXYYZZ[[\\]]^^__``aabbccddeeffgghhiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~"
+cdi_nodv,cdi_nodv,0x014216," !!""##$$%&&'(())*++,--../0012233455677889::;<<==>??@AABBCDDEFFGGHIIJKKLLMNNOPPQQRSSTUUVVWXXYZZ[[\]]^__``abbcddeefgghiijjkllmnnoopqqrssttuvvwxxyyz{{|}}~~"
+cdi_nodv,cdi_nodv,0x01430D," !!""#$$%&''()**+,--./00123345667899:;<<=>??@ABBCDEEFGHHIJKKLMNNOPQQRSTTUVWWXYZZ[\]]^_``abccdeffghiijkllmnoopqrrstuuvwxxyz{{|}~~"
+cdi_nodv,cdi_nodv,0x014407," !""##$%&'()**+,-./011234567889:;<=>??@ABCDEFFGHIJKLMMNOPQRSTTUVWXYZ[[\]^_`abbcdefghiijklmnoppqrstuvwwxyz{|}~~"
+cdi_nodv,cdi_nodv,0x014502," !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+cdi_nodv,cdi_nodv,0x014644,paste_cl4q_no_mask: Not visible!
+cdi_nodv,cdi_nodv,0x01477C,RIJAg0`
+cdi_nodv,cdi_nodv,0x014881,~paste_cl4q_mask: Not visible!
+cdi_nodv,cdi_nodv,0x0148FC,RJTMRI`DJ
+cdi_nodv,cdi_nodv,0x01492E,RITMJAg
+cdi_nodv,cdi_nodv,0x014A5E,cellspr
+cdi_nodv,cdi_nodv,0x014A8B,tcell_create: Unsuported type
+cdi_nodv,cdi_nodv,0x014AB1,Ncell_create: Unsuported resolution
+cdi_nodv,cdi_nodv,0x014ADF, cell_pcb : Not implemented yet
+cdi_nodv,cdi_nodv,0x014B0A,cell - 
+cdi_nodv,cdi_nodv,0x014B18,NuNu2<
+cdi_nodv,cdi_nodv,0x014B24,cell_destroy: Not implemented yet
+cdi_nodv,cdi_nodv,0x014C79,@NuNuHz
+cdi_nodv,cdi_nodv,0x014C88,bad - 
+cdi_nodv,cdi_nodv,0x014C95,XNuNu/-
+cdi_nodv,cdi_nodv,0x014CE7,V Jr N@
+cdi_nodv,cdi_nodv,0x014D41,Fcsd_dsd: 
+cdi_nodv,cdi_nodv,0x014D4C,/nvr/csd
+cdi_nodv,cdi_nodv,0x014E79,-QTQNQHQBQ<Q6Q0Q*Q$Q
+cdi_nodv,cdi_nodv,0x014EC2,P|PvPpPjPdP^PXPRPL
