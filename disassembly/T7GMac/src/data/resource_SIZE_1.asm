@@ -1,3 +1,4 @@
+; Classic Mac SIZE resource: flags WORD, preferred LONG, minimum LONG (big endian).
 ; Resource 'SIZE', ID 1; name ''; payload 10 bytes
 ; MacBinary file offsets 1BAE71–1BAE7E (inclusive).
 ; Linear CODE decoding is provisional: embedded data can decode as instructions.

@@ -1,4 +1,6 @@
 ; script.grv
+; Semantic landmarks: 0059 Zaphod key-state loop; 016B success; 03E8 credits entry;
+; 03FF/0407 Mac-only credits-prelude stills; 1BE6 unlocked room selector.
 ; size=17191 instructions=4733 input_loops=124
 
 0000  38                                     RESTORESTACK                  
@@ -10,27 +12,27 @@
 0011  16 08 01 B0                            LOADSTRING                    dst=v[0x108], values=[0]
 0015  3D                                     RESETVARS                     
 0016  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
-001A  02 39 4C                               PLAYSONG                      ref=0x4C39 (XMI[57]=?)
+001A  02 39 4C                               PLAYSONG                      ref=0x4C39 (XMI[57]=gu61.xmi)
 001D  1A 00 01 B0 29 00                      STRCMP_NE_JMP                 start=v[0x100], values=[0], target=0x0029
-0023  08 0C 4C                               SETBACKGROUNDSONG             ref=0x4C0C (XMI[12]=?)
+0023  08 0C 4C                               SETBACKGROUNDSONG             ref=0x4C0C (XMI[12]=gu16.xmi)
 0026  15 2C 00                               JMP                           target=0x002C
-0029  08 00 4C                               SETBACKGROUNDSONG             ref=0x4C00 (XMI[0]=?)
+0029  08 00 4C                               SETBACKGROUNDSONG             ref=0x4C00 (XMI[0]=agu16.xmi)
 002C  23 05 01 B0 38 00                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x0038
 0032  4B 00                                  SET_VIDEO_MODE                value=0x00
 0034  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
 0038  18 67 03                               CALL                          target=0x0367
-003B  09 18 24                               VIDEOREF                      ref=0x2418 (INTRO[24]=?)
+003B  09 18 24                               VIDEOREF                      ref=0x2418 (INTRO[24]=sphinx.vdx)
 003E  0A                                     VIDEOFLAG5_ON                 
-003F  09 1F 24                               VIDEOREF                      ref=0x241F (INTRO[31]=?)
+003F  09 1F 24                               VIDEOREF                      ref=0x241F (INTRO[31]=sphmen1i.vdx)
 0042  0A                                     VIDEOFLAG5_ON                 
-0043  09 25 24                               VIDEOREF                      ref=0x2425 (INTRO[37]=?)
+0043  09 25 24                               VIDEOREF                      ref=0x2425 (INTRO[37]=sphprm1i.vdx)
 0046  3C                                     CHECK_VALID_SAVES             
 0047  07                                     VIDEOFLAG7_ON                 
 0048  46                                     RESOURCE_CONTEXT_SAVE         
 0049  1A 04 01 B0 55 00                      STRCMP_NE_JMP                 start=v[0x104], values=[0], target=0x0055
-004F  09 A9 50                               VIDEOREF                      ref=0x50A9 (GAMWAV[169]=?)
+004F  09 A9 50                               VIDEOREF                      ref=0x50A9 (GAMWAV[169]=gen_s_18.vdx)
 0052  15 58 00                               JMP                           target=0x0058
-0055  09 AA 50                               VIDEOREF                      ref=0x50AA (GAMWAV[170]=?)
+0055  09 AA 50                               VIDEOREF                      ref=0x50AA (GAMWAV[170]=gen_s_19.vdx)
 0058  47                                     RESOURCE_CONTEXT_RESTORE      
 0059  0B                                     INPUTLOOPSTART                
 005A  1A 07 01 E1 64 00                      STRCMP_NE_JMP                 start=v[0x107], values=[49], target=0x0064
@@ -83,16 +85,16 @@
 016F  0A                                     VIDEOFLAG5_ON                 
 0170  07                                     VIDEOFLAG7_ON                 
 0171  48 0F                                  SET_VDX_RATE_OVERRIDE         value=0x0F
-0173  09 31 24                               VIDEOREF                      ref=0x2431 (INTRO[49]=?)
+0173  09 31 24                               VIDEOREF                      ref=0x2431 (INTRO[49]=groovie.vdx)
 0176  15 59 00                               JMP                           target=0x0059
 0179  0A                                     VIDEOFLAG5_ON                 
-017A  09 20 24                               VIDEOREF                      ref=0x2420 (INTRO[32]=?)
+017A  09 20 24                               VIDEOREF                      ref=0x2420 (INTRO[32]=sphmen1o.vdx)
 017D  0A                                     VIDEOFLAG5_ON                 
-017E  09 26 24                               VIDEOREF                      ref=0x2426 (INTRO[38]=?)
+017E  09 26 24                               VIDEOREF                      ref=0x2426 (INTRO[38]=sphprm1o.vdx)
 0181  0A                                     VIDEOFLAG5_ON                 
-0182  09 23 24                               VIDEOREF                      ref=0x2423 (INTRO[35]=?)
+0182  09 23 24                               VIDEOREF                      ref=0x2423 (INTRO[35]=sphmen3i.vdx)
 0185  0A                                     VIDEOFLAG5_ON                 
-0186  09 29 24                               VIDEOREF                      ref=0x2429 (INTRO[41]=?)
+0186  09 29 24                               VIDEOREF                      ref=0x2429 (INTRO[41]=sphprm3i.vdx)
 0189  0B                                     INPUTLOOPSTART                
 018A  A3 01 B0 9C 01                         STRCMP_EQ_JMP                 start=v[0x001], values=[0], target=0x019C
 018F  3B 01 B2 00 36 01 C1 00 4D 01 4B 02 08 HOTSPOT_SAVE_SLOT             slot=0x01, left=0x00B2, top=0x0136, right=0x00C1, bottom=0x014D, target=0x024B, cursor=0x08
@@ -144,41 +146,41 @@
 029B  2E 19 00                               LOADGAME                      var=v[0x019]
 029E  16 05 01 B1                            LOADSTRING                    dst=v[0x105], values=[1]
 02A2  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
-02A6  08 35 4C                               SETBACKGROUNDSONG             ref=0x4C35 (XMI[53]=?)
+02A6  08 35 4C                               SETBACKGROUNDSONG             ref=0x4C35 (XMI[53]=gu56.xmi)
 02A9  15 9B 1D                               JMP                           target=0x1D9B
 02AC  0A                                     VIDEOFLAG5_ON                 
-02AD  09 20 24                               VIDEOREF                      ref=0x2420 (INTRO[32]=?)
+02AD  09 20 24                               VIDEOREF                      ref=0x2420 (INTRO[32]=sphmen1o.vdx)
 02B0  0A                                     VIDEOFLAG5_ON                 
-02B1  09 26 24                               VIDEOREF                      ref=0x2426 (INTRO[38]=?)
+02B1  09 26 24                               VIDEOREF                      ref=0x2426 (INTRO[38]=sphprm1o.vdx)
 02B4  0A                                     VIDEOFLAG5_ON                 
-02B5  09 27 24                               VIDEOREF                      ref=0x2427 (INTRO[39]=?)
+02B5  09 27 24                               VIDEOREF                      ref=0x2427 (INTRO[39]=sphprm2i.vdx)
 02B8  0B                                     INPUTLOOPSTART                
 02B9  0D 54 00 B3 00 B2 00 F7 00 DE 02 08    HOTSPOT_RECT                  left=0x0054, top=0x00B3, right=0x00B2, bottom=0x00F7, target=0x02DE, cursor=0x08
 02C5  0D CB 01 B6 00 2C 02 ED 00 EA 02 08    HOTSPOT_RECT                  left=0x01CB, top=0x00B6, right=0x022C, bottom=0x00ED, target=0x02EA, cursor=0x08
 02D1  0D D5 00 61 01 AA 01 76 01 DE 02 08    HOTSPOT_RECT                  left=0x00D5, top=0x0161, right=0x01AA, bottom=0x0176, target=0x02DE, cursor=0x08
 02DD  13                                     INPUTLOOPEND                  
 02DE  0A                                     VIDEOFLAG5_ON                 
-02DF  09 28 24                               VIDEOREF                      ref=0x2428 (INTRO[40]=?)
+02DF  09 28 24                               VIDEOREF                      ref=0x2428 (INTRO[40]=sphprm2o.vdx)
 02E2  0A                                     VIDEOFLAG5_ON                 
 02E3  46                                     RESOURCE_CONTEXT_SAVE         
-02E4  09 A3 50                               VIDEOREF                      ref=0x50A3 (GAMWAV[163]=?)
+02E4  09 A3 50                               VIDEOREF                      ref=0x50A3 (GAMWAV[163]=gen_s_12.vdx)
 02E7  47                                     RESOURCE_CONTEXT_RESTORE      
 02E8  04                                     PALFADEOUT                    
 02E9  2A                                     ENDSCRIPT                     
 02EA  0A                                     VIDEOFLAG5_ON                 
-02EB  09 28 24                               VIDEOREF                      ref=0x2428 (INTRO[40]=?)
+02EB  09 28 24                               VIDEOREF                      ref=0x2428 (INTRO[40]=sphprm2o.vdx)
 02EE  15 15 00                               JMP                           target=0x0015
 02F1  1A 00 01 B1 03 03                      STRCMP_NE_JMP                 start=v[0x100], values=[1], target=0x0303
-02F7  02 46 4C                               PLAYSONG                      ref=0x4C46 (XMI[70]=?)
+02F7  02 46 4C                               PLAYSONG                      ref=0x4C46 (XMI[70]=ini_sc.xmi)
 02FA  03                                     FADEIN_NEXT_VIDEO             
-02FB  09 60 24                               VIDEOREF                      ref=0x2460 (INTRO[96]=?)
-02FE  09 60 24                               VIDEOREF                      ref=0x2460 (INTRO[96]=?)
+02FB  09 60 24                               VIDEOREF                      ref=0x2460 (INTRO[96]=genmid.vdx)
+02FE  09 60 24                               VIDEOREF                      ref=0x2460 (INTRO[96]=genmid.vdx)
 0301  04                                     PALFADEOUT                    
 0302  29                                     STOP_OR_WAIT_MIDI             
 0303  1A 00 01 B2 12 03                      STRCMP_NE_JMP                 start=v[0x100], values=[2], target=0x0312
-0309  02 45 4C                               PLAYSONG                      ref=0x4C45 (XMI[69]=?)
+0309  02 45 4C                               PLAYSONG                      ref=0x4C45 (XMI[69]=ini_mt_o.xmi)
 030C  03                                     FADEIN_NEXT_VIDEO             
-030D  09 61 24                               VIDEOREF                      ref=0x2461 (INTRO[97]=?)
+030D  09 61 24                               VIDEOREF                      ref=0x2461 (INTRO[97]=rolmid.vdx)
 0310  04                                     PALFADEOUT                    
 0311  29                                     STOP_OR_WAIT_MIDI             
 0312  17 00                                  RET                           value=0x00
@@ -192,7 +194,7 @@
 032E  1A 09 01 B0 3A 03                      STRCMP_NE_JMP                 start=v[0x109], values=[0], target=0x033A
 0334  4B 00                                  SET_VIDEO_MODE                value=0x00
 0336  16 09 01 B2                            LOADSTRING                    dst=v[0x109], values=[2]
-033A  09 01 1C                               VIDEOREF                      ref=0x1C01 (HDISK[1]=?)
+033A  09 01 1C                               VIDEOREF                      ref=0x1C01 (HDISK[1]=pid2.vdx)
 033D  0B                                     INPUTLOOPSTART                
 033E  12 42 03                               HOTSPOT_CURRENT               target=0x0342
 0341  13                                     INPUTLOOPEND                  
@@ -216,7 +218,7 @@
 0380  1A 09 01 B0 8C 03                      STRCMP_NE_JMP                 start=v[0x109], values=[0], target=0x038C
 0386  4B 00                                  SET_VIDEO_MODE                value=0x00
 0388  16 09 01 B2                            LOADSTRING                    dst=v[0x109], values=[2]
-038C  09 00 1C                               VIDEOREF                      ref=0x1C00 (HDISK[0]=?)
+038C  09 00 1C                               VIDEOREF                      ref=0x1C00 (HDISK[0]=pid1.vdx)
 038F  0B                                     INPUTLOOPSTART                
 0390  12 94 03                               HOTSPOT_CURRENT               target=0x0394
 0393  13                                     INPUTLOOPEND                  
@@ -234,20 +236,20 @@
 03B8  17 00                                  RET                           value=0x00
 03BA  0A                                     VIDEOFLAG5_ON                 
 03BB  07                                     VIDEOFLAG7_ON                 
-03BC  09 01 24                               VIDEOREF                      ref=0x2401 (INTRO[1]=?)
+03BC  09 01 24                               VIDEOREF                      ref=0x2401 (INTRO[1]=fade.vdx)
 03BF  37 00 00 50 00 7F 02 8F 01             COPY_RECT_TO_BG               left=0x0000, top=0x0050, right=0x027F, bottom=0x018F
 03C8  17 00                                  RET                           value=0x00
 03CA  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
-03CE  02 39 4C                               PLAYSONG                      ref=0x4C39 (XMI[57]=?)
+03CE  02 39 4C                               PLAYSONG                      ref=0x4C39 (XMI[57]=gu61.xmi)
 03D1  03                                     FADEIN_NEXT_VIDEO             
 03D2  05                                     FIRSTFRAME_NEXT_VIDEO         
-03D3  09 AB 14                               VIDEOREF                      ref=0x14AB (FH[171]=?)
+03D3  09 AB 14                               VIDEOREF                      ref=0x14AB (FH[171]=h_morph.vdx)
 03D6  15 0F 0F                               JMP                           target=0x0F0F
 03D9  96 8C 30 B1                            LOADSTRING                    dst=v[0x08C], values=[0, 1]
-03DD  02 35 4C                               PLAYSONG                      ref=0x4C35 (XMI[53]=?)
+03DD  02 35 4C                               PLAYSONG                      ref=0x4C35 (XMI[53]=gu56.xmi)
 03E0  03                                     FADEIN_NEXT_VIDEO             
 03E1  05                                     FIRSTFRAME_NEXT_VIDEO         
-03E2  09 03 14                               VIDEOREF                      ref=0x1403 (FH[3]=?)
+03E2  09 03 14                               VIDEOREF                      ref=0x1403 (FH[3]=f1_6.vdx)
 03E5  15 0D 05                               JMP                           target=0x050D
 03E8  23 09 01 B0 F4 03                      STRCMP_EQ_JMP                 start=v[0x109], values=[0], target=0x03F4
 03EE  4B 01                                  SET_VIDEO_MODE                value=0x01
@@ -256,107 +258,107 @@
 03F8  31 00 00 E8 03                         MIDI_CONTROL                  value=0x0000, time=0x03E8
 03FD  04                                     PALFADEOUT                    
 03FE  03                                     FADEIN_NEXT_VIDEO             
-03FF  09 08 1C                               VIDEOREF                      ref=0x1C08 (HDISK[8]=?)
+03FF  09 08 1C                               VIDEOREF                      ref=0x1C08 (HDISK[8]=todd.vdx)
 0402  19 C2 01                               SLEEP                         ticks=0x01C2
 0405  04                                     PALFADEOUT                    
 0406  03                                     FADEIN_NEXT_VIDEO             
-0407  09 09 1C                               VIDEOREF                      ref=0x1C09 (HDISK[9]=?)
+0407  09 09 1C                               VIDEOREF                      ref=0x1C09 (HDISK[9]=hayes.vdx)
 040A  19 C2 01                               SLEEP                         ticks=0x01C2
 040D  04                                     PALFADEOUT                    
 040E  19 01 00                               SLEEP                         ticks=0x0001
 0411  4D 02                                  PLAYCD                        value=0x02
 0413  19 BC 02                               SLEEP                         ticks=0x02BC
 0416  03                                     FADEIN_NEXT_VIDEO             
-0417  09 04 1C                               VIDEOREF                      ref=0x1C04 (HDISK[4]=?)
+0417  09 04 1C                               VIDEOREF                      ref=0x1C04 (HDISK[4]=vlogo.vdx)
 041A  19 8A 02                               SLEEP                         ticks=0x028A
 041D  04                                     PALFADEOUT                    
 041E  03                                     FADEIN_NEXT_VIDEO             
-041F  09 03 1C                               VIDEOREF                      ref=0x1C03 (HDISK[3]=?)
+041F  09 03 1C                               VIDEOREF                      ref=0x1C03 (HDISK[3]=tripro.vdx)
 0422  19 EE 02                               SLEEP                         ticks=0x02EE
 0425  04                                     PALFADEOUT                    
 0426  03                                     FADEIN_NEXT_VIDEO             
-0427  09 02 1C                               VIDEOREF                      ref=0x1C02 (HDISK[2]=?)
+0427  09 02 1C                               VIDEOREF                      ref=0x1C02 (HDISK[2]=title.vdx)
 042A  19 5E 01                               SLEEP                         ticks=0x015E
 042D  4D 62                                  PLAYCD                        value=0x62
 042F  31 00 00 00 00                         MIDI_CONTROL                  value=0x0000, time=0x0000
-0434  02 42 4C                               PLAYSONG                      ref=0x4C42 (XMI[66]=?)
+0434  02 42 4C                               PLAYSONG                      ref=0x4C42 (XMI[66]=gu74.xmi)
 0437  31 63 00 2C 01                         MIDI_CONTROL                  value=0x0063, time=0x012C
-043C  09 02 24                               VIDEOREF                      ref=0x2402 (INTRO[2]=?)
+043C  09 02 24                               VIDEOREF                      ref=0x2402 (INTRO[2]=o1pa.vdx)
 043F  06                                     VIDEOFLAG6_ON                 
 0440  29                                     STOP_OR_WAIT_MIDI             
-0441  02 42 4C                               PLAYSONG                      ref=0x4C42 (XMI[66]=?)
+0441  02 42 4C                               PLAYSONG                      ref=0x4C42 (XMI[66]=gu74.xmi)
 0444  31 63 00 32 00                         MIDI_CONTROL                  value=0x0063, time=0x0032
-0449  09 03 24                               VIDEOREF                      ref=0x2403 (INTRO[3]=?)
-044C  02 3F 4C                               PLAYSONG                      ref=0x4C3F (XMI[63]=?)
+0449  09 03 24                               VIDEOREF                      ref=0x2403 (INTRO[3]=o1tu.vdx)
+044C  02 3F 4C                               PLAYSONG                      ref=0x4C3F (XMI[63]=gu71.xmi)
 044F  31 63 00 32 00                         MIDI_CONTROL                  value=0x0063, time=0x0032
 0454  19 C8 00                               SLEEP                         ticks=0x00C8
-0457  09 04 24                               VIDEOREF                      ref=0x2404 (INTRO[4]=?)
+0457  09 04 24                               VIDEOREF                      ref=0x2404 (INTRO[4]=o3pa.vdx)
 045A  19 C8 00                               SLEEP                         ticks=0x00C8
 045D  06                                     VIDEOFLAG6_ON                 
-045E  09 05 24                               VIDEOREF                      ref=0x2405 (INTRO[5]=?)
+045E  09 05 24                               VIDEOREF                      ref=0x2405 (INTRO[5]=o3tu.vdx)
 0461  19 C8 00                               SLEEP                         ticks=0x00C8
-0464  09 06 24                               VIDEOREF                      ref=0x2406 (INTRO[6]=?)
+0464  09 06 24                               VIDEOREF                      ref=0x2406 (INTRO[6]=o4pa.vdx)
 0467  19 C8 00                               SLEEP                         ticks=0x00C8
 046A  06                                     VIDEOFLAG6_ON                 
-046B  09 07 24                               VIDEOREF                      ref=0x2407 (INTRO[7]=?)
+046B  09 07 24                               VIDEOREF                      ref=0x2407 (INTRO[7]=o4tu.vdx)
 046E  19 C8 00                               SLEEP                         ticks=0x00C8
-0471  09 08 24                               VIDEOREF                      ref=0x2408 (INTRO[8]=?)
+0471  09 08 24                               VIDEOREF                      ref=0x2408 (INTRO[8]=o5pa.vdx)
 0474  19 C8 00                               SLEEP                         ticks=0x00C8
 0477  06                                     VIDEOFLAG6_ON                 
 0478  31 00 00 C4 09                         MIDI_CONTROL                  value=0x0000, time=0x09C4
-047D  02 40 4C                               PLAYSONG                      ref=0x4C40 (XMI[64]=?)
+047D  02 40 4C                               PLAYSONG                      ref=0x4C40 (XMI[64]=gu72.xmi)
 0480  31 63 00 32 00                         MIDI_CONTROL                  value=0x0063, time=0x0032
-0485  09 09 24                               VIDEOREF                      ref=0x2409 (INTRO[9]=?)
+0485  09 09 24                               VIDEOREF                      ref=0x2409 (INTRO[9]=o5tu.vdx)
 0488  19 C8 00                               SLEEP                         ticks=0x00C8
-048B  09 0A 24                               VIDEOREF                      ref=0x240A (INTRO[10]=?)
+048B  09 0A 24                               VIDEOREF                      ref=0x240A (INTRO[10]=o6pa.vdx)
 048E  19 2C 01                               SLEEP                         ticks=0x012C
 0491  06                                     VIDEOFLAG6_ON                 
-0492  09 0B 24                               VIDEOREF                      ref=0x240B (INTRO[11]=?)
+0492  09 0B 24                               VIDEOREF                      ref=0x240B (INTRO[11]=o6tu.vdx)
 0495  19 2C 01                               SLEEP                         ticks=0x012C
-0498  09 0C 24                               VIDEOREF                      ref=0x240C (INTRO[12]=?)
+0498  09 0C 24                               VIDEOREF                      ref=0x240C (INTRO[12]=o7pa.vdx)
 049B  19 64 00                               SLEEP                         ticks=0x0064
 049E  06                                     VIDEOFLAG6_ON                 
-049F  09 0D 24                               VIDEOREF                      ref=0x240D (INTRO[13]=?)
+049F  09 0D 24                               VIDEOREF                      ref=0x240D (INTRO[13]=o7tu.vdx)
 04A2  19 64 00                               SLEEP                         ticks=0x0064
-04A5  02 41 4C                               PLAYSONG                      ref=0x4C41 (XMI[65]=?)
+04A5  02 41 4C                               PLAYSONG                      ref=0x4C41 (XMI[65]=gu73.xmi)
 04A8  31 63 00 32 00                         MIDI_CONTROL                  value=0x0063, time=0x0032
-04AD  09 0E 24                               VIDEOREF                      ref=0x240E (INTRO[14]=?)
+04AD  09 0E 24                               VIDEOREF                      ref=0x240E (INTRO[14]=o8pa.vdx)
 04B0  19 64 00                               SLEEP                         ticks=0x0064
 04B3  06                                     VIDEOFLAG6_ON                 
-04B4  09 0F 24                               VIDEOREF                      ref=0x240F (INTRO[15]=?)
+04B4  09 0F 24                               VIDEOREF                      ref=0x240F (INTRO[15]=o8tu.vdx)
 04B7  19 64 00                               SLEEP                         ticks=0x0064
-04BA  09 10 24                               VIDEOREF                      ref=0x2410 (INTRO[16]=?)
+04BA  09 10 24                               VIDEOREF                      ref=0x2410 (INTRO[16]=o9pa.vdx)
 04BD  19 64 00                               SLEEP                         ticks=0x0064
 04C0  06                                     VIDEOFLAG6_ON                 
-04C1  09 11 24                               VIDEOREF                      ref=0x2411 (INTRO[17]=?)
+04C1  09 11 24                               VIDEOREF                      ref=0x2411 (INTRO[17]=o9tu.vdx)
 04C4  19 64 00                               SLEEP                         ticks=0x0064
-04C7  09 12 24                               VIDEOREF                      ref=0x2412 (INTRO[18]=?)
+04C7  09 12 24                               VIDEOREF                      ref=0x2412 (INTRO[18]=o10pa.vdx)
 04CA  19 64 00                               SLEEP                         ticks=0x0064
 04CD  06                                     VIDEOFLAG6_ON                 
-04CE  09 13 24                               VIDEOREF                      ref=0x2413 (INTRO[19]=?)
+04CE  09 13 24                               VIDEOREF                      ref=0x2413 (INTRO[19]=o10tu.vdx)
 04D1  19 C8 00                               SLEEP                         ticks=0x00C8
-04D4  09 14 24                               VIDEOREF                      ref=0x2414 (INTRO[20]=?)
+04D4  09 14 24                               VIDEOREF                      ref=0x2414 (INTRO[20]=o12pa.vdx)
 04D7  19 64 00                               SLEEP                         ticks=0x0064
 04DA  06                                     VIDEOFLAG6_ON                 
-04DB  09 36 34                               VIDEOREF                      ref=0x3436 (LI[54]=?)
+04DB  09 36 34                               VIDEOREF                      ref=0x3436 (LI[54]=l_in.vdx)
 04DE  03                                     FADEIN_NEXT_VIDEO             
-04DF  09 41 14                               VIDEOREF                      ref=0x1441 (FH[65]=?)
-04E2  09 15 14                               VIDEOREF                      ref=0x1415 (FH[21]=?)
+04DF  09 41 14                               VIDEOREF                      ref=0x1441 (FH[65]=f_5ba.vdx)
+04E2  09 15 14                               VIDEOREF                      ref=0x1415 (FH[21]=f5_1.vdx)
 04E5  29                                     STOP_OR_WAIT_MIDI             
 04E6  19 58 02                               SLEEP                         ticks=0x0258
 04E9  18 B0 38                               CALL                          target=0x38B0
 04EC  96 E5 B1                               LOADSTRING                    dst=v[0x0E5], values=[1]
 04EF  96 8E 30 B2                            LOADSTRING                    dst=v[0x08E], values=[0, 2]
-04F3  09 25 14                               VIDEOREF                      ref=0x1425 (FH[37]=?)
-04F6  02 35 4C                               PLAYSONG                      ref=0x4C35 (XMI[53]=?)
+04F3  09 25 14                               VIDEOREF                      ref=0x1425 (FH[37]=f_1fa.vdx)
+04F6  02 35 4C                               PLAYSONG                      ref=0x4C35 (XMI[53]=gu56.xmi)
 04F9  96 8C 30 B1                            LOADSTRING                    dst=v[0x08C], values=[0, 1]
-04FD  09 26 14                               VIDEOREF                      ref=0x1426 (FH[38]=?)
+04FD  09 26 14                               VIDEOREF                      ref=0x1426 (FH[38]=f_1fb.vdx)
 0500  46                                     RESOURCE_CONTEXT_SAVE         
 0501  07                                     VIDEOFLAG7_ON                 
-0502  09 00 50                               VIDEOREF                      ref=0x5000 (GAMWAV[0]=?)
+0502  09 00 50                               VIDEOREF                      ref=0x5000 (GAMWAV[0]=1_e_1.vdx)
 0505  19 64 00                               SLEEP                         ticks=0x0064
 0508  07                                     VIDEOFLAG7_ON                 
-0509  09 01 50                               VIDEOREF                      ref=0x5001 (GAMWAV[1]=?)
+0509  09 01 50                               VIDEOREF                      ref=0x5001 (GAMWAV[1]=1_e_2.vdx)
 050C  47                                     RESOURCE_CONTEXT_RESTORE      
 050D  0B                                     INPUTLOOPSTART                
 050E  9A 8E 30 B2 17 05                      STRCMP_NE_JMP                 start=v[0x08E], values=[0, 2], target=0x0517
@@ -370,23 +372,23 @@
 0551  0E BD 06                               HOTSPOT_LEFT                  target=0x06BD
 0554  0F C3 06                               HOTSPOT_RIGHT                 target=0x06C3
 0557  13                                     INPUTLOOPEND                  
-0558  09 08 14                               VIDEOREF                      ref=0x1408 (FH[8]=?)
-055B  09 07 14                               VIDEOREF                      ref=0x1407 (FH[7]=?)
+0558  09 08 14                               VIDEOREF                      ref=0x1408 (FH[8]=f1_rm.vdx)
+055B  09 07 14                               VIDEOREF                      ref=0x1407 (FH[7]=f1_r.vdx)
 055E  15 E0 16                               JMP                           target=0x16E0
-0561  09 01 14                               VIDEOREF                      ref=0x1401 (FH[1]=?)
+0561  09 01 14                               VIDEOREF                      ref=0x1401 (FH[1]=f1_2.vdx)
 0564  15 07 07                               JMP                           target=0x0707
-0567  09 02 14                               VIDEOREF                      ref=0x1402 (FH[2]=?)
-056A  09 16 14                               VIDEOREF                      ref=0x1416 (FH[22]=?)
+0567  09 02 14                               VIDEOREF                      ref=0x1402 (FH[2]=f1_5.vdx)
+056A  09 16 14                               VIDEOREF                      ref=0x1416 (FH[22]=f5_4.vdx)
 056D  15 0A 08                               JMP                           target=0x080A
-0570  09 03 14                               VIDEOREF                      ref=0x1403 (FH[3]=?)
+0570  09 03 14                               VIDEOREF                      ref=0x1403 (FH[3]=f1_6.vdx)
 0573  15 0F 0F                               JMP                           target=0x0F0F
 0576  0B                                     INPUTLOOPSTART                
 0577  0D 13 02 D4 00 7F 02 54 01 8A 05 00    HOTSPOT_RECT                  left=0x0213, top=0x00D4, right=0x027F, bottom=0x0154, target=0x058A, cursor=0x00
 0583  0E C9 06                               HOTSPOT_LEFT                  target=0x06C9
 0586  0F CF 06                               HOTSPOT_RIGHT                 target=0x06CF
 0589  13                                     INPUTLOOPEND                  
-058A  09 26 14                               VIDEOREF                      ref=0x1426 (FH[38]=?)
-058D  09 01 14                               VIDEOREF                      ref=0x1401 (FH[1]=?)
+058A  09 26 14                               VIDEOREF                      ref=0x1426 (FH[38]=f_1fb.vdx)
+058D  09 01 14                               VIDEOREF                      ref=0x1401 (FH[1]=f1_2.vdx)
 0590  15 07 07                               JMP                           target=0x0707
 0593  0B                                     INPUTLOOPSTART                
 0594  0E D5 06                               HOTSPOT_LEFT                  target=0x06D5
@@ -410,18 +412,18 @@
 05F7  18 D0 38                               CALL                          target=0x38D0
 05FA  19 64 00                               SLEEP                         ticks=0x0064
 05FD  1A 00 01 B0 09 06                      STRCMP_NE_JMP                 start=v[0x100], values=[0], target=0x0609
-0603  02 00 4C                               PLAYSONG                      ref=0x4C00 (XMI[0]=?)
+0603  02 00 4C                               PLAYSONG                      ref=0x4C00 (XMI[0]=agu16.xmi)
 0606  15 0C 06                               JMP                           target=0x060C
-0609  02 0C 4C                               PLAYSONG                      ref=0x4C0C (XMI[12]=?)
+0609  02 0C 4C                               PLAYSONG                      ref=0x4C0C (XMI[12]=gu16.xmi)
 060C  15 93 05                               JMP                           target=0x0593
 060F  1A 09 01 B0 21 06                      STRCMP_NE_JMP                 start=v[0x109], values=[0], target=0x0621
 0615  23 05 01 B0 21 06                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x0621
 061B  4B 00                                  SET_VIDEO_MODE                value=0x00
 061D  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
-0621  09 06 14                               VIDEOREF                      ref=0x1406 (FH[6]=?)
+0621  09 06 14                               VIDEOREF                      ref=0x1406 (FH[6]=f1_pf.vdx)
 0624  15 2B 06                               JMP                           target=0x062B
 0627  03                                     FADEIN_NEXT_VIDEO             
-0628  09 06 14                               VIDEOREF                      ref=0x1406 (FH[6]=?)
+0628  09 06 14                               VIDEOREF                      ref=0x1406 (FH[6]=f1_pf.vdx)
 062B  96 92 30 B2                            LOADSTRING                    dst=v[0x092], values=[0, 2]
 062F  9A FB B4 37 06                         STRCMP_NE_JMP                 start=v[0x0FB], values=[4], target=0x0637
 0634  96 FB B5                               LOADSTRING                    dst=v[0x0FB], values=[5]
@@ -435,16 +437,16 @@
 0652  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
 0656  9A FB E1 6D 06                         STRCMP_NE_JMP                 start=v[0x0FB], values=[49], target=0x066D
 065B  9A E3 B0 6D 06                         STRCMP_NE_JMP                 start=v[0x0E3], values=[0], target=0x066D
-0660  02 11 4C                               PLAYSONG                      ref=0x4C11 (XMI[17]=?)
+0660  02 11 4C                               PLAYSONG                      ref=0x4C11 (XMI[17]=gu20.xmi)
 0663  96 E3 B1                               LOADSTRING                    dst=v[0x0E3], values=[1]
 0666  96 8E 30 B4                            LOADSTRING                    dst=v[0x08E], values=[0, 4]
 066A  18 E5 38                               CALL                          target=0x38E5
 066D  1A 00 01 B0 79 06                      STRCMP_NE_JMP                 start=v[0x100], values=[0], target=0x0679
-0673  02 00 4C                               PLAYSONG                      ref=0x4C00 (XMI[0]=?)
+0673  02 00 4C                               PLAYSONG                      ref=0x4C00 (XMI[0]=agu16.xmi)
 0676  15 7C 06                               JMP                           target=0x067C
-0679  02 0C 4C                               PLAYSONG                      ref=0x4C0C (XMI[12]=?)
+0679  02 0C 4C                               PLAYSONG                      ref=0x4C0C (XMI[12]=gu16.xmi)
 067C  15 7F 06                               JMP                           target=0x067F
-067F  09 05 14                               VIDEOREF                      ref=0x1405 (FH[5]=?)
+067F  09 05 14                               VIDEOREF                      ref=0x1405 (FH[5]=f1_pb.vdx)
 0682  15 93 05                               JMP                           target=0x0593
 0685  0B                                     INPUTLOOPSTART                
 0686  0D 00 00 C9 00 50 00 47 01 A5 06 00    HOTSPOT_RECT                  left=0x0000, top=0x00C9, right=0x0050, bottom=0x0147, target=0x06A5, cursor=0x00
@@ -452,36 +454,36 @@
 069E  0E E1 06                               HOTSPOT_LEFT                  target=0x06E1
 06A1  0F E7 06                               HOTSPOT_RIGHT                 target=0x06E7
 06A4  13                                     INPUTLOOPEND                  
-06A5  09 23 14                               VIDEOREF                      ref=0x1423 (FH[35]=?)
-06A8  09 02 14                               VIDEOREF                      ref=0x1402 (FH[2]=?)
-06AB  09 16 14                               VIDEOREF                      ref=0x1416 (FH[22]=?)
+06A5  09 23 14                               VIDEOREF                      ref=0x1423 (FH[35]=f_1bc.vdx)
+06A8  09 02 14                               VIDEOREF                      ref=0x1402 (FH[2]=f1_5.vdx)
+06AB  09 16 14                               VIDEOREF                      ref=0x1416 (FH[22]=f5_4.vdx)
 06AE  15 0A 08                               JMP                           target=0x080A
-06B1  09 23 14                               VIDEOREF                      ref=0x1423 (FH[35]=?)
-06B4  09 02 14                               VIDEOREF                      ref=0x1402 (FH[2]=?)
-06B7  09 47 14                               VIDEOREF                      ref=0x1447 (FH[71]=?)
+06B1  09 23 14                               VIDEOREF                      ref=0x1423 (FH[35]=f_1bc.vdx)
+06B4  09 02 14                               VIDEOREF                      ref=0x1402 (FH[2]=f1_5.vdx)
+06B7  09 47 14                               VIDEOREF                      ref=0x1447 (FH[71]=f_5fc.vdx)
 06BA  15 DA 08                               JMP                           target=0x08DA
-06BD  09 22 14                               VIDEOREF                      ref=0x1422 (FH[34]=?)
+06BD  09 22 14                               VIDEOREF                      ref=0x1422 (FH[34]=f_1bb.vdx)
 06C0  15 76 05                               JMP                           target=0x0576
-06C3  09 27 14                               VIDEOREF                      ref=0x1427 (FH[39]=?)
+06C3  09 27 14                               VIDEOREF                      ref=0x1427 (FH[39]=f_1fc.vdx)
 06C6  15 85 06                               JMP                           target=0x0685
-06C9  09 21 14                               VIDEOREF                      ref=0x1421 (FH[33]=?)
+06C9  09 21 14                               VIDEOREF                      ref=0x1421 (FH[33]=f_1ba.vdx)
 06CC  15 93 05                               JMP                           target=0x0593
-06CF  09 26 14                               VIDEOREF                      ref=0x1426 (FH[38]=?)
+06CF  09 26 14                               VIDEOREF                      ref=0x1426 (FH[38]=f_1fb.vdx)
 06D2  15 0D 05                               JMP                           target=0x050D
-06D5  09 24 14                               VIDEOREF                      ref=0x1424 (FH[36]=?)
+06D5  09 24 14                               VIDEOREF                      ref=0x1424 (FH[36]=f_1bd.vdx)
 06D8  15 85 06                               JMP                           target=0x0685
-06DB  09 25 14                               VIDEOREF                      ref=0x1425 (FH[37]=?)
+06DB  09 25 14                               VIDEOREF                      ref=0x1425 (FH[37]=f_1fa.vdx)
 06DE  15 76 05                               JMP                           target=0x0576
-06E1  09 23 14                               VIDEOREF                      ref=0x1423 (FH[35]=?)
+06E1  09 23 14                               VIDEOREF                      ref=0x1423 (FH[35]=f_1bc.vdx)
 06E4  15 0D 05                               JMP                           target=0x050D
-06E7  09 28 14                               VIDEOREF                      ref=0x1428 (FH[40]=?)
+06E7  09 28 14                               VIDEOREF                      ref=0x1428 (FH[40]=f_1fd.vdx)
 06EA  15 93 05                               JMP                           target=0x0593
 06ED  0B                                     INPUTLOOPSTART                
 06EE  0D 1C 01 6D 00 88 01 35 01 01 07 00    HOTSPOT_RECT                  left=0x011C, top=0x006D, right=0x0188, bottom=0x0135, target=0x0701, cursor=0x00
 06FA  0E 38 07                               HOTSPOT_LEFT                  target=0x0738
 06FD  0F 3E 07                               HOTSPOT_RIGHT                 target=0x073E
 0700  13                                     INPUTLOOPEND                  
-0701  09 0B 14                               VIDEOREF                      ref=0x140B (FH[11]=?)
+0701  09 0B 14                               VIDEOREF                      ref=0x140B (FH[11]=f2_3.vdx)
 0704  15 68 07                               JMP                           target=0x0768
 0707  0B                                     INPUTLOOPSTART                
 0708  0E 44 07                               HOTSPOT_LEFT                  target=0x0744
@@ -498,23 +500,23 @@
 072B  0E 5C 07                               HOTSPOT_LEFT                  target=0x075C
 072E  0F 62 07                               HOTSPOT_RIGHT                 target=0x0762
 0731  13                                     INPUTLOOPEND                  
-0732  09 0A 14                               VIDEOREF                      ref=0x140A (FH[10]=?)
+0732  09 0A 14                               VIDEOREF                      ref=0x140A (FH[10]=f2_1.vdx)
 0735  15 93 05                               JMP                           target=0x0593
-0738  09 2A 14                               VIDEOREF                      ref=0x142A (FH[42]=?)
+0738  09 2A 14                               VIDEOREF                      ref=0x142A (FH[42]=f_2bb.vdx)
 073B  15 07 07                               JMP                           target=0x0707
-073E  09 2F 14                               VIDEOREF                      ref=0x142F (FH[47]=?)
+073E  09 2F 14                               VIDEOREF                      ref=0x142F (FH[47]=f_2fc.vdx)
 0741  15 1A 07                               JMP                           target=0x071A
-0744  09 29 14                               VIDEOREF                      ref=0x1429 (FH[41]=?)
+0744  09 29 14                               VIDEOREF                      ref=0x1429 (FH[41]=f_2ba.vdx)
 0747  15 12 07                               JMP                           target=0x0712
-074A  09 2E 14                               VIDEOREF                      ref=0x142E (FH[46]=?)
+074A  09 2E 14                               VIDEOREF                      ref=0x142E (FH[46]=f_2fb.vdx)
 074D  15 ED 06                               JMP                           target=0x06ED
-0750  09 2C 14                               VIDEOREF                      ref=0x142C (FH[44]=?)
+0750  09 2C 14                               VIDEOREF                      ref=0x142C (FH[44]=f_2bd.vdx)
 0753  15 1A 07                               JMP                           target=0x071A
-0756  09 2D 14                               VIDEOREF                      ref=0x142D (FH[45]=?)
+0756  09 2D 14                               VIDEOREF                      ref=0x142D (FH[45]=f_2fa.vdx)
 0759  15 07 07                               JMP                           target=0x0707
-075C  09 2B 14                               VIDEOREF                      ref=0x142B (FH[43]=?)
+075C  09 2B 14                               VIDEOREF                      ref=0x142B (FH[43]=f_2bc.vdx)
 075F  15 ED 06                               JMP                           target=0x06ED
-0762  09 30 14                               VIDEOREF                      ref=0x1430 (FH[48]=?)
+0762  09 30 14                               VIDEOREF                      ref=0x1430 (FH[48]=f_2fd.vdx)
 0765  15 12 07                               JMP                           target=0x0712
 0768  0B                                     INPUTLOOPSTART                
 0769  0E DA 07                               HOTSPOT_LEFT                  target=0x07DA
@@ -522,16 +524,16 @@
 0771  10 78 07                               HOTSPOT_CENTER                target=0x0778
 0774  0F E0 07                               HOTSPOT_RIGHT                 target=0x07E0
 0777  13                                     INPUTLOOPEND                  
-0778  09 12 14                               VIDEOREF                      ref=0x1412 (FH[18]=?)
+0778  09 12 14                               VIDEOREF                      ref=0x1412 (FH[18]=f3_d.vdx)
 077B  15 62 0A                               JMP                           target=0x0A62
 077E  0B                                     INPUTLOOPSTART                
 077F  0D 42 00 52 00 E6 00 6E 01 92 07 00    HOTSPOT_RECT                  left=0x0042, top=0x0052, right=0x00E6, bottom=0x016E, target=0x0792, cursor=0x00
 078B  0E E6 07                               HOTSPOT_LEFT                  target=0x07E6
 078E  0F EC 07                               HOTSPOT_RIGHT                 target=0x07EC
 0791  13                                     INPUTLOOPEND                  
-0792  09 31 14                               VIDEOREF                      ref=0x1431 (FH[49]=?)
-0795  09 0E 14                               VIDEOREF                      ref=0x140E (FH[14]=?)
-0798  09 2D 14                               VIDEOREF                      ref=0x142D (FH[45]=?)
+0792  09 31 14                               VIDEOREF                      ref=0x1431 (FH[49]=f_3ba.vdx)
+0795  09 0E 14                               VIDEOREF                      ref=0x140E (FH[14]=f3_2.vdx)
+0798  09 2D 14                               VIDEOREF                      ref=0x142D (FH[45]=f_2fa.vdx)
 079B  15 07 07                               JMP                           target=0x0707
 079E  96 8C 30 B1                            LOADSTRING                    dst=v[0x08C], values=[0, 1]
 07A2  0B                                     INPUTLOOPSTART                
@@ -539,35 +541,35 @@
 07A6  0F F8 07                               HOTSPOT_RIGHT                 target=0x07F8
 07A9  11 AD 07                               HOTSPOT_CENTER_2              target=0x07AD
 07AC  13                                     INPUTLOOPEND                  
-07AD  09 0E 14                               VIDEOREF                      ref=0x140E (FH[14]=?)
+07AD  09 0E 14                               VIDEOREF                      ref=0x140E (FH[14]=f3_2.vdx)
 07B0  15 12 07                               JMP                           target=0x0712
 07B3  0B                                     INPUTLOOPSTART                
 07B4  0E FE 07                               HOTSPOT_LEFT                  target=0x07FE
 07B7  0F 04 08                               HOTSPOT_RIGHT                 target=0x0804
 07BA  0D EE 00 55 00 39 01 7C 01 C7 07 07    HOTSPOT_RECT                  left=0x00EE, top=0x0055, right=0x0139, bottom=0x017C, target=0x07C7, cursor=0x07
 07C6  13                                     INPUTLOOPEND                  
-07C7  02 25 4C                               PLAYSONG                      ref=0x4C25 (XMI[37]=?)
-07CA  09 11 14                               VIDEOREF                      ref=0x1411 (FH[17]=?)
+07C7  02 25 4C                               PLAYSONG                      ref=0x4C25 (XMI[37]=gu40.xmi)
+07CA  09 11 14                               VIDEOREF                      ref=0x1411 (FH[17]=f3_cmf.vdx)
 07CD  0A                                     VIDEOFLAG5_ON                 
-07CE  09 0F 14                               VIDEOREF                      ref=0x140F (FH[15]=?)
-07D1  09 10 14                               VIDEOREF                      ref=0x1410 (FH[16]=?)
-07D4  02 0C 4C                               PLAYSONG                      ref=0x4C0C (XMI[12]=?)
+07CE  09 0F 14                               VIDEOREF                      ref=0x140F (FH[15]=f3_clt.vdx)
+07D1  09 10 14                               VIDEOREF                      ref=0x1410 (FH[16]=f3_cmb.vdx)
+07D4  02 0C 4C                               PLAYSONG                      ref=0x4C0C (XMI[12]=gu16.xmi)
 07D7  15 B3 07                               JMP                           target=0x07B3
-07DA  09 32 14                               VIDEOREF                      ref=0x1432 (FH[50]=?)
+07DA  09 32 14                               VIDEOREF                      ref=0x1432 (FH[50]=f_3bb.vdx)
 07DD  15 7E 07                               JMP                           target=0x077E
-07E0  09 37 14                               VIDEOREF                      ref=0x1437 (FH[55]=?)
+07E0  09 37 14                               VIDEOREF                      ref=0x1437 (FH[55]=f_3fc.vdx)
 07E3  15 B3 07                               JMP                           target=0x07B3
-07E6  09 31 14                               VIDEOREF                      ref=0x1431 (FH[49]=?)
+07E6  09 31 14                               VIDEOREF                      ref=0x1431 (FH[49]=f_3ba.vdx)
 07E9  15 9E 07                               JMP                           target=0x079E
-07EC  09 36 14                               VIDEOREF                      ref=0x1436 (FH[54]=?)
+07EC  09 36 14                               VIDEOREF                      ref=0x1436 (FH[54]=f_3fb.vdx)
 07EF  15 68 07                               JMP                           target=0x0768
-07F2  09 34 14                               VIDEOREF                      ref=0x1434 (FH[52]=?)
+07F2  09 34 14                               VIDEOREF                      ref=0x1434 (FH[52]=f_3bd.vdx)
 07F5  15 B3 07                               JMP                           target=0x07B3
-07F8  09 35 14                               VIDEOREF                      ref=0x1435 (FH[53]=?)
+07F8  09 35 14                               VIDEOREF                      ref=0x1435 (FH[53]=f_3fa.vdx)
 07FB  15 7E 07                               JMP                           target=0x077E
-07FE  09 33 14                               VIDEOREF                      ref=0x1433 (FH[51]=?)
+07FE  09 33 14                               VIDEOREF                      ref=0x1433 (FH[51]=f_3bc.vdx)
 0801  15 68 07                               JMP                           target=0x0768
-0804  09 38 14                               VIDEOREF                      ref=0x1438 (FH[56]=?)
+0804  09 38 14                               VIDEOREF                      ref=0x1438 (FH[56]=f_3fd.vdx)
 0807  15 9E 07                               JMP                           target=0x079E
 080A  0B                                     INPUTLOOPSTART                
 080B  0E 6A 08                               HOTSPOT_LEFT                  target=0x086A
@@ -577,7 +579,7 @@
 081D  10 2A 0C                               HOTSPOT_CENTER                target=0x0C2A
 0820  0F 70 08                               HOTSPOT_RIGHT                 target=0x0870
 0823  13                                     INPUTLOOPEND                  
-0824  09 13 14                               VIDEOREF                      ref=0x1413 (FH[19]=?)
+0824  09 13 14                               VIDEOREF                      ref=0x1413 (FH[19]=f4_5.vdx)
 0827  15 C0 08                               JMP                           target=0x08C0
 082A  0B                                     INPUTLOOPSTART                
 082B  0E 76 08                               HOTSPOT_LEFT                  target=0x0876
@@ -594,32 +596,32 @@
 0857  0E 8E 08                               HOTSPOT_LEFT                  target=0x088E
 085A  0F 94 08                               HOTSPOT_RIGHT                 target=0x0894
 085D  13                                     INPUTLOOPEND                  
-085E  09 40 14                               VIDEOREF                      ref=0x1440 (FH[64]=?)
-0861  09 13 14                               VIDEOREF                      ref=0x1413 (FH[19]=?)
-0864  09 44 14                               VIDEOREF                      ref=0x1444 (FH[68]=?)
+085E  09 40 14                               VIDEOREF                      ref=0x1440 (FH[64]=f_4fd.vdx)
+0861  09 13 14                               VIDEOREF                      ref=0x1413 (FH[19]=f4_5.vdx)
+0864  09 44 14                               VIDEOREF                      ref=0x1444 (FH[68]=f_5bd.vdx)
 0867  15 DA 08                               JMP                           target=0x08DA
-086A  09 3A 14                               VIDEOREF                      ref=0x143A (FH[58]=?)
+086A  09 3A 14                               VIDEOREF                      ref=0x143A (FH[58]=f_4bb.vdx)
 086D  15 2A 08                               JMP                           target=0x082A
-0870  09 3F 14                               VIDEOREF                      ref=0x143F (FH[63]=?)
+0870  09 3F 14                               VIDEOREF                      ref=0x143F (FH[63]=f_4fc.vdx)
 0873  15 4A 08                               JMP                           target=0x084A
-0876  09 39 14                               VIDEOREF                      ref=0x1439 (FH[57]=?)
+0876  09 39 14                               VIDEOREF                      ref=0x1439 (FH[57]=f_4ba.vdx)
 0879  15 32 08                               JMP                           target=0x0832
-087C  09 3E 14                               VIDEOREF                      ref=0x143E (FH[62]=?)
+087C  09 3E 14                               VIDEOREF                      ref=0x143E (FH[62]=f_4fb.vdx)
 087F  15 0A 08                               JMP                           target=0x080A
-0882  09 3C 14                               VIDEOREF                      ref=0x143C (FH[60]=?)
+0882  09 3C 14                               VIDEOREF                      ref=0x143C (FH[60]=f_4bd.vdx)
 0885  15 4A 08                               JMP                           target=0x084A
-0888  09 3D 14                               VIDEOREF                      ref=0x143D (FH[61]=?)
+0888  09 3D 14                               VIDEOREF                      ref=0x143D (FH[61]=f_4fa.vdx)
 088B  15 2A 08                               JMP                           target=0x082A
-088E  09 3B 14                               VIDEOREF                      ref=0x143B (FH[59]=?)
+088E  09 3B 14                               VIDEOREF                      ref=0x143B (FH[59]=f_4bc.vdx)
 0891  15 0A 08                               JMP                           target=0x080A
-0894  09 40 14                               VIDEOREF                      ref=0x1440 (FH[64]=?)
+0894  09 40 14                               VIDEOREF                      ref=0x1440 (FH[64]=f_4fd.vdx)
 0897  15 32 08                               JMP                           target=0x0832
 089A  0B                                     INPUTLOOPSTART                
 089B  0D 7C 00 51 00 51 01 57 01 AE 08 00    HOTSPOT_RECT                  left=0x007C, top=0x0051, right=0x0151, bottom=0x0157, target=0x08AE, cursor=0x00
 08A7  0E F4 08                               HOTSPOT_LEFT                  target=0x08F4
 08AA  0F FA 08                               HOTSPOT_RIGHT                 target=0x08FA
 08AD  13                                     INPUTLOOPEND                  
-08AE  09 16 14                               VIDEOREF                      ref=0x1416 (FH[22]=?)
+08AE  09 16 14                               VIDEOREF                      ref=0x1416 (FH[22]=f5_4.vdx)
 08B1  15 0A 08                               JMP                           target=0x080A
 08B4  96 8C 30 B1                            LOADSTRING                    dst=v[0x08C], values=[0, 1]
 08B8  0B                                     INPUTLOOPSTART                
@@ -631,71 +633,71 @@
 08CD  0E 0C 09                               HOTSPOT_LEFT                  target=0x090C
 08D0  0F 12 09                               HOTSPOT_RIGHT                 target=0x0912
 08D3  13                                     INPUTLOOPEND                  
-08D4  09 15 14                               VIDEOREF                      ref=0x1415 (FH[21]=?)
+08D4  09 15 14                               VIDEOREF                      ref=0x1415 (FH[21]=f5_1.vdx)
 08D7  15 93 05                               JMP                           target=0x0593
 08DA  0B                                     INPUTLOOPSTART                
 08DB  0D D4 00 59 00 F0 01 8D 01 EE 08 00    HOTSPOT_RECT                  left=0x00D4, top=0x0059, right=0x01F0, bottom=0x018D, target=0x08EE, cursor=0x00
 08E7  0E 18 09                               HOTSPOT_LEFT                  target=0x0918
 08EA  0F 1E 09                               HOTSPOT_RIGHT                 target=0x091E
 08ED  13                                     INPUTLOOPEND                  
-08EE  09 17 14                               VIDEOREF                      ref=0x1417 (FH[23]=?)
+08EE  09 17 14                               VIDEOREF                      ref=0x1417 (FH[23]=f5_d.vdx)
 08F1  15 B6 22                               JMP                           target=0x22B6
-08F4  09 42 14                               VIDEOREF                      ref=0x1442 (FH[66]=?)
+08F4  09 42 14                               VIDEOREF                      ref=0x1442 (FH[66]=f_5bb.vdx)
 08F7  15 B4 08                               JMP                           target=0x08B4
-08FA  09 47 14                               VIDEOREF                      ref=0x1447 (FH[71]=?)
+08FA  09 47 14                               VIDEOREF                      ref=0x1447 (FH[71]=f_5fc.vdx)
 08FD  15 DA 08                               JMP                           target=0x08DA
-0900  09 41 14                               VIDEOREF                      ref=0x1441 (FH[65]=?)
+0900  09 41 14                               VIDEOREF                      ref=0x1441 (FH[65]=f_5ba.vdx)
 0903  15 C0 08                               JMP                           target=0x08C0
-0906  09 46 14                               VIDEOREF                      ref=0x1446 (FH[70]=?)
+0906  09 46 14                               VIDEOREF                      ref=0x1446 (FH[70]=f_5fb.vdx)
 0909  15 9A 08                               JMP                           target=0x089A
-090C  09 44 14                               VIDEOREF                      ref=0x1444 (FH[68]=?)
+090C  09 44 14                               VIDEOREF                      ref=0x1444 (FH[68]=f_5bd.vdx)
 090F  15 DA 08                               JMP                           target=0x08DA
-0912  09 45 14                               VIDEOREF                      ref=0x1445 (FH[69]=?)
+0912  09 45 14                               VIDEOREF                      ref=0x1445 (FH[69]=f_5fa.vdx)
 0915  15 B4 08                               JMP                           target=0x08B4
-0918  09 43 14                               VIDEOREF                      ref=0x1443 (FH[67]=?)
+0918  09 43 14                               VIDEOREF                      ref=0x1443 (FH[67]=f_5bc.vdx)
 091B  15 9A 08                               JMP                           target=0x089A
-091E  09 48 14                               VIDEOREF                      ref=0x1448 (FH[72]=?)
+091E  09 48 14                               VIDEOREF                      ref=0x1448 (FH[72]=f_5fd.vdx)
 0921  15 C0 08                               JMP                           target=0x08C0
 0924  96 8C 30 B3                            LOADSTRING                    dst=v[0x08C], values=[0, 3]
-0928  09 0C 14                               VIDEOREF                      ref=0x140C (FH[12]=?)
+0928  09 0C 14                               VIDEOREF                      ref=0x140C (FH[12]=f2_d.vdx)
 092B  03                                     FADEIN_NEXT_VIDEO             
 092C  05                                     FIRSTFRAME_NEXT_VIDEO         
-092D  09 64 10                               VIDEOREF                      ref=0x1064 (DR[100]=?)
+092D  09 64 10                               VIDEOREF                      ref=0x1064 (DR[100]=dr_tba.vdx)
 0930  A3 D7 B0 38 09                         STRCMP_EQ_JMP                 start=v[0x0D7], values=[0], target=0x0938
-0935  02 0A 4C                               PLAYSONG                      ref=0x4C0A (XMI[10]=?)
+0935  02 0A 4C                               PLAYSONG                      ref=0x4C0A (XMI[10]=gu12.xmi)
 0938  96 8C 30 B3                            LOADSTRING                    dst=v[0x08C], values=[0, 3]
 093C  0B                                     INPUTLOOPSTART                
 093D  0E 47 09                               HOTSPOT_LEFT                  target=0x0947
 0940  0F 4D 09                               HOTSPOT_RIGHT                 target=0x094D
 0943  11 85 09                               HOTSPOT_CENTER_2              target=0x0985
 0946  13                                     INPUTLOOPEND                  
-0947  09 64 10                               VIDEOREF                      ref=0x1064 (DR[100]=?)
+0947  09 64 10                               VIDEOREF                      ref=0x1064 (DR[100]=dr_tba.vdx)
 094A  15 53 09                               JMP                           target=0x0953
-094D  09 67 10                               VIDEOREF                      ref=0x1067 (DR[103]=?)
+094D  09 67 10                               VIDEOREF                      ref=0x1067 (DR[103]=dr_tfc.vdx)
 0950  15 53 09                               JMP                           target=0x0953
 0953  0B                                     INPUTLOOPSTART                
 0954  0F 6D 09                               HOTSPOT_RIGHT                 target=0x096D
 0957  0E 67 09                               HOTSPOT_LEFT                  target=0x0967
 095A  0D 24 00 73 00 5C 02 80 01 73 09 00    HOTSPOT_RECT                  left=0x0024, top=0x0073, right=0x025C, bottom=0x0180, target=0x0973, cursor=0x00
 0966  13                                     INPUTLOOPEND                  
-0967  09 65 10                               VIDEOREF                      ref=0x1065 (DR[101]=?)
+0967  09 65 10                               VIDEOREF                      ref=0x1065 (DR[101]=dr_tbc.vdx)
 096A  15 38 09                               JMP                           target=0x0938
-096D  09 66 10                               VIDEOREF                      ref=0x1066 (DR[102]=?)
+096D  09 66 10                               VIDEOREF                      ref=0x1066 (DR[102]=dr_tfa.vdx)
 0970  15 38 09                               JMP                           target=0x0938
-0973  09 5E 10                               VIDEOREF                      ref=0x105E (DR[94]=?)
+0973  09 5E 10                               VIDEOREF                      ref=0x105E (DR[94]=dr_d.vdx)
 0976  03                                     FADEIN_NEXT_VIDEO             
 0977  05                                     FIRSTFRAME_NEXT_VIDEO         
-0978  09 2B 14                               VIDEOREF                      ref=0x142B (FH[43]=?)
+0978  09 2B 14                               VIDEOREF                      ref=0x142B (FH[43]=f_2bc.vdx)
 097B  96 8C 30 B1                            LOADSTRING                    dst=v[0x08C], values=[0, 1]
-097F  02 39 4C                               PLAYSONG                      ref=0x4C39 (XMI[57]=?)
+097F  02 39 4C                               PLAYSONG                      ref=0x4C39 (XMI[57]=gu61.xmi)
 0982  15 1A 07                               JMP                           target=0x071A
-0985  09 5F 10                               VIDEOREF                      ref=0x105F (DR[95]=?)
+0985  09 5F 10                               VIDEOREF                      ref=0x105F (DR[95]=dr_mi.vdx)
 0988  9A FA E1 9F 09                         STRCMP_NE_JMP                 start=v[0x0FA], values=[49], target=0x099F
 098D  9A D6 B0 9F 09                         STRCMP_NE_JMP                 start=v[0x0D6], values=[0], target=0x099F
 0992  96 D6 B1                               LOADSTRING                    dst=v[0x0D6], values=[1]
 0995  18 E6 37                               CALL                          target=0x37E6
 0998  96 8E 31 B7                            LOADSTRING                    dst=v[0x08E], values=[1, 7]
-099C  02 10 4C                               PLAYSONG                      ref=0x4C10 (XMI[16]=?)
+099C  02 10 4C                               PLAYSONG                      ref=0x4C10 (XMI[16]=gu19.xmi)
 099F  9A D7 B0 AE 09                         STRCMP_NE_JMP                 start=v[0x0D7], values=[0], target=0x09AE
 09A4  96 D7 B1                               LOADSTRING                    dst=v[0x0D7], values=[1]
 09A7  18 D4 37                               CALL                          target=0x37D4
@@ -715,45 +717,45 @@
 0A01  9A D6 B1 09 0A                         STRCMP_NE_JMP                 start=v[0x0D6], values=[1], target=0x0A09
 0A06  30 03 3B                               HOTSPOT_BOTTOM_4              target=0x3B03
 0A09  13                                     INPUTLOOPEND                  
-0A0A  02 07 4C                               PLAYSONG                      ref=0x4C07 (XMI[7]=?)
-0A0D  09 00 10                               VIDEOREF                      ref=0x1000 (DR[0]=?)
-0A10  02 10 4C                               PLAYSONG                      ref=0x4C10 (XMI[16]=?)
+0A0A  02 07 4C                               PLAYSONG                      ref=0x4C07 (XMI[7]=gu9.xmi)
+0A0D  09 00 10                               VIDEOREF                      ref=0x1000 (DR[0]=come.vdx)
+0A10  02 10 4C                               PLAYSONG                      ref=0x4C10 (XMI[16]=gu19.xmi)
 0A13  15 88 09                               JMP                           target=0x0988
-0A16  02 0A 4C                               PLAYSONG                      ref=0x4C0A (XMI[10]=?)
+0A16  02 0A 4C                               PLAYSONG                      ref=0x4C0A (XMI[10]=gu12.xmi)
 0A19  1A 09 01 B0 2B 0A                      STRCMP_NE_JMP                 start=v[0x109], values=[0], target=0x0A2B
 0A1F  23 05 01 B0 2B 0A                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x0A2B
 0A25  4B 00                                  SET_VIDEO_MODE                value=0x00
 0A27  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
-0A2B  09 69 10                               VIDEOREF                      ref=0x1069 (DR[105]=?)
+0A2B  09 69 10                               VIDEOREF                      ref=0x1069 (DR[105]=dr_v.vdx)
 0A2E  18 DA 42                               CALL                          target=0x42DA
-0A31  1C 6A 10                               VIDEO_TRANSITION_REF          ref=0x106A (DR[106]=?)
+0A31  1C 6A 10                               VIDEO_TRANSITION_REF          ref=0x106A (DR[106]=dr_vb.vdx)
 0A34  18 BA 03                               CALL                          target=0x03BA
 0A37  05                                     FIRSTFRAME_NEXT_VIDEO         
-0A38  09 6A 10                               VIDEOREF                      ref=0x106A (DR[106]=?)
+0A38  09 6A 10                               VIDEOREF                      ref=0x106A (DR[106]=dr_vb.vdx)
 0A3B  1A 09 01 B1 47 0A                      STRCMP_NE_JMP                 start=v[0x109], values=[1], target=0x0A47
 0A41  4B 01                                  SET_VIDEO_MODE                value=0x01
 0A43  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
-0A47  09 6A 10                               VIDEOREF                      ref=0x106A (DR[106]=?)
+0A47  09 6A 10                               VIDEOREF                      ref=0x106A (DR[106]=dr_vb.vdx)
 0A4A  15 88 09                               JMP                           target=0x0988
-0A4D  02 04 4C                               PLAYSONG                      ref=0x4C04 (XMI[4]=?)
-0A50  09 63 10                               VIDEOREF                      ref=0x1063 (DR[99]=?)
-0A53  02 10 4C                               PLAYSONG                      ref=0x4C10 (XMI[16]=?)
+0A4D  02 04 4C                               PLAYSONG                      ref=0x4C04 (XMI[4]=gu5.xmi)
+0A50  09 63 10                               VIDEOREF                      ref=0x1063 (DR[99]=dr_r.vdx)
+0A53  02 10 4C                               PLAYSONG                      ref=0x4C10 (XMI[16]=gu19.xmi)
 0A56  15 88 09                               JMP                           target=0x0988
-0A59  09 62 10                               VIDEOREF                      ref=0x1062 (DR[98]=?)
-0A5C  09 60 10                               VIDEOREF                      ref=0x1060 (DR[96]=?)
+0A59  09 62 10                               VIDEOREF                      ref=0x1062 (DR[98]=dr_mtf.vdx)
+0A5C  09 60 10                               VIDEOREF                      ref=0x1060 (DR[96]=dr_mo.vdx)
 0A5F  15 53 09                               JMP                           target=0x0953
 0A62  96 8C 30 B4                            LOADSTRING                    dst=v[0x08C], values=[0, 4]
 0A66  03                                     FADEIN_NEXT_VIDEO             
 0A67  05                                     FIRSTFRAME_NEXT_VIDEO         
-0A68  09 0C 2C                               VIDEOREF                      ref=0x2C0C (K[12]=?)
-0A6B  02 22 4C                               PLAYSONG                      ref=0x4C22 (XMI[34]=?)
+0A68  09 0C 2C                               VIDEOREF                      ref=0x2C0C (K[12]=k_1ba.vdx)
+0A6B  02 22 4C                               PLAYSONG                      ref=0x4C22 (XMI[34]=gu37.xmi)
 0A6E  9A C3 B1 88 0A                         STRCMP_NE_JMP                 start=v[0x0C3], values=[1], target=0x0A88
 0A73  9A C0 B0 88 0A                         STRCMP_NE_JMP                 start=v[0x0C0], values=[0], target=0x0A88
-0A78  09 0F 2C                               VIDEOREF                      ref=0x2C0F (K[15]=?)
+0A78  09 0F 2C                               VIDEOREF                      ref=0x2C0F (K[15]=k_1tf.vdx)
 0A7B  18 B5 39                               CALL                          target=0x39B5
 0A7E  96 8E 33 B9                            LOADSTRING                    dst=v[0x08E], values=[3, 9]
 0A82  96 C0 B1                               LOADSTRING                    dst=v[0x0C0], values=[1]
-0A85  09 0E 2C                               VIDEOREF                      ref=0x2C0E (K[14]=?)
+0A85  09 0E 2C                               VIDEOREF                      ref=0x2C0E (K[14]=k_1tb.vdx)
 0A88  0B                                     INPUTLOOPSTART                
 0A89  9A 8E 33 B9 92 0A                      STRCMP_NE_JMP                 start=v[0x08E], values=[3, 9], target=0x0A92
 0A8F  30 03 3B                               HOTSPOT_BOTTOM_4              target=0x3B03
@@ -777,33 +779,33 @@
 0AE2  96 8E 33 B8                            LOADSTRING                    dst=v[0x08E], values=[3, 8]
 0AE6  18 45 39                               CALL                          target=0x3945
 0AE9  15 88 0A                               JMP                           target=0x0A88
-0AEC  09 0C 2C                               VIDEOREF                      ref=0x2C0C (K[12]=?)
+0AEC  09 0C 2C                               VIDEOREF                      ref=0x2C0C (K[12]=k_1ba.vdx)
 0AEF  15 F8 0A                               JMP                           target=0x0AF8
-0AF2  09 0D 2C                               VIDEOREF                      ref=0x2C0D (K[13]=?)
+0AF2  09 0D 2C                               VIDEOREF                      ref=0x2C0D (K[13]=k_1fa.vdx)
 0AF5  15 88 0A                               JMP                           target=0x0A88
 0AF8  0B                                     INPUTLOOPSTART                
 0AF9  0F F2 0A                               HOTSPOT_RIGHT                 target=0x0AF2
 0AFC  10 00 0B                               HOTSPOT_CENTER                target=0x0B00
 0AFF  13                                     INPUTLOOPEND                  
-0B00  09 01 2C                               VIDEOREF                      ref=0x2C01 (K[1]=?)
+0B00  09 01 2C                               VIDEOREF                      ref=0x2C01 (K[1]=k1_6.vdx)
 0B03  03                                     FADEIN_NEXT_VIDEO             
 0B04  05                                     FIRSTFRAME_NEXT_VIDEO         
-0B05  09 35 14                               VIDEOREF                      ref=0x1435 (FH[53]=?)
+0B05  09 35 14                               VIDEOREF                      ref=0x1435 (FH[53]=f_3fa.vdx)
 0B08  96 8C 30 B1                            LOADSTRING                    dst=v[0x08C], values=[0, 1]
-0B0C  02 39 4C                               PLAYSONG                      ref=0x4C39 (XMI[57]=?)
+0B0C  02 39 4C                               PLAYSONG                      ref=0x4C39 (XMI[57]=gu61.xmi)
 0B0F  15 9E 07                               JMP                           target=0x079E
-0B12  09 04 2C                               VIDEOREF                      ref=0x2C04 (K[4]=?)
+0B12  09 04 2C                               VIDEOREF                      ref=0x2C04 (K[4]=k2_5.vdx)
 0B15  96 8C 30 B5                            LOADSTRING                    dst=v[0x08C], values=[0, 5]
 0B19  03                                     FADEIN_NEXT_VIDEO             
 0B1A  15 0A 18                               JMP                           target=0x180A
-0B1D  09 00 2C                               VIDEOREF                      ref=0x2C00 (K[0]=?)
+0B1D  09 00 2C                               VIDEOREF                      ref=0x2C00 (K[0]=k1_2.vdx)
 0B20  15 33 0B                               JMP                           target=0x0B33
 0B23  03                                     FADEIN_NEXT_VIDEO             
-0B24  09 18 2C                               VIDEOREF                      ref=0x2C18 (K[24]=?)
+0B24  09 18 2C                               VIDEOREF                      ref=0x2C18 (K[24]=k_st.vdx)
 0B27  15 33 0B                               JMP                           target=0x0B33
-0B2A  09 16 2C                               VIDEOREF                      ref=0x2C16 (K[22]=?)
+0B2A  09 16 2C                               VIDEOREF                      ref=0x2C16 (K[22]=k_2fc.vdx)
 0B2D  15 33 0B                               JMP                           target=0x0B33
-0B30  09 13 2C                               VIDEOREF                      ref=0x2C13 (K[19]=?)
+0B30  09 13 2C                               VIDEOREF                      ref=0x2C13 (K[19]=k_2bd.vdx)
 0B33  0B                                     INPUTLOOPSTART                
 0B34  0E 9E 0B                               HOTSPOT_LEFT                  target=0x0B9E
 0B37  0F AF 0B                               HOTSPOT_RIGHT                 target=0x0BAF
@@ -813,12 +815,12 @@
 0B50  1A 08 01 B1 62 0B                      STRCMP_NE_JMP                 start=v[0x108], values=[1], target=0x0B62
 0B56  0D 65 00 77 00 1F 02 69 01 63 0B 06    HOTSPOT_RECT                  left=0x0065, top=0x0077, right=0x021F, bottom=0x0169, target=0x0B63, cursor=0x06
 0B62  13                                     INPUTLOOPEND                  
-0B63  09 03 2C                               VIDEOREF                      ref=0x2C03 (K[3]=?)
+0B63  09 03 2C                               VIDEOREF                      ref=0x2C03 (K[3]=k2_4.vdx)
 0B66  23 05 01 B0 72 0B                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x0B72
 0B6C  4B 00                                  SET_VIDEO_MODE                value=0x00
 0B6E  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
 0B72  03                                     FADEIN_NEXT_VIDEO             
-0B73  09 19 2C                               VIDEOREF                      ref=0x2C19 (K[25]=?)
+0B73  09 19 2C                               VIDEOREF                      ref=0x2C19 (K[25]=shelf.vdx)
 0B76  18 39 41                               CALL                          target=0x4139
 0B79  9A F9 E1 89 0B                         STRCMP_NE_JMP                 start=v[0x0F9], values=[49], target=0x0B89
 0B7E  9A BE B0 89 0B                         STRCMP_NE_JMP                 start=v[0x0BE], values=[0], target=0x0B89
@@ -830,39 +832,39 @@
 0B92  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
 0B96  03                                     FADEIN_NEXT_VIDEO             
 0B97  05                                     FIRSTFRAME_NEXT_VIDEO         
-0B98  09 17 2C                               VIDEOREF                      ref=0x2C17 (K[23]=?)
+0B98  09 17 2C                               VIDEOREF                      ref=0x2C17 (K[23]=k_2fd.vdx)
 0B9B  15 33 0B                               JMP                           target=0x0B33
-0B9E  09 12 2C                               VIDEOREF                      ref=0x2C12 (K[18]=?)
+0B9E  09 12 2C                               VIDEOREF                      ref=0x2C12 (K[18]=k_2bc.vdx)
 0BA1  15 A7 0B                               JMP                           target=0x0BA7
-0BA4  09 15 2C                               VIDEOREF                      ref=0x2C15 (K[21]=?)
+0BA4  09 15 2C                               VIDEOREF                      ref=0x2C15 (K[21]=k_2fb.vdx)
 0BA7  0B                                     INPUTLOOPSTART                
 0BA8  0E CE 0B                               HOTSPOT_LEFT                  target=0x0BCE
 0BAB  0F 2A 0B                               HOTSPOT_RIGHT                 target=0x0B2A
 0BAE  13                                     INPUTLOOPEND                  
-0BAF  09 17 2C                               VIDEOREF                      ref=0x2C17 (K[23]=?)
+0BAF  09 17 2C                               VIDEOREF                      ref=0x2C17 (K[23]=k_2fd.vdx)
 0BB2  15 B8 0B                               JMP                           target=0x0BB8
-0BB5  09 10 2C                               VIDEOREF                      ref=0x2C10 (K[16]=?)
+0BB5  09 10 2C                               VIDEOREF                      ref=0x2C10 (K[16]=k_2ba.vdx)
 0BB8  0B                                     INPUTLOOPSTART                
 0BB9  0E 30 0B                               HOTSPOT_LEFT                  target=0x0B30
 0BBC  9A F9 E1 C4 0B                         STRCMP_NE_JMP                 start=v[0x0F9], values=[49], target=0x0BC4
 0BC1  10 12 0B                               HOTSPOT_CENTER                target=0x0B12
 0BC4  0F C8 0B                               HOTSPOT_RIGHT                 target=0x0BC8
 0BC7  13                                     INPUTLOOPEND                  
-0BC8  09 14 2C                               VIDEOREF                      ref=0x2C14 (K[20]=?)
+0BC8  09 14 2C                               VIDEOREF                      ref=0x2C14 (K[20]=k_2fa.vdx)
 0BCB  15 FA 0B                               JMP                           target=0x0BFA
-0BCE  09 11 2C                               VIDEOREF                      ref=0x2C11 (K[17]=?)
+0BCE  09 11 2C                               VIDEOREF                      ref=0x2C11 (K[17]=k_2bb.vdx)
 0BD1  15 FA 0B                               JMP                           target=0x0BFA
 0BD4  1A 00 01 B0 E0 0B                      STRCMP_NE_JMP                 start=v[0x100], values=[0], target=0x0BE0
-0BDA  02 02 4C                               PLAYSONG                      ref=0x4C02 (XMI[2]=?)
+0BDA  02 02 4C                               PLAYSONG                      ref=0x4C02 (XMI[2]=agu38.xmi)
 0BDD  15 E3 0B                               JMP                           target=0x0BE3
-0BE0  02 23 4C                               PLAYSONG                      ref=0x4C23 (XMI[35]=?)
-0BE3  09 06 2C                               VIDEOREF                      ref=0x2C06 (K[6]=?)
+0BE0  02 23 4C                               PLAYSONG                      ref=0x4C23 (XMI[35]=gu38.xmi)
+0BE3  09 06 2C                               VIDEOREF                      ref=0x2C06 (K[6]=k2_7f.vdx)
 0BE6  96 BD B1                               LOADSTRING                    dst=v[0x0BD], values=[1]
 0BE9  18 64 39                               CALL                          target=0x3964
 0BEC  96 8E 34 B2                            LOADSTRING                    dst=v[0x08E], values=[4, 2]
 0BF0  07                                     VIDEOFLAG7_ON                 
-0BF1  09 14 50                               VIDEOREF                      ref=0x5014 (GAMWAV[20]=?)
-0BF4  09 05 2C                               VIDEOREF                      ref=0x2C05 (K[5]=?)
+0BF1  09 14 50                               VIDEOREF                      ref=0x5014 (GAMWAV[20]=5_e_1.vdx)
+0BF4  09 05 2C                               VIDEOREF                      ref=0x2C05 (K[5]=k2_7b.vdx)
 0BF7  15 FA 0B                               JMP                           target=0x0BFA
 0BFA  0B                                     INPUTLOOPSTART                
 0BFB  9A 8E 34 B2 04 0C                      STRCMP_NE_JMP                 start=v[0x08E], values=[4, 2], target=0x0C04
@@ -874,13 +876,13 @@
 0C1D  11 24 0C                               HOTSPOT_CENTER_2              target=0x0C24
 0C20  0F A4 0B                               HOTSPOT_RIGHT                 target=0x0BA4
 0C23  13                                     INPUTLOOPEND                  
-0C24  09 02 2C                               VIDEOREF                      ref=0x2C02 (K[2]=?)
+0C24  09 02 2C                               VIDEOREF                      ref=0x2C02 (K[2]=k2_1.vdx)
 0C27  15 F8 0A                               JMP                           target=0x0AF8
-0C2A  09 14 14                               VIDEOREF                      ref=0x1414 (FH[20]=?)
+0C2A  09 14 14                               VIDEOREF                      ref=0x1414 (FH[20]=f4_d.vdx)
 0C2D  96 8C 30 B8                            LOADSTRING                    dst=v[0x08C], values=[0, 8]
 0C31  03                                     FADEIN_NEXT_VIDEO             
 0C32  05                                     FIRSTFRAME_NEXT_VIDEO         
-0C33  09 01 40                               VIDEOREF                      ref=0x4001 (MU[1]=?)
+0C33  09 01 40                               VIDEOREF                      ref=0x4001 (MU[1]=muab.vdx)
 0C36  96 8C 30 B8                            LOADSTRING                    dst=v[0x08C], values=[0, 8]
 0C3A  9A CD B0 53 0C                         STRCMP_NE_JMP                 start=v[0x0CD], values=[0], target=0x0C53
 0C3F  9A F3 E1 53 0C                         STRCMP_NE_JMP                 start=v[0x0F3], values=[49], target=0x0C53
@@ -908,43 +910,43 @@
 0CBC  0D C6 01 82 00 22 02 30 01 26 0D 07    HOTSPOT_RECT                  left=0x01C6, top=0x0082, right=0x0222, bottom=0x0130, target=0x0D26, cursor=0x07
 0CC8  0F 41 0D                               HOTSPOT_RIGHT                 target=0x0D41
 0CCB  13                                     INPUTLOOPEND                  
-0CCC  02 25 4C                               PLAYSONG                      ref=0x4C25 (XMI[37]=?)
+0CCC  02 25 4C                               PLAYSONG                      ref=0x4C25 (XMI[37]=gu40.xmi)
 0CCF  96 CC B1                               LOADSTRING                    dst=v[0x0CC], values=[1]
 0CD2  96 8E 32 B7                            LOADSTRING                    dst=v[0x08E], values=[2, 7]
 0CD6  18 67 3A                               CALL                          target=0x3A67
 0CD9  15 36 0C                               JMP                           target=0x0C36
 0CDC  96 CB B1                               LOADSTRING                    dst=v[0x0CB], values=[1]
 0CDF  96 8E 32 B8                            LOADSTRING                    dst=v[0x08E], values=[2, 8]
-0CE3  02 17 4C                               PLAYSONG                      ref=0x4C17 (XMI[23]=?)
+0CE3  02 17 4C                               PLAYSONG                      ref=0x4C17 (XMI[23]=gu26.xmi)
 0CE6  18 76 3A                               CALL                          target=0x3A76
 0CE9  15 36 0C                               JMP                           target=0x0C36
-0CEC  09 02 40                               VIDEOREF                      ref=0x4002 (MU[2]=?)
+0CEC  09 02 40                               VIDEOREF                      ref=0x4002 (MU[2]=muabb.vdx)
 0CEF  15 36 0C                               JMP                           target=0x0C36
-0CF2  09 03 40                               VIDEOREF                      ref=0x4003 (MU[3]=?)
+0CF2  09 03 40                               VIDEOREF                      ref=0x4003 (MU[3]=mucd.vdx)
 0CF5  15 36 0C                               JMP                           target=0x0C36
 0CF8  96 92 30 B7                            LOADSTRING                    dst=v[0x092], values=[0, 7]
 0CFC  1A 09 01 B0 0E 0D                      STRCMP_NE_JMP                 start=v[0x109], values=[0], target=0x0D0E
 0D02  23 05 01 B0 0E 0D                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x0D0E
 0D08  4B 00                                  SET_VIDEO_MODE                value=0x00
 0D0A  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
-0D0E  09 09 40                               VIDEOREF                      ref=0x4009 (MU[9]=?)
+0D0E  09 09 40                               VIDEOREF                      ref=0x4009 (MU[9]=mupi.vdx)
 0D11  18 A8 3F                               CALL                          target=0x3FA8
 0D14  1A 09 01 B1 20 0D                      STRCMP_NE_JMP                 start=v[0x109], values=[1], target=0x0D20
 0D1A  4B 01                                  SET_VIDEO_MODE                value=0x01
 0D1C  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
-0D20  09 0A 40                               VIDEOREF                      ref=0x400A (MU[10]=?)
+0D20  09 0A 40                               VIDEOREF                      ref=0x400A (MU[10]=mupib.vdx)
 0D23  15 36 0C                               JMP                           target=0x0C36
 0D26  0A                                     VIDEOFLAG5_ON                 
-0D27  02 3E 4C                               PLAYSONG                      ref=0x4C3E (XMI[62]=?)
-0D2A  09 06 40                               VIDEOREF                      ref=0x4006 (MU[6]=?)
+0D27  02 3E 4C                               PLAYSONG                      ref=0x4C3E (XMI[62]=gu70.xmi)
+0D2A  09 06 40                               VIDEOREF                      ref=0x4006 (MU[6]=mugr.vdx)
 0D2D  07                                     VIDEOFLAG7_ON                 
-0D2E  09 64 50                               VIDEOREF                      ref=0x5064 (GAMWAV[100]=?)
-0D31  09 0B 40                               VIDEOREF                      ref=0x400B (MU[11]=?)
+0D2E  09 64 50                               VIDEOREF                      ref=0x5064 (GAMWAV[100]=19_e_1.vdx)
+0D31  09 0B 40                               VIDEOREF                      ref=0x400B (MU[11]=mupl.vdx)
 0D34  96 8C 31 B5                            LOADSTRING                    dst=v[0x08C], values=[1, 5]
 0D38  15 C2 0D                               JMP                           target=0x0DC2
-0D3B  09 04 40                               VIDEOREF                      ref=0x4004 (MU[4]=?)
+0D3B  09 04 40                               VIDEOREF                      ref=0x4004 (MU[4]=mucdb.vdx)
 0D3E  15 47 0D                               JMP                           target=0x0D47
-0D41  09 01 40                               VIDEOREF                      ref=0x4001 (MU[1]=?)
+0D41  09 01 40                               VIDEOREF                      ref=0x4001 (MU[1]=muab.vdx)
 0D44  15 47 0D                               JMP                           target=0x0D47
 0D47  0B                                     INPUTLOOPSTART                
 0D48  9A CA B0 59 0D                         STRCMP_NE_JMP                 start=v[0x0CA], values=[0], target=0x0D59
@@ -957,10 +959,10 @@
 0D7E  0E EC 0C                               HOTSPOT_LEFT                  target=0x0CEC
 0D81  10 85 0D                               HOTSPOT_CENTER                target=0x0D85
 0D84  13                                     INPUTLOOPEND                  
-0D85  09 05 40                               VIDEOREF                      ref=0x4005 (MU[5]=?)
+0D85  09 05 40                               VIDEOREF                      ref=0x4005 (MU[5]=muex.vdx)
 0D88  03                                     FADEIN_NEXT_VIDEO             
 0D89  05                                     FIRSTFRAME_NEXT_VIDEO         
-0D8A  09 3D 14                               VIDEOREF                      ref=0x143D (FH[61]=?)
+0D8A  09 3D 14                               VIDEOREF                      ref=0x143D (FH[61]=f_4fa.vdx)
 0D8D  96 8C 30 B1                            LOADSTRING                    dst=v[0x08C], values=[0, 1]
 0D91  15 32 08                               JMP                           target=0x0832
 0D94  18 85 3A                               CALL                          target=0x3A85
@@ -969,18 +971,18 @@
 0D9D  15 47 0D                               JMP                           target=0x0D47
 0DA0  18 A3 3A                               CALL                          target=0x3AA3
 0DA3  15 47 0D                               JMP                           target=0x0D47
-0DA6  09 0C 40                               VIDEOREF                      ref=0x400C (MU[12]=?)
-0DA9  09 07 40                               VIDEOREF                      ref=0x4007 (MU[7]=?)
+0DA6  09 0C 40                               VIDEOREF                      ref=0x400C (MU[12]=muplb.vdx)
+0DA9  09 07 40                               VIDEOREF                      ref=0x4007 (MU[7]=mugrb.vdx)
 0DAC  96 8C 30 B8                            LOADSTRING                    dst=v[0x08C], values=[0, 8]
 0DB0  15 36 0C                               JMP                           target=0x0C36
-0DB3  02 06 4C                               PLAYSONG                      ref=0x4C06 (XMI[6]=?)
+0DB3  02 06 4C                               PLAYSONG                      ref=0x4C06 (XMI[6]=gu8.xmi)
 0DB6  96 8C 31 B5                            LOADSTRING                    dst=v[0x08C], values=[1, 5]
 0DBA  03                                     FADEIN_NEXT_VIDEO             
 0DBB  05                                     FIRSTFRAME_NEXT_VIDEO         
-0DBC  09 72 20                               VIDEOREF                      ref=0x2072 (HTBD[114]=?)
+0DBC  09 72 20                               VIDEOREF                      ref=0x2072 (HTBD[114]=bdab.vdx)
 0DBF  15 CA 0D                               JMP                           target=0x0DCA
 0DC2  03                                     FADEIN_NEXT_VIDEO             
-0DC3  09 7A 20                               VIDEOREF                      ref=0x207A (HTBD[122]=?)
+0DC3  09 7A 20                               VIDEOREF                      ref=0x207A (HTBD[122]=bdplb.vdx)
 0DC6  96 8C 31 B5                            LOADSTRING                    dst=v[0x08C], values=[1, 5]
 0DCA  9A E9 E1 DE 0D                         STRCMP_NE_JMP                 start=v[0x0E9], values=[49], target=0x0DDE
 0DCF  9A D4 B0 DE 0D                         STRCMP_NE_JMP                 start=v[0x0D4], values=[0], target=0x0DDE
@@ -1013,7 +1015,7 @@
 0E71  0E BD 0E                               HOTSPOT_LEFT                  target=0x0EBD
 0E74  13                                     INPUTLOOPEND                  
 0E75  96 8C 31 B6                            LOADSTRING                    dst=v[0x08C], values=[1, 6]
-0E79  09 76 20                               VIDEOREF                      ref=0x2076 (HTBD[118]=?)
+0E79  09 76 20                               VIDEOREF                      ref=0x2076 (HTBD[118]=bdch.vdx)
 0E7C  15 E1 2F                               JMP                           target=0x2FE1
 0E7F  96 D2 B1                               LOADSTRING                    dst=v[0x0D2], values=[1]
 0E82  18 28 38                               CALL                          target=0x3828
@@ -1023,44 +1025,44 @@
 0E92  23 05 01 B0 9E 0E                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x0E9E
 0E98  4B 00                                  SET_VIDEO_MODE                value=0x00
 0E9A  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
-0E9E  09 6C 20                               VIDEOREF                      ref=0x206C (HTBD[108]=?)
-0EA1  09 6F 20                               VIDEOREF                      ref=0x206F (HTBD[111]=?)
+0E9E  09 6C 20                               VIDEOREF                      ref=0x206C (HTBD[108]=bd1p.vdx)
+0EA1  09 6F 20                               VIDEOREF                      ref=0x206F (HTBD[111]=bd2p.vdx)
 0EA4  96 17 B4                               LOADSTRING                    dst=v[0x017], values=[4]
 0EA7  18 86 42                               CALL                          target=0x4286
 0EAA  1A 09 01 B1 BA 0E                      STRCMP_NE_JMP                 start=v[0x109], values=[1], target=0x0EBA
 0EB0  4B 01                                  SET_VIDEO_MODE                value=0x01
 0EB2  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
 0EB6  05                                     FIRSTFRAME_NEXT_VIDEO         
-0EB7  09 6C 20                               VIDEOREF                      ref=0x206C (HTBD[108]=?)
+0EB7  09 6C 20                               VIDEOREF                      ref=0x206C (HTBD[108]=bd1p.vdx)
 0EBA  15 CA 0D                               JMP                           target=0x0DCA
-0EBD  09 75 20                               VIDEOREF                      ref=0x2075 (HTBD[117]=?)
+0EBD  09 75 20                               VIDEOREF                      ref=0x2075 (HTBD[117]=bdcdb.vdx)
 0EC0  15 C6 0E                               JMP                           target=0x0EC6
-0EC3  09 72 20                               VIDEOREF                      ref=0x2072 (HTBD[114]=?)
+0EC3  09 72 20                               VIDEOREF                      ref=0x2072 (HTBD[114]=bdab.vdx)
 0EC6  0B                                     INPUTLOOPSTART                
 0EC7  0E D7 0E                               HOTSPOT_LEFT                  target=0x0ED7
 0ECA  10 DD 0E                               HOTSPOT_CENTER                target=0x0EDD
 0ECD  0F D1 0E                               HOTSPOT_RIGHT                 target=0x0ED1
 0ED0  13                                     INPUTLOOPEND                  
-0ED1  09 74 20                               VIDEOREF                      ref=0x2074 (HTBD[116]=?)
+0ED1  09 74 20                               VIDEOREF                      ref=0x2074 (HTBD[116]=bdcd.vdx)
 0ED4  15 CA 0D                               JMP                           target=0x0DCA
-0ED7  09 73 20                               VIDEOREF                      ref=0x2073 (HTBD[115]=?)
+0ED7  09 73 20                               VIDEOREF                      ref=0x2073 (HTBD[115]=bdabb.vdx)
 0EDA  15 CA 0D                               JMP                           target=0x0DCA
-0EDD  09 78 20                               VIDEOREF                      ref=0x2078 (HTBD[120]=?)
+0EDD  09 78 20                               VIDEOREF                      ref=0x2078 (HTBD[120]=bdex.vdx)
 0EE0  03                                     FADEIN_NEXT_VIDEO             
 0EE1  05                                     FIRSTFRAME_NEXT_VIDEO         
-0EE2  09 8F 14                               VIDEOREF                      ref=0x148F (FH[143]=?)
+0EE2  09 8F 14                               VIDEOREF                      ref=0x148F (FH[143]=h_4fc.vdx)
 0EE5  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 0EE9  15 F4 11                               JMP                           target=0x11F4
 0EEC  9A D3 B0 FB 0E                         STRCMP_NE_JMP                 start=v[0x0D3], values=[0], target=0x0EFB
 0EF1  18 B0 37                               CALL                          target=0x37B0
 0EF4  96 D3 B1                               LOADSTRING                    dst=v[0x0D3], values=[1]
 0EF7  96 8E 32 B0                            LOADSTRING                    dst=v[0x08E], values=[2, 0]
-0EFB  09 76 20                               VIDEOREF                      ref=0x2076 (HTBD[118]=?)
+0EFB  09 76 20                               VIDEOREF                      ref=0x2076 (HTBD[118]=bdch.vdx)
 0EFE  15 E1 2F                               JMP                           target=0x2FE1
-0F01  02 3D 4C                               PLAYSONG                      ref=0x4C3D (XMI[61]=?)
+0F01  02 3D 4C                               PLAYSONG                      ref=0x4C3D (XMI[61]=gu69.xmi)
 0F04  07                                     VIDEOFLAG7_ON                 
-0F05  09 65 50                               VIDEOREF                      ref=0x5065 (GAMWAV[101]=?)
-0F08  09 79 20                               VIDEOREF                      ref=0x2079 (HTBD[121]=?)
+0F05  09 65 50                               VIDEOREF                      ref=0x5065 (GAMWAV[101]=19_e_2.vdx)
+0F08  09 79 20                               VIDEOREF                      ref=0x2079 (HTBD[121]=bdpl.vdx)
 0F0B  04                                     PALFADEOUT                    
 0F0C  15 A6 0D                               JMP                           target=0x0DA6
 0F0F  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
@@ -1070,8 +1072,8 @@
 0F23  0F 28 10                               HOTSPOT_RIGHT                 target=0x1028
 0F26  13                                     INPUTLOOPEND                  
 0F27  0A                                     VIDEOFLAG5_ON                 
-0F28  02 0F 4C                               PLAYSONG                      ref=0x4C0F (XMI[15]=?)
-0F2B  09 AB 14                               VIDEOREF                      ref=0x14AB (FH[171]=?)
+0F28  02 0F 4C                               PLAYSONG                      ref=0x4C0F (XMI[15]=gu18.xmi)
+0F2B  09 AB 14                               VIDEOREF                      ref=0x14AB (FH[171]=h_morph.vdx)
 0F2E  31 00 00 F4 01                         MIDI_CONTROL                  value=0x0000, time=0x01F4
 0F33  15 0F 0F                               JMP                           target=0x0F0F
 0F36  9A 90 B2 48 0F                         STRCMP_NE_JMP                 start=v[0x090], values=[2], target=0x0F48
@@ -1115,14 +1117,14 @@
 0FC7  9A 8E 30 B5 D0 0F                      STRCMP_NE_JMP                 start=v[0x08E], values=[0, 5], target=0x0FD0
 0FCD  30 03 3B                               HOTSPOT_BOTTOM_4              target=0x3B03
 0FD0  13                                     INPUTLOOPEND                  
-0FD1  09 59 14                               VIDEOREF                      ref=0x1459 (FH[89]=?)
+0FD1  09 59 14                               VIDEOREF                      ref=0x1459 (FH[89]=h1_2.vdx)
 0FD4  15 79 10                               JMP                           target=0x1079
 0FD7  0B                                     INPUTLOOPSTART                
 0FD8  11 E2 0F                               HOTSPOT_CENTER_2              target=0x0FE2
 0FDB  0E 47 10                               HOTSPOT_LEFT                  target=0x1047
 0FDE  0F 4D 10                               HOTSPOT_RIGHT                 target=0x104D
 0FE1  13                                     INPUTLOOPEND                  
-0FE2  09 18 14                               VIDEOREF                      ref=0x1418 (FH[24]=?)
+0FE2  09 18 14                               VIDEOREF                      ref=0x1418 (FH[24]=f6_1.vdx)
 0FE5  96 8C 30 B1                            LOADSTRING                    dst=v[0x08C], values=[0, 1]
 0FE9  15 93 05                               JMP                           target=0x0593
 0FEC  9A E1 B0 FB 0F                         STRCMP_NE_JMP                 start=v[0x0E1], values=[0], target=0x0FFB
@@ -1136,29 +1138,29 @@
 1008  0E 53 10                               HOTSPOT_LEFT                  target=0x1053
 100B  0F 59 10                               HOTSPOT_RIGHT                 target=0x1059
 100E  13                                     INPUTLOOPEND                  
-100F  09 5A 14                               VIDEOREF                      ref=0x145A (FH[90]=?)
+100F  09 5A 14                               VIDEOREF                      ref=0x145A (FH[90]=h1_8.vdx)
 1012  15 32 11                               JMP                           target=0x1132
-1015  09 72 14                               VIDEOREF                      ref=0x1472 (FH[114]=?)
+1015  09 72 14                               VIDEOREF                      ref=0x1472 (FH[114]=h_1bb.vdx)
 1018  31 00 00 00 00                         MIDI_CONTROL                  value=0x0000, time=0x0000
-101D  02 39 4C                               PLAYSONG                      ref=0x4C39 (XMI[57]=?)
+101D  02 39 4C                               PLAYSONG                      ref=0x4C39 (XMI[57]=gu61.xmi)
 1020  31 5F 00 EE 02                         MIDI_CONTROL                  value=0x005F, time=0x02EE
 1025  15 36 0F                               JMP                           target=0x0F36
-1028  09 77 14                               VIDEOREF                      ref=0x1477 (FH[119]=?)
+1028  09 77 14                               VIDEOREF                      ref=0x1477 (FH[119]=h_1fc.vdx)
 102B  31 00 00 00 00                         MIDI_CONTROL                  value=0x0000, time=0x0000
-1030  02 35 4C                               PLAYSONG                      ref=0x4C35 (XMI[53]=?)
+1030  02 35 4C                               PLAYSONG                      ref=0x4C35 (XMI[53]=gu56.xmi)
 1033  31 5F 00 EE 02                         MIDI_CONTROL                  value=0x005F, time=0x02EE
 1038  15 EC 0F                               JMP                           target=0x0FEC
-103B  09 71 14                               VIDEOREF                      ref=0x1471 (FH[113]=?)
+103B  09 71 14                               VIDEOREF                      ref=0x1471 (FH[113]=h_1ba.vdx)
 103E  15 D7 0F                               JMP                           target=0x0FD7
-1041  09 76 14                               VIDEOREF                      ref=0x1476 (FH[118]=?)
+1041  09 76 14                               VIDEOREF                      ref=0x1476 (FH[118]=h_1fb.vdx)
 1044  15 0F 0F                               JMP                           target=0x0F0F
-1047  09 74 14                               VIDEOREF                      ref=0x1474 (FH[116]=?)
+1047  09 74 14                               VIDEOREF                      ref=0x1474 (FH[116]=h_1bd.vdx)
 104A  15 EC 0F                               JMP                           target=0x0FEC
-104D  09 75 14                               VIDEOREF                      ref=0x1475 (FH[117]=?)
+104D  09 75 14                               VIDEOREF                      ref=0x1475 (FH[117]=h_1fa.vdx)
 1050  15 36 0F                               JMP                           target=0x0F36
-1053  09 73 14                               VIDEOREF                      ref=0x1473 (FH[115]=?)
+1053  09 73 14                               VIDEOREF                      ref=0x1473 (FH[115]=h_1bc.vdx)
 1056  15 0F 0F                               JMP                           target=0x0F0F
-1059  09 78 14                               VIDEOREF                      ref=0x1478 (FH[120]=?)
+1059  09 78 14                               VIDEOREF                      ref=0x1478 (FH[120]=h_1fd.vdx)
 105C  15 D7 0F                               JMP                           target=0x0FD7
 105F  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 1063  0B                                     INPUTLOOPSTART                
@@ -1167,7 +1169,7 @@
 106C  0E B9 10                               HOTSPOT_LEFT                  target=0x10B9
 106F  0F BF 10                               HOTSPOT_RIGHT                 target=0x10BF
 1072  13                                     INPUTLOOPEND                  
-1073  09 5E 14                               VIDEOREF                      ref=0x145E (FH[94]=?)
+1073  09 5E 14                               VIDEOREF                      ref=0x145E (FH[94]=h2_e.vdx)
 1076  15 24 34                               JMP                           target=0x3424
 1079  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 107D  0B                                     INPUTLOOPSTART                
@@ -1182,32 +1184,32 @@
 1095  0E D1 10                               HOTSPOT_LEFT                  target=0x10D1
 1098  0F D7 10                               HOTSPOT_RIGHT                 target=0x10D7
 109B  13                                     INPUTLOOPEND                  
-109C  09 5F 14                               VIDEOREF                      ref=0x145F (FH[95]=?)
+109C  09 5F 14                               VIDEOREF                      ref=0x145F (FH[95]=h2_g.vdx)
 109F  15 82 2E                               JMP                           target=0x2E82
 10A2  0B                                     INPUTLOOPSTART                
 10A3  11 B3 10                               HOTSPOT_CENTER_2              target=0x10B3
 10A6  0E DD 10                               HOTSPOT_LEFT                  target=0x10DD
 10A9  0F E3 10                               HOTSPOT_RIGHT                 target=0x10E3
 10AC  13                                     INPUTLOOPEND                  
-10AD  09 5D 14                               VIDEOREF                      ref=0x145D (FH[93]=?)
+10AD  09 5D 14                               VIDEOREF                      ref=0x145D (FH[93]=h2_3.vdx)
 10B0  15 96 11                               JMP                           target=0x1196
-10B3  09 5C 14                               VIDEOREF                      ref=0x145C (FH[92]=?)
+10B3  09 5C 14                               VIDEOREF                      ref=0x145C (FH[92]=h2_1.vdx)
 10B6  15 EC 0F                               JMP                           target=0x0FEC
-10B9  09 7A 14                               VIDEOREF                      ref=0x147A (FH[122]=?)
+10B9  09 7A 14                               VIDEOREF                      ref=0x147A (FH[122]=h_2bb.vdx)
 10BC  15 79 10                               JMP                           target=0x1079
-10BF  09 7F 14                               VIDEOREF                      ref=0x147F (FH[127]=?)
+10BF  09 7F 14                               VIDEOREF                      ref=0x147F (FH[127]=h_2fc.vdx)
 10C2  15 A2 10                               JMP                           target=0x10A2
-10C5  09 79 14                               VIDEOREF                      ref=0x1479 (FH[121]=?)
+10C5  09 79 14                               VIDEOREF                      ref=0x1479 (FH[121]=h_2ba.vdx)
 10C8  15 88 10                               JMP                           target=0x1088
-10CB  09 7E 14                               VIDEOREF                      ref=0x147E (FH[126]=?)
+10CB  09 7E 14                               VIDEOREF                      ref=0x147E (FH[126]=h_2fb.vdx)
 10CE  15 5F 10                               JMP                           target=0x105F
-10D1  09 7C 14                               VIDEOREF                      ref=0x147C (FH[124]=?)
+10D1  09 7C 14                               VIDEOREF                      ref=0x147C (FH[124]=h_2bd.vdx)
 10D4  15 A2 10                               JMP                           target=0x10A2
-10D7  09 7D 14                               VIDEOREF                      ref=0x147D (FH[125]=?)
+10D7  09 7D 14                               VIDEOREF                      ref=0x147D (FH[125]=h_2fa.vdx)
 10DA  15 79 10                               JMP                           target=0x1079
-10DD  09 7B 14                               VIDEOREF                      ref=0x147B (FH[123]=?)
+10DD  09 7B 14                               VIDEOREF                      ref=0x147B (FH[123]=h_2bc.vdx)
 10E0  15 5F 10                               JMP                           target=0x105F
-10E3  09 80 14                               VIDEOREF                      ref=0x1480 (FH[128]=?)
+10E3  09 80 14                               VIDEOREF                      ref=0x1480 (FH[128]=h_2fd.vdx)
 10E6  15 88 10                               JMP                           target=0x1088
 10E9  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 10ED  0B                                     INPUTLOOPSTART                
@@ -1216,7 +1218,7 @@
 10F4  9A FA E1 FC 10                         STRCMP_NE_JMP                 start=v[0x0FA], values=[49], target=0x10FC
 10F9  10 FD 10                               HOTSPOT_CENTER                target=0x10FD
 10FC  13                                     INPUTLOOPEND                  
-10FD  09 6C 14                               VIDEOREF                      ref=0x146C (FH[108]=?)
+10FD  09 6C 14                               VIDEOREF                      ref=0x146C (FH[108]=h8_u.vdx)
 1100  15 89 15                               JMP                           target=0x1589
 1103  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 1107  0B                                     INPUTLOOPSTART                
@@ -1224,7 +1226,7 @@
 110B  0E 58 11                               HOTSPOT_LEFT                  target=0x1158
 110E  0F 5E 11                               HOTSPOT_RIGHT                 target=0x115E
 1111  13                                     INPUTLOOPEND                  
-1112  09 6B 14                               VIDEOREF                      ref=0x146B (FH[107]=?)
+1112  09 6B 14                               VIDEOREF                      ref=0x146B (FH[107]=h8_1.vdx)
 1115  15 36 0F                               JMP                           target=0x0F36
 1118  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 111C  0B                                     INPUTLOOPSTART                
@@ -1233,7 +1235,7 @@
 1125  0E 64 11                               HOTSPOT_LEFT                  target=0x1164
 1128  0F 6A 11                               HOTSPOT_RIGHT                 target=0x116A
 112B  13                                     INPUTLOOPEND                  
-112C  09 6D 14                               VIDEOREF                      ref=0x146D (FH[109]=?)
+112C  09 6D 14                               VIDEOREF                      ref=0x146D (FH[109]=h8_w.vdx)
 112F  15 77 13                               JMP                           target=0x1377
 1132  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 1136  0B                                     INPUTLOOPSTART                
@@ -1242,23 +1244,23 @@
 113F  0E 70 11                               HOTSPOT_LEFT                  target=0x1170
 1142  0F 76 11                               HOTSPOT_RIGHT                 target=0x1176
 1145  13                                     INPUTLOOPEND                  
-1146  09 6E 14                               VIDEOREF                      ref=0x146E (FH[110]=?)
+1146  09 6E 14                               VIDEOREF                      ref=0x146E (FH[110]=h8_x.vdx)
 1149  15 63 14                               JMP                           target=0x1463
-114C  09 96 14                               VIDEOREF                      ref=0x1496 (FH[150]=?)
+114C  09 96 14                               VIDEOREF                      ref=0x1496 (FH[150]=h_8bb.vdx)
 114F  15 03 11                               JMP                           target=0x1103
-1152  09 9B 14                               VIDEOREF                      ref=0x149B (FH[155]=?)
+1152  09 9B 14                               VIDEOREF                      ref=0x149B (FH[155]=h_8fc.vdx)
 1155  15 32 11                               JMP                           target=0x1132
-1158  09 95 14                               VIDEOREF                      ref=0x1495 (FH[149]=?)
+1158  09 95 14                               VIDEOREF                      ref=0x1495 (FH[149]=h_8ba.vdx)
 115B  15 18 11                               JMP                           target=0x1118
-115E  09 9A 14                               VIDEOREF                      ref=0x149A (FH[154]=?)
+115E  09 9A 14                               VIDEOREF                      ref=0x149A (FH[154]=h_8fb.vdx)
 1161  15 E9 10                               JMP                           target=0x10E9
-1164  09 98 14                               VIDEOREF                      ref=0x1498 (FH[152]=?)
+1164  09 98 14                               VIDEOREF                      ref=0x1498 (FH[152]=h_8bd.vdx)
 1167  15 32 11                               JMP                           target=0x1132
-116A  09 99 14                               VIDEOREF                      ref=0x1499 (FH[153]=?)
+116A  09 99 14                               VIDEOREF                      ref=0x1499 (FH[153]=h_8fa.vdx)
 116D  15 03 11                               JMP                           target=0x1103
-1170  09 97 14                               VIDEOREF                      ref=0x1497 (FH[151]=?)
+1170  09 97 14                               VIDEOREF                      ref=0x1497 (FH[151]=h_8bc.vdx)
 1173  15 E9 10                               JMP                           target=0x10E9
-1176  09 9C 14                               VIDEOREF                      ref=0x149C (FH[156]=?)
+1176  09 9C 14                               VIDEOREF                      ref=0x149C (FH[156]=h_8fd.vdx)
 1179  15 18 11                               JMP                           target=0x1118
 117C  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 1180  0B                                     INPUTLOOPSTART                
@@ -1267,14 +1269,14 @@
 1189  0E C4 11                               HOTSPOT_LEFT                  target=0x11C4
 118C  0F CA 11                               HOTSPOT_RIGHT                 target=0x11CA
 118F  13                                     INPUTLOOPEND                  
-1190  09 62 14                               VIDEOREF                      ref=0x1462 (FH[98]=?)
+1190  09 62 14                               VIDEOREF                      ref=0x1462 (FH[98]=h3_k.vdx)
 1193  15 D5 2C                               JMP                           target=0x2CD5
 1196  0B                                     INPUTLOOPSTART                
 1197  11 A1 11                               HOTSPOT_CENTER_2              target=0x11A1
 119A  0E D0 11                               HOTSPOT_LEFT                  target=0x11D0
 119D  0F D6 11                               HOTSPOT_RIGHT                 target=0x11D6
 11A0  13                                     INPUTLOOPEND                  
-11A1  09 61 14                               VIDEOREF                      ref=0x1461 (FH[97]=?)
+11A1  09 61 14                               VIDEOREF                      ref=0x1461 (FH[97]=h3_4.vdx)
 11A4  15 44 12                               JMP                           target=0x1244
 11A7  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 11AB  0B                                     INPUTLOOPSTART                
@@ -1286,23 +1288,23 @@
 11B7  0E E8 11                               HOTSPOT_LEFT                  target=0x11E8
 11BA  0F EE 11                               HOTSPOT_RIGHT                 target=0x11EE
 11BD  13                                     INPUTLOOPEND                  
-11BE  09 60 14                               VIDEOREF                      ref=0x1460 (FH[96]=?)
+11BE  09 60 14                               VIDEOREF                      ref=0x1460 (FH[96]=h3_2.vdx)
 11C1  15 A2 10                               JMP                           target=0x10A2
-11C4  09 82 14                               VIDEOREF                      ref=0x1482 (FH[130]=?)
+11C4  09 82 14                               VIDEOREF                      ref=0x1482 (FH[130]=h_3bb.vdx)
 11C7  15 96 11                               JMP                           target=0x1196
-11CA  09 87 14                               VIDEOREF                      ref=0x1487 (FH[135]=?)
+11CA  09 87 14                               VIDEOREF                      ref=0x1487 (FH[135]=h_3fc.vdx)
 11CD  15 B3 11                               JMP                           target=0x11B3
-11D0  09 81 14                               VIDEOREF                      ref=0x1481 (FH[129]=?)
+11D0  09 81 14                               VIDEOREF                      ref=0x1481 (FH[129]=h_3ba.vdx)
 11D3  15 A7 11                               JMP                           target=0x11A7
-11D6  09 86 14                               VIDEOREF                      ref=0x1486 (FH[134]=?)
+11D6  09 86 14                               VIDEOREF                      ref=0x1486 (FH[134]=h_3fb.vdx)
 11D9  15 7C 11                               JMP                           target=0x117C
-11DC  09 84 14                               VIDEOREF                      ref=0x1484 (FH[132]=?)
+11DC  09 84 14                               VIDEOREF                      ref=0x1484 (FH[132]=h_3bd.vdx)
 11DF  15 B3 11                               JMP                           target=0x11B3
-11E2  09 85 14                               VIDEOREF                      ref=0x1485 (FH[133]=?)
+11E2  09 85 14                               VIDEOREF                      ref=0x1485 (FH[133]=h_3fa.vdx)
 11E5  15 96 11                               JMP                           target=0x1196
-11E8  09 83 14                               VIDEOREF                      ref=0x1483 (FH[131]=?)
+11E8  09 83 14                               VIDEOREF                      ref=0x1483 (FH[131]=h_3bc.vdx)
 11EB  15 7C 11                               JMP                           target=0x117C
-11EE  09 88 14                               VIDEOREF                      ref=0x1488 (FH[136]=?)
+11EE  09 88 14                               VIDEOREF                      ref=0x1488 (FH[136]=h_3fd.vdx)
 11F1  15 A7 11                               JMP                           target=0x11A7
 11F4  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 11F8  0B                                     INPUTLOOPSTART                
@@ -1322,7 +1324,7 @@
 1234  1A 08 01 B1 3D 12                      STRCMP_NE_JMP                 start=v[0x108], values=[1], target=0x123D
 123A  11 3E 12                               HOTSPOT_CENTER_2              target=0x123E
 123D  13                                     INPUTLOOPEND                  
-123E  09 65 14                               VIDEOREF                      ref=0x1465 (FH[101]=?)
+123E  09 65 14                               VIDEOREF                      ref=0x1465 (FH[101]=h4_7.vdx)
 1241  15 FE 12                               JMP                           target=0x12FE
 1244  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 1248  0B                                     INPUTLOOPSTART                
@@ -1330,7 +1332,7 @@
 124C  0E A3 12                               HOTSPOT_LEFT                  target=0x12A3
 124F  0F A9 12                               HOTSPOT_RIGHT                 target=0x12A9
 1252  13                                     INPUTLOOPEND                  
-1253  09 64 14                               VIDEOREF                      ref=0x1464 (FH[100]=?)
+1253  09 64 14                               VIDEOREF                      ref=0x1464 (FH[100]=h4_5.vdx)
 1256  15 C7 12                               JMP                           target=0x12C7
 1259  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 125D  0B                                     INPUTLOOPSTART                
@@ -1339,7 +1341,7 @@
 1266  0E AF 12                               HOTSPOT_LEFT                  target=0x12AF
 1269  0F B5 12                               HOTSPOT_RIGHT                 target=0x12B5
 126C  13                                     INPUTLOOPEND                  
-126D  09 66 14                               VIDEOREF                      ref=0x1466 (FH[102]=?)
+126D  09 66 14                               VIDEOREF                      ref=0x1466 (FH[102]=h4_m.vdx)
 1270  15 B3 0D                               JMP                           target=0x0DB3
 1273  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 1277  9A DE B0 86 12                         STRCMP_NE_JMP                 start=v[0x0DE], values=[0], target=0x1286
@@ -1351,23 +1353,23 @@
 128A  0E BB 12                               HOTSPOT_LEFT                  target=0x12BB
 128D  0F C1 12                               HOTSPOT_RIGHT                 target=0x12C1
 1290  13                                     INPUTLOOPEND                  
-1291  09 63 14                               VIDEOREF                      ref=0x1463 (FH[99]=?)
+1291  09 63 14                               VIDEOREF                      ref=0x1463 (FH[99]=h4_3.vdx)
 1294  15 B3 11                               JMP                           target=0x11B3
-1297  09 8A 14                               VIDEOREF                      ref=0x148A (FH[138]=?)
+1297  09 8A 14                               VIDEOREF                      ref=0x148A (FH[138]=h_4bb.vdx)
 129A  15 44 12                               JMP                           target=0x1244
-129D  09 8F 14                               VIDEOREF                      ref=0x148F (FH[143]=?)
+129D  09 8F 14                               VIDEOREF                      ref=0x148F (FH[143]=h_4fc.vdx)
 12A0  15 73 12                               JMP                           target=0x1273
-12A3  09 89 14                               VIDEOREF                      ref=0x1489 (FH[137]=?)
+12A3  09 89 14                               VIDEOREF                      ref=0x1489 (FH[137]=h_4ba.vdx)
 12A6  15 59 12                               JMP                           target=0x1259
-12A9  09 8E 14                               VIDEOREF                      ref=0x148E (FH[142]=?)
+12A9  09 8E 14                               VIDEOREF                      ref=0x148E (FH[142]=h_4fb.vdx)
 12AC  15 F4 11                               JMP                           target=0x11F4
-12AF  09 8C 14                               VIDEOREF                      ref=0x148C (FH[140]=?)
+12AF  09 8C 14                               VIDEOREF                      ref=0x148C (FH[140]=h_4bd.vdx)
 12B2  15 73 12                               JMP                           target=0x1273
-12B5  09 8D 14                               VIDEOREF                      ref=0x148D (FH[141]=?)
+12B5  09 8D 14                               VIDEOREF                      ref=0x148D (FH[141]=h_4fa.vdx)
 12B8  15 44 12                               JMP                           target=0x1244
-12BB  09 8B 14                               VIDEOREF                      ref=0x148B (FH[139]=?)
+12BB  09 8B 14                               VIDEOREF                      ref=0x148B (FH[139]=h_4bc.vdx)
 12BE  15 F4 11                               JMP                           target=0x11F4
-12C1  09 90 14                               VIDEOREF                      ref=0x1490 (FH[144]=?)
+12C1  09 90 14                               VIDEOREF                      ref=0x1490 (FH[144]=h_4fd.vdx)
 12C4  15 59 12                               JMP                           target=0x1259
 12C7  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 12CB  0B                                     INPUTLOOPSTART                
@@ -1376,17 +1378,17 @@
 12D6  10 DD 12                               HOTSPOT_CENTER                target=0x12DD
 12D9  0E E3 12                               HOTSPOT_LEFT                  target=0x12E3
 12DC  13                                     INPUTLOOPEND                  
-12DD  09 68 14                               VIDEOREF                      ref=0x1468 (FH[104]=?)
+12DD  09 68 14                               VIDEOREF                      ref=0x1468 (FH[104]=h5_q.vdx)
 12E0  15 15 35                               JMP                           target=0x3515
-12E3  09 92 14                               VIDEOREF                      ref=0x1492 (FH[146]=?)
+12E3  09 92 14                               VIDEOREF                      ref=0x1492 (FH[146]=h_5f.vdx)
 12E6  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 12EA  0B                                     INPUTLOOPSTART                
 12EB  0F F2 12                               HOTSPOT_RIGHT                 target=0x12F2
 12EE  11 F8 12                               HOTSPOT_CENTER_2              target=0x12F8
 12F1  13                                     INPUTLOOPEND                  
-12F2  09 91 14                               VIDEOREF                      ref=0x1491 (FH[145]=?)
+12F2  09 91 14                               VIDEOREF                      ref=0x1491 (FH[145]=h_5b.vdx)
 12F5  15 C7 12                               JMP                           target=0x12C7
-12F8  09 67 14                               VIDEOREF                      ref=0x1467 (FH[103]=?)
+12F8  09 67 14                               VIDEOREF                      ref=0x1467 (FH[103]=h5_4.vdx)
 12FB  15 73 12                               JMP                           target=0x1273
 12FE  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 1302  0B                                     INPUTLOOPSTART                
@@ -1394,11 +1396,11 @@
 1306  10 0A 13                               HOTSPOT_CENTER                target=0x130A
 1309  13                                     INPUTLOOPEND                  
 130A  9A F2 E1 22 13                         STRCMP_NE_JMP                 start=v[0x0F2], values=[49], target=0x1322
-130F  09 6A 14                               VIDEOREF                      ref=0x146A (FH[106]=?)
+130F  09 6A 14                               VIDEOREF                      ref=0x146A (FH[106]=h7_t.vdx)
 1312  18 14 03                               CALL                          target=0x0314
 1315  05                                     FIRSTFRAME_NEXT_VIDEO         
 1316  03                                     FADEIN_NEXT_VIDEO             
-1317  09 01 00                               VIDEOREF                      ref=0x0001 (AT[1]=?)
+1317  09 01 00                               VIDEOREF                      ref=0x0001 (AT[1]=as_u.vdx)
 131A  0B                                     INPUTLOOPSTART                
 131B  11 D3 16                               HOTSPOT_CENTER_2              target=0x16D3
 131E  13                                     INPUTLOOPEND                  
@@ -1408,15 +1410,15 @@
 132E  4B 00                                  SET_VIDEO_MODE                value=0x00
 1330  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
 1334  05                                     FIRSTFRAME_NEXT_VIDEO         
-1335  09 6A 14                               VIDEOREF                      ref=0x146A (FH[106]=?)
+1335  09 6A 14                               VIDEOREF                      ref=0x146A (FH[106]=h7_t.vdx)
 1338  18 33 42                               CALL                          target=0x4233
 133B  1A 09 01 B1 4B 13                      STRCMP_NE_JMP                 start=v[0x109], values=[1], target=0x134B
 1341  4B 01                                  SET_VIDEO_MODE                value=0x01
 1343  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
 1347  05                                     FIRSTFRAME_NEXT_VIDEO         
-1348  09 6A 14                               VIDEOREF                      ref=0x146A (FH[106]=?)
+1348  09 6A 14                               VIDEOREF                      ref=0x146A (FH[106]=h7_t.vdx)
 134B  15 FE 12                               JMP                           target=0x12FE
-134E  09 93 14                               VIDEOREF                      ref=0x1493 (FH[147]=?)
+134E  09 93 14                               VIDEOREF                      ref=0x1493 (FH[147]=h_7b.vdx)
 1351  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 1355  0B                                     INPUTLOOPSTART                
 1356  0F 6B 13                               HOTSPOT_RIGHT                 target=0x136B
@@ -1424,19 +1426,19 @@
 135C  13                                     INPUTLOOPEND                  
 135D  03                                     FADEIN_NEXT_VIDEO             
 135E  05                                     FIRSTFRAME_NEXT_VIDEO         
-135F  09 94 14                               VIDEOREF                      ref=0x1494 (FH[148]=?)
+135F  09 94 14                               VIDEOREF                      ref=0x1494 (FH[148]=h_7f.vdx)
 1362  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 1366  0B                                     INPUTLOOPSTART                
 1367  11 71 13                               HOTSPOT_CENTER_2              target=0x1371
 136A  13                                     INPUTLOOPEND                  
-136B  09 94 14                               VIDEOREF                      ref=0x1494 (FH[148]=?)
+136B  09 94 14                               VIDEOREF                      ref=0x1494 (FH[148]=h_7f.vdx)
 136E  15 FE 12                               JMP                           target=0x12FE
-1371  09 69 14                               VIDEOREF                      ref=0x1469 (FH[105]=?)
+1371  09 69 14                               VIDEOREF                      ref=0x1469 (FH[105]=h7_4.vdx)
 1374  15 59 12                               JMP                           target=0x1259
 1377  96 8C 31 B0                            LOADSTRING                    dst=v[0x08C], values=[1, 0]
 137B  03                                     FADEIN_NEXT_VIDEO             
 137C  05                                     FIRSTFRAME_NEXT_VIDEO         
-137D  09 07 20                               VIDEOREF                      ref=0x2007 (HTBD[7]=?)
+137D  09 07 20                               VIDEOREF                      ref=0x2007 (HTBD[7]=htab.vdx)
 1380  9A EA E1 8D 13                         STRCMP_NE_JMP                 start=v[0x0EA], values=[49], target=0x138D
 1385  9A 9A B0 8D 13                         STRCMP_NE_JMP                 start=v[0x09A], values=[0], target=0x138D
 138A  15 C1 13                               JMP                           target=0x13C1
@@ -1459,22 +1461,22 @@
 13D7  23 05 01 B0 E3 13                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x13E3
 13DD  4B 00                                  SET_VIDEO_MODE                value=0x00
 13DF  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
-13E3  09 00 20                               VIDEOREF                      ref=0x2000 (HTBD[0]=?)
-13E6  09 04 20                               VIDEOREF                      ref=0x2004 (HTBD[4]=?)
+13E3  09 00 20                               VIDEOREF                      ref=0x2000 (HTBD[0]=ht1p.vdx)
+13E6  09 04 20                               VIDEOREF                      ref=0x2004 (HTBD[4]=ht2p.vdx)
 13E9  18 86 42                               CALL                          target=0x4286
 13EC  1A 09 01 B1 FC 13                      STRCMP_NE_JMP                 start=v[0x109], values=[1], target=0x13FC
 13F2  4B 01                                  SET_VIDEO_MODE                value=0x01
 13F4  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
 13F8  05                                     FIRSTFRAME_NEXT_VIDEO         
-13F9  09 00 20                               VIDEOREF                      ref=0x2000 (HTBD[0]=?)
+13F9  09 00 20                               VIDEOREF                      ref=0x2000 (HTBD[0]=ht1p.vdx)
 13FC  15 80 13                               JMP                           target=0x1380
-13FF  09 08 20                               VIDEOREF                      ref=0x2008 (HTBD[8]=?)
+13FF  09 08 20                               VIDEOREF                      ref=0x2008 (HTBD[8]=ht_mess.vdx)
 1402  15 80 13                               JMP                           target=0x1380
-1405  09 0A 20                               VIDEOREF                      ref=0x200A (HTBD[10]=?)
+1405  09 0A 20                               VIDEOREF                      ref=0x200A (HTBD[10]=htcdb.vdx)
 1408  15 14 14                               JMP                           target=0x1414
-140B  09 09 20                               VIDEOREF                      ref=0x2009 (HTBD[9]=?)
+140B  09 09 20                               VIDEOREF                      ref=0x2009 (HTBD[9]=htcd.vdx)
 140E  15 80 13                               JMP                           target=0x1380
-1411  09 07 20                               VIDEOREF                      ref=0x2007 (HTBD[7]=?)
+1411  09 07 20                               VIDEOREF                      ref=0x2007 (HTBD[7]=htab.vdx)
 1414  0B                                     INPUTLOOPSTART                
 1415  0D 2D 00 AA 00 88 00 58 01 40 14 03    HOTSPOT_RECT                  left=0x002D, top=0x00AA, right=0x0088, bottom=0x0158, target=0x1440, cursor=0x03
 1421  0D BA 00 AA 00 15 01 58 01 4D 14 03    HOTSPOT_RECT                  left=0x00BA, top=0x00AA, right=0x0115, bottom=0x0158, target=0x144D, cursor=0x03
@@ -1482,23 +1484,23 @@
 1439  0F 0B 14                               HOTSPOT_RIGHT                 target=0x140B
 143C  0E FF 13                               HOTSPOT_LEFT                  target=0x13FF
 143F  13                                     INPUTLOOPEND                  
-1440  02 3C 4C                               PLAYSONG                      ref=0x4C3C (XMI[60]=?)
-1443  09 02 20                               VIDEOREF                      ref=0x2002 (HTBD[2]=?)
+1440  02 3C 4C                               PLAYSONG                      ref=0x4C3C (XMI[60]=gu68.xmi)
+1443  09 02 20                               VIDEOREF                      ref=0x2002 (HTBD[2]=ht1x.vdx)
 1446  96 8C 30 B4                            LOADSTRING                    dst=v[0x08C], values=[0, 4]
 144A  15 23 0B                               JMP                           target=0x0B23
-144D  09 06 20                               VIDEOREF                      ref=0x2006 (HTBD[6]=?)
+144D  09 06 20                               VIDEOREF                      ref=0x2006 (HTBD[6]=ht2x.vdx)
 1450  03                                     FADEIN_NEXT_VIDEO             
 1451  05                                     FIRSTFRAME_NEXT_VIDEO         
-1452  09 9B 14                               VIDEOREF                      ref=0x149B (FH[155]=?)
+1452  09 9B 14                               VIDEOREF                      ref=0x149B (FH[155]=h_8fc.vdx)
 1455  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 1459  15 E9 10                               JMP                           target=0x10E9
-145C  09 0B 20                               VIDEOREF                      ref=0x200B (HTBD[11]=?)
+145C  09 0B 20                               VIDEOREF                      ref=0x200B (HTBD[11]=htfa.vdx)
 145F  04                                     PALFADEOUT                    
 1460  15 B6 22                               JMP                           target=0x22B6
 1463  96 8C 30 B9                            LOADSTRING                    dst=v[0x08C], values=[0, 9]
 1467  03                                     FADEIN_NEXT_VIDEO             
 1468  05                                     FIRSTFRAME_NEXT_VIDEO         
-1469  09 08 18                               VIDEOREF                      ref=0x1808 (GA[8]=?)
+1469  09 08 18                               VIDEOREF                      ref=0x1808 (GA[8]=gaab.vdx)
 146C  9A D1 B0 7B 14                         STRCMP_NE_JMP                 start=v[0x0D1], values=[0], target=0x147B
 1471  96 D1 B1                               LOADSTRING                    dst=v[0x0D1], values=[1]
 1474  96 8E 32 B2                            LOADSTRING                    dst=v[0x08E], values=[2, 2]
@@ -1530,52 +1532,52 @@
 14FB  18 4D 37                               CALL                          target=0x374D
 14FE  96 8E 32 B5                            LOADSTRING                    dst=v[0x08E], values=[2, 5]
 1502  15 7B 14                               JMP                           target=0x147B
-1505  09 0E 18                               VIDEOREF                      ref=0x180E (GA[14]=?)
+1505  09 0E 18                               VIDEOREF                      ref=0x180E (GA[14]=gapo.vdx)
 1508  96 8C 30 B4                            LOADSTRING                    dst=v[0x08C], values=[0, 4]
 150C  15 23 0B                               JMP                           target=0x0B23
 150F  1A 09 01 B0 21 15                      STRCMP_NE_JMP                 start=v[0x109], values=[0], target=0x1521
 1515  23 05 01 B0 21 15                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x1521
 151B  4B 00                                  SET_VIDEO_MODE                value=0x00
 151D  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
-1521  09 00 18                               VIDEOREF                      ref=0x1800 (GA[0]=?)
+1521  09 00 18                               VIDEOREF                      ref=0x1800 (GA[0]=ga1p.vdx)
 1524  96 92 31 B4                            LOADSTRING                    dst=v[0x092], values=[1, 4]
 1528  18 8B 41                               CALL                          target=0x418B
 152B  1A 09 01 B1 37 15                      STRCMP_NE_JMP                 start=v[0x109], values=[1], target=0x1537
 1531  4B 01                                  SET_VIDEO_MODE                value=0x01
 1533  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
 1537  9A F0 E1 4E 15                         STRCMP_NE_JMP                 start=v[0x0F0], values=[49], target=0x154E
-153C  09 03 18                               VIDEOREF                      ref=0x1803 (GA[3]=?)
+153C  09 03 18                               VIDEOREF                      ref=0x1803 (GA[3]=ga2p.vdx)
 153F  18 5C 37                               CALL                          target=0x375C
 1542  96 D0 B1                               LOADSTRING                    dst=v[0x0D0], values=[1]
-1545  09 04 18                               VIDEOREF                      ref=0x1804 (GA[4]=?)
-1548  09 01 18                               VIDEOREF                      ref=0x1801 (GA[1]=?)
+1545  09 04 18                               VIDEOREF                      ref=0x1804 (GA[4]=ga2pb.vdx)
+1548  09 01 18                               VIDEOREF                      ref=0x1801 (GA[1]=ga1pb.vdx)
 154B  15 7B 14                               JMP                           target=0x147B
-154E  09 01 18                               VIDEOREF                      ref=0x1801 (GA[1]=?)
+154E  09 01 18                               VIDEOREF                      ref=0x1801 (GA[1]=ga1pb.vdx)
 1551  15 7B 14                               JMP                           target=0x147B
-1554  09 01 18                               VIDEOREF                      ref=0x1801 (GA[1]=?)
+1554  09 01 18                               VIDEOREF                      ref=0x1801 (GA[1]=ga1pb.vdx)
 1557  15 7B 14                               JMP                           target=0x147B
-155A  09 08 18                               VIDEOREF                      ref=0x1808 (GA[8]=?)
+155A  09 08 18                               VIDEOREF                      ref=0x1808 (GA[8]=gaab.vdx)
 155D  15 63 15                               JMP                           target=0x1563
-1560  09 0C 18                               VIDEOREF                      ref=0x180C (GA[12]=?)
+1560  09 0C 18                               VIDEOREF                      ref=0x180C (GA[12]=gacdb.vdx)
 1563  0B                                     INPUTLOOPSTART                
 1564  0F 83 15                               HOTSPOT_RIGHT                 target=0x1583
 1567  10 6E 15                               HOTSPOT_CENTER                target=0x156E
 156A  0E 7D 15                               HOTSPOT_LEFT                  target=0x157D
 156D  13                                     INPUTLOOPEND                  
-156E  09 0D 18                               VIDEOREF                      ref=0x180D (GA[13]=?)
+156E  09 0D 18                               VIDEOREF                      ref=0x180D (GA[13]=gaex.vdx)
 1571  03                                     FADEIN_NEXT_VIDEO             
 1572  05                                     FIRSTFRAME_NEXT_VIDEO         
-1573  09 9A 14                               VIDEOREF                      ref=0x149A (FH[154]=?)
+1573  09 9A 14                               VIDEOREF                      ref=0x149A (FH[154]=h_8fb.vdx)
 1576  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 157A  15 03 11                               JMP                           target=0x1103
-157D  09 09 18                               VIDEOREF                      ref=0x1809 (GA[9]=?)
+157D  09 09 18                               VIDEOREF                      ref=0x1809 (GA[9]=gaabb.vdx)
 1580  15 7B 14                               JMP                           target=0x147B
-1583  09 0B 18                               VIDEOREF                      ref=0x180B (GA[11]=?)
+1583  09 0B 18                               VIDEOREF                      ref=0x180B (GA[11]=gacd.vdx)
 1586  15 7B 14                               JMP                           target=0x147B
 1589  96 8C 31 B1                            LOADSTRING                    dst=v[0x08C], values=[1, 1]
 158D  03                                     FADEIN_NEXT_VIDEO             
 158E  05                                     FIRSTFRAME_NEXT_VIDEO         
-158F  09 69 28                               VIDEOREF                      ref=0x2869 (JHEK[105]=?)
+158F  09 69 28                               VIDEOREF                      ref=0x2869 (JHEK[105]=jhab.vdx)
 1592  9A BC B0 A1 15                         STRCMP_NE_JMP                 start=v[0x0BC], values=[0], target=0x15A1
 1597  96 BC B1                               LOADSTRING                    dst=v[0x0BC], values=[1]
 159A  96 8E 34 B3                            LOADSTRING                    dst=v[0x08E], values=[4, 3]
@@ -1584,7 +1586,7 @@
 15A6  9A BA B0 BE 15                         STRCMP_NE_JMP                 start=v[0x0BA], values=[0], target=0x15BE
 15AB  96 BA B1                               LOADSTRING                    dst=v[0x0BA], values=[1]
 15AE  96 BB B1                               LOADSTRING                    dst=v[0x0BB], values=[1]
-15B1  02 1B 4C                               PLAYSONG                      ref=0x4C1B (XMI[27]=?)
+15B1  02 1B 4C                               PLAYSONG                      ref=0x4C1B (XMI[27]=gu30.xmi)
 15B4  18 7D 38                               CALL                          target=0x387D
 15B7  18 8F 38                               CALL                          target=0x388F
 15BA  96 8E 34 B4                            LOADSTRING                    dst=v[0x08E], values=[4, 4]
@@ -1606,21 +1608,21 @@
 161D  0E 97 16                               HOTSPOT_LEFT                  target=0x1697
 1620  0F 9D 16                               HOTSPOT_RIGHT                 target=0x169D
 1623  13                                     INPUTLOOPEND                  
-1624  09 76 28                               VIDEOREF                      ref=0x2876 (JHEK[118]=?)
+1624  09 76 28                               VIDEOREF                      ref=0x2876 (JHEK[118]=jhpu.vdx)
 1627  23 05 01 B0 33 16                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x1633
 162D  4B 00                                  SET_VIDEO_MODE                value=0x00
 162F  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
-1633  09 73 28                               VIDEOREF                      ref=0x2873 (JHEK[115]=?)
+1633  09 73 28                               VIDEOREF                      ref=0x2873 (JHEK[115]=jhfup.vdx)
 1636  18 D2 3F                               CALL                          target=0x3FD2
-1639  09 72 28                               VIDEOREF                      ref=0x2872 (JHEK[114]=?)
+1639  09 72 28                               VIDEOREF                      ref=0x2872 (JHEK[114]=jhfout.vdx)
 163C  1A 09 01 B1 48 16                      STRCMP_NE_JMP                 start=v[0x109], values=[1], target=0x1648
 1642  4B 01                                  SET_VIDEO_MODE                value=0x01
 1644  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
-1648  09 77 28                               VIDEOREF                      ref=0x2877 (JHEK[119]=?)
+1648  09 77 28                               VIDEOREF                      ref=0x2877 (JHEK[119]=jhpub.vdx)
 164B  15 92 15                               JMP                           target=0x1592
-164E  09 74 28                               VIDEOREF                      ref=0x2874 (JHEK[116]=?)
+164E  09 74 28                               VIDEOREF                      ref=0x2874 (JHEK[116]=jhmi.vdx)
 1651  9A B9 B0 89 16                         STRCMP_NE_JMP                 start=v[0x0B9], values=[0], target=0x1689
-1656  02 34 4C                               PLAYSONG                      ref=0x4C34 (XMI[52]=?)
+1656  02 34 4C                               PLAYSONG                      ref=0x4C34 (XMI[52]=gu55.xmi)
 1659  96 8E 34 B6                            LOADSTRING                    dst=v[0x08E], values=[4, 6]
 165D  96 B9 B1                               LOADSTRING                    dst=v[0x0B9], values=[1]
 1660  96 B8 B1                               LOADSTRING                    dst=v[0x0B8], values=[1]
@@ -1628,48 +1630,48 @@
 1666  96 B6 B1                               LOADSTRING                    dst=v[0x0B6], values=[1]
 1669  18 37 38                               CALL                          target=0x3837
 166C  18 46 38                               CALL                          target=0x3846
-166F  02 0F 4C                               PLAYSONG                      ref=0x4C0F (XMI[15]=?)
+166F  02 0F 4C                               PLAYSONG                      ref=0x4C0F (XMI[15]=gu18.xmi)
 1672  18 51 38                               CALL                          target=0x3851
-1675  09 75 28                               VIDEOREF                      ref=0x2875 (JHEK[117]=?)
+1675  09 75 28                               VIDEOREF                      ref=0x2875 (JHEK[117]=jhmib.vdx)
 1678  18 5C 38                               CALL                          target=0x385C
 167B  31 00 00 96 00                         MIDI_CONTROL                  value=0x0000, time=0x0096
 1680  19 96 00                               SLEEP                         ticks=0x0096
-1683  02 3A 4C                               PLAYSONG                      ref=0x4C3A (XMI[58]=?)
+1683  02 3A 4C                               PLAYSONG                      ref=0x4C3A (XMI[58]=gu63.xmi)
 1686  15 92 15                               JMP                           target=0x1592
 1689  0B                                     INPUTLOOPSTART                
 168A  0E 91 16                               HOTSPOT_LEFT                  target=0x1691
 168D  0F 91 16                               HOTSPOT_RIGHT                 target=0x1691
 1690  13                                     INPUTLOOPEND                  
-1691  09 75 28                               VIDEOREF                      ref=0x2875 (JHEK[117]=?)
+1691  09 75 28                               VIDEOREF                      ref=0x2875 (JHEK[117]=jhmib.vdx)
 1694  15 92 15                               JMP                           target=0x1592
-1697  09 6E 28                               VIDEOREF                      ref=0x286E (JHEK[110]=?)
+1697  09 6E 28                               VIDEOREF                      ref=0x286E (JHEK[110]=jhcdb.vdx)
 169A  15 A3 16                               JMP                           target=0x16A3
-169D  09 69 28                               VIDEOREF                      ref=0x2869 (JHEK[105]=?)
+169D  09 69 28                               VIDEOREF                      ref=0x2869 (JHEK[105]=jhab.vdx)
 16A0  15 A3 16                               JMP                           target=0x16A3
 16A3  0B                                     INPUTLOOPSTART                
 16A4  0D D2 01 65 00 57 02 76 01 C3 16 00    HOTSPOT_RECT                  left=0x01D2, top=0x0065, right=0x0257, bottom=0x0176, target=0x16C3, cursor=0x00
 16B0  0F BD 16                               HOTSPOT_RIGHT                 target=0x16BD
 16B3  0E B7 16                               HOTSPOT_LEFT                  target=0x16B7
 16B6  13                                     INPUTLOOPEND                  
-16B7  09 6A 28                               VIDEOREF                      ref=0x286A (JHEK[106]=?)
+16B7  09 6A 28                               VIDEOREF                      ref=0x286A (JHEK[106]=jhabb.vdx)
 16BA  15 92 15                               JMP                           target=0x1592
-16BD  09 6D 28                               VIDEOREF                      ref=0x286D (JHEK[109]=?)
+16BD  09 6D 28                               VIDEOREF                      ref=0x286D (JHEK[109]=jhcd.vdx)
 16C0  15 92 15                               JMP                           target=0x1592
-16C3  09 71 28                               VIDEOREF                      ref=0x2871 (JHEK[113]=?)
+16C3  09 71 28                               VIDEOREF                      ref=0x2871 (JHEK[113]=jhex.vdx)
 16C6  04                                     PALFADEOUT                    
 16C7  03                                     FADEIN_NEXT_VIDEO             
 16C8  05                                     FIRSTFRAME_NEXT_VIDEO         
-16C9  09 99 14                               VIDEOREF                      ref=0x1499 (FH[153]=?)
+16C9  09 99 14                               VIDEOREF                      ref=0x1499 (FH[153]=h_8fa.vdx)
 16CC  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 16D0  15 18 11                               JMP                           target=0x1118
 16D3  96 8C 32 B0                            LOADSTRING                    dst=v[0x08C], values=[2, 0]
-16D7  09 01 00                               VIDEOREF                      ref=0x0001 (AT[1]=?)
-16DA  09 00 00                               VIDEOREF                      ref=0x0000 (AT[0]=?)
+16D7  09 01 00                               VIDEOREF                      ref=0x0001 (AT[1]=as_u.vdx)
+16DA  09 00 00                               VIDEOREF                      ref=0x0000 (AT[0]=as_ia.vdx)
 16DD  15 9C 2D                               JMP                           target=0x2D9C
 16E0  96 8C 32 B3                            LOADSTRING                    dst=v[0x08C], values=[2, 3]
 16E4  03                                     FADEIN_NEXT_VIDEO             
 16E5  05                                     FIRSTFRAME_NEXT_VIDEO         
-16E6  09 03 48                               VIDEOREF                      ref=0x4803 (P[3]=?)
+16E6  09 03 48                               VIDEOREF                      ref=0x4803 (P[3]=pfa.vdx)
 16E9  9A DB B0 F8 16                         STRCMP_NE_JMP                 start=v[0x0DB], values=[0], target=0x16F8
 16EE  96 DB B1                               LOADSTRING                    dst=v[0x0DB], values=[1]
 16F1  18 6E 37                               CALL                          target=0x376E
@@ -1682,9 +1684,9 @@
 1717  9A 8E 31 B2 20 17                      STRCMP_NE_JMP                 start=v[0x08E], values=[1, 2], target=0x1720
 171D  30 03 3B                               HOTSPOT_BOTTOM_4              target=0x3B03
 1720  13                                     INPUTLOOPEND                  
-1721  09 03 48                               VIDEOREF                      ref=0x4803 (P[3]=?)
+1721  09 03 48                               VIDEOREF                      ref=0x4803 (P[3]=pfa.vdx)
 1724  15 7A 17                               JMP                           target=0x177A
-1727  09 0A 48                               VIDEOREF                      ref=0x480A (P[10]=?)
+1727  09 0A 48                               VIDEOREF                      ref=0x480A (P[10]=pfdb.vdx)
 172A  15 2D 17                               JMP                           target=0x172D
 172D  9A D9 B0 3C 17                         STRCMP_NE_JMP                 start=v[0x0D9], values=[0], target=0x173C
 1732  96 D9 B1                               LOADSTRING                    dst=v[0x0D9], values=[1]
@@ -1696,21 +1698,21 @@
 1743  9A 8E 31 B5 4C 17                      STRCMP_NE_JMP                 start=v[0x08E], values=[1, 5], target=0x174C
 1749  30 03 3B                               HOTSPOT_BOTTOM_4              target=0x3B03
 174C  13                                     INPUTLOOPEND                  
-174D  09 08 48                               VIDEOREF                      ref=0x4808 (P[8]=?)
+174D  09 08 48                               VIDEOREF                      ref=0x4808 (P[8]=pfcb.vdx)
 1750  15 59 17                               JMP                           target=0x1759
-1753  09 09 48                               VIDEOREF                      ref=0x4809 (P[9]=?)
+1753  09 09 48                               VIDEOREF                      ref=0x4809 (P[9]=pfd.vdx)
 1756  15 F8 16                               JMP                           target=0x16F8
 1759  0B                                     INPUTLOOPSTART                
 175A  10 64 17                               HOTSPOT_CENTER                target=0x1764
 175D  0E 6E 17                               HOTSPOT_LEFT                  target=0x176E
 1760  0F 74 17                               HOTSPOT_RIGHT                 target=0x1774
 1763  13                                     INPUTLOOPEND                  
-1764  09 0C 48                               VIDEOREF                      ref=0x480C (P[12]=?)
+1764  09 0C 48                               VIDEOREF                      ref=0x480C (P[12]=pmu.vdx)
 1767  96 8C 30 B8                            LOADSTRING                    dst=v[0x08C], values=[0, 8]
 176B  15 36 0C                               JMP                           target=0x0C36
-176E  09 06 48                               VIDEOREF                      ref=0x4806 (P[6]=?)
+176E  09 06 48                               VIDEOREF                      ref=0x4806 (P[6]=pfbb.vdx)
 1771  15 7A 17                               JMP                           target=0x177A
-1774  09 07 48                               VIDEOREF                      ref=0x4807 (P[7]=?)
+1774  09 07 48                               VIDEOREF                      ref=0x4807 (P[7]=pfc.vdx)
 1777  15 2D 17                               JMP                           target=0x172D
 177A  0B                                     INPUTLOOPSTART                
 177B  0E A5 17                               HOTSPOT_LEFT                  target=0x17A5
@@ -1720,26 +1722,26 @@
 1792  1A 08 01 B1 A4 17                      STRCMP_NE_JMP                 start=v[0x108], values=[1], target=0x17A4
 1798  0D CE 00 4E 00 C4 01 89 01 BE 17 06    HOTSPOT_RECT                  left=0x00CE, top=0x004E, right=0x01C4, bottom=0x0189, target=0x17BE, cursor=0x06
 17A4  13                                     INPUTLOOPEND                  
-17A5  09 04 48                               VIDEOREF                      ref=0x4804 (P[4]=?)
+17A5  09 04 48                               VIDEOREF                      ref=0x4804 (P[4]=pfab.vdx)
 17A8  15 F8 16                               JMP                           target=0x16F8
-17AB  09 05 48                               VIDEOREF                      ref=0x4805 (P[5]=?)
+17AB  09 05 48                               VIDEOREF                      ref=0x4805 (P[5]=pfb.vdx)
 17AE  15 59 17                               JMP                           target=0x1759
 17B1  0A                                     VIDEOFLAG5_ON                 
-17B2  02 0B 4C                               PLAYSONG                      ref=0x4C0B (XMI[11]=?)
-17B5  09 29 48                               VIDEOREF                      ref=0x4829 (P[41]=?)
+17B2  02 0B 4C                               PLAYSONG                      ref=0x4C0B (XMI[11]=gu15.xmi)
+17B5  09 29 48                               VIDEOREF                      ref=0x4829 (P[41]=psta.vdx)
 17B8  0A                                     VIDEOFLAG5_ON                 
-17B9  09 29 48                               VIDEOREF                      ref=0x4829 (P[41]=?)
+17B9  09 29 48                               VIDEOREF                      ref=0x4829 (P[41]=psta.vdx)
 17BC  17 00                                  RET                           value=0x00
 17BE  1A 09 01 B0 D0 17                      STRCMP_NE_JMP                 start=v[0x109], values=[0], target=0x17D0
 17C4  23 05 01 B0 D0 17                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x17D0
 17CA  4B 00                                  SET_VIDEO_MODE                value=0x00
 17CC  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
-17D0  09 01 48                               VIDEOREF                      ref=0x4801 (P[1]=?)
+17D0  09 01 48                               VIDEOREF                      ref=0x4801 (P[1]=p1_2.vdx)
 17D3  18 BD 40                               CALL                          target=0x40BD
 17D6  1A 09 01 B1 E2 17                      STRCMP_NE_JMP                 start=v[0x109], values=[1], target=0x17E2
 17DC  4B 01                                  SET_VIDEO_MODE                value=0x01
 17DE  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
-17E2  09 02 48                               VIDEOREF                      ref=0x4802 (P[2]=?)
+17E2  09 02 48                               VIDEOREF                      ref=0x4802 (P[2]=p1_2b.vdx)
 17E5  9A ED E1 ED 17                         STRCMP_NE_JMP                 start=v[0x0ED], values=[49], target=0x17ED
 17EA  18 B1 17                               CALL                          target=0x17B1
 17ED  15 7A 17                               JMP                           target=0x177A
@@ -1753,12 +1755,12 @@
 1807  15 F8 16                               JMP                           target=0x16F8
 180A  96 8C 30 B5                            LOADSTRING                    dst=v[0x08C], values=[0, 5]
 180E  03                                     FADEIN_NEXT_VIDEO             
-180F  02 12 4C                               PLAYSONG                      ref=0x4C12 (XMI[18]=?)
+180F  02 12 4C                               PLAYSONG                      ref=0x4C12 (XMI[18]=gu21.xmi)
 1812  1A 09 01 B0 24 18                      STRCMP_NE_JMP                 start=v[0x109], values=[0], target=0x1824
 1818  23 05 01 B0 24 18                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x1824
 181E  4B 00                                  SET_VIDEO_MODE                value=0x00
 1820  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
-1824  09 32 3C                               VIDEOREF                      ref=0x3C32 (MC[50]=?)
+1824  09 32 3C                               VIDEOREF                      ref=0x3C32 (MC[50]=mg_in.vdx)
 1827  18 33 40                               CALL                          target=0x4033
 182A  1A 09 01 B1 36 18                      STRCMP_NE_JMP                 start=v[0x109], values=[1], target=0x1836
 1830  4B 01                                  SET_VIDEO_MODE                value=0x01
@@ -1766,14 +1768,14 @@
 1836  1A 02 01 B1 45 18                      STRCMP_NE_JMP                 start=v[0x102], values=[1], target=0x1845
 183C  46                                     RESOURCE_CONTEXT_SAVE         
 183D  07                                     VIDEOFLAG7_ON                 
-183E  09 8C 50                               VIDEOREF                      ref=0x508C (GAMWAV[140]=?)
+183E  09 8C 50                               VIDEOREF                      ref=0x508C (GAMWAV[140]=gen_e_6.vdx)
 1841  47                                     RESOURCE_CONTEXT_RESTORE      
 1842  15 57 18                               JMP                           target=0x1857
-1845  09 34 3C                               VIDEOREF                      ref=0x3C34 (MC[52]=?)
-1848  09 33 3C                               VIDEOREF                      ref=0x3C33 (MC[51]=?)
+1845  09 34 3C                               VIDEOREF                      ref=0x3C34 (MC[52]=mg_in_b.vdx)
+1848  09 33 3C                               VIDEOREF                      ref=0x3C33 (MC[51]=mg_inex.vdx)
 184B  03                                     FADEIN_NEXT_VIDEO             
 184C  05                                     FIRSTFRAME_NEXT_VIDEO         
-184D  09 11 2C                               VIDEOREF                      ref=0x2C11 (K[17]=?)
+184D  09 11 2C                               VIDEOREF                      ref=0x2C11 (K[17]=k_2bb.vdx)
 1850  96 8C 30 B4                            LOADSTRING                    dst=v[0x08C], values=[0, 4]
 1854  15 A7 0B                               JMP                           target=0x0BA7
 1857  96 8C 30 B5                            LOADSTRING                    dst=v[0x08C], values=[0, 5]
@@ -1785,10 +1787,10 @@
 1873  4B 00                                  SET_VIDEO_MODE                value=0x00
 1875  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
 1879  96 8C 30 B6                            LOADSTRING                    dst=v[0x08C], values=[0, 6]
-187D  02 13 4C                               PLAYSONG                      ref=0x4C13 (XMI[19]=?)
+187D  02 13 4C                               PLAYSONG                      ref=0x4C13 (XMI[19]=gu22.xmi)
 1880  03                                     FADEIN_NEXT_VIDEO             
 1881  05                                     FIRSTFRAME_NEXT_VIDEO         
-1882  09 6C 3C                               VIDEOREF                      ref=0x3C6C (MC[108]=?)
+1882  09 6C 3C                               VIDEOREF                      ref=0x3C6C (MC[108]=crea.vdx)
 1885  96 92 30 B9                            LOADSTRING                    dst=v[0x092], values=[0, 9]
 1889  A3 F4 E1 91 18                         STRCMP_EQ_JMP                 start=v[0x0F4], values=[49], target=0x1891
 188E  18 7E 3F                               CALL                          target=0x3F7E
@@ -1799,29 +1801,29 @@
 18A2  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
 18A6  A3 F4 E1 BE 18                         STRCMP_EQ_JMP                 start=v[0x0F4], values=[49], target=0x18BE
 18AB  05                                     FIRSTFRAME_NEXT_VIDEO         
-18AC  09 6C 3C                               VIDEOREF                      ref=0x3C6C (MC[108]=?)
-18AF  09 6C 3C                               VIDEOREF                      ref=0x3C6C (MC[108]=?)
-18B2  09 6D 3C                               VIDEOREF                      ref=0x3C6D (MC[109]=?)
-18B5  09 6E 3C                               VIDEOREF                      ref=0x3C6E (MC[110]=?)
-18B8  09 6F 3C                               VIDEOREF                      ref=0x3C6F (MC[111]=?)
+18AC  09 6C 3C                               VIDEOREF                      ref=0x3C6C (MC[108]=crea.vdx)
+18AF  09 6C 3C                               VIDEOREF                      ref=0x3C6C (MC[108]=crea.vdx)
+18B2  09 6D 3C                               VIDEOREF                      ref=0x3C6D (MC[109]=creb.vdx)
+18B5  09 6E 3C                               VIDEOREF                      ref=0x3C6E (MC[110]=crec.vdx)
+18B8  09 6F 3C                               VIDEOREF                      ref=0x3C6F (MC[111]=cred.vdx)
 18BB  15 B6 22                               JMP                           target=0x22B6
-18BE  09 6C 3C                               VIDEOREF                      ref=0x3C6C (MC[108]=?)
+18BE  09 6C 3C                               VIDEOREF                      ref=0x3C6C (MC[108]=crea.vdx)
 18C1  9A AA B0 D0 18                         STRCMP_NE_JMP                 start=v[0x0AA], values=[0], target=0x18D0
 18C6  96 AA B1                               LOADSTRING                    dst=v[0x0AA], values=[1]
 18C9  96 8E 36 B0                            LOADSTRING                    dst=v[0x08E], values=[6, 0]
 18CD  18 F1 3A                               CALL                          target=0x3AF1
-18D0  09 6D 3C                               VIDEOREF                      ref=0x3C6D (MC[109]=?)
+18D0  09 6D 3C                               VIDEOREF                      ref=0x3C6D (MC[109]=creb.vdx)
 18D3  0B                                     INPUTLOOPSTART                
 18D4  11 D8 18                               HOTSPOT_CENTER_2              target=0x18D8
 18D7  13                                     INPUTLOOPEND                  
-18D8  09 6E 3C                               VIDEOREF                      ref=0x3C6E (MC[110]=?)
-18DB  02 15 4C                               PLAYSONG                      ref=0x4C15 (XMI[21]=?)
-18DE  09 6F 3C                               VIDEOREF                      ref=0x3C6F (MC[111]=?)
+18D8  09 6E 3C                               VIDEOREF                      ref=0x3C6E (MC[110]=crec.vdx)
+18DB  02 15 4C                               PLAYSONG                      ref=0x4C15 (XMI[21]=gu24.xmi)
+18DE  09 6F 3C                               VIDEOREF                      ref=0x3C6F (MC[111]=cred.vdx)
 18E1  03                                     FADEIN_NEXT_VIDEO             
-18E2  09 31 3C                               VIDEOREF                      ref=0x3C31 (MC[49]=?)
+18E2  09 31 3C                               VIDEOREF                      ref=0x3C31 (MC[49]=mg_exout.vdx)
 18E5  03                                     FADEIN_NEXT_VIDEO             
 18E6  05                                     FIRSTFRAME_NEXT_VIDEO         
-18E7  09 11 2C                               VIDEOREF                      ref=0x2C11 (K[17]=?)
+18E7  09 11 2C                               VIDEOREF                      ref=0x2C11 (K[17]=k_2bb.vdx)
 18EA  96 8C 30 B4                            LOADSTRING                    dst=v[0x08C], values=[0, 4]
 18EE  15 A7 0B                               JMP                           target=0x0BA7
 18F1  23 05 01 B0 FD 18                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x18FD
@@ -1833,11 +1835,11 @@
 1908  31 00 00 E8 03                         MIDI_CONTROL                  value=0x0000, time=0x03E8
 190D  04                                     PALFADEOUT                    
 190E  35                                     VIDEOFLAG7_OFF                
-190F  09 18 24                               VIDEOREF                      ref=0x2418 (INTRO[24]=?)
+190F  09 18 24                               VIDEOREF                      ref=0x2418 (INTRO[24]=sphinx.vdx)
 1912  0A                                     VIDEOFLAG5_ON                 
-1913  09 21 24                               VIDEOREF                      ref=0x2421 (INTRO[33]=?)
+1913  09 21 24                               VIDEOREF                      ref=0x2421 (INTRO[33]=sphmen2i.vdx)
 1916  0A                                     VIDEOFLAG5_ON                 
-1917  09 25 24                               VIDEOREF                      ref=0x2425 (INTRO[37]=?)
+1917  09 25 24                               VIDEOREF                      ref=0x2425 (INTRO[37]=sphprm1i.vdx)
 191A  0B                                     INPUTLOOPSTART                
 191B  0D 0F 01 F0 00 71 01 08 01 04 1F 08    HOTSPOT_RECT                  left=0x010F, top=0x00F0, right=0x0171, bottom=0x0108, target=0x1F04, cursor=0x08
 1927  0D 12 01 09 01 6F 01 24 01 8E 19 08    HOTSPOT_RECT                  left=0x0112, top=0x0109, right=0x016F, bottom=0x0124, target=0x198E, cursor=0x08
@@ -1853,52 +1855,52 @@
 198E  2C F1 18 08                            SET_HOTSPOT_TOP               target=0x18F1, cursor=0x08
 1992  22                                     COPY_BG_TO_FG                 
 1993  07                                     VIDEOFLAG7_ON                 
-1994  09 1D 24                               VIDEOREF                      ref=0x241D (INTRO[29]=?)
+1994  09 1D 24                               VIDEOREF                      ref=0x241D (INTRO[29]=thetest1.vdx)
 1997  22                                     COPY_BG_TO_FG                 
 1998  07                                     VIDEOFLAG7_ON                 
 1999  9A FB E1 A4 19                         STRCMP_NE_JMP                 start=v[0x0FB], values=[49], target=0x19A4
-199E  09 33 24                               VIDEOREF                      ref=0x2433 (INTRO[51]=?)
+199E  09 33 24                               VIDEOREF                      ref=0x2433 (INTRO[51]=00c.vdx)
 19A1  15 A7 19                               JMP                           target=0x19A7
-19A4  09 32 24                               VIDEOREF                      ref=0x2432 (INTRO[50]=?)
+19A4  09 32 24                               VIDEOREF                      ref=0x2432 (INTRO[50]=00b.vdx)
 19A7  22                                     COPY_BG_TO_FG                 
 19A8  07                                     VIDEOFLAG7_ON                 
 19A9  9A F5 E1 B1 19                         STRCMP_NE_JMP                 start=v[0x0F5], values=[49], target=0x19B1
-19AE  09 35 24                               VIDEOREF                      ref=0x2435 (INTRO[53]=?)
+19AE  09 35 24                               VIDEOREF                      ref=0x2435 (INTRO[53]=01c.vdx)
 19B1  22                                     COPY_BG_TO_FG                 
 19B2  07                                     VIDEOFLAG7_ON                 
 19B3  9A FA E1 BB 19                         STRCMP_NE_JMP                 start=v[0x0FA], values=[49], target=0x19BB
-19B8  09 3F 24                               VIDEOREF                      ref=0x243F (INTRO[63]=?)
+19B8  09 3F 24                               VIDEOREF                      ref=0x243F (INTRO[63]=06c.vdx)
 19BB  A3 99 B0 DA 19                         STRCMP_EQ_JMP                 start=v[0x099], values=[0], target=0x19DA
 19C0  9A F3 E1 DA 19                         STRCMP_NE_JMP                 start=v[0x0F3], values=[49], target=0x19DA
 19C5  9A E9 E1 DA 19                         STRCMP_NE_JMP                 start=v[0x0E9], values=[49], target=0x19DA
 19CA  22                                     COPY_BG_TO_FG                 
 19CB  07                                     VIDEOFLAG7_ON                 
 19CC  9A F6 E1 D7 19                         STRCMP_NE_JMP                 start=v[0x0F6], values=[49], target=0x19D7
-19D1  09 37 24                               VIDEOREF                      ref=0x2437 (INTRO[55]=?)
+19D1  09 37 24                               VIDEOREF                      ref=0x2437 (INTRO[55]=02c.vdx)
 19D4  15 DA 19                               JMP                           target=0x19DA
-19D7  09 36 24                               VIDEOREF                      ref=0x2436 (INTRO[54]=?)
+19D7  09 36 24                               VIDEOREF                      ref=0x2436 (INTRO[54]=02b.vdx)
 19DA  9A FA E1 EF 19                         STRCMP_NE_JMP                 start=v[0x0FA], values=[49], target=0x19EF
 19DF  22                                     COPY_BG_TO_FG                 
 19E0  07                                     VIDEOFLAG7_ON                 
 19E1  9A F9 E1 EC 19                         STRCMP_NE_JMP                 start=v[0x0F9], values=[49], target=0x19EC
-19E6  09 39 24                               VIDEOREF                      ref=0x2439 (INTRO[57]=?)
+19E6  09 39 24                               VIDEOREF                      ref=0x2439 (INTRO[57]=03c.vdx)
 19E9  15 EF 19                               JMP                           target=0x19EF
-19EC  09 38 24                               VIDEOREF                      ref=0x2438 (INTRO[56]=?)
+19EC  09 38 24                               VIDEOREF                      ref=0x2438 (INTRO[56]=03b.vdx)
 19EF  A3 99 B0 09 1A                         STRCMP_EQ_JMP                 start=v[0x099], values=[0], target=0x1A09
 19F4  9A F3 E1 09 1A                         STRCMP_NE_JMP                 start=v[0x0F3], values=[49], target=0x1A09
 19F9  22                                     COPY_BG_TO_FG                 
 19FA  07                                     VIDEOFLAG7_ON                 
 19FB  9A ED E1 06 1A                         STRCMP_NE_JMP                 start=v[0x0ED], values=[49], target=0x1A06
-1A00  09 3D 24                               VIDEOREF                      ref=0x243D (INTRO[61]=?)
+1A00  09 3D 24                               VIDEOREF                      ref=0x243D (INTRO[61]=05c.vdx)
 1A03  15 09 1A                               JMP                           target=0x1A09
-1A06  09 3C 24                               VIDEOREF                      ref=0x243C (INTRO[60]=?)
+1A06  09 3C 24                               VIDEOREF                      ref=0x243C (INTRO[60]=05b.vdx)
 1A09  9A F9 E1 1E 1A                         STRCMP_NE_JMP                 start=v[0x0F9], values=[49], target=0x1A1E
 1A0E  22                                     COPY_BG_TO_FG                 
 1A0F  07                                     VIDEOFLAG7_ON                 
 1A10  9A F8 E1 1B 1A                         STRCMP_NE_JMP                 start=v[0x0F8], values=[49], target=0x1A1B
-1A15  09 3B 24                               VIDEOREF                      ref=0x243B (INTRO[59]=?)
+1A15  09 3B 24                               VIDEOREF                      ref=0x243B (INTRO[59]=04c.vdx)
 1A18  15 1E 1A                               JMP                           target=0x1A1E
-1A1B  09 3A 24                               VIDEOREF                      ref=0x243A (INTRO[58]=?)
+1A1B  09 3A 24                               VIDEOREF                      ref=0x243A (INTRO[58]=04b.vdx)
 1A1E  22                                     COPY_BG_TO_FG                 
 1A1F  0B                                     INPUTLOOPSTART                
 1A20  0D 39 01 F6 00 7B 01 3C 01 99 1A 08    HOTSPOT_RECT                  left=0x0139, top=0x00F6, right=0x017B, bottom=0x013C, target=0x1A99, cursor=0x08
@@ -1908,63 +1910,63 @@
 1A49  13                                     INPUTLOOPEND                  
 1A4A  22                                     COPY_BG_TO_FG                 
 1A4B  07                                     VIDEOFLAG7_ON                 
-1A4C  09 1C 24                               VIDEOREF                      ref=0x241C (INTRO[28]=?)
+1A4C  09 1C 24                               VIDEOREF                      ref=0x241C (INTRO[28]=thetest0.vdx)
 1A4F  22                                     COPY_BG_TO_FG                 
 1A50  07                                     VIDEOFLAG7_ON                 
 1A51  9A F8 E1 7C 1A                         STRCMP_NE_JMP                 start=v[0x0F8], values=[49], target=0x1A7C
-1A56  09 5B 24                               VIDEOREF                      ref=0x245B (INTRO[91]=?)
+1A56  09 5B 24                               VIDEOREF                      ref=0x245B (INTRO[91]=20c.vdx)
 1A59  22                                     COPY_BG_TO_FG                 
 1A5A  07                                     VIDEOFLAG7_ON                 
 1A5B  9A F4 B0 66 1A                         STRCMP_NE_JMP                 start=v[0x0F4], values=[0], target=0x1A66
-1A60  09 5C 24                               VIDEOREF                      ref=0x245C (INTRO[92]=?)
+1A60  09 5C 24                               VIDEOREF                      ref=0x245C (INTRO[92]=21b.vdx)
 1A63  15 79 1A                               JMP                           target=0x1A79
-1A66  09 5D 24                               VIDEOREF                      ref=0x245D (INTRO[93]=?)
+1A66  09 5D 24                               VIDEOREF                      ref=0x245D (INTRO[93]=21c.vdx)
 1A69  22                                     COPY_BG_TO_FG                 
 1A6A  07                                     VIDEOFLAG7_ON                 
 1A6B  9A F4 E1 76 1A                         STRCMP_NE_JMP                 start=v[0x0F4], values=[49], target=0x1A76
-1A70  09 5F 24                               VIDEOREF                      ref=0x245F (INTRO[95]=?)
+1A70  09 5F 24                               VIDEOREF                      ref=0x245F (INTRO[95]=22c.vdx)
 1A73  15 79 1A                               JMP                           target=0x1A79
-1A76  09 5E 24                               VIDEOREF                      ref=0x245E (INTRO[94]=?)
+1A76  09 5E 24                               VIDEOREF                      ref=0x245E (INTRO[94]=22b.vdx)
 1A79  15 7F 1A                               JMP                           target=0x1A7F
-1A7C  09 5A 24                               VIDEOREF                      ref=0x245A (INTRO[90]=?)
+1A7C  09 5A 24                               VIDEOREF                      ref=0x245A (INTRO[90]=20b.vdx)
 1A7F  0B                                     INPUTLOOPSTART                
 1A80  0D A1 00 C1 00 E8 01 48 01 92 19 08    HOTSPOT_RECT                  left=0x00A1, top=0x00C1, right=0x01E8, bottom=0x0148, target=0x1992, cursor=0x08
 1A8C  0D D5 00 61 01 AA 01 76 01 F1 18 08    HOTSPOT_RECT                  left=0x00D5, top=0x0161, right=0x01AA, bottom=0x0176, target=0x18F1, cursor=0x08
 1A98  13                                     INPUTLOOPEND                  
 1A99  22                                     COPY_BG_TO_FG                 
 1A9A  07                                     VIDEOFLAG7_ON                 
-1A9B  09 1E 24                               VIDEOREF                      ref=0x241E (INTRO[30]=?)
+1A9B  09 1E 24                               VIDEOREF                      ref=0x241E (INTRO[30]=thetest2.vdx)
 1A9E  22                                     COPY_BG_TO_FG                 
 1A9F  07                                     VIDEOFLAG7_ON                 
-1AA0  09 40 24                               VIDEOREF                      ref=0x2440 (INTRO[64]=?)
+1AA0  09 40 24                               VIDEOREF                      ref=0x2440 (INTRO[64]=07b.vdx)
 1AA3  9A FA E1 B8 1A                         STRCMP_NE_JMP                 start=v[0x0FA], values=[49], target=0x1AB8
 1AA8  22                                     COPY_BG_TO_FG                 
 1AA9  07                                     VIDEOFLAG7_ON                 
 1AAA  9A F0 E1 B5 1A                         STRCMP_NE_JMP                 start=v[0x0F0], values=[49], target=0x1AB5
-1AAF  09 43 24                               VIDEOREF                      ref=0x2443 (INTRO[67]=?)
+1AAF  09 43 24                               VIDEOREF                      ref=0x2443 (INTRO[67]=08c.vdx)
 1AB2  15 B8 1A                               JMP                           target=0x1AB8
-1AB5  09 42 24                               VIDEOREF                      ref=0x2442 (INTRO[66]=?)
+1AB5  09 42 24                               VIDEOREF                      ref=0x2442 (INTRO[66]=08b.vdx)
 1AB8  9A FA E1 CD 1A                         STRCMP_NE_JMP                 start=v[0x0FA], values=[49], target=0x1ACD
 1ABD  22                                     COPY_BG_TO_FG                 
 1ABE  07                                     VIDEOFLAG7_ON                 
 1ABF  9A E8 E1 CA 1A                         STRCMP_NE_JMP                 start=v[0x0E8], values=[49], target=0x1ACA
-1AC4  09 45 24                               VIDEOREF                      ref=0x2445 (INTRO[69]=?)
+1AC4  09 45 24                               VIDEOREF                      ref=0x2445 (INTRO[69]=09c.vdx)
 1AC7  15 CD 1A                               JMP                           target=0x1ACD
-1ACA  09 44 24                               VIDEOREF                      ref=0x2444 (INTRO[68]=?)
+1ACA  09 44 24                               VIDEOREF                      ref=0x2444 (INTRO[68]=09b.vdx)
 1ACD  9A FA E1 E2 1A                         STRCMP_NE_JMP                 start=v[0x0FA], values=[49], target=0x1AE2
 1AD2  22                                     COPY_BG_TO_FG                 
 1AD3  07                                     VIDEOFLAG7_ON                 
 1AD4  9A F1 E1 DF 1A                         STRCMP_NE_JMP                 start=v[0x0F1], values=[49], target=0x1ADF
-1AD9  09 47 24                               VIDEOREF                      ref=0x2447 (INTRO[71]=?)
+1AD9  09 47 24                               VIDEOREF                      ref=0x2447 (INTRO[71]=10c.vdx)
 1ADC  15 E2 1A                               JMP                           target=0x1AE2
-1ADF  09 46 24                               VIDEOREF                      ref=0x2446 (INTRO[70]=?)
+1ADF  09 46 24                               VIDEOREF                      ref=0x2446 (INTRO[70]=10b.vdx)
 1AE2  A3 99 B0 F7 1A                         STRCMP_EQ_JMP                 start=v[0x099], values=[0], target=0x1AF7
 1AE7  22                                     COPY_BG_TO_FG                 
 1AE8  07                                     VIDEOFLAG7_ON                 
 1AE9  9A EC E1 F4 1A                         STRCMP_NE_JMP                 start=v[0x0EC], values=[49], target=0x1AF4
-1AEE  09 49 24                               VIDEOREF                      ref=0x2449 (INTRO[73]=?)
+1AEE  09 49 24                               VIDEOREF                      ref=0x2449 (INTRO[73]=11c.vdx)
 1AF1  15 F7 1A                               JMP                           target=0x1AF7
-1AF4  09 48 24                               VIDEOREF                      ref=0x2448 (INTRO[72]=?)
+1AF4  09 48 24                               VIDEOREF                      ref=0x2448 (INTRO[72]=11b.vdx)
 1AF7  9A EB E1 39 1B                         STRCMP_NE_JMP                 start=v[0x0EB], values=[49], target=0x1B39
 1AFC  9A F4 E1 39 1B                         STRCMP_NE_JMP                 start=v[0x0F4], values=[49], target=0x1B39
 1B01  9A F7 E1 39 1B                         STRCMP_NE_JMP                 start=v[0x0F7], values=[49], target=0x1B39
@@ -1978,58 +1980,58 @@
 1B29  22                                     COPY_BG_TO_FG                 
 1B2A  07                                     VIDEOFLAG7_ON                 
 1B2B  9A F2 E1 36 1B                         STRCMP_NE_JMP                 start=v[0x0F2], values=[49], target=0x1B36
-1B30  09 4B 24                               VIDEOREF                      ref=0x244B (INTRO[75]=?)
+1B30  09 4B 24                               VIDEOREF                      ref=0x244B (INTRO[75]=12c.vdx)
 1B33  15 39 1B                               JMP                           target=0x1B39
-1B36  09 4A 24                               VIDEOREF                      ref=0x244A (INTRO[74]=?)
+1B36  09 4A 24                               VIDEOREF                      ref=0x244A (INTRO[74]=12b.vdx)
 1B39  A3 99 B0 4E 1B                         STRCMP_EQ_JMP                 start=v[0x099], values=[0], target=0x1B4E
 1B3E  22                                     COPY_BG_TO_FG                 
 1B3F  07                                     VIDEOFLAG7_ON                 
 1B40  9A EE E1 4B 1B                         STRCMP_NE_JMP                 start=v[0x0EE], values=[49], target=0x1B4B
-1B45  09 4F 24                               VIDEOREF                      ref=0x244F (INTRO[79]=?)
+1B45  09 4F 24                               VIDEOREF                      ref=0x244F (INTRO[79]=14c.vdx)
 1B48  15 4E 1B                               JMP                           target=0x1B4E
-1B4B  09 4E 24                               VIDEOREF                      ref=0x244E (INTRO[78]=?)
+1B4B  09 4E 24                               VIDEOREF                      ref=0x244E (INTRO[78]=14b.vdx)
 1B4E  A3 99 B0 63 1B                         STRCMP_EQ_JMP                 start=v[0x099], values=[0], target=0x1B63
 1B53  22                                     COPY_BG_TO_FG                 
 1B54  07                                     VIDEOFLAG7_ON                 
 1B55  9A F7 E1 60 1B                         STRCMP_NE_JMP                 start=v[0x0F7], values=[49], target=0x1B60
-1B5A  09 4D 24                               VIDEOREF                      ref=0x244D (INTRO[77]=?)
+1B5A  09 4D 24                               VIDEOREF                      ref=0x244D (INTRO[77]=13c.vdx)
 1B5D  15 63 1B                               JMP                           target=0x1B63
-1B60  09 4C 24                               VIDEOREF                      ref=0x244C (INTRO[76]=?)
+1B60  09 4C 24                               VIDEOREF                      ref=0x244C (INTRO[76]=13b.vdx)
 1B63  A3 99 B0 78 1B                         STRCMP_EQ_JMP                 start=v[0x099], values=[0], target=0x1B78
 1B68  22                                     COPY_BG_TO_FG                 
 1B69  07                                     VIDEOFLAG7_ON                 
 1B6A  9A E9 E1 75 1B                         STRCMP_NE_JMP                 start=v[0x0E9], values=[49], target=0x1B75
-1B6F  09 55 24                               VIDEOREF                      ref=0x2455 (INTRO[85]=?)
+1B6F  09 55 24                               VIDEOREF                      ref=0x2455 (INTRO[85]=17c.vdx)
 1B72  15 78 1B                               JMP                           target=0x1B78
-1B75  09 54 24                               VIDEOREF                      ref=0x2454 (INTRO[84]=?)
+1B75  09 54 24                               VIDEOREF                      ref=0x2454 (INTRO[84]=17b.vdx)
 1B78  9A E9 E1 8D 1B                         STRCMP_NE_JMP                 start=v[0x0E9], values=[49], target=0x1B8D
 1B7D  22                                     COPY_BG_TO_FG                 
 1B7E  07                                     VIDEOFLAG7_ON                 
 1B7F  9A F3 E1 8A 1B                         STRCMP_NE_JMP                 start=v[0x0F3], values=[49], target=0x1B8A
-1B84  09 53 24                               VIDEOREF                      ref=0x2453 (INTRO[83]=?)
+1B84  09 53 24                               VIDEOREF                      ref=0x2453 (INTRO[83]=16c.vdx)
 1B87  15 8D 1B                               JMP                           target=0x1B8D
-1B8A  09 52 24                               VIDEOREF                      ref=0x2452 (INTRO[82]=?)
+1B8A  09 52 24                               VIDEOREF                      ref=0x2452 (INTRO[82]=16b.vdx)
 1B8D  9A F3 E1 A2 1B                         STRCMP_NE_JMP                 start=v[0x0F3], values=[49], target=0x1BA2
 1B92  22                                     COPY_BG_TO_FG                 
 1B93  07                                     VIDEOFLAG7_ON                 
 1B94  9A EB E1 9F 1B                         STRCMP_NE_JMP                 start=v[0x0EB], values=[49], target=0x1B9F
-1B99  09 51 24                               VIDEOREF                      ref=0x2451 (INTRO[81]=?)
+1B99  09 51 24                               VIDEOREF                      ref=0x2451 (INTRO[81]=15c.vdx)
 1B9C  15 A2 1B                               JMP                           target=0x1BA2
-1B9F  09 50 24                               VIDEOREF                      ref=0x2450 (INTRO[80]=?)
+1B9F  09 50 24                               VIDEOREF                      ref=0x2450 (INTRO[80]=15b.vdx)
 1BA2  9A FA E1 B7 1B                         STRCMP_NE_JMP                 start=v[0x0FA], values=[49], target=0x1BB7
 1BA7  22                                     COPY_BG_TO_FG                 
 1BA8  07                                     VIDEOFLAG7_ON                 
 1BA9  9A EF E1 B4 1B                         STRCMP_NE_JMP                 start=v[0x0EF], values=[49], target=0x1BB4
-1BAE  09 57 24                               VIDEOREF                      ref=0x2457 (INTRO[87]=?)
+1BAE  09 57 24                               VIDEOREF                      ref=0x2457 (INTRO[87]=18c.vdx)
 1BB1  15 B7 1B                               JMP                           target=0x1BB7
-1BB4  09 56 24                               VIDEOREF                      ref=0x2456 (INTRO[86]=?)
+1BB4  09 56 24                               VIDEOREF                      ref=0x2456 (INTRO[86]=18b.vdx)
 1BB7  A3 99 B0 CC 1B                         STRCMP_EQ_JMP                 start=v[0x099], values=[0], target=0x1BCC
 1BBC  22                                     COPY_BG_TO_FG                 
 1BBD  07                                     VIDEOFLAG7_ON                 
 1BBE  9A EA E1 C9 1B                         STRCMP_NE_JMP                 start=v[0x0EA], values=[49], target=0x1BC9
-1BC3  09 59 24                               VIDEOREF                      ref=0x2459 (INTRO[89]=?)
+1BC3  09 59 24                               VIDEOREF                      ref=0x2459 (INTRO[89]=19c.vdx)
 1BC6  15 CC 1B                               JMP                           target=0x1BCC
-1BC9  09 58 24                               VIDEOREF                      ref=0x2458 (INTRO[88]=?)
+1BC9  09 58 24                               VIDEOREF                      ref=0x2458 (INTRO[88]=19b.vdx)
 1BCC  0B                                     INPUTLOOPSTART                
 1BCD  0D 64 01 09 01 A2 01 53 01 92 19 08    HOTSPOT_RECT                  left=0x0164, top=0x0109, right=0x01A2, bottom=0x0153, target=0x1992, cursor=0x08
 1BD9  0D D5 00 61 01 AA 01 76 01 F1 18 08    HOTSPOT_RECT                  left=0x00D5, top=0x0161, right=0x01AA, bottom=0x0176, target=0x18F1, cursor=0x08
@@ -2040,7 +2042,7 @@
 1BF2  2C F1 18 08                            SET_HOTSPOT_TOP               target=0x18F1, cursor=0x08
 1BF6  38                                     RESTORESTACK                  
 1BF7  04                                     PALFADEOUT                    
-1BF8  09 00 24                               VIDEOREF                      ref=0x2400 (INTRO[0]=?)
+1BF8  09 00 24                               VIDEOREF                      ref=0x2400 (INTRO[0]=house.vdx)
 1BFB  0B                                     INPUTLOOPSTART                
 1BFC  0D 00 00 50 00 7F 00 90 00 8F 1D 07    HOTSPOT_RECT                  left=0x0000, top=0x0050, right=0x007F, bottom=0x0090, target=0x1D8F, cursor=0x07
 1C08  0D 80 00 50 00 FF 00 90 00 11 1D 09    HOTSPOT_RECT                  left=0x0080, top=0x0050, right=0x00FF, bottom=0x0090, target=0x1D11, cursor=0x09
@@ -2188,33 +2190,33 @@
 1EBB  15 77 1D                               JMP                           target=0x1D77
 1EBE  15 F9 04                               JMP                           target=0x04F9
 1EC1  0A                                     VIDEOFLAG5_ON                 
-1EC2  09 22 24                               VIDEOREF                      ref=0x2422 (INTRO[34]=?)
+1EC2  09 22 24                               VIDEOREF                      ref=0x2422 (INTRO[34]=sphmen2o.vdx)
 1EC5  0A                                     VIDEOFLAG5_ON                 
-1EC6  09 26 24                               VIDEOREF                      ref=0x2426 (INTRO[38]=?)
+1EC6  09 26 24                               VIDEOREF                      ref=0x2426 (INTRO[38]=sphprm1o.vdx)
 1EC9  0A                                     VIDEOFLAG5_ON                 
-1ECA  09 27 24                               VIDEOREF                      ref=0x2427 (INTRO[39]=?)
+1ECA  09 27 24                               VIDEOREF                      ref=0x2427 (INTRO[39]=sphprm2i.vdx)
 1ECD  0B                                     INPUTLOOPSTART                
 1ECE  0D 54 00 B3 00 B2 00 F7 00 F3 1E 08    HOTSPOT_RECT                  left=0x0054, top=0x00B3, right=0x00B2, bottom=0x00F7, target=0x1EF3, cursor=0x08
 1EDA  0D CB 01 B6 00 2C 02 ED 00 FD 1E 08    HOTSPOT_RECT                  left=0x01CB, top=0x00B6, right=0x022C, bottom=0x00ED, target=0x1EFD, cursor=0x08
 1EE6  0D D5 00 61 01 AA 01 76 01 F3 1E 08    HOTSPOT_RECT                  left=0x00D5, top=0x0161, right=0x01AA, bottom=0x0176, target=0x1EF3, cursor=0x08
 1EF2  13                                     INPUTLOOPEND                  
 1EF3  0A                                     VIDEOFLAG5_ON                 
-1EF4  09 28 24                               VIDEOREF                      ref=0x2428 (INTRO[40]=?)
+1EF4  09 28 24                               VIDEOREF                      ref=0x2428 (INTRO[40]=sphprm2o.vdx)
 1EF7  0A                                     VIDEOFLAG5_ON                 
-1EF8  09 A3 50                               VIDEOREF                      ref=0x50A3 (GAMWAV[163]=?)
+1EF8  09 A3 50                               VIDEOREF                      ref=0x50A3 (GAMWAV[163]=gen_s_12.vdx)
 1EFB  04                                     PALFADEOUT                    
 1EFC  2A                                     ENDSCRIPT                     
 1EFD  0A                                     VIDEOFLAG5_ON                 
-1EFE  09 28 24                               VIDEOREF                      ref=0x2428 (INTRO[40]=?)
+1EFE  09 28 24                               VIDEOREF                      ref=0x2428 (INTRO[40]=sphprm2o.vdx)
 1F01  15 12 19                               JMP                           target=0x1912
 1F04  0A                                     VIDEOFLAG5_ON                 
-1F05  09 22 24                               VIDEOREF                      ref=0x2422 (INTRO[34]=?)
+1F05  09 22 24                               VIDEOREF                      ref=0x2422 (INTRO[34]=sphmen2o.vdx)
 1F08  0A                                     VIDEOFLAG5_ON                 
-1F09  09 26 24                               VIDEOREF                      ref=0x2426 (INTRO[38]=?)
+1F09  09 26 24                               VIDEOREF                      ref=0x2426 (INTRO[38]=sphprm1o.vdx)
 1F0C  0A                                     VIDEOFLAG5_ON                 
-1F0D  09 23 24                               VIDEOREF                      ref=0x2423 (INTRO[35]=?)
+1F0D  09 23 24                               VIDEOREF                      ref=0x2423 (INTRO[35]=sphmen3i.vdx)
 1F10  0A                                     VIDEOFLAG5_ON                 
-1F11  09 29 24                               VIDEOREF                      ref=0x2429 (INTRO[41]=?)
+1F11  09 29 24                               VIDEOREF                      ref=0x2429 (INTRO[41]=sphprm3i.vdx)
 1F14  0B                                     INPUTLOOPSTART                
 1F15  3B 01 B2 00 36 01 C1 00 4D 01 A4 1F 08 HOTSPOT_SAVE_SLOT             slot=0x01, left=0x00B2, top=0x0136, right=0x00C1, bottom=0x014D, target=0x1FA4, cursor=0x08
 1F22  3B 02 C5 00 36 01 DE 00 4D 01 AA 1F 08 HOTSPOT_SAVE_SLOT             slot=0x02, left=0x00C5, top=0x0136, right=0x00DE, bottom=0x014D, target=0x1FAA, cursor=0x08
@@ -2249,9 +2251,9 @@
 1FDA  96 19 B0                               LOADSTRING                    dst=v[0x019], values=[0]
 1FDD  15 E0 1F                               JMP                           target=0x1FE0
 1FE0  0A                                     VIDEOFLAG5_ON                 
-1FE1  09 2A 24                               VIDEOREF                      ref=0x242A (INTRO[42]=?)
+1FE1  09 2A 24                               VIDEOREF                      ref=0x242A (INTRO[42]=sphprm3o.vdx)
 1FE4  0A                                     VIDEOFLAG5_ON                 
-1FE5  09 2B 24                               VIDEOREF                      ref=0x242B (INTRO[43]=?)
+1FE5  09 2B 24                               VIDEOREF                      ref=0x242B (INTRO[43]=sphprm4i.vdx)
 1FE8  96 00 24 24 24 24 24 24 24 24 24 24 24 24 24 24 A4 LOADSTRING                    dst=v[0x000], values=[244, 244, 244, 244, 244, 244, 244, 244, 244, 244, 244, 244, 244, 244, 244]
 1FF9  96 17 E1                               LOADSTRING                    dst=v[0x017], values=[49]
 1FFC  3A 23 61 23 62 23 63 23 64 23 65 23 66 23 67 23 68 23 69 23 6A 23 6B 23 6C 23 6D 23 EE PRINTSTRING                   values=[v[0x000], v[0x001], v[0x002], v[0x003], v[0x004], v[0x005], v[0x006], v[0x007], v[0x008], v[0x009], v[0x00A], v[0x00B], v[0x00C], v[0x00D]]
@@ -2381,20 +2383,20 @@
 22A3  3A 23 E1                               PRINTSTRING                   values=[v[0x000]]
 22A6  0A                                     VIDEOFLAG5_ON                 
 22A7  07                                     VIDEOFLAG7_ON                 
-22A8  09 17 24                               VIDEOREF                      ref=0x2417 (INTRO[23]=?)
+22A8  09 17 24                               VIDEOREF                      ref=0x2417 (INTRO[23]=save2.vdx)
 22AB  0A                                     VIDEOFLAG5_ON                 
-22AC  09 2C 24                               VIDEOREF                      ref=0x242C (INTRO[44]=?)
+22AC  09 2C 24                               VIDEOREF                      ref=0x242C (INTRO[44]=sphprm4o.vdx)
 22AF  0A                                     VIDEOFLAG5_ON                 
-22B0  09 24 24                               VIDEOREF                      ref=0x2424 (INTRO[36]=?)
+22B0  09 24 24                               VIDEOREF                      ref=0x2424 (INTRO[36]=sphmen3o.vdx)
 22B3  15 12 19                               JMP                           target=0x1912
 22B6  1A 00 01 B0 C2 22                      STRCMP_NE_JMP                 start=v[0x100], values=[0], target=0x22C2
-22BC  08 0C 4C                               SETBACKGROUNDSONG             ref=0x4C0C (XMI[12]=?)
+22BC  08 0C 4C                               SETBACKGROUNDSONG             ref=0x4C0C (XMI[12]=gu16.xmi)
 22BF  15 C5 22                               JMP                           target=0x22C5
-22C2  08 00 4C                               SETBACKGROUNDSONG             ref=0x4C00 (XMI[0]=?)
+22C2  08 00 4C                               SETBACKGROUNDSONG             ref=0x4C00 (XMI[0]=agu16.xmi)
 22C5  96 8C 30 B7                            LOADSTRING                    dst=v[0x08C], values=[0, 7]
 22C9  03                                     FADEIN_NEXT_VIDEO             
 22CA  05                                     FIRSTFRAME_NEXT_VIDEO         
-22CB  09 00 34                               VIDEOREF                      ref=0x3400 (LI[0]=?)
+22CB  09 00 34                               VIDEOREF                      ref=0x3400 (LI[0]=l1_2.vdx)
 22CE  9A F5 E1 F4 22                         STRCMP_NE_JMP                 start=v[0x0F5], values=[49], target=0x22F4
 22D3  9A F8 E1 F4 22                         STRCMP_NE_JMP                 start=v[0x0F8], values=[49], target=0x22F4
 22D8  9A EF E1 F4 22                         STRCMP_NE_JMP                 start=v[0x0EF], values=[49], target=0x22F4
@@ -2414,20 +2416,20 @@
 2328  0E B1 2B                               HOTSPOT_LEFT                  target=0x2BB1
 232B  0F B7 2B                               HOTSPOT_RIGHT                 target=0x2BB7
 232E  13                                     INPUTLOOPEND                  
-232F  09 01 34                               VIDEOREF                      ref=0x3401 (LI[1]=?)
+232F  09 01 34                               VIDEOREF                      ref=0x3401 (LI[1]=l1_4f.vdx)
 2332  0B                                     INPUTLOOPSTART                
 2333  10 3A 23                               HOTSPOT_CENTER                target=0x233A
 2336  0F 43 23                               HOTSPOT_RIGHT                 target=0x2343
 2339  13                                     INPUTLOOPEND                  
-233A  09 0B 34                               VIDEOREF                      ref=0x340B (LI[11]=?)
-233D  09 0A 34                               VIDEOREF                      ref=0x340A (LI[10]=?)
+233A  09 0B 34                               VIDEOREF                      ref=0x340B (LI[11]=l4_df.vdx)
+233D  09 0A 34                               VIDEOREF                      ref=0x340A (LI[10]=l4_db.vdx)
 2340  15 32 23                               JMP                           target=0x2332
-2343  09 09 34                               VIDEOREF                      ref=0x3409 (LI[9]=?)
+2343  09 09 34                               VIDEOREF                      ref=0x3409 (LI[9]=l4_2f.vdx)
 2346  15 D4 2B                               JMP                           target=0x2BD4
 2349  9A 92 30 B0 52 23                      STRCMP_NE_JMP                 start=v[0x092], values=[0, 0], target=0x2352
 234F  15 CE 22                               JMP                           target=0x22CE
-2352  02 35 4C                               PLAYSONG                      ref=0x4C35 (XMI[53]=?)
-2355  09 03 34                               VIDEOREF                      ref=0x3403 (LI[3]=?)
+2352  02 35 4C                               PLAYSONG                      ref=0x4C35 (XMI[53]=gu56.xmi)
+2355  09 03 34                               VIDEOREF                      ref=0x3403 (LI[3]=l1_cf.vdx)
 2358  28 00 00                               RESERVED_28                   value=0x0000
 235B  96 00 31 30 B0                         LOADSTRING                    dst=v[0x000], values=[1, 0, 0]
 2360  16 0A 01 B0                            LOADSTRING                    dst=v[0x10A], values=[0]
@@ -2862,26 +2864,26 @@
 2A46  05                                     FIRSTFRAME_NEXT_VIDEO         
 2A47  26 63 6C 62 6D 23 61 6F 75 74 00       VIDEO_NAME                    name="clbm{v000}out"
 2A52  15 81 2A                               JMP                           target=0x2A81
-2A55  09 29 48                               VIDEOREF                      ref=0x4829 (P[41]=?)
+2A55  09 29 48                               VIDEOREF                      ref=0x4829 (P[41]=psta.vdx)
 2A58  03                                     FADEIN_NEXT_VIDEO             
 2A59  05                                     FIRSTFRAME_NEXT_VIDEO         
-2A5A  09 00 34                               VIDEOREF                      ref=0x3400 (LI[0]=?)
+2A5A  09 00 34                               VIDEOREF                      ref=0x3400 (LI[0]=l1_2.vdx)
 2A5D  15 B6 22                               JMP                           target=0x22B6
 2A60  16 0A 01 B1                            LOADSTRING                    dst=v[0x10A], values=[1]
-2A64  09 62 34                               VIDEOREF                      ref=0x3462 (LI[98]=?)
+2A64  09 62 34                               VIDEOREF                      ref=0x3462 (LI[98]=solv_in.vdx)
 2A67  0B                                     INPUTLOOPSTART                
 2A68  0D 60 00 76 00 79 02 74 01 92 2A 06    HOTSPOT_RECT                  left=0x0060, top=0x0076, right=0x0279, bottom=0x0174, target=0x2A92, cursor=0x06
 2A74  0E 78 2A                               HOTSPOT_LEFT                  target=0x2A78
 2A77  13                                     INPUTLOOPEND                  
 2A78  18 65 2B                               CALL                          target=0x2B65
-2A7B  09 02 34                               VIDEOREF                      ref=0x3402 (LI[2]=?)
+2A7B  09 02 34                               VIDEOREF                      ref=0x3402 (LI[2]=l1_cb.vdx)
 2A7E  15 CE 22                               JMP                           target=0x22CE
 2A81  0B                                     INPUTLOOPSTART                
 2A82  0D 60 00 76 00 79 02 74 01 92 2A 06    HOTSPOT_RECT                  left=0x0060, top=0x0076, right=0x0279, bottom=0x0174, target=0x2A92, cursor=0x06
 2A8E  0E 5C 2B                               HOTSPOT_LEFT                  target=0x2B5C
 2A91  13                                     INPUTLOOPEND                  
 2A92  18 65 2B                               CALL                          target=0x2B65
-2A95  09 35 34                               VIDEOREF                      ref=0x3435 (LI[53]=?)
+2A95  09 35 34                               VIDEOREF                      ref=0x3435 (LI[53]=l_cf.vdx)
 2A98  9A 92 32 B2 A1 2A                      STRCMP_NE_JMP                 start=v[0x092], values=[2, 2], target=0x2AA1
 2A9E  15 89 15                               JMP                           target=0x1589
 2AA1  9A 92 30 B7 AA 2A                      STRCMP_NE_JMP                 start=v[0x092], values=[0, 7], target=0x2AAA
@@ -2897,7 +2899,7 @@
 2ACE  9A 92 31 B1 DC 2A                      STRCMP_NE_JMP                 start=v[0x092], values=[1, 1], target=0x2ADC
 2AD4  03                                     FADEIN_NEXT_VIDEO             
 2AD5  05                                     FIRSTFRAME_NEXT_VIDEO         
-2AD6  09 93 14                               VIDEOREF                      ref=0x1493 (FH[147]=?)
+2AD6  09 93 14                               VIDEOREF                      ref=0x1493 (FH[147]=h_7b.vdx)
 2AD9  15 0A 13                               JMP                           target=0x130A
 2ADC  9A 92 31 B8 E5 2A                      STRCMP_NE_JMP                 start=v[0x092], values=[1, 8], target=0x2AE5
 2AE2  15 D5 2C                               JMP                           target=0x2CD5
@@ -2908,7 +2910,7 @@
 2AF7  9A 92 30 B8 05 2B                      STRCMP_NE_JMP                 start=v[0x092], values=[0, 8], target=0x2B05
 2AFD  03                                     FADEIN_NEXT_VIDEO             
 2AFE  05                                     FIRSTFRAME_NEXT_VIDEO         
-2AFF  09 07 34                               VIDEOREF                      ref=0x3407 (LI[7]=?)
+2AFF  09 07 34                               VIDEOREF                      ref=0x3407 (LI[7]=l2_3f.vdx)
 2B02  15 DF 2B                               JMP                           target=0x2BDF
 2B05  9A 92 30 B9 0E 2B                      STRCMP_NE_JMP                 start=v[0x092], values=[0, 9], target=0x2B0E
 2B0B  15 67 18                               JMP                           target=0x1867
@@ -2924,7 +2926,7 @@
 2B33  9A 92 30 B2 41 2B                      STRCMP_NE_JMP                 start=v[0x092], values=[0, 2], target=0x2B41
 2B39  03                                     FADEIN_NEXT_VIDEO             
 2B3A  05                                     FIRSTFRAME_NEXT_VIDEO         
-2B3B  09 22 14                               VIDEOREF                      ref=0x1422 (FH[34]=?)
+2B3B  09 22 14                               VIDEOREF                      ref=0x1422 (FH[34]=f_1bb.vdx)
 2B3E  15 0D 05                               JMP                           target=0x050D
 2B41  9A 92 31 B5 4A 2B                      STRCMP_NE_JMP                 start=v[0x092], values=[1, 5], target=0x2B4A
 2B47  15 24 34                               JMP                           target=0x3424
@@ -2933,39 +2935,39 @@
 2B53  9A 92 30 B6 5C 2B                      STRCMP_NE_JMP                 start=v[0x092], values=[0, 6], target=0x2B5C
 2B59  15 FC 30                               JMP                           target=0x30FC
 2B5C  18 65 2B                               CALL                          target=0x2B65
-2B5F  09 02 34                               VIDEOREF                      ref=0x3402 (LI[2]=?)
+2B5F  09 02 34                               VIDEOREF                      ref=0x3402 (LI[2]=l1_cb.vdx)
 2B62  15 CE 22                               JMP                           target=0x22CE
 2B65  1A 05 01 B0 7F 2B                      STRCMP_NE_JMP                 start=v[0x105], values=[0], target=0x2B7F
-2B6B  1C 35 34                               VIDEO_TRANSITION_REF          ref=0x3435 (LI[53]=?)
+2B6B  1C 35 34                               VIDEO_TRANSITION_REF          ref=0x3435 (LI[53]=l_cf.vdx)
 2B6E  0A                                     VIDEOFLAG5_ON                 
 2B6F  07                                     VIDEOFLAG7_ON                 
-2B70  09 01 24                               VIDEOREF                      ref=0x2401 (INTRO[1]=?)
+2B70  09 01 24                               VIDEOREF                      ref=0x2401 (INTRO[1]=fade.vdx)
 2B73  37 00 00 50 00 7F 02 8F 01             COPY_RECT_TO_BG               left=0x0000, top=0x0050, right=0x027F, bottom=0x018F
 2B7C  15 83 2B                               JMP                           target=0x2B83
 2B7F  05                                     FIRSTFRAME_NEXT_VIDEO         
-2B80  09 35 34                               VIDEOREF                      ref=0x3435 (LI[53]=?)
+2B80  09 35 34                               VIDEOREF                      ref=0x3435 (LI[53]=l_cf.vdx)
 2B83  17 00                                  RET                           value=0x00
 2B85  0B                                     INPUTLOOPSTART                
 2B86  0E BD 2B                               HOTSPOT_LEFT                  target=0x2BBD
 2B89  0F C3 2B                               HOTSPOT_RIGHT                 target=0x2BC3
 2B8C  0D 36 00 56 00 3A 01 8D 01 99 2B 00    HOTSPOT_RECT                  left=0x0036, top=0x0056, right=0x013A, bottom=0x018D, target=0x2B99, cursor=0x00
 2B98  13                                     INPUTLOOPEND                  
-2B99  09 04 34                               VIDEOREF                      ref=0x3404 (LI[4]=?)
+2B99  09 04 34                               VIDEOREF                      ref=0x3404 (LI[4]=l1_x.vdx)
 2B9C  03                                     FADEIN_NEXT_VIDEO             
 2B9D  05                                     FIRSTFRAME_NEXT_VIDEO         
-2B9E  09 46 14                               VIDEOREF                      ref=0x1446 (FH[70]=?)
+2B9E  09 46 14                               VIDEOREF                      ref=0x1446 (FH[70]=f_5fb.vdx)
 2BA1  96 8C 30 B1                            LOADSTRING                    dst=v[0x08C], values=[0, 1]
-2BA5  02 39 4C                               PLAYSONG                      ref=0x4C39 (XMI[57]=?)
+2BA5  02 39 4C                               PLAYSONG                      ref=0x4C39 (XMI[57]=gu61.xmi)
 2BA8  15 B4 08                               JMP                           target=0x08B4
-2BAB  09 00 34                               VIDEOREF                      ref=0x3400 (LI[0]=?)
+2BAB  09 00 34                               VIDEOREF                      ref=0x3400 (LI[0]=l1_2.vdx)
 2BAE  15 DF 2B                               JMP                           target=0x2BDF
-2BB1  09 29 34                               VIDEOREF                      ref=0x3429 (LI[41]=?)
+2BB1  09 29 34                               VIDEOREF                      ref=0x3429 (LI[41]=l_1bc.vdx)
 2BB4  15 85 2B                               JMP                           target=0x2B85
-2BB7  09 2A 34                               VIDEOREF                      ref=0x342A (LI[42]=?)
+2BB7  09 2A 34                               VIDEOREF                      ref=0x342A (LI[42]=l_1fa.vdx)
 2BBA  15 85 2B                               JMP                           target=0x2B85
-2BBD  09 28 34                               VIDEOREF                      ref=0x3428 (LI[40]=?)
+2BBD  09 28 34                               VIDEOREF                      ref=0x3428 (LI[40]=l_1ba.vdx)
 2BC0  15 CE 22                               JMP                           target=0x22CE
-2BC3  09 2B 34                               VIDEOREF                      ref=0x342B (LI[43]=?)
+2BC3  09 2B 34                               VIDEOREF                      ref=0x342B (LI[43]=l_1fc.vdx)
 2BC6  15 CE 22                               JMP                           target=0x22CE
 2BC9  0B                                     INPUTLOOPSTART                
 2BCA  0E A5 2C                               HOTSPOT_LEFT                  target=0x2CA5
@@ -2989,25 +2991,25 @@
 2C06  1A 08 01 B1 18 2C                      STRCMP_NE_JMP                 start=v[0x108], values=[1], target=0x2C18
 2C0C  0D 05 01 A3 00 93 01 E9 00 19 2C 06    HOTSPOT_RECT                  left=0x0105, top=0x00A3, right=0x0193, bottom=0x00E9, target=0x2C19, cursor=0x06
 2C18  13                                     INPUTLOOPEND                  
-2C19  02 27 4C                               PLAYSONG                      ref=0x4C27 (XMI[39]=?)
-2C1C  09 07 34                               VIDEOREF                      ref=0x3407 (LI[7]=?)
+2C19  02 27 4C                               PLAYSONG                      ref=0x4C27 (XMI[39]=gu42.xmi)
+2C1C  09 07 34                               VIDEOREF                      ref=0x3407 (LI[7]=l2_3f.vdx)
 2C1F  23 05 01 B0 2B 2C                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x2C2B
 2C25  4B 00                                  SET_VIDEO_MODE                value=0x00
 2C27  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
-2C2B  09 10 34                               VIDEOREF                      ref=0x3410 (LI[16]=?)
-2C2E  08 0E 4C                               SETBACKGROUNDSONG             ref=0x4C0E (XMI[14]=?)
+2C2B  09 10 34                               VIDEOREF                      ref=0x3410 (LI[16]=li_pz_in.vdx)
+2C2E  08 0E 4C                               SETBACKGROUNDSONG             ref=0x4C0E (XMI[14]=gu17.xmi)
 2C31  18 09 42                               CALL                          target=0x4209
 2C34  1A 09 01 B1 40 2C                      STRCMP_NE_JMP                 start=v[0x109], values=[1], target=0x2C40
 2C3A  4B 01                                  SET_VIDEO_MODE                value=0x01
 2C3C  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
-2C40  08 35 4C                               SETBACKGROUNDSONG             ref=0x4C35 (XMI[53]=?)
-2C43  09 11 34                               VIDEOREF                      ref=0x3411 (LI[17]=?)
-2C46  09 06 34                               VIDEOREF                      ref=0x3406 (LI[6]=?)
+2C40  08 35 4C                               SETBACKGROUNDSONG             ref=0x4C35 (XMI[53]=gu56.xmi)
+2C43  09 11 34                               VIDEOREF                      ref=0x3411 (LI[17]=li_pz_ot.vdx)
+2C46  09 06 34                               VIDEOREF                      ref=0x3406 (LI[6]=l2_3b.vdx)
 2C49  A3 F5 E1 54 2C                         STRCMP_EQ_JMP                 start=v[0x0F5], values=[49], target=0x2C54
 2C4E  15 DF 2B                               JMP                           target=0x2BDF
 2C51  15 69 2C                               JMP                           target=0x2C69
 2C54  9A C2 B0 66 2C                         STRCMP_NE_JMP                 start=v[0x0C2], values=[0], target=0x2C66
-2C59  09 2F 34                               VIDEOREF                      ref=0x342F (LI[47]=?)
+2C59  09 2F 34                               VIDEOREF                      ref=0x342F (LI[47]=l_2bd.vdx)
 2C5C  96 8E 33 B7                            LOADSTRING                    dst=v[0x08E], values=[3, 7]
 2C60  96 C2 B1                               LOADSTRING                    dst=v[0x0C2], values=[1]
 2C63  18 EC 3A                               CALL                          target=0x3AEC
@@ -3024,38 +3026,38 @@
 2C8F  96 C2 B1                               LOADSTRING                    dst=v[0x0C2], values=[1]
 2C92  18 EC 3A                               CALL                          target=0x3AEC
 2C95  15 69 2C                               JMP                           target=0x2C69
-2C98  09 08 34                               VIDEOREF                      ref=0x3408 (LI[8]=?)
+2C98  09 08 34                               VIDEOREF                      ref=0x3408 (LI[8]=l2_f.vdx)
 2C9B  04                                     PALFADEOUT                    
 2C9C  15 5D 13                               JMP                           target=0x135D
-2C9F  09 05 34                               VIDEOREF                      ref=0x3405 (LI[5]=?)
+2C9F  09 05 34                               VIDEOREF                      ref=0x3405 (LI[5]=l2_1.vdx)
 2CA2  15 85 2B                               JMP                           target=0x2B85
-2CA5  09 2D 34                               VIDEOREF                      ref=0x342D (LI[45]=?)
+2CA5  09 2D 34                               VIDEOREF                      ref=0x342D (LI[45]=l_2bb.vdx)
 2CA8  15 D4 2B                               JMP                           target=0x2BD4
-2CAB  09 32 34                               VIDEOREF                      ref=0x3432 (LI[50]=?)
+2CAB  09 32 34                               VIDEOREF                      ref=0x3432 (LI[50]=l_2fc.vdx)
 2CAE  15 69 2C                               JMP                           target=0x2C69
-2CB1  09 2C 34                               VIDEOREF                      ref=0x342C (LI[44]=?)
+2CB1  09 2C 34                               VIDEOREF                      ref=0x342C (LI[44]=l_2ba.vdx)
 2CB4  15 DF 2B                               JMP                           target=0x2BDF
-2CB7  09 31 34                               VIDEOREF                      ref=0x3431 (LI[49]=?)
+2CB7  09 31 34                               VIDEOREF                      ref=0x3431 (LI[49]=l_2fb.vdx)
 2CBA  15 C9 2B                               JMP                           target=0x2BC9
-2CBD  09 2F 34                               VIDEOREF                      ref=0x342F (LI[47]=?)
+2CBD  09 2F 34                               VIDEOREF                      ref=0x342F (LI[47]=l_2bd.vdx)
 2CC0  15 69 2C                               JMP                           target=0x2C69
-2CC3  09 30 34                               VIDEOREF                      ref=0x3430 (LI[48]=?)
+2CC3  09 30 34                               VIDEOREF                      ref=0x3430 (LI[48]=l_2fa.vdx)
 2CC6  15 D4 2B                               JMP                           target=0x2BD4
-2CC9  09 2E 34                               VIDEOREF                      ref=0x342E (LI[46]=?)
+2CC9  09 2E 34                               VIDEOREF                      ref=0x342E (LI[46]=l_2bc.vdx)
 2CCC  15 C9 2B                               JMP                           target=0x2BC9
-2CCF  09 33 34                               VIDEOREF                      ref=0x3433 (LI[51]=?)
+2CCF  09 33 34                               VIDEOREF                      ref=0x3433 (LI[51]=l_2fd.vdx)
 2CD2  15 DF 2B                               JMP                           target=0x2BDF
 2CD5  96 8C 31 B4                            LOADSTRING                    dst=v[0x08C], values=[1, 4]
 2CD9  03                                     FADEIN_NEXT_VIDEO             
 2CDA  05                                     FIRSTFRAME_NEXT_VIDEO         
-2CDB  09 08 04                               VIDEOREF                      ref=0x0408 (B[8]=?)
+2CDB  09 08 04                               VIDEOREF                      ref=0x0408 (B[8]=b_1bf.vdx)
 2CDE  9A EC E1 F8 2C                         STRCMP_NE_JMP                 start=v[0x0EC], values=[49], target=0x2CF8
 2CE3  9A C4 B0 F8 2C                         STRCMP_NE_JMP                 start=v[0x0C4], values=[0], target=0x2CF8
-2CE8  09 0C 04                               VIDEOREF                      ref=0x040C (B[12]=?)
+2CE8  09 0C 04                               VIDEOREF                      ref=0x040C (B[12]=b_ff.vdx)
 2CEB  18 16 38                               CALL                          target=0x3816
 2CEE  96 C4 B1                               LOADSTRING                    dst=v[0x0C4], values=[1]
 2CF1  96 8E 33 B5                            LOADSTRING                    dst=v[0x08E], values=[3, 5]
-2CF5  09 0B 04                               VIDEOREF                      ref=0x040B (B[11]=?)
+2CF5  09 0B 04                               VIDEOREF                      ref=0x040B (B[11]=b_fb.vdx)
 2CF8  0B                                     INPUTLOOPSTART                
 2CF9  0F 73 2D                               HOTSPOT_RIGHT                 target=0x2D73
 2CFC  0E 6D 2D                               HOTSPOT_LEFT                  target=0x2D6D
@@ -3069,42 +3071,42 @@
 2D35  23 05 01 B0 41 2D                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x2D41
 2D3B  4B 00                                  SET_VIDEO_MODE                value=0x00
 2D3D  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
-2D41  09 02 04                               VIDEOREF                      ref=0x0402 (B[2]=?)
+2D41  09 02 04                               VIDEOREF                      ref=0x0402 (B[2]=b1_2f.vdx)
 2D44  96 92 31 B8                            LOADSTRING                    dst=v[0x092], values=[1, 8]
 2D48  18 62 41                               CALL                          target=0x4162
 2D4B  1A 09 01 B1 57 2D                      STRCMP_NE_JMP                 start=v[0x109], values=[1], target=0x2D57
 2D51  4B 01                                  SET_VIDEO_MODE                value=0x01
 2D53  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
-2D57  09 01 04                               VIDEOREF                      ref=0x0401 (B[1]=?)
+2D57  09 01 04                               VIDEOREF                      ref=0x0401 (B[1]=b1_2b.vdx)
 2D5A  15 DE 2C                               JMP                           target=0x2CDE
-2D5D  02 3B 4C                               PLAYSONG                      ref=0x4C3B (XMI[59]=?)
-2D60  09 03 04                               VIDEOREF                      ref=0x0403 (B[3]=?)
-2D63  09 0A 04                               VIDEOREF                      ref=0x040A (B[10]=?)
+2D5D  02 3B 4C                               PLAYSONG                      ref=0x4C3B (XMI[59]=gu67.xmi)
+2D60  09 03 04                               VIDEOREF                      ref=0x0403 (B[3]=b1_s.vdx)
+2D63  09 0A 04                               VIDEOREF                      ref=0x040A (B[10]=b_drain.vdx)
 2D66  96 8C 30 B7                            LOADSTRING                    dst=v[0x08C], values=[0, 7]
 2D6A  15 B6 22                               JMP                           target=0x22B6
-2D6D  09 08 04                               VIDEOREF                      ref=0x0408 (B[8]=?)
+2D6D  09 08 04                               VIDEOREF                      ref=0x0408 (B[8]=b_1bf.vdx)
 2D70  15 76 2D                               JMP                           target=0x2D76
-2D73  09 06 04                               VIDEOREF                      ref=0x0406 (B[6]=?)
+2D73  09 06 04                               VIDEOREF                      ref=0x0406 (B[6]=b_1af.vdx)
 2D76  0B                                     INPUTLOOPSTART                
 2D77  0F 90 2D                               HOTSPOT_RIGHT                 target=0x2D90
 2D7A  0E 96 2D                               HOTSPOT_LEFT                  target=0x2D96
 2D7D  10 81 2D                               HOTSPOT_CENTER                target=0x2D81
 2D80  13                                     INPUTLOOPEND                  
-2D81  09 09 04                               VIDEOREF                      ref=0x0409 (B[9]=?)
+2D81  09 09 04                               VIDEOREF                      ref=0x0409 (B[9]=b_d.vdx)
 2D84  03                                     FADEIN_NEXT_VIDEO             
 2D85  05                                     FIRSTFRAME_NEXT_VIDEO         
-2D86  09 85 14                               VIDEOREF                      ref=0x1485 (FH[133]=?)
+2D86  09 85 14                               VIDEOREF                      ref=0x1485 (FH[133]=h_3fa.vdx)
 2D89  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 2D8D  15 A7 11                               JMP                           target=0x11A7
-2D90  09 07 04                               VIDEOREF                      ref=0x0407 (B[7]=?)
+2D90  09 07 04                               VIDEOREF                      ref=0x0407 (B[7]=b_1bb.vdx)
 2D93  15 DE 2C                               JMP                           target=0x2CDE
-2D96  09 05 04                               VIDEOREF                      ref=0x0405 (B[5]=?)
+2D96  09 05 04                               VIDEOREF                      ref=0x0405 (B[5]=b_1ab.vdx)
 2D99  15 DE 2C                               JMP                           target=0x2CDE
 2D9C  96 8C 32 B1                            LOADSTRING                    dst=v[0x08C], values=[2, 1]
-2DA0  02 38 4C                               PLAYSONG                      ref=0x4C38 (XMI[56]=?)
+2DA0  02 38 4C                               PLAYSONG                      ref=0x4C38 (XMI[56]=gu60.xmi)
 2DA3  03                                     FADEIN_NEXT_VIDEO             
 2DA4  05                                     FIRSTFRAME_NEXT_VIDEO         
-2DA5  09 11 00                               VIDEOREF                      ref=0x0011 (AT[17]=?)
+2DA5  09 11 00                               VIDEOREF                      ref=0x0011 (AT[17]=atab.vdx)
 2DA8  0B                                     INPUTLOOPSTART                
 2DA9  9A E7 E1 CC 2D                         STRCMP_NE_JMP                 start=v[0x0E7], values=[49], target=0x2DCC
 2DAE  0D FB 00 22 01 85 01 7B 01 2E 2E 07    HOTSPOT_RECT                  left=0x00FB, top=0x0122, right=0x0185, bottom=0x017B, target=0x2E2E, cursor=0x07
@@ -3117,60 +3119,60 @@
 2DEF  0F 5F 2E                               HOTSPOT_RIGHT                 target=0x2E5F
 2DF2  0E 59 2E                               HOTSPOT_LEFT                  target=0x2E59
 2DF5  13                                     INPUTLOOPEND                  
-2DF6  02 37 4C                               PLAYSONG                      ref=0x4C37 (XMI[55]=?)
+2DF6  02 37 4C                               PLAYSONG                      ref=0x4C37 (XMI[55]=gu59.xmi)
 2DF9  23 05 01 B0 05 2E                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x2E05
 2DFF  4B 00                                  SET_VIDEO_MODE                value=0x00
 2E01  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
-2E05  09 03 00                               VIDEOREF                      ref=0x0003 (AT[3]=?)
-2E08  09 08 00                               VIDEOREF                      ref=0x0008 (AT[8]=?)
-2E0B  09 0C 00                               VIDEOREF                      ref=0x000C (AT[12]=?)
+2E05  09 03 00                               VIDEOREF                      ref=0x0003 (AT[3]=at1p.vdx)
+2E08  09 08 00                               VIDEOREF                      ref=0x0008 (AT[8]=at2p.vdx)
+2E0B  09 0C 00                               VIDEOREF                      ref=0x000C (AT[12]=at3p.vdx)
 2E0E  18 DF 41                               CALL                          target=0x41DF
 2E11  1A 09 01 B1 1D 2E                      STRCMP_NE_JMP                 start=v[0x109], values=[1], target=0x2E1D
 2E17  4B 01                                  SET_VIDEO_MODE                value=0x01
 2E19  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
-2E1D  09 04 00                               VIDEOREF                      ref=0x0004 (AT[4]=?)
+2E1D  09 04 00                               VIDEOREF                      ref=0x0004 (AT[4]=at1pb.vdx)
 2E20  9A E7 E1 2B 2E                         STRCMP_NE_JMP                 start=v[0x0E7], values=[49], target=0x2E2B
-2E25  02 38 4C                               PLAYSONG                      ref=0x4C38 (XMI[56]=?)
+2E25  02 38 4C                               PLAYSONG                      ref=0x4C38 (XMI[56]=gu60.xmi)
 2E28  18 A6 39                               CALL                          target=0x39A6
 2E2B  15 A8 2D                               JMP                           target=0x2DA8
-2E2E  09 05 00                               VIDEOREF                      ref=0x0005 (AT[5]=?)
+2E2E  09 05 00                               VIDEOREF                      ref=0x0005 (AT[5]=at1s.vdx)
 2E31  0A                                     VIDEOFLAG5_ON                 
-2E32  09 0E 00                               VIDEOREF                      ref=0x000E (AT[14]=?)
+2E32  09 0E 00                               VIDEOREF                      ref=0x000E (AT[14]=at3s.vdx)
 2E35  0A                                     VIDEOFLAG5_ON                 
-2E36  09 0A 00                               VIDEOREF                      ref=0x000A (AT[10]=?)
+2E36  09 0A 00                               VIDEOREF                      ref=0x000A (AT[10]=at2s.vdx)
 2E39  0A                                     VIDEOFLAG5_ON                 
-2E3A  09 0A 00                               VIDEOREF                      ref=0x000A (AT[10]=?)
+2E3A  09 0A 00                               VIDEOREF                      ref=0x000A (AT[10]=at2s.vdx)
 2E3D  0A                                     VIDEOFLAG5_ON                 
-2E3E  09 0F 00                               VIDEOREF                      ref=0x000F (AT[15]=?)
+2E3E  09 0F 00                               VIDEOREF                      ref=0x000F (AT[15]=at4s.vdx)
 2E41  0A                                     VIDEOFLAG5_ON                 
-2E42  09 06 00                               VIDEOREF                      ref=0x0006 (AT[6]=?)
+2E42  09 06 00                               VIDEOREF                      ref=0x0006 (AT[6]=at1sb.vdx)
 2E45  15 A8 2D                               JMP                           target=0x2DA8
-2E48  09 02 00                               VIDEOREF                      ref=0x0002 (AT[2]=?)
+2E48  09 02 00                               VIDEOREF                      ref=0x0002 (AT[2]=at1f.vdx)
 2E4B  18 C7 39                               CALL                          target=0x39C7
 2E4E  0B                                     INPUTLOOPSTART                
 2E4F  0E 53 2E                               HOTSPOT_LEFT                  target=0x2E53
 2E52  13                                     INPUTLOOPEND                  
-2E53  09 07 00                               VIDEOREF                      ref=0x0007 (AT[7]=?)
+2E53  09 07 00                               VIDEOREF                      ref=0x0007 (AT[7]=at2f.vdx)
 2E56  15 F3 3D                               JMP                           target=0x3DF3
-2E59  09 14 00                               VIDEOREF                      ref=0x0014 (AT[20]=?)
+2E59  09 14 00                               VIDEOREF                      ref=0x0014 (AT[20]=atcdb.vdx)
 2E5C  15 65 2E                               JMP                           target=0x2E65
-2E5F  09 11 00                               VIDEOREF                      ref=0x0011 (AT[17]=?)
+2E5F  09 11 00                               VIDEOREF                      ref=0x0011 (AT[17]=atab.vdx)
 2E62  18 97 39                               CALL                          target=0x3997
 2E65  0B                                     INPUTLOOPSTART                
 2E66  11 70 2E                               HOTSPOT_CENTER_2              target=0x2E70
 2E69  0F 76 2E                               HOTSPOT_RIGHT                 target=0x2E76
 2E6C  0E 7C 2E                               HOTSPOT_LEFT                  target=0x2E7C
 2E6F  13                                     INPUTLOOPEND                  
-2E70  09 1A 00                               VIDEOREF                      ref=0x001A (AT[26]=?)
+2E70  09 1A 00                               VIDEOREF                      ref=0x001A (AT[26]=atdwarp.vdx)
 2E73  15 65 2E                               JMP                           target=0x2E65
-2E76  09 13 00                               VIDEOREF                      ref=0x0013 (AT[19]=?)
+2E76  09 13 00                               VIDEOREF                      ref=0x0013 (AT[19]=atcd.vdx)
 2E79  15 A8 2D                               JMP                           target=0x2DA8
-2E7C  09 12 00                               VIDEOREF                      ref=0x0012 (AT[18]=?)
+2E7C  09 12 00                               VIDEOREF                      ref=0x0012 (AT[18]=atabb.vdx)
 2E7F  15 A8 2D                               JMP                           target=0x2DA8
 2E82  96 8C 31 B3                            LOADSTRING                    dst=v[0x08C], values=[1, 3]
 2E86  05                                     FIRSTFRAME_NEXT_VIDEO         
 2E87  03                                     FADEIN_NEXT_VIDEO             
-2E88  09 81 28                               VIDEOREF                      ref=0x2881 (JHEK[129]=?)
+2E88  09 81 28                               VIDEOREF                      ref=0x2881 (JHEK[129]=ekab.vdx)
 2E8B  9A B5 B0 9A 2E                         STRCMP_NE_JMP                 start=v[0x0B5], values=[0], target=0x2E9A
 2E90  96 B5 B1                               LOADSTRING                    dst=v[0x0B5], values=[1]
 2E93  96 8E 35 B0                            LOADSTRING                    dst=v[0x08E], values=[5, 0]
@@ -3185,7 +3187,7 @@
 2ECA  9A 8E 35 B0 D3 2E                      STRCMP_NE_JMP                 start=v[0x08E], values=[5, 0], target=0x2ED3
 2ED0  30 03 3B                               HOTSPOT_BOTTOM_4              target=0x3B03
 2ED3  13                                     INPUTLOOPEND                  
-2ED4  09 7A 28                               VIDEOREF                      ref=0x287A (JHEK[122]=?)
+2ED4  09 7A 28                               VIDEOREF                      ref=0x287A (JHEK[122]=ek1p.vdx)
 2ED7  0B                                     INPUTLOOPSTART                
 2ED8  A3 F1 E1 E9 2E                         STRCMP_EQ_JMP                 start=v[0x0F1], values=[49], target=0x2EE9
 2EDD  0D 00 00 50 00 7F 02 18 01 08 2F 06    HOTSPOT_RECT                  left=0x0000, top=0x0050, right=0x027F, bottom=0x0118, target=0x2F08, cursor=0x06
@@ -3197,33 +3199,33 @@
 2F0E  23 05 01 B0 1A 2F                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x2F1A
 2F14  4B 00                                  SET_VIDEO_MODE                value=0x00
 2F16  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
-2F1A  09 7E 28                               VIDEOREF                      ref=0x287E (JHEK[126]=?)
+2F1A  09 7E 28                               VIDEOREF                      ref=0x287E (JHEK[126]=ek2p.vdx)
 2F1D  96 92 31 B2                            LOADSTRING                    dst=v[0x092], values=[1, 2]
 2F21  18 B5 41                               CALL                          target=0x41B5
 2F24  1A 09 01 B1 30 2F                      STRCMP_NE_JMP                 start=v[0x109], values=[1], target=0x2F30
 2F2A  4B 01                                  SET_VIDEO_MODE                value=0x01
 2F2C  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
-2F30  09 7F 28                               VIDEOREF                      ref=0x287F (JHEK[127]=?)
-2F33  09 7B 28                               VIDEOREF                      ref=0x287B (JHEK[123]=?)
+2F30  09 7F 28                               VIDEOREF                      ref=0x287F (JHEK[127]=ek2pb.vdx)
+2F33  09 7B 28                               VIDEOREF                      ref=0x287B (JHEK[123]=ek1pb.vdx)
 2F36  15 9A 2E                               JMP                           target=0x2E9A
-2F39  09 7B 28                               VIDEOREF                      ref=0x287B (JHEK[123]=?)
+2F39  09 7B 28                               VIDEOREF                      ref=0x287B (JHEK[123]=ek1pb.vdx)
 2F3C  15 9A 2E                               JMP                           target=0x2E9A
-2F3F  09 8B 28                               VIDEOREF                      ref=0x288B (JHEK[139]=?)
+2F3F  09 8B 28                               VIDEOREF                      ref=0x288B (JHEK[139]=ekmb.vdx)
 2F42  15 57 2F                               JMP                           target=0x2F57
-2F45  02 0A 4C                               PLAYSONG                      ref=0x4C0A (XMI[10]=?)
-2F48  09 79 28                               VIDEOREF                      ref=0x2879 (JHEK[121]=?)
-2F4B  09 7D 28                               VIDEOREF                      ref=0x287D (JHEK[125]=?)
-2F4E  09 80 28                               VIDEOREF                      ref=0x2880 (JHEK[128]=?)
-2F51  09 78 28                               VIDEOREF                      ref=0x2878 (JHEK[120]=?)
+2F45  02 0A 4C                               PLAYSONG                      ref=0x4C0A (XMI[10]=gu12.xmi)
+2F48  09 79 28                               VIDEOREF                      ref=0x2879 (JHEK[121]=ek1nb.vdx)
+2F4B  09 7D 28                               VIDEOREF                      ref=0x287D (JHEK[125]=ek2n.vdx)
+2F4E  09 80 28                               VIDEOREF                      ref=0x2880 (JHEK[128]=ek3nb.vdx)
+2F51  09 78 28                               VIDEOREF                      ref=0x2878 (JHEK[120]=ek1n.vdx)
 2F54  15 57 2F                               JMP                           target=0x2F57
 2F57  0B                                     INPUTLOOPSTART                
 2F58  0D C8 00 50 00 B7 01 8F 01 45 2F 07    HOTSPOT_RECT                  left=0x00C8, top=0x0050, right=0x01B7, bottom=0x018F, target=0x2F45, cursor=0x07
 2F64  0E 68 2F                               HOTSPOT_LEFT                  target=0x2F68
 2F67  13                                     INPUTLOOPEND                  
-2F68  09 8C 28                               VIDEOREF                      ref=0x288C (JHEK[140]=?)
+2F68  09 8C 28                               VIDEOREF                      ref=0x288C (JHEK[140]=ekmbb.vdx)
 2F6B  15 9A 2E                               JMP                           target=0x2E9A
-2F6E  09 81 28                               VIDEOREF                      ref=0x2881 (JHEK[129]=?)
-2F71  09 83 28                               VIDEOREF                      ref=0x2883 (JHEK[131]=?)
+2F6E  09 81 28                               VIDEOREF                      ref=0x2881 (JHEK[129]=ekab.vdx)
+2F71  09 83 28                               VIDEOREF                      ref=0x2883 (JHEK[131]=ekbc.vdx)
 2F74  0B                                     INPUTLOOPSTART                
 2F75  9A B4 B0 86 2F                         STRCMP_NE_JMP                 start=v[0x0B4], values=[0], target=0x2F86
 2F7A  0D 7A 01 6B 00 1C 02 8B 01 A2 2F 04    HOTSPOT_RECT                  left=0x017A, top=0x006B, right=0x021C, bottom=0x018B, target=0x2FA2, cursor=0x04
@@ -3237,29 +3239,29 @@
 2FA5  96 8E 35 B1                            LOADSTRING                    dst=v[0x08E], values=[5, 1]
 2FA9  18 1A 37                               CALL                          target=0x371A
 2FAC  15 74 2F                               JMP                           target=0x2F74
-2FAF  09 8A 28                               VIDEOREF                      ref=0x288A (JHEK[138]=?)
+2FAF  09 8A 28                               VIDEOREF                      ref=0x288A (JHEK[138]=ekex.vdx)
 2FB2  05                                     FIRSTFRAME_NEXT_VIDEO         
 2FB3  03                                     FADEIN_NEXT_VIDEO             
 2FB4  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
-2FB8  09 7D 14                               VIDEOREF                      ref=0x147D (FH[125]=?)
+2FB8  09 7D 14                               VIDEOREF                      ref=0x147D (FH[125]=h_2fa.vdx)
 2FBB  15 88 10                               JMP                           target=0x1088
-2FBE  09 87 28                               VIDEOREF                      ref=0x2887 (JHEK[135]=?)
+2FBE  09 87 28                               VIDEOREF                      ref=0x2887 (JHEK[135]=ekcd.vdx)
 2FC1  15 9A 2E                               JMP                           target=0x2E9A
-2FC4  09 84 28                               VIDEOREF                      ref=0x2884 (JHEK[132]=?)
-2FC7  09 82 28                               VIDEOREF                      ref=0x2882 (JHEK[130]=?)
+2FC4  09 84 28                               VIDEOREF                      ref=0x2884 (JHEK[132]=ekbcb.vdx)
+2FC7  09 82 28                               VIDEOREF                      ref=0x2882 (JHEK[130]=ekabb.vdx)
 2FCA  15 9A 2E                               JMP                           target=0x2E9A
-2FCD  09 88 28                               VIDEOREF                      ref=0x2888 (JHEK[136]=?)
+2FCD  09 88 28                               VIDEOREF                      ref=0x2888 (JHEK[136]=ekcdb.vdx)
 2FD0  15 74 2F                               JMP                           target=0x2F74
-2FD3  09 89 28                               VIDEOREF                      ref=0x2889 (JHEK[137]=?)
+2FD3  09 89 28                               VIDEOREF                      ref=0x2889 (JHEK[137]=ekcl.vdx)
 2FD6  03                                     FADEIN_NEXT_VIDEO             
-2FD7  09 04 04                               VIDEOREF                      ref=0x0404 (B[4]=?)
+2FD7  09 04 04                               VIDEOREF                      ref=0x0404 (B[4]=b4_1.vdx)
 2FDA  96 8C 31 B4                            LOADSTRING                    dst=v[0x08C], values=[1, 4]
 2FDE  15 76 2D                               JMP                           target=0x2D76
 2FE1  96 8C 31 B6                            LOADSTRING                    dst=v[0x08C], values=[1, 6]
-2FE5  02 2B 4C                               PLAYSONG                      ref=0x4C2B (XMI[43]=?)
+2FE5  02 2B 4C                               PLAYSONG                      ref=0x4C2B (XMI[43]=gu46.xmi)
 2FE8  05                                     FIRSTFRAME_NEXT_VIDEO         
 2FE9  03                                     FADEIN_NEXT_VIDEO             
-2FEA  09 07 08                               VIDEOREF                      ref=0x0807 (CH[7]=?)
+2FEA  09 07 08                               VIDEOREF                      ref=0x0807 (CH[7]=chab.vdx)
 2FED  9A AE B0 FC 2F                         STRCMP_NE_JMP                 start=v[0x0AE], values=[0], target=0x2FFC
 2FF2  96 AE B1                               LOADSTRING                    dst=v[0x0AE], values=[1]
 2FF5  96 8E 35 B7                            LOADSTRING                    dst=v[0x08E], values=[5, 7]
@@ -3276,32 +3278,32 @@
 302F  9A F3 E1 37 30                         STRCMP_NE_JMP                 start=v[0x0F3], values=[49], target=0x3037
 3034  10 8A 30                               HOTSPOT_CENTER                target=0x308A
 3037  13                                     INPUTLOOPEND                  
-3038  09 0C 08                               VIDEOREF                      ref=0x080C (CH[12]=?)
+3038  09 0C 08                               VIDEOREF                      ref=0x080C (CH[12]=chcdb.vdx)
 303B  15 44 30                               JMP                           target=0x3044
-303E  09 07 08                               VIDEOREF                      ref=0x0807 (CH[7]=?)
+303E  09 07 08                               VIDEOREF                      ref=0x0807 (CH[7]=chab.vdx)
 3041  15 44 30                               JMP                           target=0x3044
 3044  0B                                     INPUTLOOPSTART                
 3045  0F 4C 30                               HOTSPOT_RIGHT                 target=0x304C
 3048  0E 52 30                               HOTSPOT_LEFT                  target=0x3052
 304B  13                                     INPUTLOOPEND                  
-304C  09 0A 08                               VIDEOREF                      ref=0x080A (CH[10]=?)
+304C  09 0A 08                               VIDEOREF                      ref=0x080A (CH[10]=chcd.vdx)
 304F  15 FC 2F                               JMP                           target=0x2FFC
-3052  09 08 08                               VIDEOREF                      ref=0x0808 (CH[8]=?)
+3052  09 08 08                               VIDEOREF                      ref=0x0808 (CH[8]=chabb.vdx)
 3055  15 FC 2F                               JMP                           target=0x2FFC
 3058  1A 09 01 B0 6A 30                      STRCMP_NE_JMP                 start=v[0x109], values=[0], target=0x306A
 305E  23 05 01 B0 6A 30                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x306A
 3064  4B 00                                  SET_VIDEO_MODE                value=0x00
 3066  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
-306A  09 10 08                               VIDEOREF                      ref=0x0810 (CH[16]=?)
+306A  09 10 08                               VIDEOREF                      ref=0x0810 (CH[16]=chpu.vdx)
 306D  18 5C 42                               CALL                          target=0x425C
 3070  1A 09 01 B1 7C 30                      STRCMP_NE_JMP                 start=v[0x109], values=[1], target=0x307C
 3076  4B 01                                  SET_VIDEO_MODE                value=0x01
 3078  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
 307C  A3 F3 E1 84 30                         STRCMP_EQ_JMP                 start=v[0x0F3], values=[49], target=0x3084
 3081  15 B6 22                               JMP                           target=0x22B6
-3084  09 11 08                               VIDEOREF                      ref=0x0811 (CH[17]=?)
+3084  09 11 08                               VIDEOREF                      ref=0x0811 (CH[17]=chpub.vdx)
 3087  15 FC 2F                               JMP                           target=0x2FFC
-308A  09 09 08                               VIDEOREF                      ref=0x0809 (CH[9]=?)
+308A  09 09 08                               VIDEOREF                      ref=0x0809 (CH[9]=chal.vdx)
 308D  9A AD B0 9C 30                         STRCMP_NE_JMP                 start=v[0x0AD], values=[0], target=0x309C
 3092  96 AD B1                               LOADSTRING                    dst=v[0x0AD], values=[1]
 3095  96 8E 35 B8                            LOADSTRING                    dst=v[0x08E], values=[5, 8]
@@ -3313,38 +3315,38 @@
 30A9  0E B0 30                               HOTSPOT_LEFT                  target=0x30B0
 30AC  0F F2 30                               HOTSPOT_RIGHT                 target=0x30F2
 30AF  13                                     INPUTLOOPEND                  
-30B0  09 0E 08                               VIDEOREF                      ref=0x080E (CH[14]=?)
+30B0  09 0E 08                               VIDEOREF                      ref=0x080E (CH[14]=chor.vdx)
 30B3  15 B6 30                               JMP                           target=0x30B6
 30B6  0B                                     INPUTLOOPSTART                
 30B7  0D C8 00 50 00 B8 01 8F 01 C7 30 04    HOTSPOT_RECT                  left=0x00C8, top=0x0050, right=0x01B8, bottom=0x018F, target=0x30C7, cursor=0x04
 30C3  0F EC 30                               HOTSPOT_RIGHT                 target=0x30EC
 30C6  13                                     INPUTLOOPEND                  
-30C7  02 2A 4C                               PLAYSONG                      ref=0x4C2A (XMI[42]=?)
+30C7  02 2A 4C                               PLAYSONG                      ref=0x4C2A (XMI[42]=gu45.xmi)
 30CA  0A                                     VIDEOFLAG5_ON                 
-30CB  09 00 08                               VIDEOREF                      ref=0x0800 (CH[0]=?)
+30CB  09 00 08                               VIDEOREF                      ref=0x0800 (CH[0]=ch0k.vdx)
 30CE  0A                                     VIDEOFLAG5_ON                 
-30CF  09 01 08                               VIDEOREF                      ref=0x0801 (CH[1]=?)
+30CF  09 01 08                               VIDEOREF                      ref=0x0801 (CH[1]=ch1k.vdx)
 30D2  0A                                     VIDEOFLAG5_ON                 
-30D3  09 02 08                               VIDEOREF                      ref=0x0802 (CH[2]=?)
+30D3  09 02 08                               VIDEOREF                      ref=0x0802 (CH[2]=ch1kb.vdx)
 30D6  0A                                     VIDEOFLAG5_ON                 
-30D7  09 01 08                               VIDEOREF                      ref=0x0801 (CH[1]=?)
+30D7  09 01 08                               VIDEOREF                      ref=0x0801 (CH[1]=ch1k.vdx)
 30DA  0A                                     VIDEOFLAG5_ON                 
-30DB  09 02 08                               VIDEOREF                      ref=0x0802 (CH[2]=?)
+30DB  09 02 08                               VIDEOREF                      ref=0x0802 (CH[2]=ch1kb.vdx)
 30DE  0A                                     VIDEOFLAG5_ON                 
-30DF  09 03 08                               VIDEOREF                      ref=0x0803 (CH[3]=?)
+30DF  09 03 08                               VIDEOREF                      ref=0x0803 (CH[3]=ch2k.vdx)
 30E2  0A                                     VIDEOFLAG5_ON                 
-30E3  09 06 08                               VIDEOREF                      ref=0x0806 (CH[6]=?)
-30E6  02 2B 4C                               PLAYSONG                      ref=0x4C2B (XMI[43]=?)
+30E3  09 06 08                               VIDEOREF                      ref=0x0806 (CH[6]=ch4kb.vdx)
+30E6  02 2B 4C                               PLAYSONG                      ref=0x4C2B (XMI[43]=gu46.xmi)
 30E9  15 B6 30                               JMP                           target=0x30B6
-30EC  09 0F 08                               VIDEOREF                      ref=0x080F (CH[15]=?)
+30EC  09 0F 08                               VIDEOREF                      ref=0x080F (CH[15]=chorb.vdx)
 30EF  15 9F 30                               JMP                           target=0x309F
-30F2  09 0D 08                               VIDEOREF                      ref=0x080D (CH[13]=?)
+30F2  09 0D 08                               VIDEOREF                      ref=0x080D (CH[13]=chex.vdx)
 30F5  96 8C 31 B7                            LOADSTRING                    dst=v[0x08C], values=[1, 7]
 30F9  15 66 32                               JMP                           target=0x3266
 30FC  96 8C 31 B9                            LOADSTRING                    dst=v[0x08C], values=[1, 9]
 3100  03                                     FADEIN_NEXT_VIDEO             
 3101  05                                     FIRSTFRAME_NEXT_VIDEO         
-3102  09 06 44                               VIDEOREF                      ref=0x4406 (N[6]=?)
+3102  09 06 44                               VIDEOREF                      ref=0x4406 (N[6]=nab.vdx)
 3105  9A F7 E1 19 31                         STRCMP_NE_JMP                 start=v[0x0F7], values=[49], target=0x3119
 310A  9A AF B0 19 31                         STRCMP_NE_JMP                 start=v[0x0AF], values=[0], target=0x3119
 310F  96 AF B1                               LOADSTRING                    dst=v[0x0AF], values=[1]
@@ -3374,27 +3376,27 @@
 319C  04                                     PALFADEOUT                    
 319D  03                                     FADEIN_NEXT_VIDEO             
 319E  05                                     FIRSTFRAME_NEXT_VIDEO         
-319F  09 14 44                               VIDEOREF                      ref=0x4414 (N[20]=?)
-31A2  09 14 44                               VIDEOREF                      ref=0x4414 (N[20]=?)
+319F  09 14 44                               VIDEOREF                      ref=0x4414 (N[20]=ntoyb.vdx)
+31A2  09 14 44                               VIDEOREF                      ref=0x4414 (N[20]=ntoyb.vdx)
 31A5  15 19 31                               JMP                           target=0x3119
-31A8  09 06 44                               VIDEOREF                      ref=0x4406 (N[6]=?)
+31A8  09 06 44                               VIDEOREF                      ref=0x4406 (N[6]=nab.vdx)
 31AB  0B                                     INPUTLOOPSTART                
 31AC  0F BC 31                               HOTSPOT_RIGHT                 target=0x31BC
 31AF  10 C8 31                               HOTSPOT_CENTER                target=0x31C8
 31B2  0E C2 31                               HOTSPOT_LEFT                  target=0x31C2
 31B5  13                                     INPUTLOOPEND                  
-31B6  09 09 44                               VIDEOREF                      ref=0x4409 (N[9]=?)
+31B6  09 09 44                               VIDEOREF                      ref=0x4409 (N[9]=ncdb.vdx)
 31B9  15 AB 31                               JMP                           target=0x31AB
-31BC  09 08 44                               VIDEOREF                      ref=0x4408 (N[8]=?)
+31BC  09 08 44                               VIDEOREF                      ref=0x4408 (N[8]=ncd.vdx)
 31BF  15 19 31                               JMP                           target=0x3119
-31C2  09 07 44                               VIDEOREF                      ref=0x4407 (N[7]=?)
+31C2  09 07 44                               VIDEOREF                      ref=0x4407 (N[7]=nabb.vdx)
 31C5  15 19 31                               JMP                           target=0x3119
-31C8  09 0E 44                               VIDEOREF                      ref=0x440E (N[14]=?)
+31C8  09 0E 44                               VIDEOREF                      ref=0x440E (N[14]=nex.vdx)
 31CB  03                                     FADEIN_NEXT_VIDEO             
 31CC  05                                     FIRSTFRAME_NEXT_VIDEO         
-31CD  09 90 14                               VIDEOREF                      ref=0x1490 (FH[144]=?)
+31CD  09 90 14                               VIDEOREF                      ref=0x1490 (FH[144]=h_4fd.vdx)
 31D0  15 73 12                               JMP                           target=0x1273
-31D3  09 0A 44                               VIDEOREF                      ref=0x440A (N[10]=?)
+31D3  09 0A 44                               VIDEOREF                      ref=0x440A (N[10]=ncri.vdx)
 31D6  9A B1 B0 E6 31                         STRCMP_NE_JMP                 start=v[0x0B1], values=[0], target=0x31E6
 31DB  96 B1 B1                               LOADSTRING                    dst=v[0x0B1], values=[1]
 31DE  18 F8 37                               CALL                          target=0x37F8
@@ -3404,48 +3406,48 @@
 31EA  9A 8E 35 B4 F3 31                      STRCMP_NE_JMP                 start=v[0x08E], values=[5, 4], target=0x31F3
 31F0  30 03 3B                               HOTSPOT_BOTTOM_4              target=0x3B03
 31F3  13                                     INPUTLOOPEND                  
-31F4  09 0B 44                               VIDEOREF                      ref=0x440B (N[11]=?)
+31F4  09 0B 44                               VIDEOREF                      ref=0x440B (N[11]=ncrib.vdx)
 31F7  15 19 31                               JMP                           target=0x3119
 31FA  9A B0 B0 0A 32                         STRCMP_NE_JMP                 start=v[0x0B0], values=[0], target=0x320A
 31FF  96 B0 B1                               LOADSTRING                    dst=v[0x0B0], values=[1]
 3202  18 07 38                               CALL                          target=0x3807
 3205  16 0C 01 35 B5                         LOADSTRING                    dst=v[0x10C], values=[5, 5]
 320A  15 19 31                               JMP                           target=0x3119
-320D  09 13 44                               VIDEOREF                      ref=0x4413 (N[19]=?)
+320D  09 13 44                               VIDEOREF                      ref=0x4413 (N[19]=ntoy.vdx)
 3210  04                                     PALFADEOUT                    
 3211  15 B6 22                               JMP                           target=0x22B6
-3214  09 0F 44                               VIDEOREF                      ref=0x440F (N[15]=?)
+3214  09 0F 44                               VIDEOREF                      ref=0x440F (N[15]=njac.vdx)
 3217  0A                                     VIDEOFLAG5_ON                 
-3218  09 00 44                               VIDEOREF                      ref=0x4400 (N[0]=?)
+3218  09 00 44                               VIDEOREF                      ref=0x4400 (N[0]=n1po.vdx)
 321B  0A                                     VIDEOFLAG5_ON                 
-321C  09 01 44                               VIDEOREF                      ref=0x4401 (N[1]=?)
+321C  09 01 44                               VIDEOREF                      ref=0x4401 (N[1]=n2po.vdx)
 321F  0A                                     VIDEOFLAG5_ON                 
-3220  09 03 44                               VIDEOREF                      ref=0x4403 (N[3]=?)
+3220  09 03 44                               VIDEOREF                      ref=0x4403 (N[3]=n3po.vdx)
 3223  0A                                     VIDEOFLAG5_ON                 
-3224  09 04 44                               VIDEOREF                      ref=0x4404 (N[4]=?)
+3224  09 04 44                               VIDEOREF                      ref=0x4404 (N[4]=n3pob.vdx)
 3227  0A                                     VIDEOFLAG5_ON                 
-3228  09 02 44                               VIDEOREF                      ref=0x4402 (N[2]=?)
+3228  09 02 44                               VIDEOREF                      ref=0x4402 (N[2]=n2pob.vdx)
 322B  0A                                     VIDEOFLAG5_ON                 
-322C  09 10 44                               VIDEOREF                      ref=0x4410 (N[16]=?)
+322C  09 10 44                               VIDEOREF                      ref=0x4410 (N[16]=njacb.vdx)
 322F  15 19 31                               JMP                           target=0x3119
 3232  1A 09 01 B0 44 32                      STRCMP_NE_JMP                 start=v[0x109], values=[0], target=0x3244
 3238  23 05 01 B0 44 32                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x3244
 323E  4B 00                                  SET_VIDEO_MODE                value=0x00
 3240  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
-3244  09 11 44                               VIDEOREF                      ref=0x4411 (N[17]=?)
+3244  09 11 44                               VIDEOREF                      ref=0x4411 (N[17]=npuz.vdx)
 3247  96 92 30 B6                            LOADSTRING                    dst=v[0x092], values=[0, 6]
 324B  18 94 40                               CALL                          target=0x4094
 324E  1A 09 01 B1 5A 32                      STRCMP_NE_JMP                 start=v[0x109], values=[1], target=0x325A
 3254  4B 01                                  SET_VIDEO_MODE                value=0x01
 3256  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
-325A  09 12 44                               VIDEOREF                      ref=0x4412 (N[18]=?)
+325A  09 12 44                               VIDEOREF                      ref=0x4412 (N[18]=npuzb.vdx)
 325D  15 05 31                               JMP                           target=0x3105
-3260  09 0C 44                               VIDEOREF                      ref=0x440C (N[12]=?)
+3260  09 0C 44                               VIDEOREF                      ref=0x440C (N[12]=ndra.vdx)
 3263  15 19 31                               JMP                           target=0x3119
 3266  96 8C 31 B7                            LOADSTRING                    dst=v[0x08C], values=[1, 7]
 326A  05                                     FIRSTFRAME_NEXT_VIDEO         
 326B  03                                     FADEIN_NEXT_VIDEO             
-326C  09 10 30                               VIDEOREF                      ref=0x3010 (LA[16]=?)
+326C  09 10 30                               VIDEOREF                      ref=0x3010 (LA[16]=la_1fa.vdx)
 326F  15 9B 32                               JMP                           target=0x329B
 3272  0B                                     INPUTLOOPSTART                
 3273  0E 1D 33                               HOTSPOT_LEFT                  target=0x331D
@@ -3454,10 +3456,10 @@
 327C  13                                     INPUTLOOPEND                  
 327D  0A                                     VIDEOFLAG5_ON                 
 327E  9A 00 B0 8B 32                         STRCMP_NE_JMP                 start=v[0x000], values=[0], target=0x328B
-3283  09 03 30                               VIDEOREF                      ref=0x3003 (LA[3]=?)
+3283  09 03 30                               VIDEOREF                      ref=0x3003 (LA[3]=la_d.vdx)
 3286  9F 00                                  INC                           var=v[0x000]
 3288  15 90 32                               JMP                           target=0x3290
-328B  09 04 30                               VIDEOREF                      ref=0x3004 (LA[4]=?)
+328B  09 04 30                               VIDEOREF                      ref=0x3004 (LA[4]=la_db.vdx)
 328E  A0 00                                  DEC                           var=v[0x000]
 3290  15 72 32                               JMP                           target=0x3272
 3293  0B                                     INPUTLOOPSTART                
@@ -3490,38 +3492,38 @@
 3301  11 08 33                               HOTSPOT_CENTER_2              target=0x3308
 3304  0F 65 33                               HOTSPOT_RIGHT                 target=0x3365
 3307  13                                     INPUTLOOPEND                  
-3308  09 13 30                               VIDEOREF                      ref=0x3013 (LA[19]=?)
-330B  09 07 30                               VIDEOREF                      ref=0x3007 (LA[7]=?)
-330E  09 17 30                               VIDEOREF                      ref=0x3017 (LA[23]=?)
+3308  09 13 30                               VIDEOREF                      ref=0x3013 (LA[19]=la_1fd.vdx)
+330B  09 07 30                               VIDEOREF                      ref=0x3007 (LA[7]=la1_2.vdx)
+330E  09 17 30                               VIDEOREF                      ref=0x3017 (LA[23]=la_2bd.vdx)
 3311  15 E1 33                               JMP                           target=0x33E1
-3314  09 01 30                               VIDEOREF                      ref=0x3001 (LA[1]=?)
-3317  09 07 30                               VIDEOREF                      ref=0x3007 (LA[7]=?)
+3314  09 01 30                               VIDEOREF                      ref=0x3001 (LA[1]=la_s.vdx)
+3317  09 07 30                               VIDEOREF                      ref=0x3007 (LA[7]=la1_2.vdx)
 331A  15 7E 33                               JMP                           target=0x337E
 331D  9A 00 B1 26 33                         STRCMP_NE_JMP                 start=v[0x000], values=[1], target=0x3326
 3322  0A                                     VIDEOFLAG5_ON                 
-3323  09 04 30                               VIDEOREF                      ref=0x3004 (LA[4]=?)
-3326  09 0D 30                               VIDEOREF                      ref=0x300D (LA[13]=?)
+3323  09 04 30                               VIDEOREF                      ref=0x3004 (LA[4]=la_db.vdx)
+3326  09 0D 30                               VIDEOREF                      ref=0x300D (LA[13]=la_1bb.vdx)
 3329  15 93 32                               JMP                           target=0x3293
 332C  9A 00 B1 35 33                         STRCMP_NE_JMP                 start=v[0x000], values=[1], target=0x3335
 3331  0A                                     VIDEOFLAG5_ON                 
-3332  09 04 30                               VIDEOREF                      ref=0x3004 (LA[4]=?)
-3335  09 12 30                               VIDEOREF                      ref=0x3012 (LA[18]=?)
+3332  09 04 30                               VIDEOREF                      ref=0x3004 (LA[4]=la_db.vdx)
+3335  09 12 30                               VIDEOREF                      ref=0x3012 (LA[18]=la_1fc.vdx)
 3338  15 FD 32                               JMP                           target=0x32FD
-333B  09 0C 30                               VIDEOREF                      ref=0x300C (LA[12]=?)
+333B  09 0C 30                               VIDEOREF                      ref=0x300C (LA[12]=la_1ba.vdx)
 333E  15 9B 32                               JMP                           target=0x329B
 3341  96 00 B0                               LOADSTRING                    dst=v[0x000], values=[0]
-3344  09 11 30                               VIDEOREF                      ref=0x3011 (LA[17]=?)
+3344  09 11 30                               VIDEOREF                      ref=0x3011 (LA[17]=la_1fb.vdx)
 3347  15 72 32                               JMP                           target=0x3272
-334A  09 01 30                               VIDEOREF                      ref=0x3001 (LA[1]=?)
-334D  09 0F 30                               VIDEOREF                      ref=0x300F (LA[15]=?)
+334A  09 01 30                               VIDEOREF                      ref=0x3001 (LA[1]=la_s.vdx)
+334D  09 0F 30                               VIDEOREF                      ref=0x300F (LA[15]=la_1bd.vdx)
 3350  15 FD 32                               JMP                           target=0x32FD
-3353  09 01 30                               VIDEOREF                      ref=0x3001 (LA[1]=?)
-3356  09 10 30                               VIDEOREF                      ref=0x3010 (LA[16]=?)
+3353  09 01 30                               VIDEOREF                      ref=0x3001 (LA[1]=la_s.vdx)
+3356  09 10 30                               VIDEOREF                      ref=0x3010 (LA[16]=la_1fa.vdx)
 3359  15 93 32                               JMP                           target=0x3293
 335C  96 00 B0                               LOADSTRING                    dst=v[0x000], values=[0]
-335F  09 0E 30                               VIDEOREF                      ref=0x300E (LA[14]=?)
+335F  09 0E 30                               VIDEOREF                      ref=0x300E (LA[14]=la_1bc.vdx)
 3362  15 72 32                               JMP                           target=0x3272
-3365  09 13 30                               VIDEOREF                      ref=0x3013 (LA[19]=?)
+3365  09 13 30                               VIDEOREF                      ref=0x3013 (LA[19]=la_1fd.vdx)
 3368  15 9B 32                               JMP                           target=0x329B
 336B  0B                                     INPUTLOOPSTART                
 336C  0E F4 33                               HOTSPOT_LEFT                  target=0x33F4
@@ -3532,7 +3534,7 @@
 3377  0E 00 34                               HOTSPOT_LEFT                  target=0x3400
 337A  0F 06 34                               HOTSPOT_RIGHT                 target=0x3406
 337D  13                                     INPUTLOOPEND                  
-337E  02 35 4C                               PLAYSONG                      ref=0x4C35 (XMI[53]=?)
+337E  02 35 4C                               PLAYSONG                      ref=0x4C35 (XMI[53]=gu56.xmi)
 3381  0B                                     INPUTLOOPSTART                
 3382  A3 EB E1 93 33                         STRCMP_EQ_JMP                 start=v[0x0EB], values=[49], target=0x3393
 3387  0D 97 01 93 00 EB 01 55 01 AC 33 06    HOTSPOT_RECT                  left=0x0197, top=0x0093, right=0x01EB, bottom=0x0155, target=0x33AC, cursor=0x06
@@ -3541,7 +3543,7 @@
 33A5  0E 0C 34                               HOTSPOT_LEFT                  target=0x340C
 33A8  0F 12 34                               HOTSPOT_RIGHT                 target=0x3412
 33AB  13                                     INPUTLOOPEND                  
-33AC  09 05 30                               VIDEOREF                      ref=0x3005 (LA[5]=?)
+33AC  09 05 30                               VIDEOREF                      ref=0x3005 (LA[5]=la_p.vdx)
 33AF  23 05 01 B0 BB 33                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x33BB
 33B5  4B 00                                  SET_VIDEO_MODE                value=0x00
 33B7  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
@@ -3549,40 +3551,40 @@
 33BE  1A 09 01 B1 CA 33                      STRCMP_NE_JMP                 start=v[0x109], values=[1], target=0x33CA
 33C4  4B 01                                  SET_VIDEO_MODE                value=0x01
 33C6  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
-33CA  09 06 30                               VIDEOREF                      ref=0x3006 (LA[6]=?)
+33CA  09 06 30                               VIDEOREF                      ref=0x3006 (LA[6]=la_pb.vdx)
 33CD  15 7E 33                               JMP                           target=0x337E
 33D0  0B                                     INPUTLOOPSTART                
 33D1  0D 62 00 B0 00 C3 00 66 01 E1 33 00    HOTSPOT_RECT                  left=0x0062, top=0x00B0, right=0x00C3, bottom=0x0166, target=0x33E1, cursor=0x00
 33DD  0F 1E 34                               HOTSPOT_RIGHT                 target=0x341E
 33E0  13                                     INPUTLOOPEND                  
-33E1  09 0A 30                               VIDEOREF                      ref=0x300A (LA[10]=?)
-33E4  09 0B 30                               VIDEOREF                      ref=0x300B (LA[11]=?)
+33E1  09 0A 30                               VIDEOREF                      ref=0x300A (LA[10]=la2_3.vdx)
+33E4  09 0B 30                               VIDEOREF                      ref=0x300B (LA[11]=la3_x.vdx)
 33E7  96 8C 30 B7                            LOADSTRING                    dst=v[0x08C], values=[0, 7]
 33EB  15 B6 22                               JMP                           target=0x22B6
-33EE  09 09 30                               VIDEOREF                      ref=0x3009 (LA[9]=?)
+33EE  09 09 30                               VIDEOREF                      ref=0x3009 (LA[9]=la2_1.vdx)
 33F1  15 72 32                               JMP                           target=0x3272
-33F4  09 15 30                               VIDEOREF                      ref=0x3015 (LA[21]=?)
+33F4  09 15 30                               VIDEOREF                      ref=0x3015 (LA[21]=la_2bb.vdx)
 33F7  15 76 33                               JMP                           target=0x3376
-33FA  09 1A 30                               VIDEOREF                      ref=0x301A (LA[26]=?)
+33FA  09 1A 30                               VIDEOREF                      ref=0x301A (LA[26]=la_2fc.vdx)
 33FD  15 D0 33                               JMP                           target=0x33D0
-3400  09 14 30                               VIDEOREF                      ref=0x3014 (LA[20]=?)
+3400  09 14 30                               VIDEOREF                      ref=0x3014 (LA[20]=la_2ba.vdx)
 3403  15 7E 33                               JMP                           target=0x337E
-3406  09 19 30                               VIDEOREF                      ref=0x3019 (LA[25]=?)
+3406  09 19 30                               VIDEOREF                      ref=0x3019 (LA[25]=la_2fb.vdx)
 3409  15 6B 33                               JMP                           target=0x336B
-340C  09 17 30                               VIDEOREF                      ref=0x3017 (LA[23]=?)
+340C  09 17 30                               VIDEOREF                      ref=0x3017 (LA[23]=la_2bd.vdx)
 340F  15 D0 33                               JMP                           target=0x33D0
-3412  09 18 30                               VIDEOREF                      ref=0x3018 (LA[24]=?)
+3412  09 18 30                               VIDEOREF                      ref=0x3018 (LA[24]=la_2fa.vdx)
 3415  15 76 33                               JMP                           target=0x3376
-3418  09 16 30                               VIDEOREF                      ref=0x3016 (LA[22]=?)
+3418  09 16 30                               VIDEOREF                      ref=0x3016 (LA[22]=la_2bc.vdx)
 341B  15 6B 33                               JMP                           target=0x336B
-341E  09 1B 30                               VIDEOREF                      ref=0x301B (LA[27]=?)
+341E  09 1B 30                               VIDEOREF                      ref=0x301B (LA[27]=la_2fd.vdx)
 3421  15 7E 33                               JMP                           target=0x337E
 3424  96 8C 31 B2                            LOADSTRING                    dst=v[0x08C], values=[1, 2]
 3428  03                                     FADEIN_NEXT_VIDEO             
 3429  05                                     FIRSTFRAME_NEXT_VIDEO         
-342A  09 03 38                               VIDEOREF                      ref=0x3803 (MB[3]=?)
+342A  09 03 38                               VIDEOREF                      ref=0x3803 (MB[3]=mbab.vdx)
 342D  9A AB B0 3C 34                         STRCMP_NE_JMP                 start=v[0x0AB], values=[0], target=0x343C
-3432  09 3D 38                               VIDEOREF                      ref=0x383D (MB[61]=?)
+3432  09 3D 38                               VIDEOREF                      ref=0x383D (MB[61]=mb_warp.vdx)
 3435  96 AB B1                               LOADSTRING                    dst=v[0x0AB], values=[1]
 3438  96 8E 39 B9                            LOADSTRING                    dst=v[0x08E], values=[9, 9]
 343C  9A EF E1 49 34                         STRCMP_NE_JMP                 start=v[0x0EF], values=[49], target=0x3449
@@ -3602,50 +3604,50 @@
 348F  30 03 3B                               HOTSPOT_BOTTOM_4              target=0x3B03
 3492  13                                     INPUTLOOPEND                  
 3493  07                                     VIDEOFLAG7_ON                 
-3494  09 3F 38                               VIDEOREF                      ref=0x383F (MB[63]=?)
+3494  09 3F 38                               VIDEOREF                      ref=0x383F (MB[63]=sexbed.vdx)
 3497  15 3C 34                               JMP                           target=0x343C
-349A  09 06 38                               VIDEOREF                      ref=0x3806 (MB[6]=?)
+349A  09 06 38                               VIDEOREF                      ref=0x3806 (MB[6]=mbcdb.vdx)
 349D  15 D0 34                               JMP                           target=0x34D0
-34A0  09 03 38                               VIDEOREF                      ref=0x3803 (MB[3]=?)
+34A0  09 03 38                               VIDEOREF                      ref=0x3803 (MB[3]=mbab.vdx)
 34A3  15 D0 34                               JMP                           target=0x34D0
-34A6  02 36 4C                               PLAYSONG                      ref=0x4C36 (XMI[54]=?)
-34A9  09 08 38                               VIDEOREF                      ref=0x3808 (MB[8]=?)
+34A6  02 36 4C                               PLAYSONG                      ref=0x4C36 (XMI[54]=gu58.xmi)
+34A9  09 08 38                               VIDEOREF                      ref=0x3808 (MB[8]=mbpu.vdx)
 34AC  23 05 01 B0 B8 34                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x34B8
 34B2  4B 00                                  SET_VIDEO_MODE                value=0x00
 34B4  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
-34B8  09 00 38                               VIDEOREF                      ref=0x3800 (MB[0]=?)
+34B8  09 00 38                               VIDEOREF                      ref=0x3800 (MB[0]=mb1p.vdx)
 34BB  18 E6 40                               CALL                          target=0x40E6
 34BE  1A 09 01 B1 CA 34                      STRCMP_NE_JMP                 start=v[0x109], values=[1], target=0x34CA
 34C4  4B 01                                  SET_VIDEO_MODE                value=0x01
 34C6  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
-34CA  09 09 38                               VIDEOREF                      ref=0x3809 (MB[9]=?)
+34CA  09 09 38                               VIDEOREF                      ref=0x3809 (MB[9]=mbpub.vdx)
 34CD  15 3C 34                               JMP                           target=0x343C
 34D0  0B                                     INPUTLOOPSTART                
 34D1  0E E4 34                               HOTSPOT_LEFT                  target=0x34E4
 34D4  0F EA 34                               HOTSPOT_RIGHT                 target=0x34EA
 34D7  0D 56 01 7A 00 AF 01 74 01 06 35 00    HOTSPOT_RECT                  left=0x0156, top=0x007A, right=0x01AF, bottom=0x0174, target=0x3506, cursor=0x00
 34E3  13                                     INPUTLOOPEND                  
-34E4  09 04 38                               VIDEOREF                      ref=0x3804 (MB[4]=?)
+34E4  09 04 38                               VIDEOREF                      ref=0x3804 (MB[4]=mbabb.vdx)
 34E7  15 3C 34                               JMP                           target=0x343C
-34EA  09 05 38                               VIDEOREF                      ref=0x3805 (MB[5]=?)
+34EA  09 05 38                               VIDEOREF                      ref=0x3805 (MB[5]=mbcd.vdx)
 34ED  15 3C 34                               JMP                           target=0x343C
-34F0  09 01 38                               VIDEOREF                      ref=0x3801 (MB[1]=?)
-34F3  09 09 38                               VIDEOREF                      ref=0x3809 (MB[9]=?)
+34F0  09 01 38                               VIDEOREF                      ref=0x3801 (MB[1]=mb1pb.vdx)
+34F3  09 09 38                               VIDEOREF                      ref=0x3809 (MB[9]=mbpub.vdx)
 34F6  15 3C 34                               JMP                           target=0x343C
 34F9  96 AC B1                               LOADSTRING                    dst=v[0x0AC], values=[1]
 34FC  96 8E 35 B9                            LOADSTRING                    dst=v[0x08E], values=[5, 9]
 3500  18 73 39                               CALL                          target=0x3973
 3503  15 3C 34                               JMP                           target=0x343C
-3506  09 07 38                               VIDEOREF                      ref=0x3807 (MB[7]=?)
+3506  09 07 38                               VIDEOREF                      ref=0x3807 (MB[7]=mbex.vdx)
 3509  03                                     FADEIN_NEXT_VIDEO             
 350A  05                                     FIRSTFRAME_NEXT_VIDEO         
-350B  09 7F 14                               VIDEOREF                      ref=0x147F (FH[127]=?)
+350B  09 7F 14                               VIDEOREF                      ref=0x147F (FH[127]=h_2fc.vdx)
 350E  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 3512  15 5F 10                               JMP                           target=0x105F
 3515  96 8C 31 B8                            LOADSTRING                    dst=v[0x08C], values=[1, 8]
 3519  05                                     FIRSTFRAME_NEXT_VIDEO         
 351A  03                                     FADEIN_NEXT_VIDEO             
-351B  09 09 0C                               VIDEOREF                      ref=0x0C09 (D[9]=?)
+351B  09 09 0C                               VIDEOREF                      ref=0x0C09 (D[9]=d_1fa.vdx)
 351E  9A 9C B0 2D 35                         STRCMP_NE_JMP                 start=v[0x09C], values=[0], target=0x352D
 3523  96 9C B1                               LOADSTRING                    dst=v[0x09C], values=[1]
 3526  18 F7 38                               CALL                          target=0x38F7
@@ -3672,38 +3674,38 @@
 358D  18 15 39                               CALL                          target=0x3915
 3590  96 8E 37 B3                            LOADSTRING                    dst=v[0x08E], values=[7, 3]
 3594  15 2D 35                               JMP                           target=0x352D
-3597  09 01 0C                               VIDEOREF                      ref=0x0C01 (D[1]=?)
+3597  09 01 0C                               VIDEOREF                      ref=0x0C01 (D[1]=d1_2.vdx)
 359A  15 FF 35                               JMP                           target=0x35FF
 359D  1A 09 01 B0 AF 35                      STRCMP_NE_JMP                 start=v[0x109], values=[0], target=0x35AF
 35A3  23 05 01 B0 AF 35                      STRCMP_EQ_JMP                 start=v[0x105], values=[0], target=0x35AF
 35A9  4B 00                                  SET_VIDEO_MODE                value=0x00
 35AB  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
-35AF  09 02 0C                               VIDEOREF                      ref=0x0C02 (D[2]=?)
+35AF  09 02 0C                               VIDEOREF                      ref=0x0C02 (D[2]=d1_3.vdx)
 35B2  18 6B 40                               CALL                          target=0x406B
 35B5  1A 09 01 B1 C1 35                      STRCMP_NE_JMP                 start=v[0x109], values=[1], target=0x35C1
 35BB  4B 01                                  SET_VIDEO_MODE                value=0x01
 35BD  16 09 01 B0                            LOADSTRING                    dst=v[0x109], values=[0]
-35C1  09 03 0C                               VIDEOREF                      ref=0x0C03 (D[3]=?)
+35C1  09 03 0C                               VIDEOREF                      ref=0x0C03 (D[3]=d1_3b.vdx)
 35C4  15 2D 35                               JMP                           target=0x352D
-35C7  09 03 0C                               VIDEOREF                      ref=0x0C03 (D[3]=?)
+35C7  09 03 0C                               VIDEOREF                      ref=0x0C03 (D[3]=d1_3b.vdx)
 35CA  15 2D 35                               JMP                           target=0x352D
-35CD  09 08 0C                               VIDEOREF                      ref=0x0C08 (D[8]=?)
+35CD  09 08 0C                               VIDEOREF                      ref=0x0C08 (D[8]=d_1bc.vdx)
 35D0  15 D9 35                               JMP                           target=0x35D9
-35D3  09 09 0C                               VIDEOREF                      ref=0x0C09 (D[9]=?)
+35D3  09 09 0C                               VIDEOREF                      ref=0x0C09 (D[9]=d_1fa.vdx)
 35D6  15 D9 35                               JMP                           target=0x35D9
 35D9  0B                                     INPUTLOOPSTART                
 35DA  0E E4 35                               HOTSPOT_LEFT                  target=0x35E4
 35DD  0F EA 35                               HOTSPOT_RIGHT                 target=0x35EA
 35E0  10 F0 35                               HOTSPOT_CENTER                target=0x35F0
 35E3  13                                     INPUTLOOPEND                  
-35E4  09 07 0C                               VIDEOREF                      ref=0x0C07 (D[7]=?)
+35E4  09 07 0C                               VIDEOREF                      ref=0x0C07 (D[7]=d_1ba.vdx)
 35E7  15 2D 35                               JMP                           target=0x352D
-35EA  09 0A 0C                               VIDEOREF                      ref=0x0C0A (D[10]=?)
+35EA  09 0A 0C                               VIDEOREF                      ref=0x0C0A (D[10]=d_1fc.vdx)
 35ED  15 2D 35                               JMP                           target=0x352D
-35F0  09 13 0C                               VIDEOREF                      ref=0x0C13 (D[19]=?)
+35F0  09 13 0C                               VIDEOREF                      ref=0x0C13 (D[19]=d_d.vdx)
 35F3  03                                     FADEIN_NEXT_VIDEO             
 35F4  05                                     FIRSTFRAME_NEXT_VIDEO         
-35F5  09 91 14                               VIDEOREF                      ref=0x1491 (FH[145]=?)
+35F5  09 91 14                               VIDEOREF                      ref=0x1491 (FH[145]=h_5b.vdx)
 35F8  96 8C 30 B2                            LOADSTRING                    dst=v[0x08C], values=[0, 2]
 35FC  15 E6 12                               JMP                           target=0x12E6
 35FF  0B                                     INPUTLOOPSTART                
@@ -3714,13 +3716,13 @@
 360C  0D 39 01 A0 00 6F 01 1E 01 2C 36 00    HOTSPOT_RECT                  left=0x0139, top=0x00A0, right=0x016F, bottom=0x011E, target=0x362C, cursor=0x00
 3618  13                                     INPUTLOOPEND                  
 3619  13                                     INPUTLOOPEND                  
-361A  09 0D 0C                               VIDEOREF                      ref=0x0C0D (D[13]=?)
+361A  09 0D 0C                               VIDEOREF                      ref=0x0C0D (D[13]=d_2bc.vdx)
 361D  15 36 36                               JMP                           target=0x3636
-3620  09 12 0C                               VIDEOREF                      ref=0x0C12 (D[18]=?)
-3623  09 0F 0C                               VIDEOREF                      ref=0x0C0F (D[15]=?)
-3626  09 10 0C                               VIDEOREF                      ref=0x0C10 (D[16]=?)
+3620  09 12 0C                               VIDEOREF                      ref=0x0C12 (D[18]=d_2fd.vdx)
+3623  09 0F 0C                               VIDEOREF                      ref=0x0C0F (D[15]=d_2fa.vdx)
+3626  09 10 0C                               VIDEOREF                      ref=0x0C10 (D[16]=d_2fb.vdx)
 3629  15 36 36                               JMP                           target=0x3636
-362C  09 1E 0C                               VIDEOREF                      ref=0x0C1E (D[30]=?)
+362C  09 1E 0C                               VIDEOREF                      ref=0x0C1E (D[30]=d_x.vdx)
 362F  96 8C 31 B9                            LOADSTRING                    dst=v[0x08C], values=[1, 9]
 3633  15 FC 30                               JMP                           target=0x30FC
 3636  0B                                     INPUTLOOPSTART                
@@ -3728,13 +3730,13 @@
 363A  0F 56 36                               HOTSPOT_RIGHT                 target=0x3656
 363D  0D 85 01 B0 00 E7 01 56 01 5C 36 00    HOTSPOT_RECT                  left=0x0185, top=0x00B0, right=0x01E7, bottom=0x0156, target=0x365C, cursor=0x00
 3649  13                                     INPUTLOOPEND                  
-364A  09 0C 0C                               VIDEOREF                      ref=0x0C0C (D[12]=?)
-364D  09 0B 0C                               VIDEOREF                      ref=0x0C0B (D[11]=?)
-3650  09 0E 0C                               VIDEOREF                      ref=0x0C0E (D[14]=?)
+364A  09 0C 0C                               VIDEOREF                      ref=0x0C0C (D[12]=d_2bb.vdx)
+364D  09 0B 0C                               VIDEOREF                      ref=0x0C0B (D[11]=d_2ba.vdx)
+3650  09 0E 0C                               VIDEOREF                      ref=0x0C0E (D[14]=d_2bd.vdx)
 3653  15 FF 35                               JMP                           target=0x35FF
-3656  09 11 0C                               VIDEOREF                      ref=0x0C11 (D[17]=?)
+3656  09 11 0C                               VIDEOREF                      ref=0x0C11 (D[17]=d_2fc.vdx)
 3659  15 FF 35                               JMP                           target=0x35FF
-365C  09 05 0C                               VIDEOREF                      ref=0x0C05 (D[5]=?)
+365C  09 05 0C                               VIDEOREF                      ref=0x0C05 (D[5]=d2_1.vdx)
 365F  15 D9 35                               JMP                           target=0x35D9
 3662  31 4B 00 EE 02                         MIDI_CONTROL                  value=0x004B, time=0x02EE
 3667  22                                     COPY_BG_TO_FG                 
@@ -3744,447 +3746,447 @@
 3674  31 63 00 EE 02                         MIDI_CONTROL                  value=0x0063, time=0x02EE
 3679  17 00                                  RET                           value=0x00
 367B  05                                     FIRSTFRAME_NEXT_VIDEO         
-367C  09 06 44                               VIDEOREF                      ref=0x4406 (N[6]=?)
+367C  09 06 44                               VIDEOREF                      ref=0x4406 (N[6]=nab.vdx)
 367F  18 62 36                               CALL                          target=0x3662
-3682  09 15 44                               VIDEOREF                      ref=0x4415 (N[21]=?)
+3682  09 15 44                               VIDEOREF                      ref=0x4415 (N[21]=nx_.vdx)
 3685  18 6B 36                               CALL                          target=0x366B
 3688  17 00                                  RET                           value=0x00
 368A  05                                     FIRSTFRAME_NEXT_VIDEO         
-368B  09 0E 08                               VIDEOREF                      ref=0x080E (CH[14]=?)
+368B  09 0E 08                               VIDEOREF                      ref=0x080E (CH[14]=chor.vdx)
 368E  18 62 36                               CALL                          target=0x3662
-3691  02 2A 4C                               PLAYSONG                      ref=0x4C2A (XMI[42]=?)
-3694  09 05 08                               VIDEOREF                      ref=0x0805 (CH[5]=?)
+3691  02 2A 4C                               PLAYSONG                      ref=0x4C2A (XMI[42]=gu45.xmi)
+3694  09 05 08                               VIDEOREF                      ref=0x0805 (CH[5]=ch3_0.vdx)
 3697  18 6B 36                               CALL                          target=0x366B
 369A  17 00                                  RET                           value=0x00
 369C  05                                     FIRSTFRAME_NEXT_VIDEO         
-369D  09 5A 14                               VIDEOREF                      ref=0x145A (FH[90]=?)
+369D  09 5A 14                               VIDEOREF                      ref=0x145A (FH[90]=h1_8.vdx)
 36A0  18 62 36                               CALL                          target=0x3662
-36A3  09 6F 14                               VIDEOREF                      ref=0x146F (FH[111]=?)
+36A3  09 6F 14                               VIDEOREF                      ref=0x146F (FH[111]=hb_.vdx)
 36A6  18 6B 36                               CALL                          target=0x366B
 36A9  17 00                                  RET                           value=0x00
 36AB  05                                     FIRSTFRAME_NEXT_VIDEO         
-36AC  09 59 14                               VIDEOREF                      ref=0x1459 (FH[89]=?)
+36AC  09 59 14                               VIDEOREF                      ref=0x1459 (FH[89]=h1_2.vdx)
 36AF  18 62 36                               CALL                          target=0x3662
-36B2  09 70 14                               VIDEOREF                      ref=0x1470 (FH[112]=?)
+36B2  09 70 14                               VIDEOREF                      ref=0x1470 (FH[112]=hc_.vdx)
 36B5  18 6B 36                               CALL                          target=0x366B
 36B8  17 00                                  RET                           value=0x00
 36BA  05                                     FIRSTFRAME_NEXT_VIDEO         
-36BB  09 59 14                               VIDEOREF                      ref=0x1459 (FH[89]=?)
+36BB  09 59 14                               VIDEOREF                      ref=0x1459 (FH[89]=h1_2.vdx)
 36BE  18 62 36                               CALL                          target=0x3662
-36C1  02 2C 4C                               PLAYSONG                      ref=0x4C2C (XMI[44]=?)
-36C4  09 5B 14                               VIDEOREF                      ref=0x145B (FH[91]=?)
+36C1  02 2C 4C                               PLAYSONG                      ref=0x4C2C (XMI[44]=gu47.xmi)
+36C4  09 5B 14                               VIDEOREF                      ref=0x145B (FH[91]=h2_.vdx)
 36C7  18 6B 36                               CALL                          target=0x366B
 36CA  17 00                                  RET                           value=0x00
 36CC  05                                     FIRSTFRAME_NEXT_VIDEO         
-36CD  09 59 14                               VIDEOREF                      ref=0x1459 (FH[89]=?)
+36CD  09 59 14                               VIDEOREF                      ref=0x1459 (FH[89]=h1_2.vdx)
 36D0  18 62 36                               CALL                          target=0x3662
-36D3  09 9D 14                               VIDEOREF                      ref=0x149D (FH[157]=?)
+36D3  09 9D 14                               VIDEOREF                      ref=0x149D (FH[157]=h_ghost1.vdx)
 36D6  18 6B 36                               CALL                          target=0x366B
 36D9  17 00                                  RET                           value=0x00
 36DB  05                                     FIRSTFRAME_NEXT_VIDEO         
-36DC  09 63 14                               VIDEOREF                      ref=0x1463 (FH[99]=?)
+36DC  09 63 14                               VIDEOREF                      ref=0x1463 (FH[99]=h4_3.vdx)
 36DF  18 62 36                               CALL                          target=0x3662
-36E2  09 9E 14                               VIDEOREF                      ref=0x149E (FH[158]=?)
+36E2  09 9E 14                               VIDEOREF                      ref=0x149E (FH[158]=h_ghost2.vdx)
 36E5  18 6B 36                               CALL                          target=0x366B
 36E8  17 00                                  RET                           value=0x00
 36EA  05                                     FIRSTFRAME_NEXT_VIDEO         
-36EB  09 59 14                               VIDEOREF                      ref=0x1459 (FH[89]=?)
+36EB  09 59 14                               VIDEOREF                      ref=0x1459 (FH[89]=h1_2.vdx)
 36EE  18 62 36                               CALL                          target=0x3662
-36F1  09 9F 14                               VIDEOREF                      ref=0x149F (FH[159]=?)
+36F1  09 9F 14                               VIDEOREF                      ref=0x149F (FH[159]=h_ghost3.vdx)
 36F4  18 6B 36                               CALL                          target=0x366B
 36F7  17 00                                  RET                           value=0x00
 36F9  05                                     FIRSTFRAME_NEXT_VIDEO         
-36FA  09 59 14                               VIDEOREF                      ref=0x1459 (FH[89]=?)
+36FA  09 59 14                               VIDEOREF                      ref=0x1459 (FH[89]=h1_2.vdx)
 36FD  18 62 36                               CALL                          target=0x3662
-3700  09 A0 14                               VIDEOREF                      ref=0x14A0 (FH[160]=?)
+3700  09 A0 14                               VIDEOREF                      ref=0x14A0 (FH[160]=h_ghost4.vdx)
 3703  18 6B 36                               CALL                          target=0x366B
 3706  17 00                                  RET                           value=0x00
 3708  05                                     FIRSTFRAME_NEXT_VIDEO         
-3709  09 7A 28                               VIDEOREF                      ref=0x287A (JHEK[122]=?)
+3709  09 7A 28                               VIDEOREF                      ref=0x287A (JHEK[122]=ek1p.vdx)
 370C  18 62 36                               CALL                          target=0x3662
-370F  02 2D 4C                               PLAYSONG                      ref=0x4C2D (XMI[45]=?)
-3712  09 7C 28                               VIDEOREF                      ref=0x287C (JHEK[124]=?)
+370F  02 2D 4C                               PLAYSONG                      ref=0x4C2D (XMI[45]=gu48.xmi)
+3712  09 7C 28                               VIDEOREF                      ref=0x287C (JHEK[124]=ek1_.vdx)
 3715  18 6B 36                               CALL                          target=0x366B
 3718  17 00                                  RET                           value=0x00
 371A  05                                     FIRSTFRAME_NEXT_VIDEO         
-371B  09 87 28                               VIDEOREF                      ref=0x2887 (JHEK[135]=?)
+371B  09 87 28                               VIDEOREF                      ref=0x2887 (JHEK[135]=ekcd.vdx)
 371E  18 62 36                               CALL                          target=0x3662
-3721  09 8D 28                               VIDEOREF                      ref=0x288D (JHEK[141]=?)
+3721  09 8D 28                               VIDEOREF                      ref=0x288D (JHEK[141]=ekmirror.vdx)
 3724  18 6B 36                               CALL                          target=0x366B
 3727  17 00                                  RET                           value=0x00
-3729  02 19 4C                               PLAYSONG                      ref=0x4C19 (XMI[25]=?)
+3729  02 19 4C                               PLAYSONG                      ref=0x4C19 (XMI[25]=gu28.xmi)
 372C  05                                     FIRSTFRAME_NEXT_VIDEO         
-372D  09 0E 18                               VIDEOREF                      ref=0x180E (GA[14]=?)
+372D  09 0E 18                               VIDEOREF                      ref=0x180E (GA[14]=gapo.vdx)
 3730  18 62 36                               CALL                          target=0x3662
-3733  09 02 18                               VIDEOREF                      ref=0x1802 (GA[2]=?)
+3733  09 02 18                               VIDEOREF                      ref=0x1802 (GA[2]=ga1_.vdx)
 3736  18 6B 36                               CALL                          target=0x366B
 3739  17 00                                  RET                           value=0x00
 373B  05                                     FIRSTFRAME_NEXT_VIDEO         
-373C  09 0E 18                               VIDEOREF                      ref=0x180E (GA[14]=?)
+373C  09 0E 18                               VIDEOREF                      ref=0x180E (GA[14]=gapo.vdx)
 373F  18 62 36                               CALL                          target=0x3662
-3742  02 1B 4C                               PLAYSONG                      ref=0x4C1B (XMI[27]=?)
-3745  09 07 18                               VIDEOREF                      ref=0x1807 (GA[7]=?)
+3742  02 1B 4C                               PLAYSONG                      ref=0x4C1B (XMI[27]=gu30.xmi)
+3745  09 07 18                               VIDEOREF                      ref=0x1807 (GA[7]=ga3_.vdx)
 3748  18 6B 36                               CALL                          target=0x366B
 374B  17 00                                  RET                           value=0x00
 374D  05                                     FIRSTFRAME_NEXT_VIDEO         
-374E  09 0E 18                               VIDEOREF                      ref=0x180E (GA[14]=?)
+374E  09 0E 18                               VIDEOREF                      ref=0x180E (GA[14]=gapo.vdx)
 3751  18 62 36                               CALL                          target=0x3662
-3754  09 06 18                               VIDEOREF                      ref=0x1806 (GA[6]=?)
+3754  09 06 18                               VIDEOREF                      ref=0x1806 (GA[6]=ga3a_.vdx)
 3757  18 6B 36                               CALL                          target=0x366B
 375A  17 00                                  RET                           value=0x00
 375C  05                                     FIRSTFRAME_NEXT_VIDEO         
-375D  09 04 18                               VIDEOREF                      ref=0x1804 (GA[4]=?)
+375D  09 04 18                               VIDEOREF                      ref=0x1804 (GA[4]=ga2pb.vdx)
 3760  18 62 36                               CALL                          target=0x3662
-3763  02 1A 4C                               PLAYSONG                      ref=0x4C1A (XMI[26]=?)
-3766  09 05 18                               VIDEOREF                      ref=0x1805 (GA[5]=?)
+3763  02 1A 4C                               PLAYSONG                      ref=0x4C1A (XMI[26]=gu29.xmi)
+3766  09 05 18                               VIDEOREF                      ref=0x1805 (GA[5]=ga2_.vdx)
 3769  18 6B 36                               CALL                          target=0x366B
 376C  17 00                                  RET                           value=0x00
 376E  05                                     FIRSTFRAME_NEXT_VIDEO         
-376F  09 03 48                               VIDEOREF                      ref=0x4803 (P[3]=?)
+376F  09 03 48                               VIDEOREF                      ref=0x4803 (P[3]=pfa.vdx)
 3772  18 62 36                               CALL                          target=0x3662
-3775  02 31 4C                               PLAYSONG                      ref=0x4C31 (XMI[49]=?)
-3778  09 00 48                               VIDEOREF                      ref=0x4800 (P[0]=?)
+3775  02 31 4C                               PLAYSONG                      ref=0x4C31 (XMI[49]=gu52.xmi)
+3778  09 00 48                               VIDEOREF                      ref=0x4800 (P[0]=p1_.vdx)
 377B  18 6B 36                               CALL                          target=0x366B
 377E  17 00                                  RET                           value=0x00
 3780  05                                     FIRSTFRAME_NEXT_VIDEO         
-3781  09 03 48                               VIDEOREF                      ref=0x4803 (P[3]=?)
+3781  09 03 48                               VIDEOREF                      ref=0x4803 (P[3]=pfa.vdx)
 3784  18 62 36                               CALL                          target=0x3662
-3787  09 0B 48                               VIDEOREF                      ref=0x480B (P[11]=?)
+3787  09 0B 48                               VIDEOREF                      ref=0x480B (P[11]=pfire.vdx)
 378A  18 6B 36                               CALL                          target=0x366B
 378D  17 00                                  RET                           value=0x00
 378F  05                                     FIRSTFRAME_NEXT_VIDEO         
-3790  09 03 48                               VIDEOREF                      ref=0x4803 (P[3]=?)
+3790  09 03 48                               VIDEOREF                      ref=0x4803 (P[3]=pfa.vdx)
 3793  18 62 36                               CALL                          target=0x3662
-3796  09 28 48                               VIDEOREF                      ref=0x4828 (P[40]=?)
+3796  09 28 48                               VIDEOREF                      ref=0x4828 (P[40]=psmoking.vdx)
 3799  18 6B 36                               CALL                          target=0x366B
 379C  17 00                                  RET                           value=0x00
 379E  05                                     FIRSTFRAME_NEXT_VIDEO         
-379F  09 00 20                               VIDEOREF                      ref=0x2000 (HTBD[0]=?)
+379F  09 00 20                               VIDEOREF                      ref=0x2000 (HTBD[0]=ht1p.vdx)
 37A2  18 62 36                               CALL                          target=0x3662
-37A5  02 32 4C                               PLAYSONG                      ref=0x4C32 (XMI[50]=?)
-37A8  09 03 20                               VIDEOREF                      ref=0x2003 (HTBD[3]=?)
+37A5  02 32 4C                               PLAYSONG                      ref=0x4C32 (XMI[50]=gu53.xmi)
+37A8  09 03 20                               VIDEOREF                      ref=0x2003 (HTBD[3]=ht1_0.vdx)
 37AB  18 6B 36                               CALL                          target=0x366B
 37AE  17 00                                  RET                           value=0x00
 37B0  05                                     FIRSTFRAME_NEXT_VIDEO         
-37B1  09 76 20                               VIDEOREF                      ref=0x2076 (HTBD[118]=?)
+37B1  09 76 20                               VIDEOREF                      ref=0x2076 (HTBD[118]=bdch.vdx)
 37B4  18 62 36                               CALL                          target=0x3662
-37B7  09 71 20                               VIDEOREF                      ref=0x2071 (HTBD[113]=?)
-37BA  02 33 4C                               PLAYSONG                      ref=0x4C33 (XMI[51]=?)
+37B7  09 71 20                               VIDEOREF                      ref=0x2071 (HTBD[113]=bd3_.vdx)
+37BA  02 33 4C                               PLAYSONG                      ref=0x4C33 (XMI[51]=gu54.xmi)
 37BD  18 6B 36                               CALL                          target=0x366B
 37C0  17 00                                  RET                           value=0x00
 37C2  05                                     FIRSTFRAME_NEXT_VIDEO         
-37C3  09 76 20                               VIDEOREF                      ref=0x2076 (HTBD[118]=?)
+37C3  09 76 20                               VIDEOREF                      ref=0x2076 (HTBD[118]=bdch.vdx)
 37C6  18 62 36                               CALL                          target=0x3662
-37C9  02 30 4C                               PLAYSONG                      ref=0x4C30 (XMI[48]=?)
-37CC  09 6E 20                               VIDEOREF                      ref=0x206E (HTBD[110]=?)
+37C9  02 30 4C                               PLAYSONG                      ref=0x4C30 (XMI[48]=gu51.xmi)
+37CC  09 6E 20                               VIDEOREF                      ref=0x206E (HTBD[110]=bd1_.vdx)
 37CF  18 6B 36                               CALL                          target=0x366B
 37D2  17 00                                  RET                           value=0x00
 37D4  05                                     FIRSTFRAME_NEXT_VIDEO         
-37D5  09 69 10                               VIDEOREF                      ref=0x1069 (DR[105]=?)
+37D5  09 69 10                               VIDEOREF                      ref=0x1069 (DR[105]=dr_v.vdx)
 37D8  18 62 36                               CALL                          target=0x3662
-37DB  02 10 4C                               PLAYSONG                      ref=0x4C10 (XMI[16]=?)
-37DE  09 07 10                               VIDEOREF                      ref=0x1007 (DR[7]=?)
+37DB  02 10 4C                               PLAYSONG                      ref=0x4C10 (XMI[16]=gu19.xmi)
+37DE  09 07 10                               VIDEOREF                      ref=0x1007 (DR[7]=dr1_0.vdx)
 37E1  18 6B 36                               CALL                          target=0x366B
 37E4  17 00                                  RET                           value=0x00
 37E6  05                                     FIRSTFRAME_NEXT_VIDEO         
-37E7  09 69 10                               VIDEOREF                      ref=0x1069 (DR[105]=?)
+37E7  09 69 10                               VIDEOREF                      ref=0x1069 (DR[105]=dr_v.vdx)
 37EA  18 62 36                               CALL                          target=0x3662
-37ED  02 07 4C                               PLAYSONG                      ref=0x4C07 (XMI[7]=?)
-37F0  09 0B 10                               VIDEOREF                      ref=0x100B (DR[11]=?)
+37ED  02 07 4C                               PLAYSONG                      ref=0x4C07 (XMI[7]=gu9.xmi)
+37F0  09 0B 10                               VIDEOREF                      ref=0x100B (DR[11]=dr2_.vdx)
 37F3  18 6B 36                               CALL                          target=0x366B
 37F6  17 00                                  RET                           value=0x00
 37F8  05                                     FIRSTFRAME_NEXT_VIDEO         
-37F9  09 0B 44                               VIDEOREF                      ref=0x440B (N[11]=?)
+37F9  09 0B 44                               VIDEOREF                      ref=0x440B (N[11]=ncrib.vdx)
 37FC  18 62 36                               CALL                          target=0x3662
-37FF  09 05 44                               VIDEOREF                      ref=0x4405 (N[5]=?)
+37FF  09 05 44                               VIDEOREF                      ref=0x4405 (N[5]=n5a_.vdx)
 3802  18 6B 36                               CALL                          target=0x366B
 3805  17 00                                  RET                           value=0x00
 3807  05                                     FIRSTFRAME_NEXT_VIDEO         
-3808  09 0A 44                               VIDEOREF                      ref=0x440A (N[10]=?)
+3808  09 0A 44                               VIDEOREF                      ref=0x440A (N[10]=ncri.vdx)
 380B  18 62 36                               CALL                          target=0x3662
-380E  09 0D 44                               VIDEOREF                      ref=0x440D (N[13]=?)
+380E  09 0D 44                               VIDEOREF                      ref=0x440D (N[13]=nd_.vdx)
 3811  18 6B 36                               CALL                          target=0x366B
 3814  17 00                                  RET                           value=0x00
 3816  05                                     FIRSTFRAME_NEXT_VIDEO         
-3817  09 0B 04                               VIDEOREF                      ref=0x040B (B[11]=?)
+3817  09 0B 04                               VIDEOREF                      ref=0x040B (B[11]=b_fb.vdx)
 381A  18 62 36                               CALL                          target=0x3662
-381D  02 07 4C                               PLAYSONG                      ref=0x4C07 (XMI[7]=?)
-3820  09 00 04                               VIDEOREF                      ref=0x0400 (B[0]=?)
+381D  02 07 4C                               PLAYSONG                      ref=0x4C07 (XMI[7]=gu9.xmi)
+3820  09 00 04                               VIDEOREF                      ref=0x0400 (B[0]=b1_.vdx)
 3823  18 6B 36                               CALL                          target=0x366B
 3826  17 00                                  RET                           value=0x00
 3828  05                                     FIRSTFRAME_NEXT_VIDEO         
-3829  09 6C 20                               VIDEOREF                      ref=0x206C (HTBD[108]=?)
+3829  09 6C 20                               VIDEOREF                      ref=0x206C (HTBD[108]=bd1p.vdx)
 382C  18 62 36                               CALL                          target=0x3662
-382F  09 7B 20                               VIDEOREF                      ref=0x207B (HTBD[123]=?)
+382F  09 7B 20                               VIDEOREF                      ref=0x207B (HTBD[123]=bd_cork.vdx)
 3832  18 6B 36                               CALL                          target=0x366B
 3835  17 00                                  RET                           value=0x00
 3837  05                                     FIRSTFRAME_NEXT_VIDEO         
-3838  09 75 28                               VIDEOREF                      ref=0x2875 (JHEK[117]=?)
+3838  09 75 28                               VIDEOREF                      ref=0x2875 (JHEK[117]=jhmib.vdx)
 383B  18 62 36                               CALL                          target=0x3662
-383E  09 6B 28                               VIDEOREF                      ref=0x286B (JHEK[107]=?)
+383E  09 6B 28                               VIDEOREF                      ref=0x286B (JHEK[107]=jha_.vdx)
 3841  18 6B 36                               CALL                          target=0x366B
 3844  17 00                                  RET                           value=0x00
 3846  18 62 36                               CALL                          target=0x3662
-3849  09 6C 28                               VIDEOREF                      ref=0x286C (JHEK[108]=?)
+3849  09 6C 28                               VIDEOREF                      ref=0x286C (JHEK[108]=jhb_.vdx)
 384C  18 6B 36                               CALL                          target=0x366B
 384F  17 00                                  RET                           value=0x00
 3851  18 62 36                               CALL                          target=0x3662
-3854  09 6F 28                               VIDEOREF                      ref=0x286F (JHEK[111]=?)
+3854  09 6F 28                               VIDEOREF                      ref=0x286F (JHEK[111]=jhc_.vdx)
 3857  18 6B 36                               CALL                          target=0x366B
 385A  17 00                                  RET                           value=0x00
 385C  05                                     FIRSTFRAME_NEXT_VIDEO         
-385D  09 76 28                               VIDEOREF                      ref=0x2876 (JHEK[118]=?)
+385D  09 76 28                               VIDEOREF                      ref=0x2876 (JHEK[118]=jhpu.vdx)
 3860  18 62 36                               CALL                          target=0x3662
-3863  09 70 28                               VIDEOREF                      ref=0x2870 (JHEK[112]=?)
+3863  09 70 28                               VIDEOREF                      ref=0x2870 (JHEK[112]=jhd_.vdx)
 3866  18 6B 36                               CALL                          target=0x366B
 3869  17 00                                  RET                           value=0x00
 386B  05                                     FIRSTFRAME_NEXT_VIDEO         
-386C  09 76 28                               VIDEOREF                      ref=0x2876 (JHEK[118]=?)
+386C  09 76 28                               VIDEOREF                      ref=0x2876 (JHEK[118]=jhpu.vdx)
 386F  18 62 36                               CALL                          target=0x3662
-3872  02 34 4C                               PLAYSONG                      ref=0x4C34 (XMI[52]=?)
-3875  09 66 28                               VIDEOREF                      ref=0x2866 (JHEK[102]=?)
+3872  02 34 4C                               PLAYSONG                      ref=0x4C34 (XMI[52]=gu55.xmi)
+3875  09 66 28                               VIDEOREF                      ref=0x2866 (JHEK[102]=jh1_0.vdx)
 3878  18 6B 36                               CALL                          target=0x366B
 387B  17 00                                  RET                           value=0x00
 387D  05                                     FIRSTFRAME_NEXT_VIDEO         
-387E  09 76 28                               VIDEOREF                      ref=0x2876 (JHEK[118]=?)
+387E  09 76 28                               VIDEOREF                      ref=0x2876 (JHEK[118]=jhpu.vdx)
 3881  18 62 36                               CALL                          target=0x3662
-3884  02 34 4C                               PLAYSONG                      ref=0x4C34 (XMI[52]=?)
-3887  09 68 28                               VIDEOREF                      ref=0x2868 (JHEK[104]=?)
+3884  02 34 4C                               PLAYSONG                      ref=0x4C34 (XMI[52]=gu55.xmi)
+3887  09 68 28                               VIDEOREF                      ref=0x2868 (JHEK[104]=jh2_2.vdx)
 388A  18 6B 36                               CALL                          target=0x366B
 388D  17 00                                  RET                           value=0x00
 388F  05                                     FIRSTFRAME_NEXT_VIDEO         
-3890  09 76 28                               VIDEOREF                      ref=0x2876 (JHEK[118]=?)
+3890  09 76 28                               VIDEOREF                      ref=0x2876 (JHEK[118]=jhpu.vdx)
 3893  18 62 36                               CALL                          target=0x3662
-3896  09 67 28                               VIDEOREF                      ref=0x2867 (JHEK[103]=?)
+3896  09 67 28                               VIDEOREF                      ref=0x2867 (JHEK[103]=jh2_0.vdx)
 3899  18 6B 36                               CALL                          target=0x366B
 389C  17 00                                  RET                           value=0x00
 389E  05                                     FIRSTFRAME_NEXT_VIDEO         
-389F  09 07 08                               VIDEOREF                      ref=0x0807 (CH[7]=?)
+389F  09 07 08                               VIDEOREF                      ref=0x0807 (CH[7]=chab.vdx)
 38A2  18 62 36                               CALL                          target=0x3662
-38A5  02 2B 4C                               PLAYSONG                      ref=0x4C2B (XMI[43]=?)
-38A8  09 04 08                               VIDEOREF                      ref=0x0804 (CH[4]=?)
+38A5  02 2B 4C                               PLAYSONG                      ref=0x4C2B (XMI[43]=gu46.xmi)
+38A8  09 04 08                               VIDEOREF                      ref=0x0804 (CH[4]=ch2_.vdx)
 38AB  18 6B 36                               CALL                          target=0x366B
 38AE  17 00                                  RET                           value=0x00
 38B0  05                                     FIRSTFRAME_NEXT_VIDEO         
-38B1  09 25 14                               VIDEOREF                      ref=0x1425 (FH[37]=?)
+38B1  09 25 14                               VIDEOREF                      ref=0x1425 (FH[37]=f_1fa.vdx)
 38B4  18 62 36                               CALL                          target=0x3662
 38B7  1A 00 01 B0 C3 38                      STRCMP_NE_JMP                 start=v[0x100], values=[0], target=0x38C3
-38BD  02 01 4C                               PLAYSONG                      ref=0x4C01 (XMI[1]=?)
+38BD  02 01 4C                               PLAYSONG                      ref=0x4C01 (XMI[1]=agu32.xmi)
 38C0  15 C6 38                               JMP                           target=0x38C6
-38C3  02 1D 4C                               PLAYSONG                      ref=0x4C1D (XMI[29]=?)
-38C6  09 00 14                               VIDEOREF                      ref=0x1400 (FH[0]=?)
+38C3  02 1D 4C                               PLAYSONG                      ref=0x4C1D (XMI[29]=gu32.xmi)
+38C6  09 00 14                               VIDEOREF                      ref=0x1400 (FH[0]=f1_.vdx)
 38C9  31 63 00 EE 02                         MIDI_CONTROL                  value=0x0063, time=0x02EE
 38CE  17 00                                  RET                           value=0x00
 38D0  05                                     FIRSTFRAME_NEXT_VIDEO         
-38D1  09 24 14                               VIDEOREF                      ref=0x1424 (FH[36]=?)
+38D1  09 24 14                               VIDEOREF                      ref=0x1424 (FH[36]=f_1bd.vdx)
 38D4  18 62 36                               CALL                          target=0x3662
-38D7  02 06 4C                               PLAYSONG                      ref=0x4C06 (XMI[6]=?)
-38DA  09 09 14                               VIDEOREF                      ref=0x1409 (FH[9]=?)
-38DD  02 39 4C                               PLAYSONG                      ref=0x4C39 (XMI[57]=?)
+38D7  02 06 4C                               PLAYSONG                      ref=0x4C06 (XMI[6]=gu8.xmi)
+38DA  09 09 14                               VIDEOREF                      ref=0x1409 (FH[9]=f2_.vdx)
+38DD  02 39 4C                               PLAYSONG                      ref=0x4C39 (XMI[57]=gu61.xmi)
 38E0  18 6B 36                               CALL                          target=0x366B
 38E3  17 00                                  RET                           value=0x00
 38E5  05                                     FIRSTFRAME_NEXT_VIDEO         
-38E6  09 05 14                               VIDEOREF                      ref=0x1405 (FH[5]=?)
+38E6  09 05 14                               VIDEOREF                      ref=0x1405 (FH[5]=f1_pb.vdx)
 38E9  18 62 36                               CALL                          target=0x3662
-38EC  02 1F 4C                               PLAYSONG                      ref=0x4C1F (XMI[31]=?)
-38EF  09 0D 14                               VIDEOREF                      ref=0x140D (FH[13]=?)
+38EC  02 1F 4C                               PLAYSONG                      ref=0x4C1F (XMI[31]=gu34.xmi)
+38EF  09 0D 14                               VIDEOREF                      ref=0x140D (FH[13]=f3_0.vdx)
 38F2  18 6B 36                               CALL                          target=0x366B
 38F5  17 00                                  RET                           value=0x00
 38F7  05                                     FIRSTFRAME_NEXT_VIDEO         
-38F8  09 09 0C                               VIDEOREF                      ref=0x0C09 (D[9]=?)
+38F8  09 09 0C                               VIDEOREF                      ref=0x0C09 (D[9]=d_1fa.vdx)
 38FB  18 62 36                               CALL                          target=0x3662
 38FE  1A 00 01 B0 0A 39                      STRCMP_NE_JMP                 start=v[0x100], values=[0], target=0x390A
-3904  02 03 4C                               PLAYSONG                      ref=0x4C03 (XMI[3]=?)
+3904  02 03 4C                               PLAYSONG                      ref=0x4C03 (XMI[3]=agu50.xmi)
 3907  15 0D 39                               JMP                           target=0x390D
-390A  02 2F 4C                               PLAYSONG                      ref=0x4C2F (XMI[47]=?)
-390D  09 1D 0C                               VIDEOREF                      ref=0x0C1D (D[29]=?)
+390A  02 2F 4C                               PLAYSONG                      ref=0x4C2F (XMI[47]=gu50.xmi)
+390D  09 1D 0C                               VIDEOREF                      ref=0x0C1D (D[29]=d_s.vdx)
 3910  18 6B 36                               CALL                          target=0x366B
 3913  17 00                                  RET                           value=0x00
 3915  05                                     FIRSTFRAME_NEXT_VIDEO         
-3916  09 09 0C                               VIDEOREF                      ref=0x0C09 (D[9]=?)
+3916  09 09 0C                               VIDEOREF                      ref=0x0C09 (D[9]=d_1fa.vdx)
 3919  18 62 36                               CALL                          target=0x3662
 391C  1A 00 01 B0 28 39                      STRCMP_NE_JMP                 start=v[0x100], values=[0], target=0x3928
-3922  02 03 4C                               PLAYSONG                      ref=0x4C03 (XMI[3]=?)
+3922  02 03 4C                               PLAYSONG                      ref=0x4C03 (XMI[3]=agu50.xmi)
 3925  15 2B 39                               JMP                           target=0x392B
-3928  02 2F 4C                               PLAYSONG                      ref=0x4C2F (XMI[47]=?)
-392B  09 00 0C                               VIDEOREF                      ref=0x0C00 (D[0]=?)
+3928  02 2F 4C                               PLAYSONG                      ref=0x4C2F (XMI[47]=gu50.xmi)
+392B  09 00 0C                               VIDEOREF                      ref=0x0C00 (D[0]=d1_.vdx)
 392E  18 6B 36                               CALL                          target=0x366B
 3931  17 00                                  RET                           value=0x00
 3933  05                                     FIRSTFRAME_NEXT_VIDEO         
-3934  09 0C 2C                               VIDEOREF                      ref=0x2C0C (K[12]=?)
+3934  09 0C 2C                               VIDEOREF                      ref=0x2C0C (K[12]=k_1ba.vdx)
 3937  18 62 36                               CALL                          target=0x3662
-393A  02 21 4C                               PLAYSONG                      ref=0x4C21 (XMI[33]=?)
-393D  09 09 2C                               VIDEOREF                      ref=0x2C09 (K[9]=?)
+393A  02 21 4C                               PLAYSONG                      ref=0x4C21 (XMI[33]=gu36.xmi)
+393D  09 09 2C                               VIDEOREF                      ref=0x2C09 (K[9]=k5_.vdx)
 3940  18 6B 36                               CALL                          target=0x366B
 3943  17 00                                  RET                           value=0x00
 3945  05                                     FIRSTFRAME_NEXT_VIDEO         
-3946  09 0C 2C                               VIDEOREF                      ref=0x2C0C (K[12]=?)
+3946  09 0C 2C                               VIDEOREF                      ref=0x2C0C (K[12]=k_1ba.vdx)
 3949  18 62 36                               CALL                          target=0x3662
-394C  02 06 4C                               PLAYSONG                      ref=0x4C06 (XMI[6]=?)
-394F  09 07 2C                               VIDEOREF                      ref=0x2C07 (K[7]=?)
+394C  02 06 4C                               PLAYSONG                      ref=0x4C06 (XMI[6]=gu8.xmi)
+394F  09 07 2C                               VIDEOREF                      ref=0x2C07 (K[7]=k3_.vdx)
 3952  18 6B 36                               CALL                          target=0x366B
 3955  17 00                                  RET                           value=0x00
 3957  05                                     FIRSTFRAME_NEXT_VIDEO         
-3958  09 19 2C                               VIDEOREF                      ref=0x2C19 (K[25]=?)
-395B  02 22 4C                               PLAYSONG                      ref=0x4C22 (XMI[34]=?)
+3958  09 19 2C                               VIDEOREF                      ref=0x2C19 (K[25]=shelf.vdx)
+395B  02 22 4C                               PLAYSONG                      ref=0x4C22 (XMI[34]=gu37.xmi)
 395E  03                                     FADEIN_NEXT_VIDEO             
-395F  09 0A 2C                               VIDEOREF                      ref=0x2C0A (K[10]=?)
+395F  09 0A 2C                               VIDEOREF                      ref=0x2C0A (K[10]=k6_.vdx)
 3962  17 00                                  RET                           value=0x00
 3964  05                                     FIRSTFRAME_NEXT_VIDEO         
-3965  09 05 2C                               VIDEOREF                      ref=0x2C05 (K[5]=?)
+3965  09 05 2C                               VIDEOREF                      ref=0x2C05 (K[5]=k2_7b.vdx)
 3968  18 62 36                               CALL                          target=0x3662
-396B  09 0B 2C                               VIDEOREF                      ref=0x2C0B (K[11]=?)
+396B  09 0B 2C                               VIDEOREF                      ref=0x2C0B (K[11]=k7_.vdx)
 396E  18 6B 36                               CALL                          target=0x366B
 3971  17 00                                  RET                           value=0x00
 3973  05                                     FIRSTFRAME_NEXT_VIDEO         
-3974  09 03 38                               VIDEOREF                      ref=0x3803 (MB[3]=?)
+3974  09 03 38                               VIDEOREF                      ref=0x3803 (MB[3]=mbab.vdx)
 3977  18 62 36                               CALL                          target=0x3662
-397A  02 36 4C                               PLAYSONG                      ref=0x4C36 (XMI[54]=?)
-397D  09 02 38                               VIDEOREF                      ref=0x3802 (MB[2]=?)
+397A  02 36 4C                               PLAYSONG                      ref=0x4C36 (XMI[54]=gu58.xmi)
+397D  09 02 38                               VIDEOREF                      ref=0x3802 (MB[2]=mb1_1.vdx)
 3980  18 6B 36                               CALL                          target=0x366B
 3983  17 00                                  RET                           value=0x00
 3985  05                                     FIRSTFRAME_NEXT_VIDEO         
-3986  09 08 48                               VIDEOREF                      ref=0x4808 (P[8]=?)
+3986  09 08 48                               VIDEOREF                      ref=0x4808 (P[8]=pfcb.vdx)
 3989  18 62 36                               CALL                          target=0x3662
-398C  02 31 4C                               PLAYSONG                      ref=0x4C31 (XMI[49]=?)
-398F  09 2B 48                               VIDEOREF                      ref=0x482B (P[43]=?)
+398C  02 31 4C                               PLAYSONG                      ref=0x4C31 (XMI[49]=gu52.xmi)
+398F  09 2B 48                               VIDEOREF                      ref=0x482B (P[43]=pvampkid.vdx)
 3992  18 6B 36                               CALL                          target=0x366B
 3995  17 00                                  RET                           value=0x00
 3997  05                                     FIRSTFRAME_NEXT_VIDEO         
-3998  09 12 00                               VIDEOREF                      ref=0x0012 (AT[18]=?)
+3998  09 12 00                               VIDEOREF                      ref=0x0012 (AT[18]=atabb.vdx)
 399B  18 62 36                               CALL                          target=0x3662
-399E  09 18 00                               VIDEOREF                      ref=0x0018 (AT[24]=?)
+399E  09 18 00                               VIDEOREF                      ref=0x0018 (AT[24]=at_dog.vdx)
 39A1  18 6B 36                               CALL                          target=0x366B
 39A4  17 00                                  RET                           value=0x00
 39A6  05                                     FIRSTFRAME_NEXT_VIDEO         
-39A7  09 03 00                               VIDEOREF                      ref=0x0003 (AT[3]=?)
+39A7  09 03 00                               VIDEOREF                      ref=0x0003 (AT[3]=at1p.vdx)
 39AA  18 62 36                               CALL                          target=0x3662
-39AD  09 0B 00                               VIDEOREF                      ref=0x000B (AT[11]=?)
+39AD  09 0B 00                               VIDEOREF                      ref=0x000B (AT[11]=at2_.vdx)
 39B0  18 6B 36                               CALL                          target=0x366B
 39B3  17 00                                  RET                           value=0x00
 39B5  05                                     FIRSTFRAME_NEXT_VIDEO         
-39B6  09 0E 2C                               VIDEOREF                      ref=0x2C0E (K[14]=?)
+39B6  09 0E 2C                               VIDEOREF                      ref=0x2C0E (K[14]=k_1tb.vdx)
 39B9  18 62 36                               CALL                          target=0x3662
-39BC  02 1F 4C                               PLAYSONG                      ref=0x4C1F (XMI[31]=?)
-39BF  09 08 2C                               VIDEOREF                      ref=0x2C08 (K[8]=?)
+39BC  02 1F 4C                               PLAYSONG                      ref=0x4C1F (XMI[31]=gu34.xmi)
+39BF  09 08 2C                               VIDEOREF                      ref=0x2C08 (K[8]=k4_.vdx)
 39C2  18 6B 36                               CALL                          target=0x366B
 39C5  17 00                                  RET                           value=0x00
 39C7  31 00 00 32 00                         MIDI_CONTROL                  value=0x0000, time=0x0032
 39CC  05                                     FIRSTFRAME_NEXT_VIDEO         
-39CD  09 07 00                               VIDEOREF                      ref=0x0007 (AT[7]=?)
-39D0  09 10 00                               VIDEOREF                      ref=0x0010 (AT[16]=?)
+39CD  09 07 00                               VIDEOREF                      ref=0x0007 (AT[7]=at2f.vdx)
+39D0  09 10 00                               VIDEOREF                      ref=0x0010 (AT[16]=at4_.vdx)
 39D3  17 00                                  RET                           value=0x00
 39D5  18 62 36                               CALL                          target=0x3662
-39D8  09 1B 00                               VIDEOREF                      ref=0x001B (AT[27]=?)
+39D8  09 1B 00                               VIDEOREF                      ref=0x001B (AT[27]=at_b.vdx)
 39DB  18 6B 36                               CALL                          target=0x366B
 39DE  17 00                                  RET                           value=0x00
 39E0  18 62 36                               CALL                          target=0x3662
-39E3  09 1C 00                               VIDEOREF                      ref=0x001C (AT[28]=?)
+39E3  09 1C 00                               VIDEOREF                      ref=0x001C (AT[28]=at_d.vdx)
 39E6  18 6B 36                               CALL                          target=0x366B
 39E9  17 00                                  RET                           value=0x00
 39EB  18 62 36                               CALL                          target=0x3662
-39EE  09 1D 00                               VIDEOREF                      ref=0x001D (AT[29]=?)
+39EE  09 1D 00                               VIDEOREF                      ref=0x001D (AT[29]=at_e.vdx)
 39F1  18 6B 36                               CALL                          target=0x366B
 39F4  17 00                                  RET                           value=0x00
 39F6  18 62 36                               CALL                          target=0x3662
-39F9  09 1E 00                               VIDEOREF                      ref=0x001E (AT[30]=?)
+39F9  09 1E 00                               VIDEOREF                      ref=0x001E (AT[30]=at_j.vdx)
 39FC  18 6B 36                               CALL                          target=0x366B
 39FF  17 00                                  RET                           value=0x00
 3A01  18 62 36                               CALL                          target=0x3662
-3A04  09 1F 00                               VIDEOREF                      ref=0x001F (AT[31]=?)
+3A04  09 1F 00                               VIDEOREF                      ref=0x001F (AT[31]=at_k.vdx)
 3A07  18 6B 36                               CALL                          target=0x366B
 3A0A  17 00                                  RET                           value=0x00
 3A0C  18 62 36                               CALL                          target=0x3662
-3A0F  09 20 00                               VIDEOREF                      ref=0x0020 (AT[32]=?)
+3A0F  09 20 00                               VIDEOREF                      ref=0x0020 (AT[32]=at_t.vdx)
 3A12  18 6B 36                               CALL                          target=0x366B
 3A15  17 00                                  RET                           value=0x00
 3A17  18 62 36                               CALL                          target=0x3662
-3A1A  09 21 00                               VIDEOREF                      ref=0x0021 (AT[33]=?)
+3A1A  09 21 00                               VIDEOREF                      ref=0x0021 (AT[33]=at_x.vdx)
 3A1D  18 6B 36                               CALL                          target=0x366B
 3A20  17 00                                  RET                           value=0x00
 3A22  05                                     FIRSTFRAME_NEXT_VIDEO         
-3A23  09 07 30                               VIDEOREF                      ref=0x3007 (LA[7]=?)
+3A23  09 07 30                               VIDEOREF                      ref=0x3007 (LA[7]=la1_2.vdx)
 3A26  18 62 36                               CALL                          target=0x3662
-3A29  02 1B 4C                               PLAYSONG                      ref=0x4C1B (XMI[27]=?)
-3A2C  09 08 30                               VIDEOREF                      ref=0x3008 (LA[8]=?)
+3A29  02 1B 4C                               PLAYSONG                      ref=0x4C1B (XMI[27]=gu30.xmi)
+3A2C  09 08 30                               VIDEOREF                      ref=0x3008 (LA[8]=la2_.vdx)
 3A2F  18 6B 36                               CALL                          target=0x366B
 3A32  17 00                                  RET                           value=0x00
 3A34  05                                     FIRSTFRAME_NEXT_VIDEO         
-3A35  09 07 30                               VIDEOREF                      ref=0x3007 (LA[7]=?)
+3A35  09 07 30                               VIDEOREF                      ref=0x3007 (LA[7]=la1_2.vdx)
 3A38  18 62 36                               CALL                          target=0x3662
-3A3B  09 02 30                               VIDEOREF                      ref=0x3002 (LA[2]=?)
+3A3B  09 02 30                               VIDEOREF                      ref=0x3002 (LA[2]=la_x.vdx)
 3A3E  18 6B 36                               CALL                          target=0x366B
 3A41  17 00                                  RET                           value=0x00
-3A43  08 26 4C                               SETBACKGROUNDSONG             ref=0x4C26 (XMI[38]=?)
+3A43  08 26 4C                               SETBACKGROUNDSONG             ref=0x4C26 (XMI[38]=gu41.xmi)
 3A46  4E 2D 00                               MUSICDELAY                    value=0x002D
 3A49  05                                     FIRSTFRAME_NEXT_VIDEO         
-3A4A  09 01 40                               VIDEOREF                      ref=0x4001 (MU[1]=?)
+3A4A  09 01 40                               VIDEOREF                      ref=0x4001 (MU[1]=muab.vdx)
 3A4D  18 62 36                               CALL                          target=0x3662
-3A50  09 00 40                               VIDEOREF                      ref=0x4000 (MU[0]=?)
+3A50  09 00 40                               VIDEOREF                      ref=0x4000 (MU[0]=mu1_.vdx)
 3A53  18 6B 36                               CALL                          target=0x366B
 3A56  1A 00 01 B0 62 3A                      STRCMP_NE_JMP                 start=v[0x100], values=[0], target=0x3A62
-3A5C  08 0C 4C                               SETBACKGROUNDSONG             ref=0x4C0C (XMI[12]=?)
+3A5C  08 0C 4C                               SETBACKGROUNDSONG             ref=0x4C0C (XMI[12]=gu16.xmi)
 3A5F  15 65 3A                               JMP                           target=0x3A65
-3A62  08 00 4C                               SETBACKGROUNDSONG             ref=0x4C00 (XMI[0]=?)
+3A62  08 00 4C                               SETBACKGROUNDSONG             ref=0x4C00 (XMI[0]=agu16.xmi)
 3A65  17 00                                  RET                           value=0x00
 3A67  05                                     FIRSTFRAME_NEXT_VIDEO         
-3A68  09 01 40                               VIDEOREF                      ref=0x4001 (MU[1]=?)
+3A68  09 01 40                               VIDEOREF                      ref=0x4001 (MU[1]=muab.vdx)
 3A6B  18 62 36                               CALL                          target=0x3662
-3A6E  09 08 40                               VIDEOREF                      ref=0x4008 (MU[8]=?)
+3A6E  09 08 40                               VIDEOREF                      ref=0x4008 (MU[8]=muhands.vdx)
 3A71  18 6B 36                               CALL                          target=0x366B
 3A74  17 00                                  RET                           value=0x00
 3A76  05                                     FIRSTFRAME_NEXT_VIDEO         
-3A77  09 01 40                               VIDEOREF                      ref=0x4001 (MU[1]=?)
+3A77  09 01 40                               VIDEOREF                      ref=0x4001 (MU[1]=muab.vdx)
 3A7A  18 62 36                               CALL                          target=0x3662
-3A7D  09 0D 40                               VIDEOREF                      ref=0x400D (MU[13]=?)
+3A7D  09 0D 40                               VIDEOREF                      ref=0x400D (MU[13]=muv.vdx)
 3A80  18 6B 36                               CALL                          target=0x366B
 3A83  17 00                                  RET                           value=0x00
 3A85  05                                     FIRSTFRAME_NEXT_VIDEO         
-3A86  09 02 40                               VIDEOREF                      ref=0x4002 (MU[2]=?)
+3A86  09 02 40                               VIDEOREF                      ref=0x4002 (MU[2]=muabb.vdx)
 3A89  18 62 36                               CALL                          target=0x3662
-3A8C  09 0E 40                               VIDEOREF                      ref=0x400E (MU[14]=?)
+3A8C  09 0E 40                               VIDEOREF                      ref=0x400E (MU[14]=mu_gram1.vdx)
 3A8F  18 6B 36                               CALL                          target=0x366B
 3A92  17 00                                  RET                           value=0x00
 3A94  05                                     FIRSTFRAME_NEXT_VIDEO         
-3A95  09 02 40                               VIDEOREF                      ref=0x4002 (MU[2]=?)
+3A95  09 02 40                               VIDEOREF                      ref=0x4002 (MU[2]=muabb.vdx)
 3A98  18 62 36                               CALL                          target=0x3662
-3A9B  09 0F 40                               VIDEOREF                      ref=0x400F (MU[15]=?)
+3A9B  09 0F 40                               VIDEOREF                      ref=0x400F (MU[15]=mu_gram2.vdx)
 3A9E  18 6B 36                               CALL                          target=0x366B
 3AA1  17 00                                  RET                           value=0x00
 3AA3  05                                     FIRSTFRAME_NEXT_VIDEO         
-3AA4  09 02 40                               VIDEOREF                      ref=0x4002 (MU[2]=?)
+3AA4  09 02 40                               VIDEOREF                      ref=0x4002 (MU[2]=muabb.vdx)
 3AA7  18 62 36                               CALL                          target=0x3662
-3AAA  09 10 40                               VIDEOREF                      ref=0x4010 (MU[16]=?)
+3AAA  09 10 40                               VIDEOREF                      ref=0x4010 (MU[16]=mu_gram3.vdx)
 3AAD  18 6B 36                               CALL                          target=0x366B
 3AB0  17 00                                  RET                           value=0x00
 3AB2  31 00 00 32 00                         MIDI_CONTROL                  value=0x0000, time=0x0032
-3AB7  08 29 4C                               SETBACKGROUNDSONG             ref=0x4C29 (XMI[41]=?)
+3AB7  08 29 4C                               SETBACKGROUNDSONG             ref=0x4C29 (XMI[41]=gu44.xmi)
 3ABA  4E BE 00                               MUSICDELAY                    value=0x00BE
 3ABD  05                                     FIRSTFRAME_NEXT_VIDEO         
-3ABE  09 00 34                               VIDEOREF                      ref=0x3400 (LI[0]=?)
+3ABE  09 00 34                               VIDEOREF                      ref=0x3400 (LI[0]=l1_2.vdx)
 3AC1  22                                     COPY_BG_TO_FG                 
 3AC2  49                                     PALETTE_MERGE_ONCE            
-3AC3  09 0C 34                               VIDEOREF                      ref=0x340C (LI[12]=?)
+3AC3  09 0C 34                               VIDEOREF                      ref=0x340C (LI[12]=li3_.vdx)
 3AC6  18 6B 36                               CALL                          target=0x366B
 3AC9  1A 00 01 B0 D5 3A                      STRCMP_NE_JMP                 start=v[0x100], values=[0], target=0x3AD5
-3ACF  08 0C 4C                               SETBACKGROUNDSONG             ref=0x4C0C (XMI[12]=?)
+3ACF  08 0C 4C                               SETBACKGROUNDSONG             ref=0x4C0C (XMI[12]=gu16.xmi)
 3AD2  15 D8 3A                               JMP                           target=0x3AD8
-3AD5  08 00 4C                               SETBACKGROUNDSONG             ref=0x4C00 (XMI[0]=?)
+3AD5  08 00 4C                               SETBACKGROUNDSONG             ref=0x4C00 (XMI[0]=agu16.xmi)
 3AD8  17 00                                  RET                           value=0x00
-3ADA  02 28 4C                               PLAYSONG                      ref=0x4C28 (XMI[40]=?)
+3ADA  02 28 4C                               PLAYSONG                      ref=0x4C28 (XMI[40]=gu43.xmi)
 3ADD  05                                     FIRSTFRAME_NEXT_VIDEO         
-3ADE  09 07 34                               VIDEOREF                      ref=0x3407 (LI[7]=?)
+3ADE  09 07 34                               VIDEOREF                      ref=0x3407 (LI[7]=l2_3f.vdx)
 3AE1  18 62 36                               CALL                          target=0x3662
-3AE4  09 27 34                               VIDEOREF                      ref=0x3427 (LI[39]=?)
+3AE4  09 27 34                               VIDEOREF                      ref=0x3427 (LI[39]=li_suck.vdx)
 3AE7  18 6B 36                               CALL                          target=0x366B
 3AEA  17 00                                  RET                           value=0x00
-3AEC  09 0D 34                               VIDEOREF                      ref=0x340D (LI[13]=?)
+3AEC  09 0D 34                               VIDEOREF                      ref=0x340D (LI[13]=lipoem.vdx)
 3AEF  17 00                                  RET                           value=0x00
-3AF1  02 16 4C                               PLAYSONG                      ref=0x4C16 (XMI[22]=?)
+3AF1  02 16 4C                               PLAYSONG                      ref=0x4C16 (XMI[22]=gu25.xmi)
 3AF4  05                                     FIRSTFRAME_NEXT_VIDEO         
-3AF5  09 6D 3C                               VIDEOREF                      ref=0x3C6D (MC[109]=?)
+3AF5  09 6D 3C                               VIDEOREF                      ref=0x3C6D (MC[109]=creb.vdx)
 3AF8  18 62 36                               CALL                          target=0x3662
-3AFB  09 56 3C                               VIDEOREF                      ref=0x3C56 (MC[86]=?)
+3AFB  09 56 3C                               VIDEOREF                      ref=0x3C56 (MC[86]=bm5_.vdx)
 3AFE  18 6B 36                               CALL                          target=0x366B
 3B01  17 00                                  RET                           value=0x00
 3B03  9A 8E 31 B2 13 3B                      STRCMP_NE_JMP                 start=v[0x08E], values=[1, 2], target=0x3B13
@@ -4196,11 +4198,11 @@
 3B1C  96 8E 30 B0                            LOADSTRING                    dst=v[0x08E], values=[0, 0]
 3B20  15 2D 17                               JMP                           target=0x172D
 3B23  9A 8E 34 B6 42 3B                      STRCMP_NE_JMP                 start=v[0x08E], values=[4, 6], target=0x3B42
-3B29  09 74 28                               VIDEOREF                      ref=0x2874 (JHEK[116]=?)
+3B29  09 74 28                               VIDEOREF                      ref=0x2874 (JHEK[116]=jhmi.vdx)
 3B2C  18 37 38                               CALL                          target=0x3837
 3B2F  18 46 38                               CALL                          target=0x3846
 3B32  18 51 38                               CALL                          target=0x3851
-3B35  09 75 28                               VIDEOREF                      ref=0x2875 (JHEK[117]=?)
+3B35  09 75 28                               VIDEOREF                      ref=0x2875 (JHEK[117]=jhmib.vdx)
 3B38  18 5C 38                               CALL                          target=0x385C
 3B3B  96 8E 30 B0                            LOADSTRING                    dst=v[0x08E], values=[0, 0]
 3B3F  15 92 15                               JMP                           target=0x1592
@@ -4230,7 +4232,7 @@
 3B9E  96 8E 30 B0                            LOADSTRING                    dst=v[0x08E], values=[0, 0]
 3BA2  15 3C 34                               JMP                           target=0x343C
 3BA5  9A 8E 39 B9 B5 3B                      STRCMP_NE_JMP                 start=v[0x08E], values=[9, 9], target=0x3BB5
-3BAB  09 3D 38                               VIDEOREF                      ref=0x383D (MB[61]=?)
+3BAB  09 3D 38                               VIDEOREF                      ref=0x383D (MB[61]=mb_warp.vdx)
 3BAE  96 8E 30 B0                            LOADSTRING                    dst=v[0x08E], values=[0, 0]
 3BB2  15 3C 34                               JMP                           target=0x343C
 3BB5  9A 8E 35 B1 C5 3B                      STRCMP_NE_JMP                 start=v[0x08E], values=[5, 1], target=0x3BC5
@@ -4290,12 +4292,12 @@
 3C8E  96 8E 30 B0                            LOADSTRING                    dst=v[0x08E], values=[0, 0]
 3C92  15 CA 0D                               JMP                           target=0x0DCA
 3C95  9A 8E 30 B2 B1 3C                      STRCMP_NE_JMP                 start=v[0x08E], values=[0, 2], target=0x3CB1
-3C9B  09 22 14                               VIDEOREF                      ref=0x1422 (FH[34]=?)
-3C9E  09 21 14                               VIDEOREF                      ref=0x1421 (FH[33]=?)
+3C9B  09 22 14                               VIDEOREF                      ref=0x1422 (FH[34]=f_1bb.vdx)
+3C9E  09 21 14                               VIDEOREF                      ref=0x1421 (FH[33]=f_1ba.vdx)
 3CA1  18 B0 38                               CALL                          target=0x38B0
 3CA4  96 8E 30 B0                            LOADSTRING                    dst=v[0x08E], values=[0, 0]
-3CA8  09 25 14                               VIDEOREF                      ref=0x1425 (FH[37]=?)
-3CAB  09 26 14                               VIDEOREF                      ref=0x1426 (FH[38]=?)
+3CA8  09 25 14                               VIDEOREF                      ref=0x1425 (FH[37]=f_1fa.vdx)
+3CAB  09 26 14                               VIDEOREF                      ref=0x1426 (FH[38]=f_1fb.vdx)
 3CAE  15 0D 05                               JMP                           target=0x050D
 3CB1  9A 8E 32 B7 C1 3C                      STRCMP_NE_JMP                 start=v[0x08E], values=[2, 7], target=0x3CC1
 3CB7  18 67 3A                               CALL                          target=0x3A67
@@ -4306,9 +4308,9 @@
 3CCA  96 8E 30 B0                            LOADSTRING                    dst=v[0x08E], values=[0, 0]
 3CCE  15 36 0C                               JMP                           target=0x0C36
 3CD1  9A 8E 34 B2 E7 3C                      STRCMP_NE_JMP                 start=v[0x08E], values=[4, 2], target=0x3CE7
-3CD7  09 06 2C                               VIDEOREF                      ref=0x2C06 (K[6]=?)
+3CD7  09 06 2C                               VIDEOREF                      ref=0x2C06 (K[6]=k2_7f.vdx)
 3CDA  18 64 39                               CALL                          target=0x3964
-3CDD  09 05 2C                               VIDEOREF                      ref=0x2C05 (K[5]=?)
+3CDD  09 05 2C                               VIDEOREF                      ref=0x2C05 (K[5]=k2_7b.vdx)
 3CE0  96 8E 30 B0                            LOADSTRING                    dst=v[0x08E], values=[0, 0]
 3CE4  15 FA 0B                               JMP                           target=0x0BFA
 3CE7  9A 8E 34 B0 F7 3C                      STRCMP_NE_JMP                 start=v[0x08E], values=[4, 0], target=0x3CF7
@@ -4320,9 +4322,9 @@
 3D00  96 8E 30 B0                            LOADSTRING                    dst=v[0x08E], values=[0, 0]
 3D04  15 88 0A                               JMP                           target=0x0A88
 3D07  9A 8E 33 B9 1D 3D                      STRCMP_NE_JMP                 start=v[0x08E], values=[3, 9], target=0x3D1D
-3D0D  09 0F 2C                               VIDEOREF                      ref=0x2C0F (K[15]=?)
+3D0D  09 0F 2C                               VIDEOREF                      ref=0x2C0F (K[15]=k_1tf.vdx)
 3D10  18 B5 39                               CALL                          target=0x39B5
-3D13  09 0E 2C                               VIDEOREF                      ref=0x2C0E (K[14]=?)
+3D13  09 0E 2C                               VIDEOREF                      ref=0x2C0E (K[14]=k_1tb.vdx)
 3D16  96 8E 30 B0                            LOADSTRING                    dst=v[0x08E], values=[0, 0]
 3D1A  15 88 0A                               JMP                           target=0x0A88
 3D1D  9A 8E 32 B6 2D 3D                      STRCMP_NE_JMP                 start=v[0x08E], values=[2, 6], target=0x3D2D
@@ -4346,9 +4348,9 @@
 3D66  96 8E 30 B0                            LOADSTRING                    dst=v[0x08E], values=[0, 0]
 3D6A  15 93 05                               JMP                           target=0x0593
 3D6D  9A 8E 30 B4 83 3D                      STRCMP_NE_JMP                 start=v[0x08E], values=[0, 4], target=0x3D83
-3D73  09 06 14                               VIDEOREF                      ref=0x1406 (FH[6]=?)
+3D73  09 06 14                               VIDEOREF                      ref=0x1406 (FH[6]=f1_pf.vdx)
 3D76  18 E5 38                               CALL                          target=0x38E5
-3D79  09 05 14                               VIDEOREF                      ref=0x1405 (FH[5]=?)
+3D79  09 05 14                               VIDEOREF                      ref=0x1405 (FH[5]=f1_pb.vdx)
 3D7C  96 8E 30 B0                            LOADSTRING                    dst=v[0x08E], values=[0, 0]
 3D80  15 93 05                               JMP                           target=0x0593
 3D83  9A 8E 30 B6 93 3D                      STRCMP_NE_JMP                 start=v[0x08E], values=[0, 6], target=0x3D93
@@ -4381,16 +4383,16 @@
 3DF0  15 69 2C                               JMP                           target=0x2C69
 3DF3  03                                     FADEIN_NEXT_VIDEO             
 3DF4  05                                     FIRSTFRAME_NEXT_VIDEO         
-3DF5  09 23 00                               VIDEOREF                      ref=0x0023 (AT[35]=?)
-3DF8  02 43 4C                               PLAYSONG                      ref=0x4C43 (XMI[67]=?)
-3DFB  08 44 4C                               SETBACKGROUNDSONG             ref=0x4C44 (XMI[68]=?)
+3DF5  09 23 00                               VIDEOREF                      ref=0x0023 (AT[35]=rt1_b.vdx)
+3DF8  02 43 4C                               PLAYSONG                      ref=0x4C43 (XMI[67]=gu75.xmi)
+3DFB  08 44 4C                               SETBACKGROUNDSONG             ref=0x4C44 (XMI[68]=gu76.xmi)
 3DFE  4E B5 04                               MUSICDELAY                    value=0x04B5
-3E01  09 23 00                               VIDEOREF                      ref=0x0023 (AT[35]=?)
-3E04  08 00 00                               SETBACKGROUNDSONG             ref=0x0000 (AT[0]=?)
+3E01  09 23 00                               VIDEOREF                      ref=0x0023 (AT[35]=rt1_b.vdx)
+3E04  08 00 00                               SETBACKGROUNDSONG             ref=0x0000 (AT[0]=as_ia.vdx)
 3E07  04                                     PALFADEOUT                    
 3E08  03                                     FADEIN_NEXT_VIDEO             
-3E09  09 16 24                               VIDEOREF                      ref=0x2416 (INTRO[22]=?)
-3E0C  09 15 24                               VIDEOREF                      ref=0x2415 (INTRO[21]=?)
+3E09  09 16 24                               VIDEOREF                      ref=0x2416 (INTRO[22]=ozpt.vdx)
+3E0C  09 15 24                               VIDEOREF                      ref=0x2415 (INTRO[21]=ozpa.vdx)
 3E0F  4D 03                                  PLAYCD                        value=0x03
 3E11  19 B0 04                               SLEEP                         ticks=0x04B0
 3E14  04                                     PALFADEOUT                    
@@ -4398,7 +4400,7 @@
 3E1B  4B 00                                  SET_VIDEO_MODE                value=0x00
 3E1D  16 09 01 B1                            LOADSTRING                    dst=v[0x109], values=[1]
 3E21  03                                     FADEIN_NEXT_VIDEO             
-3E22  09 05 1C                               VIDEOREF                      ref=0x1C05 (HDISK[5]=?)
+3E22  09 05 1C                               VIDEOREF                      ref=0x1C05 (HDISK[5]=credits.vdx)
 3E25  19 B0 04                               SLEEP                         ticks=0x04B0
 3E28  16 08 01 B1                            LOADSTRING                    dst=v[0x108], values=[1]
 3E2C  96 FB E1                               LOADSTRING                    dst=v[0x0FB], values=[49]

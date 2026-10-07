@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "analysis_date": "2026-10-07",
+  "verification_run": false,
+  "native_jump_table_coverage_unchanged": true,
+  "roles": [
+    {
+      "kind": "GRV",
+      "asset": "script.grv",
+      "offset": "0x0059",
+      "role": "zaphod_key_sequence_recognizer",
+      "contract": "Register case-sensitive KEYACTION entries spelling Zaphod Beeblebrox; v[0x107] progresses from 49 through 65. Common match target 0x0165 increments state; final x targets 0x016B and stores 240. Corner hotspots dispatch to 0x1BE6 only at state 240."
+    },
+    {
+      "kind": "GRV",
+      "asset": "script.grv",
+      "offset": "0x03E8",
+      "role": "mac_credits_sequence",
+      "contract": "Credits entry displays todd.vdx at 0x03FF and hayes.vdx at 0x0407, each followed by SLEEP 450. Then PLAYCD 2 at 0x0411 and the shared logo/title sequence. The two stills are credits prelude, not established hidden content."
+    },
+    {
+      "kind": "VDX",
+      "asset": "todd.vdx",
+      "archive": "T7GData data fork",
+      "index": 8,
+      "offset": "0x3E8905",
+      "bytes": 51990,
+      "role": "mac_first_credits_prelude_still",
+      "identity": "Depicted person/content remains unknown; filename alone is insufficient."
+    },
+    {
+      "kind": "VDX",
+      "asset": "hayes.vdx",
+      "archive": "T7GData data fork",
+      "index": 9,
+      "offset": "0x3F541C",
+      "bytes": 51990,
+      "role": "mac_second_credits_prelude_still",
+      "identity": "Depicted person/content remains unknown; filename alone is insufficient."
+    },
+    {
+      "kind": "resource",
+      "type": "T7SG",
+      "role": "mac_embedded_save_state",
+      "contract": "SaveGame/LoadGame use 1000+byte-sized slot IDs and fixed 1024-byte copies. CountSavedGames scans IDs 1000..1009. No T7SG entries are present in the supplied pristine resource inventory."
+    },
+    {
+      "kind": "resource",
+      "type": "DITL",
+      "id": 138,
+      "role": "memory_addressing_requirement_dialog",
+      "source": "src/data/resource_DITL_138.asm",
+      "native_caller": "CODE 5:2670 CheckSystem"
+    },
+    {
+      "kind": "resource",
+      "type": "DITL",
+      "id": 139,
+      "role": "missing_installation_dialog",
+      "source": "src/data/resource_DITL_139.asm",
+      "native_caller": "CODE 5:2670 CheckSystem"
+    },
+    {
+      "kind": "resource",
+      "type": "DITL",
+      "id": 131,
+      "role": "slow_machine_quarter_size_warning",
+      "source": "src/data/resource_DITL_131.asm",
+      "native_caller": "CODE 5:23A4 CheckMachine candidate"
+    },
+    {
+      "kind": "resource",
+      "type": "SIZE",
+      "id": -1,
+      "preferred_bytes": 2355200,
+      "minimum_bytes": 2355200
+    },
+    {
+      "kind": "resource",
+      "type": "SIZE",
+      "id": 0,
+      "preferred_bytes": 3072000,
+      "minimum_bytes": 2355200
+    },
+    {
+      "kind": "resource",
+      "type": "SIZE",
+      "id": 1,
+      "preferred_bytes": 3072000,
+      "minimum_bytes": 2355200
+    }
+  ]
+}

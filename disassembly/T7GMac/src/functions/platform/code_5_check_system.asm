@@ -1,4 +1,4 @@
-; verified-role: Native CheckSystem routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.
+; verified-role: Require virtual memory off (Gestalt 'vm  ' bit 0 clear), 32-bit addressing on (Gestalt 'addr' bit 0 set), and a successful installation predicate via A5:0212. Show Alert 138 for memory/addressing failure or Alert 139 for installation failure; return Boolean success. Gestalt error results are not checked before testing the response.
 ; Original native symbol: CheckSystem; evidence file offset 0x9e46.
 ; Exact bytes retained; instruction decoding remains provisional where inline data may occur.
 mac_code_5_check_system:

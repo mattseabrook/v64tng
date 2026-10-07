@@ -1,5 +1,8 @@
-; Provisional entry from module header or linear decoded direct call; slice end is NOT a proved function end.
+; verified-role: Write the two embedded CR/LF bytes through I$Write on path zero; restore registers and condition codes with RTR.
+; Evidence: docs/PLATFORM_EASTER_EGGS.md and resources/semantic_roles.json.
+; Ordered emission slice; named entry does not classify every subsequent byte as code.
 ; File offsets 0001D2–0001EB, inclusive.
+cdi_loader_write_console_crlf:
 cdi_loader_entry_0001d2:
 db 0x42, 0xE7 ; 0001D2: provisional 68k dc.w $42e7
 db 0x48, 0xE7, 0xC0, 0x80 ; 0001D4: provisional 68k movem.l d0-d1/a0, -(a7)
@@ -9,4 +12,4 @@ db 0x72, 0x02 ; 0001DE: provisional 68k moveq #$2, d1
 db 0x4E, 0x40, 0x00, 0x8A ; 0001E0: provisional 68k trap #0 ; OS-9 service word $008A
 db 0x4C, 0xDF, 0x01, 0x03 ; 0001E4: provisional 68k movem.l (a7)+, d0-d1/a0
 db 0x4E, 0x77 ; 0001E8: provisional 68k rtr 
-db 0x0D, 0x0A ; file 0001EA
+db 0x0D, 0x0A ; 0001EA: inline data; legacy linear decoding here was not executable evidence

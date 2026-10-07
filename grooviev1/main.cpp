@@ -141,6 +141,9 @@ static void printUsage()
         << "  grooviev1.exe archive-pack --rl ROOM.RL --gjd ROOM.GJD --manifest DIR/_archive-order.txt\n"
         << "  grooviev1.exe archive-list --rl ROOM.RL [--gjd ROOM.GJD]\n"
         << "  grooviev1.exe archive-unpack --rl ROOM.RL --out-dir DIR [--gjd ROOM.GJD]\n\n"
+        << "  archive-list/unpack: --macbinary reads the archive's MacBinary data fork\n"
+        << "  archive-pack/unpack: --mac-t7gdata retains FF separators outside RL lengths\n"
+        << "  Mac T7GM resources: python3 grooviev1/mac_resources.py --help\n\n"
         << "FNT usage:\n"
         << "  grooviev1.exe fnt-list --fnt SPHINX.FNT\n"
         << "  grooviev1.exe fnt-extract --fnt SPHINX.FNT --out-dir ./sphinx_font\n"
@@ -1531,10 +1534,31 @@ static std::string checkedRlName(const std::string &name)
     return key;
 }
 
-static std::vector<std::pair<std::string, std::vector<uint8_t>>> parseRlGjd(const std::string &rlPath, const std::string &gjdPath)
+static std::vector<uint8_t> readArchivePayload(const std::string &path, bool macbinary)
+{
+    auto bytes = readBinaryFile(path);
+    if (!macbinary) return bytes;
+    // MacBinary stores fork lengths in big endian; RL offsets still use the
+    // original little-endian format and are relative to the data fork.
+    if (bytes.size() < 128 || bytes[0] != 0 || bytes[1] == 0 || bytes[1] > 63 ||
+        bytes[74] != 0 || bytes[82] != 0)
+        throw std::runtime_error("Invalid MacBinary header: " + path);
+    const auto be32 = [&](size_t p) -> uint32_t {
+        return (uint32_t(bytes[p]) << 24) | (uint32_t(bytes[p + 1]) << 16) |
+               (uint32_t(bytes[p + 2]) << 8) | bytes[p + 3];
+    };
+    const size_t length = be32(83);
+    const size_t secondary = (size_t(bytes[120]) << 8) | bytes[121];
+    const size_t start = 128 + ((secondary + 127) / 128) * 128;
+    if (start > bytes.size() || length > bytes.size() - start)
+        throw std::runtime_error("Truncated MacBinary data fork: " + path);
+    return std::vector<uint8_t>(bytes.begin() + start, bytes.begin() + start + length);
+}
+
+static std::vector<std::pair<std::string, std::vector<uint8_t>>> parseRlGjd(const std::string &rlPath, const std::string &gjdPath, bool macbinary = false)
 {
     const std::vector<uint8_t> rl = readBinaryFile(rlPath);
-    const std::vector<uint8_t> gjd = readBinaryFile(gjdPath);
+    const std::vector<uint8_t> gjd = readArchivePayload(gjdPath, macbinary);
     if ((rl.size() % 20u) != 0)
         throw std::runtime_error("RL file size is not divisible by 20 bytes");
 
@@ -2104,6 +2128,7 @@ static void archivePackCommand(int argc, char **argv)
     std::string gjdPath;
     std::string inputDir;
     std::string manifestPath;
+    bool macT7gData = false;
     std::vector<std::string> files;
 
     for (int i = 2; i < argc; ++i)
@@ -2123,6 +2148,10 @@ static void archivePackCommand(int argc, char **argv)
             inputDir = needValue("--input-dir");
         else if (arg == "--manifest")
             manifestPath = needValue("--manifest");
+        else if (arg == "--mac-t7gdata")
+            macT7gData = true;
+        else if (arg.starts_with("--"))
+            throw std::runtime_error("Unknown archive-pack option: " + arg);
         else
             files.push_back(arg);
     }
@@ -2141,8 +2170,9 @@ static void archivePackCommand(int argc, char **argv)
         std::string schema, name, file;
         std::getline(manifest, schema);
         if (!schema.empty() && schema.back() == '\r') schema.pop_back();
-        if (!manifest || schema != "grooviev1.archive/1")
+        if (!manifest || (schema != "grooviev1.archive/1" && schema != "grooviev1.archive/mac-t7gdata/1"))
             throw std::runtime_error("Invalid archive manifest header");
+        if (schema == "grooviev1.archive/mac-t7gdata/1") macT7gData = true;
         while (manifest >> std::quoted(name)) {
             if (!(manifest >> std::quoted(file)) || file.empty() || fs::path(file).filename().string() != file ||
                 file == "." || file == ".." || file.find_first_of("/\\:") != std::string::npos)
@@ -2180,6 +2210,7 @@ static void archivePackCommand(int argc, char **argv)
             fs::weakly_canonical(path) == fs::weakly_canonical(gjdPath))
             throw std::runtime_error("Archive output would overwrite an input: " + file);
         total += fs::file_size(path);
+        if (macT7gData) ++total; // FF is outside the RL-indexed length.
         if (total > std::numeric_limits<uint32_t>::max())
             throw std::runtime_error("GJD exceeds 32-bit offset/length range");
     }
@@ -2212,6 +2243,10 @@ static void archivePackCommand(int argc, char **argv)
         if (!data.empty())
             gjdOut.write(reinterpret_cast<const char *>(data.data()), static_cast<std::streamsize>(data.size()));
         offset += length;
+        if (macT7gData) {
+            gjdOut.put(static_cast<char>(0xff));
+            ++offset;
+        }
     }
     rlOut.close();
     gjdOut.close();
@@ -2225,6 +2260,7 @@ static void archiveListCommand(int argc, char **argv)
 {
     std::string rlPath;
     std::string gjdPath;
+    bool macbinary = false;
     for (int i = 2; i < argc; ++i)
     {
         const std::string arg = argv[i];
@@ -2240,6 +2276,8 @@ static void archiveListCommand(int argc, char **argv)
                 throw std::runtime_error("Missing value for --gjd");
             gjdPath = argv[++i];
         }
+        else if (arg == "--macbinary") macbinary = true;
+        else throw std::runtime_error("Unknown archive-list option: " + arg);
     }
     if (rlPath.empty())
         throw std::runtime_error("archive-list requires --rl");
@@ -2247,7 +2285,7 @@ static void archiveListCommand(int argc, char **argv)
         gjdPath = defaultGjdPathFromRl(rlPath);
 
     const std::vector<uint8_t> rl = readBinaryFile(rlPath);
-    const std::vector<uint8_t> gjd = readBinaryFile(gjdPath);
+    const std::vector<uint8_t> gjd = readArchivePayload(gjdPath, macbinary);
     if ((rl.size() % 20u) != 0)
         throw std::runtime_error("RL file size is not divisible by 20 bytes");
 
@@ -2261,7 +2299,7 @@ static void archiveListCommand(int argc, char **argv)
         const uint32_t dataOff = readLE32At(rl, off + 12);
         const uint32_t dataLen = readLE32At(rl, off + 16);
         const bool inRange = static_cast<size_t>(dataOff) <= gjd.size() && static_cast<size_t>(dataLen) <= gjd.size() - std::min(static_cast<size_t>(dataOff), gjd.size());
-        std::cout << "  " << name << " offset=" << dataOff << " length=" << dataLen << (inRange ? "" : " [OUT-OF-RANGE]") << "\n";
+        std::cout << "  index=" << off / 20 << ' ' << name << " offset=" << dataOff << " length=" << dataLen << (inRange ? "" : " [OUT-OF-RANGE]") << "\n";
     }
 }
 
@@ -2270,6 +2308,8 @@ static void archiveUnpackCommand(int argc, char **argv)
     std::string rlPath;
     std::string gjdPath;
     std::string outDir;
+    bool macbinary = false;
+    bool macT7gData = false;
     for (int i = 2; i < argc; ++i)
     {
         const std::string arg = argv[i];
@@ -2291,20 +2331,43 @@ static void archiveUnpackCommand(int argc, char **argv)
                 throw std::runtime_error("Missing value for --out-dir");
             outDir = argv[++i];
         }
+        else if (arg == "--macbinary") macbinary = true;
+        else if (arg == "--mac-t7gdata") macT7gData = true;
+        else throw std::runtime_error("Unknown archive-unpack option: " + arg);
     }
     if (rlPath.empty() || outDir.empty())
         throw std::runtime_error("archive-unpack requires --rl and --out-dir");
     if (gjdPath.empty())
         gjdPath = defaultGjdPathFromRl(rlPath);
 
-    const auto entries = parseRlGjd(rlPath, gjdPath);
+    const auto entries = parseRlGjd(rlPath, gjdPath, macbinary);
+    if (macT7gData) {
+        const auto rl = readBinaryFile(rlPath);
+        const auto data = readArchivePayload(gjdPath, macbinary);
+        size_t next = 0;
+        for (size_t off = 0; off < rl.size(); off += 20) {
+            const size_t start = readLE32At(rl, off + 12);
+            const size_t length = readLE32At(rl, off + 16);
+            if (start != next || length >= data.size() - start || data[start + length] != 0xff)
+                throw std::runtime_error("Mac T7GData requires contiguous RL spans with FF separators");
+            next = start + length + 1;
+        }
+        if (next != data.size()) throw std::runtime_error("Unindexed Mac T7GData bytes");
+    }
     std::map<std::string, size_t> names;
     for (const auto &[name, data] : entries)
         ++names[checkedRlName(name)];
+    std::set<std::string> extractionNames;
+    // Reserve ordinary names first: a generated duplicate-entry filename may
+    // otherwise overwrite an actual archive resource with that same name.
+    for (const auto &[name, data] : entries)
+        if (names.at(checkedRlName(name)) == 1)
+            extractionNames.insert(checkedRlName(name));
+    if (fs::exists(outDir)) throw std::runtime_error("Extraction directory already exists: " + outDir);
     fs::create_directories(outDir);
     std::ofstream manifest(fs::path(outDir) / "_archive-order.txt", std::ios::binary);
     manifest.exceptions(std::ios::badbit | std::ios::failbit);
-    manifest << "grooviev1.archive/1\n";
+    manifest << (macT7gData ? "grooviev1.archive/mac-t7gdata/1\n" : "grooviev1.archive/1\n");
     for (size_t i = 0; i < entries.size(); ++i)
     {
         const auto &[name, data] = entries[i];
@@ -2314,6 +2377,12 @@ static void archiveUnpackCommand(int argc, char **argv)
         if (names.at(checkedRlName(name)) > 1) {
             const auto index = std::to_string(i);
             file = "index" + std::string(index.size() < 5 ? 5 - index.size() : 0, '0') + index + "_" + name;
+            auto key = file;
+            std::transform(key.begin(), key.end(), key.begin(), [](unsigned char c) { return char(std::tolower(c)); });
+            while (!extractionNames.insert(key).second) {
+                file = "_" + file;
+                key = "_" + key;
+            }
         }
         const fs::path outPath = fs::path(outDir) / file;
         writeBinaryFile(outPath.string(), data);

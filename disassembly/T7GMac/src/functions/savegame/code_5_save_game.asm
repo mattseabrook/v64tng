@@ -1,4 +1,4 @@
-; verified-role: Native SaveGame routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.
+; verified-role: Save the byte-sized slot as T7SG resource ID 1000+slot. Create a 1024-byte handle when absent, copy 1024 bytes from the state pointer at A5:F7A0, add or mark the resource changed, write it when ResError is zero, update/flush the current resource file and refresh slot availability. The routine itself does not range-check the slot.
 ; Original native symbol: SaveGame; evidence file offset 0xb574.
 ; Exact bytes retained; instruction decoding remains provisional where inline data may occur.
 mac_code_5_save_game:

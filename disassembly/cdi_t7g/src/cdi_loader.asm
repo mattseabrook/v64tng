@@ -6,25 +6,25 @@ ORG 0
 %endif
 %include "src/data/cdi_loader_module_header_and_name.asm"
 %if ($-$$) != 0x54
-%error "Incorrect placement: src/functions/unknown/cdi_loader_000054_unknown.asm"
+%error "Incorrect placement: src/functions/platform/cdi_loader_select_player_from_csd.asm"
 %endif
-%include "src/functions/unknown/cdi_loader_000054_unknown.asm"
+%include "src/functions/platform/cdi_loader_select_player_from_csd.asm"
 %if ($-$$) != 0x1D2
-%error "Incorrect placement: src/functions/unknown/cdi_loader_0001d2_unknown.asm"
+%error "Incorrect placement: src/functions/platform/cdi_loader_write_console_crlf.asm"
 %endif
-%include "src/functions/unknown/cdi_loader_0001d2_unknown.asm"
+%include "src/functions/platform/cdi_loader_write_console_crlf.asm"
 %if ($-$$) != 0x1EC
-%error "Incorrect placement: src/functions/unknown/cdi_loader_0001ec_unknown.asm"
+%error "Incorrect placement: src/functions/platform/cdi_loader_write_console_c_string.asm"
 %endif
-%include "src/functions/unknown/cdi_loader_0001ec_unknown.asm"
+%include "src/functions/platform/cdi_loader_write_console_c_string.asm"
 %if ($-$$) != 0x21A
-%error "Incorrect placement: src/functions/unknown/cdi_loader_00021a_unknown.asm"
+%error "Incorrect placement: src/functions/platform/cdi_loader_report_error_and_exit.asm"
 %endif
-%include "src/functions/unknown/cdi_loader_00021a_unknown.asm"
+%include "src/functions/platform/cdi_loader_report_error_and_exit.asm"
 %if ($-$$) != 0x2B2
-%error "Incorrect placement: src/functions/unknown/cdi_loader_0002b2_unknown.asm"
+%error "Incorrect placement: src/functions/platform/cdi_loader_find_csd_record.asm"
 %endif
-%include "src/functions/unknown/cdi_loader_0002b2_unknown.asm"
+%include "src/functions/platform/cdi_loader_find_csd_record.asm"
 %if ($-$$) != 0x34E
 %error "Incorrect placement: src/data/cdi_loader_initialized_data.asm"
 %endif

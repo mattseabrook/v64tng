@@ -372,7 +372,8 @@ bool GrvHotspotView::contains(uint16_t x, uint16_t y) const
 std::expected<GrvRuntime, std::string> GrvRuntime::load(
 	const std::filesystem::path &scriptPath,
 	const std::filesystem::path &assetRoot,
-	GrvSaveConvention saveConvention)
+	GrvSaveConvention saveConvention,
+	CellPuzzle::Flavor microscopeFlavor)
 {
 	auto mapping = mapReadOnly(scriptPath);
 	if (!mapping)
@@ -383,6 +384,7 @@ std::expected<GrvRuntime, std::string> GrvRuntime::load(
 	runtime.scriptPath_ = scriptPath;
 	runtime.assetRoot_ = assetRoot;
 	runtime.saveConvention_ = saveConvention;
+	runtime.microscopeFlavor_ = microscopeFlavor;
 	consoleLogf("GRV", "loaded {} ({} bytes) from {}", scriptPath.filename().string(),
 		runtime.bytes_.size(), scriptPath.string());
 	return runtime;
@@ -1189,21 +1191,22 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 		}
 		case 0x42:
 		{
-			// Native microscope wrapper: V.EXE 05ED6 / Mac CODE 5:15A4:
+			// Native microscope wrapper: V.EXE 05ED6 / v32tng 00406809:
 			// read 49 board bytes at variable 19h, then write selected source
 			// and destination row/column into variables 0 through 3.
 			const auto move = cellPuzzle_.search(
 				std::span<const uint8_t, 49>(variables_.data() + 0x19, 49),
-				bytes_[pc + 1], [this] { return random_.nextByte(); });
+				bytes_[pc + 1], [this] { return random_.nextByte(); },
+				microscopeFlavor_);
 			if (!move) return std::unexpected(move.error());
 			if (*move)
-			{
-				variables_[0] = (*move)->source / 7;
-				variables_[1] = (*move)->source % 7;
-				variables_[2] = (*move)->destination / 7;
-				variables_[3] = (*move)->destination % 7;
-			}
-			// With no legal move, the native routines retain their last selection.
+				lastMicroscopeMove_ = **move;
+			// V.EXE 05F08 reads E8FF/E901 even if search found no move.
+			// Restore that selection even when script code has changed v[0..3].
+			variables_[0] = lastMicroscopeMove_.source / 7;
+			variables_[1] = lastMicroscopeMove_.source % 7;
+			variables_[2] = lastMicroscopeMove_.destination / 7;
+			variables_[3] = lastMicroscopeMove_.destination % 7;
 			break;
 		}
 		case 0x43:

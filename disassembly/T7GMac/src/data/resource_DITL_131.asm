@@ -1,3 +1,4 @@
+; Semantic data role: slow_machine_quarter_size_warning; see docs/PLATFORM_EASTER_EGGS.md.
 ; Resource 'DITL', ID 131; name ''; payload 222 bytes
 ; MacBinary file offsets 13C6FD–13C7DE (inclusive).
 ; Linear CODE decoding is provisional: embedded data can decode as instructions.

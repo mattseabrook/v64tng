@@ -1,4 +1,4 @@
-; verified-role: Native keyEquivFilter routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.
+; verified-role: Filter modal-dialog events: handle update events for the supplied dialog; on keyDown, map unmodified Return/Enter to item 1 or parse nine-character hexadecimal key/modifier/item records from dialog item 2. Flash the selected control and return its item through the output pointer. This is dialog keyboard-equivalent handling, not the GRV Zaphod recognizer.
 ; Original native symbol: keyEquivFilter; evidence file offset 0xbe96.
 ; Exact bytes retained; instruction decoding remains provisional where inline data may occur.
 mac_code_5_key_equiv_filter:

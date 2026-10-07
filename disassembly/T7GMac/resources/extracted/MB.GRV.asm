@@ -18,7 +18,7 @@
 0032  46                                     RESOURCE_CONTEXT_SAVE         
 0033  07                                     VIDEOFLAG7_ON                 
 0034  0A                                     VIDEOFLAG5_ON                 
-0035  09 55 50                               VIDEOREF                      ref=0x5055 (GAMWAV[85]=?)
+0035  09 55 50                               VIDEOREF                      ref=0x5055 (GAMWAV[85]=13_s_1.vdx)
 0038  47                                     RESOURCE_CONTEXT_RESTORE      
 0039  16 07 01 B0                            LOADSTRING                    dst=v[0x107], values=[0]
 003D  96 19 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 B0 LOADSTRING                    dst=v[0x019], values=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -28,7 +28,7 @@
 007D  46                                     RESOURCE_CONTEXT_SAVE         
 007E  07                                     VIDEOFLAG7_ON                 
 007F  0A                                     VIDEOFLAG5_ON                 
-0080  09 52 50                               VIDEOREF                      ref=0x5052 (GAMWAV[82]=?)
+0080  09 52 50                               VIDEOREF                      ref=0x5052 (GAMWAV[82]=13_e_3.vdx)
 0083  16 07 01 B3                            LOADSTRING                    dst=v[0x107], values=[3]
 0087  47                                     RESOURCE_CONTEXT_RESTORE      
 0088  36 03 01 B1 A3 00                      CHAR_LESS_JMP                 start=v[0x103], values=[1], target=0x00A3
@@ -36,7 +36,7 @@
 0094  46                                     RESOURCE_CONTEXT_SAVE         
 0095  07                                     VIDEOFLAG7_ON                 
 0096  0A                                     VIDEOFLAG5_ON                 
-0097  09 53 50                               VIDEOREF                      ref=0x5053 (GAMWAV[83]=?)
+0097  09 53 50                               VIDEOREF                      ref=0x5053 (GAMWAV[83]=13_e_4.vdx)
 009A  16 07 01 B2                            LOADSTRING                    dst=v[0x107], values=[2]
 009E  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 00A2  47                                     RESOURCE_CONTEXT_RESTORE      
@@ -46,7 +46,7 @@
 00B3  46                                     RESOURCE_CONTEXT_SAVE         
 00B4  07                                     VIDEOFLAG7_ON                 
 00B5  0A                                     VIDEOFLAG5_ON                 
-00B6  09 54 50                               VIDEOREF                      ref=0x5054 (GAMWAV[84]=?)
+00B6  09 54 50                               VIDEOREF                      ref=0x5054 (GAMWAV[84]=13_e_5.vdx)
 00B9  16 07 01 B1                            LOADSTRING                    dst=v[0x107], values=[1]
 00BD  47                                     RESOURCE_CONTEXT_RESTORE      
 00BE  22                                     COPY_BG_TO_FG                 
@@ -476,361 +476,361 @@
 0A96  13                                     INPUTLOOPEND                  
 0A97  9A 1B B2 B5 0A                         STRCMP_NE_JMP                 start=v[0x01B], values=[2], target=0x0AB5
 0A9C  96 1B B1                               LOADSTRING                    dst=v[0x01B], values=[1]
-0A9F  9C 1A 38                               VIDEO_TRANSITION_REF          ref=0x381A (MB[26]=?)
-0AA2  09 0A 38                               VIDEOREF                      ref=0x380A (MB[10]=?)
+0A9F  9C 1A 38                               VIDEO_TRANSITION_REF          ref=0x381A (MB[26]=mb_stn04.vdx)
+0AA2  09 0A 38                               VIDEOREF                      ref=0x380A (MB[10]=mb_@.vdx)
 0AA5  22                                     COPY_BG_TO_FG                 
-0AA6  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0AA6  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0AA9  37 0B 01 77 00 20 01 8B 00             COPY_RECT_TO_BG               left=0x010B, top=0x0077, right=0x0120, bottom=0x008B
 0AB2  15 71 00                               JMP                           target=0x0071
 0AB5  15 3B 0F                               JMP                           target=0x0F3B
 0AB8  9A 1C B2 D6 0A                         STRCMP_NE_JMP                 start=v[0x01C], values=[2], target=0x0AD6
 0ABD  96 1C B1                               LOADSTRING                    dst=v[0x01C], values=[1]
-0AC0  9C 17 38                               VIDEO_TRANSITION_REF          ref=0x3817 (MB[23]=?)
-0AC3  09 3B 38                               VIDEOREF                      ref=0x383B (MB[59]=?)
+0AC0  9C 17 38                               VIDEO_TRANSITION_REF          ref=0x3817 (MB[23]=mb_stn01.vdx)
+0AC3  09 3B 38                               VIDEOREF                      ref=0x383B (MB[59]=mb_t.vdx)
 0AC6  22                                     COPY_BG_TO_FG                 
-0AC7  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0AC7  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0ACA  37 21 01 7D 00 36 01 92 00             COPY_RECT_TO_BG               left=0x0121, top=0x007D, right=0x0136, bottom=0x0092
 0AD3  15 71 00                               JMP                           target=0x0071
 0AD6  15 3B 0F                               JMP                           target=0x0F3B
 0AD9  9A 1D B2 F7 0A                         STRCMP_NE_JMP                 start=v[0x01D], values=[2], target=0x0AF7
 0ADE  96 1D B1                               LOADSTRING                    dst=v[0x01D], values=[1]
-0AE1  9C 1C 38                               VIDEO_TRANSITION_REF          ref=0x381C (MB[28]=?)
-0AE4  09 12 38                               VIDEOREF                      ref=0x3812 (MB[18]=?)
+0AE1  9C 1C 38                               VIDEO_TRANSITION_REF          ref=0x381C (MB[28]=mb_stn06.vdx)
+0AE4  09 12 38                               VIDEOREF                      ref=0x3812 (MB[18]=mb_k.vdx)
 0AE7  22                                     COPY_BG_TO_FG                 
-0AE8  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0AE8  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0AEB  37 35 01 81 00 4D 01 98 00             COPY_RECT_TO_BG               left=0x0135, top=0x0081, right=0x014D, bottom=0x0098
 0AF4  15 71 00                               JMP                           target=0x0071
 0AF7  15 3B 0F                               JMP                           target=0x0F3B
 0AFA  9A 1E B2 18 0B                         STRCMP_NE_JMP                 start=v[0x01E], values=[2], target=0x0B18
 0AFF  96 1E B1                               LOADSTRING                    dst=v[0x01E], values=[1]
-0B02  9C 19 38                               VIDEO_TRANSITION_REF          ref=0x3819 (MB[25]=?)
-0B05  09 0E 38                               VIDEOREF                      ref=0x380E (MB[14]=?)
+0B02  9C 19 38                               VIDEO_TRANSITION_REF          ref=0x3819 (MB[25]=mb_stn03.vdx)
+0B05  09 0E 38                               VIDEOREF                      ref=0x380E (MB[14]=mb_e.vdx)
 0B08  22                                     COPY_BG_TO_FG                 
-0B09  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0B09  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0B0C  37 52 01 80 00 66 01 97 00             COPY_RECT_TO_BG               left=0x0152, top=0x0080, right=0x0166, bottom=0x0097
 0B15  15 71 00                               JMP                           target=0x0071
 0B18  15 3B 0F                               JMP                           target=0x0F3B
 0B1B  9A 20 B2 39 0B                         STRCMP_NE_JMP                 start=v[0x020], values=[2], target=0x0B39
 0B20  96 20 B1                               LOADSTRING                    dst=v[0x020], values=[1]
-0B23  9C 1B 38                               VIDEO_TRANSITION_REF          ref=0x381B (MB[27]=?)
-0B26  09 16 38                               VIDEOREF                      ref=0x3816 (MB[22]=?)
+0B23  9C 1B 38                               VIDEO_TRANSITION_REF          ref=0x381B (MB[27]=mb_stn05.vdx)
+0B26  09 16 38                               VIDEOREF                      ref=0x3816 (MB[22]=mb_s.vdx)
 0B29  22                                     COPY_BG_TO_FG                 
-0B2A  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0B2A  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0B2D  37 76 01 98 00 8C 01 AB 00             COPY_RECT_TO_BG               left=0x0176, top=0x0098, right=0x018C, bottom=0x00AB
 0B36  15 71 00                               JMP                           target=0x0071
 0B39  15 3B 0F                               JMP                           target=0x0F3B
 0B3C  9A 21 B2 5A 0B                         STRCMP_NE_JMP                 start=v[0x021], values=[2], target=0x0B5A
 0B41  96 21 B1                               LOADSTRING                    dst=v[0x021], values=[1]
-0B44  9C 18 38                               VIDEO_TRANSITION_REF          ref=0x3818 (MB[24]=?)
-0B47  09 10 38                               VIDEOREF                      ref=0x3810 (MB[16]=?)
+0B44  9C 18 38                               VIDEO_TRANSITION_REF          ref=0x3818 (MB[24]=mb_stn02.vdx)
+0B47  09 10 38                               VIDEOREF                      ref=0x3810 (MB[16]=mb_h.vdx)
 0B4A  22                                     COPY_BG_TO_FG                 
-0B4B  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0B4B  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0B4E  37 8D 01 9B 00 A6 01 AF 00             COPY_RECT_TO_BG               left=0x018D, top=0x009B, right=0x01A6, bottom=0x00AF
 0B57  15 71 00                               JMP                           target=0x0071
 0B5A  15 3B 0F                               JMP                           target=0x0F3B
 0B5D  9A 22 B2 7B 0B                         STRCMP_NE_JMP                 start=v[0x022], values=[2], target=0x0B7B
 0B62  96 22 B1                               LOADSTRING                    dst=v[0x022], values=[1]
-0B65  9C 1D 38                               VIDEO_TRANSITION_REF          ref=0x381D (MB[29]=?)
-0B68  09 3E 38                               VIDEOREF                      ref=0x383E (MB[62]=?)
+0B65  9C 1D 38                               VIDEO_TRANSITION_REF          ref=0x381D (MB[29]=mb_stn07.vdx)
+0B68  09 3E 38                               VIDEOREF                      ref=0x383E (MB[62]=mb_y.vdx)
 0B6B  22                                     COPY_BG_TO_FG                 
-0B6C  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0B6C  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0B6F  37 94 01 B0 00 AA 01 C5 00             COPY_RECT_TO_BG               left=0x0194, top=0x00B0, right=0x01AA, bottom=0x00C5
 0B78  15 71 00                               JMP                           target=0x0071
 0B7B  15 3B 0F                               JMP                           target=0x0F3B
 0B7E  9A 24 B2 9C 0B                         STRCMP_NE_JMP                 start=v[0x024], values=[2], target=0x0B9C
 0B83  96 24 B1                               LOADSTRING                    dst=v[0x024], values=[1]
-0B86  9C 23 38                               VIDEO_TRANSITION_REF          ref=0x3823 (MB[35]=?)
-0B89  09 3C 38                               VIDEOREF                      ref=0x383C (MB[60]=?)
+0B86  9C 23 38                               VIDEO_TRANSITION_REF          ref=0x3823 (MB[35]=mb_stn13.vdx)
+0B89  09 3C 38                               VIDEOREF                      ref=0x383C (MB[60]=mb_u.vdx)
 0B8C  22                                     COPY_BG_TO_FG                 
-0B8D  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0B8D  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0B90  37 9C 01 D9 00 B3 01 EF 00             COPY_RECT_TO_BG               left=0x019C, top=0x00D9, right=0x01B3, bottom=0x00EF
 0B99  15 71 00                               JMP                           target=0x0071
 0B9C  15 3B 0F                               JMP                           target=0x0F3B
 0B9F  9A 25 B2 BD 0B                         STRCMP_NE_JMP                 start=v[0x025], values=[2], target=0x0BBD
 0BA4  96 25 B1                               LOADSTRING                    dst=v[0x025], values=[1]
-0BA7  9C 1E 38                               VIDEO_TRANSITION_REF          ref=0x381E (MB[30]=?)
-0BAA  09 0A 38                               VIDEOREF                      ref=0x380A (MB[10]=?)
+0BA7  9C 1E 38                               VIDEO_TRANSITION_REF          ref=0x381E (MB[30]=mb_stn08.vdx)
+0BAA  09 0A 38                               VIDEOREF                      ref=0x380A (MB[10]=mb_@.vdx)
 0BAD  22                                     COPY_BG_TO_FG                 
-0BAE  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0BAE  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0BB1  37 A8 01 F6 00 BF 01 0A 01             COPY_RECT_TO_BG               left=0x01A8, top=0x00F6, right=0x01BF, bottom=0x010A
 0BBA  15 71 00                               JMP                           target=0x0071
 0BBD  15 3B 0F                               JMP                           target=0x0F3B
 0BC0  9A 26 B2 DE 0B                         STRCMP_NE_JMP                 start=v[0x026], values=[2], target=0x0BDE
 0BC5  96 26 B1                               LOADSTRING                    dst=v[0x026], values=[1]
-0BC8  9C 21 38                               VIDEO_TRANSITION_REF          ref=0x3821 (MB[33]=?)
-0BCB  09 0A 38                               VIDEOREF                      ref=0x380A (MB[10]=?)
+0BC8  9C 21 38                               VIDEO_TRANSITION_REF          ref=0x3821 (MB[33]=mb_stn11.vdx)
+0BCB  09 0A 38                               VIDEOREF                      ref=0x380A (MB[10]=mb_@.vdx)
 0BCE  22                                     COPY_BG_TO_FG                 
-0BCF  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0BCF  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0BD2  37 9C 01 0A 01 B4 01 20 01             COPY_RECT_TO_BG               left=0x019C, top=0x010A, right=0x01B4, bottom=0x0120
 0BDB  15 71 00                               JMP                           target=0x0071
 0BDE  15 3B 0F                               JMP                           target=0x0F3B
 0BE1  9A 27 B2 FF 0B                         STRCMP_NE_JMP                 start=v[0x027], values=[2], target=0x0BFF
 0BE6  96 27 B1                               LOADSTRING                    dst=v[0x027], values=[1]
-0BE9  9C 24 38                               VIDEO_TRANSITION_REF          ref=0x3824 (MB[36]=?)
-0BEC  09 0D 38                               VIDEOREF                      ref=0x380D (MB[13]=?)
+0BE9  9C 24 38                               VIDEO_TRANSITION_REF          ref=0x3824 (MB[36]=mb_stn14.vdx)
+0BEC  09 0D 38                               VIDEOREF                      ref=0x380D (MB[13]=mb_d.vdx)
 0BEF  22                                     COPY_BG_TO_FG                 
-0BF0  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0BF0  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0BF3  37 9E 01 24 01 B6 01 3B 01             COPY_RECT_TO_BG               left=0x019E, top=0x0124, right=0x01B6, bottom=0x013B
 0BFC  15 71 00                               JMP                           target=0x0071
 0BFF  15 3B 0F                               JMP                           target=0x0F3B
 0C02  9A 28 B2 20 0C                         STRCMP_NE_JMP                 start=v[0x028], values=[2], target=0x0C20
 0C07  96 28 B1                               LOADSTRING                    dst=v[0x028], values=[1]
-0C0A  9C 1F 38                               VIDEO_TRANSITION_REF          ref=0x381F (MB[31]=?)
-0C0D  09 11 38                               VIDEOREF                      ref=0x3811 (MB[17]=?)
+0C0A  9C 1F 38                               VIDEO_TRANSITION_REF          ref=0x381F (MB[31]=mb_stn09.vdx)
+0C0D  09 11 38                               VIDEOREF                      ref=0x3811 (MB[17]=mb_i.vdx)
 0C10  22                                     COPY_BG_TO_FG                 
-0C11  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0C11  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0C14  37 8D 01 34 01 A2 01 4C 01             COPY_RECT_TO_BG               left=0x018D, top=0x0134, right=0x01A2, bottom=0x014C
 0C1D  15 71 00                               JMP                           target=0x0071
 0C20  15 3B 0F                               JMP                           target=0x0F3B
 0C23  9A 29 B2 41 0C                         STRCMP_NE_JMP                 start=v[0x029], values=[2], target=0x0C41
 0C28  96 29 B1                               LOADSTRING                    dst=v[0x029], values=[1]
-0C2B  9C 22 38                               VIDEO_TRANSITION_REF          ref=0x3822 (MB[34]=?)
-0C2E  09 15 38                               VIDEOREF                      ref=0x3815 (MB[21]=?)
+0C2B  9C 22 38                               VIDEO_TRANSITION_REF          ref=0x3822 (MB[34]=mb_stn12.vdx)
+0C2E  09 15 38                               VIDEOREF                      ref=0x3815 (MB[21]=mb_r.vdx)
 0C31  22                                     COPY_BG_TO_FG                 
-0C32  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0C32  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0C35  37 70 01 35 01 87 01 4D 01             COPY_RECT_TO_BG               left=0x0170, top=0x0135, right=0x0187, bottom=0x014D
 0C3E  15 71 00                               JMP                           target=0x0071
 0C41  15 3B 0F                               JMP                           target=0x0F3B
 0C44  9A 2A B2 62 0C                         STRCMP_NE_JMP                 start=v[0x02A], values=[2], target=0x0C62
 0C49  96 2A B1                               LOADSTRING                    dst=v[0x02A], values=[1]
-0C4C  9C 25 38                               VIDEO_TRANSITION_REF          ref=0x3825 (MB[37]=?)
-0C4F  09 0D 38                               VIDEOREF                      ref=0x380D (MB[13]=?)
+0C4C  9C 25 38                               VIDEO_TRANSITION_REF          ref=0x3825 (MB[37]=mb_stn15.vdx)
+0C4F  09 0D 38                               VIDEOREF                      ref=0x380D (MB[13]=mb_d.vdx)
 0C52  22                                     COPY_BG_TO_FG                 
-0C53  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0C53  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0C56  37 55 01 37 01 6C 01 50 01             COPY_RECT_TO_BG               left=0x0155, top=0x0137, right=0x016C, bottom=0x0150
 0C5F  15 71 00                               JMP                           target=0x0071
 0C62  15 3B 0F                               JMP                           target=0x0F3B
 0C65  9A 2B B2 83 0C                         STRCMP_NE_JMP                 start=v[0x02B], values=[2], target=0x0C83
 0C6A  96 2B B1                               LOADSTRING                    dst=v[0x02B], values=[1]
-0C6D  9C 20 38                               VIDEO_TRANSITION_REF          ref=0x3820 (MB[32]=?)
-0C70  09 16 38                               VIDEOREF                      ref=0x3816 (MB[22]=?)
+0C6D  9C 20 38                               VIDEO_TRANSITION_REF          ref=0x3820 (MB[32]=mb_stn10.vdx)
+0C70  09 16 38                               VIDEOREF                      ref=0x3816 (MB[22]=mb_s.vdx)
 0C73  22                                     COPY_BG_TO_FG                 
-0C74  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0C74  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0C77  37 3D 01 42 01 54 01 5A 01             COPY_RECT_TO_BG               left=0x013D, top=0x0142, right=0x0154, bottom=0x015A
 0C80  15 71 00                               JMP                           target=0x0071
 0C83  15 3B 0F                               JMP                           target=0x0F3B
 0C86  9A 2C B2 A4 0C                         STRCMP_NE_JMP                 start=v[0x02C], values=[2], target=0x0CA4
 0C8B  96 2C B1                               LOADSTRING                    dst=v[0x02C], values=[1]
-0C8E  9C 2B 38                               VIDEO_TRANSITION_REF          ref=0x382B (MB[43]=?)
-0C91  09 15 38                               VIDEOREF                      ref=0x3815 (MB[21]=?)
+0C8E  9C 2B 38                               VIDEO_TRANSITION_REF          ref=0x382B (MB[43]=mb_stn21.vdx)
+0C91  09 15 38                               VIDEOREF                      ref=0x3815 (MB[21]=mb_r.vdx)
 0C94  22                                     COPY_BG_TO_FG                 
-0C95  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0C95  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0C98  37 24 01 36 01 3A 01 4E 01             COPY_RECT_TO_BG               left=0x0124, top=0x0136, right=0x013A, bottom=0x014E
 0CA1  15 71 00                               JMP                           target=0x0071
 0CA4  15 3B 0F                               JMP                           target=0x0F3B
 0CA7  9A 2D B2 C5 0C                         STRCMP_NE_JMP                 start=v[0x02D], values=[2], target=0x0CC5
 0CAC  96 2D B1                               LOADSTRING                    dst=v[0x02D], values=[1]
-0CAF  9C 26 38                               VIDEO_TRANSITION_REF          ref=0x3826 (MB[38]=?)
-0CB2  09 3E 38                               VIDEOREF                      ref=0x383E (MB[62]=?)
+0CAF  9C 26 38                               VIDEO_TRANSITION_REF          ref=0x3826 (MB[38]=mb_stn16.vdx)
+0CB2  09 3E 38                               VIDEOREF                      ref=0x383E (MB[62]=mb_y.vdx)
 0CB5  22                                     COPY_BG_TO_FG                 
-0CB6  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0CB6  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0CB9  37 0B 01 2E 01 22 01 4A 01             COPY_RECT_TO_BG               left=0x010B, top=0x012E, right=0x0122, bottom=0x014A
 0CC2  15 71 00                               JMP                           target=0x0071
 0CC5  15 3B 0F                               JMP                           target=0x0F3B
 0CC8  9A 2F B2 E6 0C                         STRCMP_NE_JMP                 start=v[0x02F], values=[2], target=0x0CE6
 0CCD  96 2F B1                               LOADSTRING                    dst=v[0x02F], values=[1]
-0CD0  9C 2A 38                               VIDEO_TRANSITION_REF          ref=0x382A (MB[42]=?)
-0CD3  09 3C 38                               VIDEOREF                      ref=0x383C (MB[60]=?)
+0CD0  9C 2A 38                               VIDEO_TRANSITION_REF          ref=0x382A (MB[42]=mb_stn20.vdx)
+0CD3  09 3C 38                               VIDEOREF                      ref=0x383C (MB[60]=mb_u.vdx)
 0CD6  22                                     COPY_BG_TO_FG                 
-0CD7  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0CD7  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0CDA  37 DA 00 2D 01 F0 00 44 01             COPY_RECT_TO_BG               left=0x00DA, top=0x012D, right=0x00F0, bottom=0x0144
 0CE3  15 71 00                               JMP                           target=0x0071
 0CE6  15 3B 0F                               JMP                           target=0x0F3B
 0CE9  9A 30 B2 07 0D                         STRCMP_NE_JMP                 start=v[0x030], values=[2], target=0x0D07
 0CEE  96 30 B1                               LOADSTRING                    dst=v[0x030], values=[1]
-0CF1  9C 27 38                               VIDEO_TRANSITION_REF          ref=0x3827 (MB[39]=?)
-0CF4  09 0A 38                               VIDEOREF                      ref=0x380A (MB[10]=?)
+0CF1  9C 27 38                               VIDEO_TRANSITION_REF          ref=0x3827 (MB[39]=mb_stn17.vdx)
+0CF4  09 0A 38                               VIDEOREF                      ref=0x380A (MB[10]=mb_@.vdx)
 0CF7  22                                     COPY_BG_TO_FG                 
-0CF8  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0CF8  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0CFB  37 CA 00 17 01 E3 00 2F 01             COPY_RECT_TO_BG               left=0x00CA, top=0x0117, right=0x00E3, bottom=0x012F
 0D04  15 71 00                               JMP                           target=0x0071
 0D07  15 3B 0F                               JMP                           target=0x0F3B
 0D0A  9A 31 B2 28 0D                         STRCMP_NE_JMP                 start=v[0x031], values=[2], target=0x0D28
 0D0F  96 31 B1                               LOADSTRING                    dst=v[0x031], values=[1]
-0D12  9C 2C 38                               VIDEO_TRANSITION_REF          ref=0x382C (MB[44]=?)
-0D15  09 0A 38                               VIDEOREF                      ref=0x380A (MB[10]=?)
+0D12  9C 2C 38                               VIDEO_TRANSITION_REF          ref=0x382C (MB[44]=mb_stn22.vdx)
+0D15  09 0A 38                               VIDEOREF                      ref=0x380A (MB[10]=mb_@.vdx)
 0D18  22                                     COPY_BG_TO_FG                 
-0D19  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0D19  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0D1C  37 CD 00 FF 00 E8 00 16 01             COPY_RECT_TO_BG               left=0x00CD, top=0x00FF, right=0x00E8, bottom=0x0116
 0D25  15 71 00                               JMP                           target=0x0071
 0D28  15 3B 0F                               JMP                           target=0x0F3B
 0D2B  9A 32 B2 49 0D                         STRCMP_NE_JMP                 start=v[0x032], values=[2], target=0x0D49
 0D30  96 32 B1                               LOADSTRING                    dst=v[0x032], values=[1]
-0D33  9C 29 38                               VIDEO_TRANSITION_REF          ref=0x3829 (MB[41]=?)
-0D36  09 14 38                               VIDEOREF                      ref=0x3814 (MB[20]=?)
+0D33  9C 29 38                               VIDEO_TRANSITION_REF          ref=0x3829 (MB[41]=mb_stn19.vdx)
+0D36  09 14 38                               VIDEOREF                      ref=0x3814 (MB[20]=mb_o.vdx)
 0D39  22                                     COPY_BG_TO_FG                 
-0D3A  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0D3A  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0D3D  37 D1 00 E8 00 EA 00 FD 00             COPY_RECT_TO_BG               left=0x00D1, top=0x00E8, right=0x00EA, bottom=0x00FD
 0D46  15 71 00                               JMP                           target=0x0071
 0D49  15 3B 0F                               JMP                           target=0x0F3B
 0D4C  9A 33 B2 6A 0D                         STRCMP_NE_JMP                 start=v[0x033], values=[2], target=0x0D6A
 0D51  96 33 B1                               LOADSTRING                    dst=v[0x033], values=[1]
-0D54  9C 34 38                               VIDEO_TRANSITION_REF          ref=0x3834 (MB[52]=?)
-0D57  09 0A 38                               VIDEOREF                      ref=0x380A (MB[10]=?)
+0D54  9C 34 38                               VIDEO_TRANSITION_REF          ref=0x3834 (MB[52]=mb_stn30.vdx)
+0D57  09 0A 38                               VIDEOREF                      ref=0x380A (MB[10]=mb_@.vdx)
 0D5A  22                                     COPY_BG_TO_FG                 
-0D5B  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0D5B  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0D5E  37 D7 00 CF 00 EF 00 E6 00             COPY_RECT_TO_BG               left=0x00D7, top=0x00CF, right=0x00EF, bottom=0x00E6
 0D67  15 71 00                               JMP                           target=0x0071
 0D6A  15 3B 0F                               JMP                           target=0x0F3B
 0D6D  9A 34 B2 8B 0D                         STRCMP_NE_JMP                 start=v[0x034], values=[2], target=0x0D8B
 0D72  96 34 B1                               LOADSTRING                    dst=v[0x034], values=[1]
-0D75  9C 2D 38                               VIDEO_TRANSITION_REF          ref=0x382D (MB[45]=?)
-0D78  09 0F 38                               VIDEOREF                      ref=0x380F (MB[15]=?)
+0D75  9C 2D 38                               VIDEO_TRANSITION_REF          ref=0x382D (MB[45]=mb_stn23.vdx)
+0D78  09 0F 38                               VIDEOREF                      ref=0x380F (MB[15]=mb_f.vdx)
 0D7B  22                                     COPY_BG_TO_FG                 
-0D7C  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0D7C  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0D7F  37 DF 00 BA 00 F3 00 CF 00             COPY_RECT_TO_BG               left=0x00DF, top=0x00BA, right=0x00F3, bottom=0x00CF
 0D88  15 71 00                               JMP                           target=0x0071
 0D8B  15 3B 0F                               JMP                           target=0x0F3B
 0D8E  9A 35 B2 AC 0D                         STRCMP_NE_JMP                 start=v[0x035], values=[2], target=0x0DAC
 0D93  96 35 B1                               LOADSTRING                    dst=v[0x035], values=[1]
-0D96  9C 28 38                               VIDEO_TRANSITION_REF          ref=0x3828 (MB[40]=?)
-0D99  09 3E 38                               VIDEOREF                      ref=0x383E (MB[62]=?)
+0D96  9C 28 38                               VIDEO_TRANSITION_REF          ref=0x3828 (MB[40]=mb_stn18.vdx)
+0D99  09 3E 38                               VIDEOREF                      ref=0x383E (MB[62]=mb_y.vdx)
 0D9C  22                                     COPY_BG_TO_FG                 
-0D9D  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0D9D  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0DA0  37 F2 00 AC 00 08 01 C3 00             COPY_RECT_TO_BG               left=0x00F2, top=0x00AC, right=0x0108, bottom=0x00C3
 0DA9  15 71 00                               JMP                           target=0x0071
 0DAC  15 3B 0F                               JMP                           target=0x0F3B
 0DAF  9A 36 B2 CD 0D                         STRCMP_NE_JMP                 start=v[0x036], values=[2], target=0x0DCD
 0DB4  96 36 B1                               LOADSTRING                    dst=v[0x036], values=[1]
-0DB7  9C 35 38                               VIDEO_TRANSITION_REF          ref=0x3835 (MB[53]=?)
-0DBA  09 0C 38                               VIDEOREF                      ref=0x380C (MB[12]=?)
+0DB7  9C 35 38                               VIDEO_TRANSITION_REF          ref=0x3835 (MB[53]=mb_stn31.vdx)
+0DBA  09 0C 38                               VIDEOREF                      ref=0x380C (MB[12]=mb_b.vdx)
 0DBD  22                                     COPY_BG_TO_FG                 
-0DBE  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0DBE  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0DC1  37 09 01 9C 00 1C 01 B2 00             COPY_RECT_TO_BG               left=0x0109, top=0x009C, right=0x011C, bottom=0x00B2
 0DCA  15 71 00                               JMP                           target=0x0071
 0DCD  15 3B 0F                               JMP                           target=0x0F3B
 0DD0  9A 37 B2 EE 0D                         STRCMP_NE_JMP                 start=v[0x037], values=[2], target=0x0DEE
 0DD5  96 37 B1                               LOADSTRING                    dst=v[0x037], values=[1]
-0DD8  9C 2E 38                               VIDEO_TRANSITION_REF          ref=0x382E (MB[46]=?)
-0DDB  09 0B 38                               VIDEOREF                      ref=0x380B (MB[11]=?)
+0DD8  9C 2E 38                               VIDEO_TRANSITION_REF          ref=0x382E (MB[46]=mb_stn24.vdx)
+0DDB  09 0B 38                               VIDEOREF                      ref=0x380B (MB[11]=mb_a.vdx)
 0DDE  22                                     COPY_BG_TO_FG                 
-0DDF  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0DDF  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0DE2  37 1B 01 A8 00 30 01 BC 00             COPY_RECT_TO_BG               left=0x011B, top=0x00A8, right=0x0130, bottom=0x00BC
 0DEB  15 71 00                               JMP                           target=0x0071
 0DEE  15 3B 0F                               JMP                           target=0x0F3B
 0DF1  9A 38 B2 0F 0E                         STRCMP_NE_JMP                 start=v[0x038], values=[2], target=0x0E0F
 0DF6  96 38 B1                               LOADSTRING                    dst=v[0x038], values=[1]
-0DF9  9C 33 38                               VIDEO_TRANSITION_REF          ref=0x3833 (MB[51]=?)
-0DFC  09 16 38                               VIDEOREF                      ref=0x3816 (MB[22]=?)
+0DF9  9C 33 38                               VIDEO_TRANSITION_REF          ref=0x3833 (MB[51]=mb_stn29.vdx)
+0DFC  09 16 38                               VIDEOREF                      ref=0x3816 (MB[22]=mb_s.vdx)
 0DFF  22                                     COPY_BG_TO_FG                 
-0E00  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0E00  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0E03  37 34 01 AD 00 47 01 C3 00             COPY_RECT_TO_BG               left=0x0134, top=0x00AD, right=0x0147, bottom=0x00C3
 0E0C  15 71 00                               JMP                           target=0x0071
 0E0F  15 3B 0F                               JMP                           target=0x0F3B
 0E12  9A 39 B2 30 0E                         STRCMP_NE_JMP                 start=v[0x039], values=[2], target=0x0E30
 0E17  96 39 B1                               LOADSTRING                    dst=v[0x039], values=[1]
-0E1A  9C 36 38                               VIDEO_TRANSITION_REF          ref=0x3836 (MB[54]=?)
-0E1D  09 13 38                               VIDEOREF                      ref=0x3813 (MB[19]=?)
+0E1A  9C 36 38                               VIDEO_TRANSITION_REF          ref=0x3836 (MB[54]=mb_stn32.vdx)
+0E1D  09 13 38                               VIDEOREF                      ref=0x3813 (MB[19]=mb_l.vdx)
 0E20  22                                     COPY_BG_TO_FG                 
-0E21  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0E21  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0E24  37 4A 01 B3 00 5E 01 CB 00             COPY_RECT_TO_BG               left=0x014A, top=0x00B3, right=0x015E, bottom=0x00CB
 0E2D  15 71 00                               JMP                           target=0x0071
 0E30  15 3B 0F                               JMP                           target=0x0F3B
 0E33  9A 3A B2 51 0E                         STRCMP_NE_JMP                 start=v[0x03A], values=[2], target=0x0E51
 0E38  96 3A B1                               LOADSTRING                    dst=v[0x03A], values=[1]
-0E3B  9C 31 38                               VIDEO_TRANSITION_REF          ref=0x3831 (MB[49]=?)
-0E3E  09 0A 38                               VIDEOREF                      ref=0x380A (MB[10]=?)
+0E3B  9C 31 38                               VIDEO_TRANSITION_REF          ref=0x3831 (MB[49]=mb_stn27.vdx)
+0E3E  09 0A 38                               VIDEOREF                      ref=0x380A (MB[10]=mb_@.vdx)
 0E41  22                                     COPY_BG_TO_FG                 
-0E42  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0E42  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0E45  37 64 01 B2 00 79 01 C8 00             COPY_RECT_TO_BG               left=0x0164, top=0x00B2, right=0x0179, bottom=0x00C8
 0E4E  15 71 00                               JMP                           target=0x0071
 0E51  15 3B 0F                               JMP                           target=0x0F3B
 0E54  9A 3B B2 72 0E                         STRCMP_NE_JMP                 start=v[0x03B], values=[2], target=0x0E72
 0E59  96 3B B1                               LOADSTRING                    dst=v[0x03B], values=[1]
-0E5C  9C 38 38                               VIDEO_TRANSITION_REF          ref=0x3838 (MB[56]=?)
-0E5F  09 14 38                               VIDEOREF                      ref=0x3814 (MB[20]=?)
+0E5C  9C 38 38                               VIDEO_TRANSITION_REF          ref=0x3838 (MB[56]=mb_stn34.vdx)
+0E5F  09 14 38                               VIDEOREF                      ref=0x3814 (MB[20]=mb_o.vdx)
 0E62  22                                     COPY_BG_TO_FG                 
-0E63  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0E63  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0E66  37 70 01 C8 00 85 01 DA 00             COPY_RECT_TO_BG               left=0x0170, top=0x00C8, right=0x0185, bottom=0x00DA
 0E6F  15 71 00                               JMP                           target=0x0071
 0E72  15 3B 0F                               JMP                           target=0x0F3B
 0E75  9A 3C B2 93 0E                         STRCMP_NE_JMP                 start=v[0x03C], values=[2], target=0x0E93
 0E7A  96 3C B1                               LOADSTRING                    dst=v[0x03C], values=[1]
-0E7D  9C 2F 38                               VIDEO_TRANSITION_REF          ref=0x382F (MB[47]=?)
-0E80  09 3B 38                               VIDEOREF                      ref=0x383B (MB[59]=?)
+0E7D  9C 2F 38                               VIDEO_TRANSITION_REF          ref=0x382F (MB[47]=mb_stn25.vdx)
+0E80  09 3B 38                               VIDEOREF                      ref=0x383B (MB[59]=mb_t.vdx)
 0E83  22                                     COPY_BG_TO_FG                 
-0E84  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0E84  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0E87  37 7C 01 DE 00 8F 01 F2 00             COPY_RECT_TO_BG               left=0x017C, top=0x00DE, right=0x018F, bottom=0x00F2
 0E90  15 71 00                               JMP                           target=0x0071
 0E93  15 3B 0F                               JMP                           target=0x0F3B
 0E96  9A 3D B2 B4 0E                         STRCMP_NE_JMP                 start=v[0x03D], values=[2], target=0x0EB4
 0E9B  96 3D B1                               LOADSTRING                    dst=v[0x03D], values=[1]
-0E9E  9C 32 38                               VIDEO_TRANSITION_REF          ref=0x3832 (MB[50]=?)
-0EA1  09 11 38                               VIDEOREF                      ref=0x3811 (MB[17]=?)
+0E9E  9C 32 38                               VIDEO_TRANSITION_REF          ref=0x3832 (MB[50]=mb_stn28.vdx)
+0EA1  09 11 38                               VIDEOREF                      ref=0x3811 (MB[17]=mb_i.vdx)
 0EA4  22                                     COPY_BG_TO_FG                 
-0EA5  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0EA5  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0EA8  37 70 01 F5 00 87 01 0E 01             COPY_RECT_TO_BG               left=0x0170, top=0x00F5, right=0x0187, bottom=0x010E
 0EB1  15 71 00                               JMP                           target=0x0071
 0EB4  15 3B 0F                               JMP                           target=0x0F3B
 0EB7  9A 3E B2 D5 0E                         STRCMP_NE_JMP                 start=v[0x03E], values=[2], target=0x0ED5
 0EBC  96 3E B1                               LOADSTRING                    dst=v[0x03E], values=[1]
-0EBF  9C 37 38                               VIDEO_TRANSITION_REF          ref=0x3837 (MB[55]=?)
-0EC2  09 14 38                               VIDEOREF                      ref=0x3814 (MB[20]=?)
+0EBF  9C 37 38                               VIDEO_TRANSITION_REF          ref=0x3837 (MB[55]=mb_stn33.vdx)
+0EC2  09 14 38                               VIDEOREF                      ref=0x3814 (MB[20]=mb_o.vdx)
 0EC5  22                                     COPY_BG_TO_FG                 
-0EC6  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0EC6  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0EC9  37 5A 01 10 01 71 01 28 01             COPY_RECT_TO_BG               left=0x015A, top=0x0110, right=0x0171, bottom=0x0128
 0ED2  15 71 00                               JMP                           target=0x0071
 0ED5  15 3B 0F                               JMP                           target=0x0F3B
 0ED8  9A 3F B2 F6 0E                         STRCMP_NE_JMP                 start=v[0x03F], values=[2], target=0x0EF6
 0EDD  96 3F B1                               LOADSTRING                    dst=v[0x03F], values=[1]
-0EE0  9C 30 38                               VIDEO_TRANSITION_REF          ref=0x3830 (MB[48]=?)
-0EE3  09 0E 38                               VIDEOREF                      ref=0x380E (MB[14]=?)
+0EE0  9C 30 38                               VIDEO_TRANSITION_REF          ref=0x3830 (MB[48]=mb_stn26.vdx)
+0EE3  09 0E 38                               VIDEOREF                      ref=0x380E (MB[14]=mb_e.vdx)
 0EE6  22                                     COPY_BG_TO_FG                 
-0EE7  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0EE7  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0EEA  37 43 01 0A 01 59 01 21 01             COPY_RECT_TO_BG               left=0x0143, top=0x010A, right=0x0159, bottom=0x0121
 0EF3  15 71 00                               JMP                           target=0x0071
 0EF6  15 3B 0F                               JMP                           target=0x0F3B
 0EF9  9A 40 B2 17 0F                         STRCMP_NE_JMP                 start=v[0x040], values=[2], target=0x0F17
 0EFE  96 40 B1                               LOADSTRING                    dst=v[0x040], values=[1]
-0F01  9C 39 38                               VIDEO_TRANSITION_REF          ref=0x3839 (MB[57]=?)
-0F04  09 0D 38                               VIDEOREF                      ref=0x380D (MB[13]=?)
+0F01  9C 39 38                               VIDEO_TRANSITION_REF          ref=0x3839 (MB[57]=mb_stn35.vdx)
+0F04  09 0D 38                               VIDEOREF                      ref=0x380D (MB[13]=mb_d.vdx)
 0F07  22                                     COPY_BG_TO_FG                 
-0F08  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0F08  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0F0B  37 26 01 10 01 3B 01 2A 01             COPY_RECT_TO_BG               left=0x0126, top=0x0110, right=0x013B, bottom=0x012A
 0F14  15 71 00                               JMP                           target=0x0071
 0F17  15 3B 0F                               JMP                           target=0x0F3B
 0F1A  9A 43 B2 38 0F                         STRCMP_NE_JMP                 start=v[0x043], values=[2], target=0x0F38
 0F1F  96 43 B1                               LOADSTRING                    dst=v[0x043], values=[1]
-0F22  9C 3A 38                               VIDEO_TRANSITION_REF          ref=0x383A (MB[58]=?)
-0F25  09 3E 38                               VIDEOREF                      ref=0x383E (MB[62]=?)
+0F22  9C 3A 38                               VIDEO_TRANSITION_REF          ref=0x383A (MB[58]=mb_stn36.vdx)
+0F25  09 3E 38                               VIDEOREF                      ref=0x383E (MB[62]=mb_y.vdx)
 0F28  22                                     COPY_BG_TO_FG                 
-0F29  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=?)
+0F29  1C 00 38                               VIDEO_TRANSITION_REF          ref=0x3800 (MB[0]=mb1p.vdx)
 0F2C  37 02 01 D1 00 1A 01 E9 00             COPY_RECT_TO_BG               left=0x0102, top=0x00D1, right=0x011A, bottom=0x00E9
 0F35  15 4B 0F                               JMP                           target=0x0F4B
 0F38  15 3B 0F                               JMP                           target=0x0F3B
-0F3B  1C 01 38                               VIDEO_TRANSITION_REF          ref=0x3801 (MB[1]=?)
+0F3B  1C 01 38                               VIDEO_TRANSITION_REF          ref=0x3801 (MB[1]=mb1pb.vdx)
 0F3E  18 7B 0F                               CALL                          target=0x0F7B
 0F41  07                                     VIDEOFLAG7_ON                 
 0F42  0A                                     VIDEOFLAG5_ON                 
 0F43  46                                     RESOURCE_CONTEXT_SAVE         
-0F44  09 46 50                               VIDEOREF                      ref=0x5046 (GAMWAV[70]=?)
+0F44  09 46 50                               VIDEOREF                      ref=0x5046 (GAMWAV[70]=11_s_2.vdx)
 0F47  47                                     RESOURCE_CONTEXT_RESTORE      
 0F48  15 00 00                               JMP                           target=0x0000
 0F4B  07                                     VIDEOFLAG7_ON                 
 0F4C  46                                     RESOURCE_CONTEXT_SAVE         
-0F4D  09 3B 50                               VIDEOREF                      ref=0x503B (GAMWAV[59]=?)
+0F4D  09 3B 50                               VIDEOREF                      ref=0x503B (GAMWAV[59]=8_s_15.vdx)
 0F50  47                                     RESOURCE_CONTEXT_RESTORE      
 0F51  96 EF E1                               LOADSTRING                    dst=v[0x0EF], values=[49]
-0F54  1C 01 38                               VIDEO_TRANSITION_REF          ref=0x3801 (MB[1]=?)
+0F54  1C 01 38                               VIDEO_TRANSITION_REF          ref=0x3801 (MB[1]=mb1pb.vdx)
 0F57  18 7B 0F                               CALL                          target=0x0F7B
-0F5A  09 01 38                               VIDEOREF                      ref=0x3801 (MB[1]=?)
+0F5A  09 01 38                               VIDEOREF                      ref=0x3801 (MB[1]=mb1pb.vdx)
 0F5D  43 00                                  RETURNSCRIPT                  value=0x00
 0F5F  07                                     VIDEOFLAG7_ON                 
 0F60  46                                     RESOURCE_CONTEXT_SAVE         
-0F61  09 8B 50                               VIDEOREF                      ref=0x508B (GAMWAV[139]=?)
+0F61  09 8B 50                               VIDEOREF                      ref=0x508B (GAMWAV[139]=gen_e_5.vdx)
 0F64  47                                     RESOURCE_CONTEXT_RESTORE      
-0F65  1C 01 38                               VIDEO_TRANSITION_REF          ref=0x3801 (MB[1]=?)
+0F65  1C 01 38                               VIDEO_TRANSITION_REF          ref=0x3801 (MB[1]=mb1pb.vdx)
 0F68  18 7B 0F                               CALL                          target=0x0F7B
 0F6B  15 00 00                               JMP                           target=0x0000
-0F6E  1C 01 38                               VIDEO_TRANSITION_REF          ref=0x3801 (MB[1]=?)
+0F6E  1C 01 38                               VIDEO_TRANSITION_REF          ref=0x3801 (MB[1]=mb1pb.vdx)
 0F71  18 7B 0F                               CALL                          target=0x0F7B
-0F74  09 01 38                               VIDEOREF                      ref=0x3801 (MB[1]=?)
+0F74  09 01 38                               VIDEOREF                      ref=0x3801 (MB[1]=mb1pb.vdx)
 0F77  43 00                                  RETURNSCRIPT                  value=0x00
 0F79  43 01                                  RETURNSCRIPT                  value=0x01
 0F7B  0A                                     VIDEOFLAG5_ON                 
 0F7C  07                                     VIDEOFLAG7_ON                 
 0F7D  46                                     RESOURCE_CONTEXT_SAVE         
-0F7E  09 01 24                               VIDEOREF                      ref=0x2401 (INTRO[1]=?)
+0F7E  09 01 24                               VIDEOREF                      ref=0x2401 (INTRO[1]=fade.vdx)
 0F81  37 00 00 50 00 7F 02 8F 01             COPY_RECT_TO_BG               left=0x0000, top=0x0050, right=0x027F, bottom=0x018F
 0F8A  47                                     RESOURCE_CONTEXT_RESTORE      
 0F8B  17 00                                  RET                           value=0x00

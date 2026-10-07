@@ -146,7 +146,23 @@ GrvResourceNames loadGrvResourceNames(const std::filesystem::path& root)
         auto path = root / (std::string(kArchives[archive]) + ".RL");
         if (!std::filesystem::exists(path)) {
             path.replace_extension(".rl");
-            if (!std::filesystem::exists(path)) continue;
+            if (!std::filesystem::exists(path)) {
+                // Classic Mac T7GM resources retain lowercase basenames.
+                // Resolve the complete filename, not only the extension.
+                const auto wanted = std::string(kArchives[archive]) + ".RL";
+                std::vector<std::filesystem::path> matches;
+                for (const auto& entry : std::filesystem::directory_iterator(root)) {
+                    if (!entry.is_regular_file()) continue;
+                    auto filename = entry.path().filename().string();
+                    std::transform(filename.begin(), filename.end(), filename.begin(),
+                                   [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+                    if (filename == wanted) matches.push_back(entry.path());
+                }
+                if (matches.empty()) continue;
+                if (matches.size() > 1)
+                    throw std::runtime_error("Ambiguous RL filename in " + root.string() + ": " + wanted);
+                path = matches.front();
+            }
         }
         const auto entries = parseRLFile(path.string());
         if (!entries) continue;
@@ -210,7 +226,8 @@ GrvProgram decodeGrv(const std::filesystem::path& path, const GrvResourceNames& 
             if(op==0x45) { inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,0,0,80,480,a,1); persistentLeft=inst.hotspot; }
         } else if (op==0x14) { var("dst"); u8("max"); }
         else if (op==0x16 || op==0x33) { var("dst"); add("values="+readSequence(reader)); }
-        else if (op==0x17 || op==0x42 || op==0x43 || op==0x48 || op==0x4b || op==0x4d || op==0x52) u8("value");
+        else if (op==0x42) u8("mode"); // Recovered microscope strategy, 0..8.
+        else if (op==0x17 || op==0x43 || op==0x48 || op==0x4b || op==0x4d || op==0x52) u8("value");
         else if (op==0x19) u16("ticks");
         else if (op==0x1a || op==0x21 || op==0x23 || op==0x34 || op==0x36) { var("start"); add("values="+readSequence(reader)); targetOnly(); }
         else if (op==0x1b) { var("start"); std::string x="xor=["; bool first=true; while(true){auto v=reader.u8();if(!first)x+=", ";x+=std::format("0x{:02X}",v&0x4f);first=false;if(v&0x80)break;} add(x+"]"); }

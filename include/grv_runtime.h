@@ -139,7 +139,8 @@ public:
 	static std::expected<GrvRuntime, std::string> load(
 		const std::filesystem::path &scriptPath,
 		const std::filesystem::path &assetRoot,
-		GrvSaveConvention saveConvention = GrvSaveConvention::Auto);
+		GrvSaveConvention saveConvention = GrvSaveConvention::Auto,
+		CellPuzzle::Flavor microscopeFlavor = CellPuzzle::Flavor::Dos);
 
 	[[nodiscard]] std::expected<GrvBoot, std::string> boot();
 	[[nodiscard]] std::optional<GrvHotspotView> hotspotAt(
@@ -227,6 +228,9 @@ private:
 	std::array<uint16_t, 4> persistentHotspots_{};
 	GrvRandom random_{std::random_device{}() | 1u};
 	CellPuzzle cellPuzzle_;
+	CellPuzzle::Flavor microscopeFlavor_ = CellPuzzle::Flavor::Dos;
+	// Native selection globals live outside the GRV variable/save block.
+	CellPuzzle::Move lastMicroscopeMove_{0, 0, 1};
 };
 
 #endif // GRV_RUNTIME_H

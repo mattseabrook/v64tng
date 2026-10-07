@@ -1,21 +1,21 @@
 ; EK.GRV
 ; size=3169 instructions=661 input_loops=2
 
-0000  02 2E 4C                               PLAYSONG                      ref=0x4C2E (XMI[46]=?)
-0003  09 86 28                               VIDEOREF                      ref=0x2886 (JHEK[134]=?)
+0000  02 2E 4C                               PLAYSONG                      ref=0x4C2E (XMI[46]=gu49.xmi)
+0003  09 86 28                               VIDEOREF                      ref=0x2886 (JHEK[134]=ekbu.vdx)
 0006  46                                     RESOURCE_CONTEXT_SAVE         
 0007  9A F1 B4 13 00                         STRCMP_NE_JMP                 start=v[0x0F1], values=[4], target=0x0013
 000C  96 F1 B5                               LOADSTRING                    dst=v[0x0F1], values=[5]
 000F  07                                     VIDEOFLAG7_ON                 
-0010  09 9A 50                               VIDEOREF                      ref=0x509A (GAMWAV[154]=?)
+0010  09 9A 50                               VIDEOREF                      ref=0x509A (GAMWAV[154]=gen_s_3.vdx)
 0013  9A F1 B2 1F 00                         STRCMP_NE_JMP                 start=v[0x0F1], values=[2], target=0x001F
 0018  96 F1 B3                               LOADSTRING                    dst=v[0x0F1], values=[3]
 001B  07                                     VIDEOFLAG7_ON                 
-001C  09 AA 50                               VIDEOREF                      ref=0x50AA (GAMWAV[170]=?)
+001C  09 AA 50                               VIDEOREF                      ref=0x50AA (GAMWAV[170]=gen_s_19.vdx)
 001F  9A F1 B0 2B 00                         STRCMP_NE_JMP                 start=v[0x0F1], values=[0], target=0x002B
 0024  96 F1 B1                               LOADSTRING                    dst=v[0x0F1], values=[1]
 0027  07                                     VIDEOFLAG7_ON                 
-0028  09 9E 50                               VIDEOREF                      ref=0x509E (GAMWAV[158]=?)
+0028  09 9E 50                               VIDEOREF                      ref=0x509E (GAMWAV[158]=gen_s_7.vdx)
 002B  47                                     RESOURCE_CONTEXT_RESTORE      
 002C  2C 33 0C 08                            SET_HOTSPOT_TOP               target=0x0C33, cursor=0x08
 0030  2D 35 0C 06                            SET_HOTSPOT_BOTTOM            target=0x0C35, cursor=0x06
@@ -352,7 +352,7 @@
 065B  0A                                     VIDEOFLAG5_ON                 
 065C  07                                     VIDEOFLAG7_ON                 
 065D  46                                     RESOURCE_CONTEXT_SAVE         
-065E  09 8E 50                               VIDEOREF                      ref=0x508E (GAMWAV[142]=?)
+065E  09 8E 50                               VIDEOREF                      ref=0x508E (GAMWAV[142]=gen_e_8.vdx)
 0661  47                                     RESOURCE_CONTEXT_RESTORE      
 0662  0B                                     INPUTLOOPSTART                
 0663  A3 2D B0 74 06                         STRCMP_EQ_JMP                 start=v[0x02D], values=[0], target=0x0674
@@ -476,17 +476,17 @@
 08DA  15 50 00                               JMP                           target=0x0050
 08DD  96 03 65 B4                            LOADSTRING                    dst=v[0x003], values=[53, 4]
 08E1  15 73 0B                               JMP                           target=0x0B73
-08E4  1C 86 28                               VIDEO_TRANSITION_REF          ref=0x2886 (JHEK[134]=?)
+08E4  1C 86 28                               VIDEO_TRANSITION_REF          ref=0x2886 (JHEK[134]=ekbu.vdx)
 08E7  A3 19 F3 EF 08                         STRCMP_EQ_JMP                 start=v[0x019], values=[67], target=0x08EF
-08EC  9C 8E 28                               VIDEO_TRANSITION_REF          ref=0x288E (JHEK[142]=?)
+08EC  9C 8E 28                               VIDEO_TRANSITION_REF          ref=0x288E (JHEK[142]=ba1_b2.vdx)
 08EF  A3 1A F3 F7 08                         STRCMP_EQ_JMP                 start=v[0x01A], values=[67], target=0x08F7
-08F4  9C 94 28                               VIDEO_TRANSITION_REF          ref=0x2894 (JHEK[148]=?)
+08F4  9C 94 28                               VIDEO_TRANSITION_REF          ref=0x2894 (JHEK[148]=bb1_a2.vdx)
 08F7  A3 1B F3 FF 08                         STRCMP_EQ_JMP                 start=v[0x01B], values=[67], target=0x08FF
-08FC  9C A0 28                               VIDEO_TRANSITION_REF          ref=0x28A0 (JHEK[160]=?)
+08FC  9C A0 28                               VIDEO_TRANSITION_REF          ref=0x28A0 (JHEK[160]=bc1_b2.vdx)
 08FF  A3 1C F3 07 09                         STRCMP_EQ_JMP                 start=v[0x01C], values=[67], target=0x0907
-0904  9C AC 28                               VIDEO_TRANSITION_REF          ref=0x28AC (JHEK[172]=?)
+0904  9C AC 28                               VIDEO_TRANSITION_REF          ref=0x28AC (JHEK[172]=bd1_c2.vdx)
 0907  A3 1D F3 0F 09                         STRCMP_EQ_JMP                 start=v[0x01D], values=[67], target=0x090F
-090C  9C B8 28                               VIDEO_TRANSITION_REF          ref=0x28B8 (JHEK[184]=?)
+090C  9C B8 28                               VIDEO_TRANSITION_REF          ref=0x28B8 (JHEK[184]=be1_d2.vdx)
 090F  A3 1E F3 43 09                         STRCMP_EQ_JMP                 start=v[0x01E], values=[67], target=0x0943
 0914  A4 07 1E 00                            MOV                           dst=v[0x007], src=0x001E
 0918  9A 01 B1 29 09                         STRCMP_NE_JMP                 start=v[0x001], values=[1], target=0x0929
@@ -608,13 +608,13 @@
 0B9C  9A 00 65 33 F7 B1 0B                   STRCMP_NE_JMP                 start=v[0x000], values=[53, 3, 71], target=0x0BB1
 0BA3  9A 05 64 B4 B1 0B                      STRCMP_NE_JMP                 start=v[0x005], values=[52, 4], target=0x0BB1
 0BA9  46                                     RESOURCE_CONTEXT_SAVE         
-0BAA  09 06 1C                               VIDEOREF                      ref=0x1C06 (HDISK[6]=?)
+0BAA  09 06 1C                               VIDEOREF                      ref=0x1C06 (HDISK[6]=wo_s.vdx)
 0BAD  47                                     RESOURCE_CONTEXT_RESTORE      
 0BAE  15 D3 0B                               JMP                           target=0x0BD3
 0BB1  9A 00 64 34 F7 C6 0B                   STRCMP_NE_JMP                 start=v[0x000], values=[52, 4, 71], target=0x0BC6
 0BB8  9A 05 65 B3 C6 0B                      STRCMP_NE_JMP                 start=v[0x005], values=[53, 3], target=0x0BC6
 0BBE  46                                     RESOURCE_CONTEXT_SAVE         
-0BBF  09 07 1C                               VIDEOREF                      ref=0x1C07 (HDISK[7]=?)
+0BBF  09 07 1C                               VIDEOREF                      ref=0x1C07 (HDISK[7]=ws_o.vdx)
 0BC2  47                                     RESOURCE_CONTEXT_RESTORE      
 0BC3  15 D3 0B                               JMP                           target=0x0BD3
 0BC6  26 23 63 23 61 23 62 5F 23 66 23 67 00 VIDEO_NAME                    name="{v002}{v000}{v001}_{v005}{v006}"
@@ -639,26 +639,26 @@
 0C21  15 EA 0B                               JMP                           target=0x0BEA
 0C24  15 50 00                               JMP                           target=0x0050
 0C27  07                                     VIDEOFLAG7_ON                 
-0C28  09 A0 50                               VIDEOREF                      ref=0x50A0 (GAMWAV[160]=?)
+0C28  09 A0 50                               VIDEOREF                      ref=0x50A0 (GAMWAV[160]=gen_s_9.vdx)
 0C2B  96 F1 E1                               LOADSTRING                    dst=v[0x0F1], values=[49]
-0C2E  09 85 28                               VIDEOREF                      ref=0x2885 (JHEK[133]=?)
+0C2E  09 85 28                               VIDEOREF                      ref=0x2885 (JHEK[133]=ekbd.vdx)
 0C31  43 00                                  RETURNSCRIPT                  value=0x00
 0C33  43 01                                  RETURNSCRIPT                  value=0x01
 0C35  07                                     VIDEOFLAG7_ON                 
 0C36  46                                     RESOURCE_CONTEXT_SAVE         
-0C37  09 8B 50                               VIDEOREF                      ref=0x508B (GAMWAV[139]=?)
+0C37  09 8B 50                               VIDEOREF                      ref=0x508B (GAMWAV[139]=gen_e_5.vdx)
 0C3A  47                                     RESOURCE_CONTEXT_RESTORE      
-0C3B  1C 86 28                               VIDEO_TRANSITION_REF          ref=0x2886 (JHEK[134]=?)
+0C3B  1C 86 28                               VIDEO_TRANSITION_REF          ref=0x2886 (JHEK[134]=ekbu.vdx)
 0C3E  18 4F 0C                               CALL                          target=0x0C4F
-0C41  09 86 28                               VIDEOREF                      ref=0x2886 (JHEK[134]=?)
+0C41  09 86 28                               VIDEOREF                      ref=0x2886 (JHEK[134]=ekbu.vdx)
 0C44  15 06 00                               JMP                           target=0x0006
-0C47  1C 86 28                               VIDEO_TRANSITION_REF          ref=0x2886 (JHEK[134]=?)
+0C47  1C 86 28                               VIDEO_TRANSITION_REF          ref=0x2886 (JHEK[134]=ekbu.vdx)
 0C4A  18 4F 0C                               CALL                          target=0x0C4F
 0C4D  43 00                                  RETURNSCRIPT                  value=0x00
 0C4F  0A                                     VIDEOFLAG5_ON                 
 0C50  07                                     VIDEOFLAG7_ON                 
 0C51  46                                     RESOURCE_CONTEXT_SAVE         
-0C52  09 01 24                               VIDEOREF                      ref=0x2401 (INTRO[1]=?)
+0C52  09 01 24                               VIDEOREF                      ref=0x2401 (INTRO[1]=fade.vdx)
 0C55  37 00 00 50 00 7F 02 8F 01             COPY_RECT_TO_BG               left=0x0000, top=0x0050, right=0x027F, bottom=0x018F
 0C5E  47                                     RESOURCE_CONTEXT_RESTORE      
 0C5F  17 00                                  RET                           value=0x00

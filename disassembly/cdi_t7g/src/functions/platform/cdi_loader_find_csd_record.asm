@@ -1,5 +1,8 @@
-; Provisional entry from module header or linear decoded direct call; slice end is NOT a proved function end.
+; verified-role: Open /nvr/csd with I$Open mode 0x41; read up to 32 bytes per line with I$ReadLn; parse a decimal record code up to colon and compare it to incoming D0.W; close the path. EOF without a match returns carry set and D1.W=0x8100; other I/O errors print diagnostics and terminate.
+; Evidence: docs/PLATFORM_EASTER_EGGS.md and resources/semantic_roles.json.
+; Ordered emission slice; named entry does not classify every subsequent byte as code.
 ; File offsets 0002B2–00034D, inclusive.
+cdi_loader_find_csd_record:
 cdi_loader_entry_0002b2:
 db 0x48, 0xE7, 0xF8, 0xC0 ; 0002B2: provisional 68k movem.l d0-d4/a0-a1, -(a7)
 db 0x24, 0x48 ; 0002B6: provisional 68k movea.l a0, a2
@@ -43,15 +46,15 @@ db 0x61, 0x00, 0xFE, 0xB0 ; 000320: provisional 68k bsr.w $1d2
 db 0x48, 0x7A, 0x00, 0x08 ; 000324: provisional 68k pea.l $32e(pc)
 db 0x61, 0x00, 0xFE, 0xC2 ; 000328: provisional 68k bsr.w $1ec
 db 0x60, 0x0C ; 00032C: provisional 68k bra.b $33a
-db 0x63, 0x73 ; 00032E: provisional 68k bls.b $3a3
-db 0x64, 0x5F ; 000330: provisional 68k bcc.b $391
-db 0x64, 0x73 ; 000332: provisional 68k bcc.b $3a7
-db 0x64, 0x3A ; 000334: provisional 68k bcc.b $370
-db 0x20, 0x0D ; 000336: provisional 68k move.l a5, d0
-db 0x0A, 0x00, 0x61, 0x00 ; 000338: provisional 68k eori.b #$0, d0
+db 0x63, 0x73 ; 00032E: inline data; legacy linear decoding here was not executable evidence
+db 0x64, 0x5F ; 000330: inline data; legacy linear decoding here was not executable evidence
+db 0x64, 0x73 ; 000332: inline data; legacy linear decoding here was not executable evidence
+db 0x64, 0x3A ; 000334: inline data; legacy linear decoding here was not executable evidence
+db 0x20, 0x0D ; 000336: inline data; legacy linear decoding here was not executable evidence
+db 0x0A, 0x00, 0x61, 0x00 ; 000338: inline data; legacy linear decoding here was not executable evidence
 db 0xFE, 0x96 ; 00033C: provisional 68k dc.w $fe96
 db 0x32, 0x01 ; 00033E: provisional 68k move.w d1, d1
 db 0x61, 0x00, 0xFE, 0xD8 ; 000340: provisional 68k bsr.w $21a
-db 0x2F, 0x6E, 0x76, 0x72, 0x2F, 0x63 ; 000344: provisional 68k move.l $7672(a6), $2f63(a7)
-db 0x73, 0x64 ; file 00034A
-db 0x00, 0x00 ; 00034C: provisional 68k ori.b #$aa, d0
+db 0x2F, 0x6E, 0x76, 0x72, 0x2F, 0x63 ; 000344: inline data; legacy linear decoding here was not executable evidence
+db 0x73, 0x64 ; 00034A: inline data; legacy linear decoding here was not executable evidence
+db 0x00, 0x00 ; 00034C: inline data; legacy linear decoding here was not executable evidence

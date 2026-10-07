@@ -16,7 +16,7 @@
 002D  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 0031  46                                     RESOURCE_CONTEXT_SAVE         
 0032  07                                     VIDEOFLAG7_ON                 
-0033  09 3E 50                               VIDEOREF                      ref=0x503E (GAMWAV[62]=?)
+0033  09 3E 50                               VIDEOREF                      ref=0x503E (GAMWAV[62]=9_s_1.vdx)
 0036  47                                     RESOURCE_CONTEXT_RESTORE      
 0037  22                                     COPY_BG_TO_FG                 
 0038  96 1A 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 B0 LOADSTRING                    dst=v[0x01A], values=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -57,9 +57,9 @@
 00DF  16 27 01 B0                            LOADSTRING                    dst=v[0x127], values=[0]
 00E3  96 02 30 B0                            LOADSTRING                    dst=v[0x002], values=[0, 0]
 00E7  96 37 B2                               LOADSTRING                    dst=v[0x037], values=[2]
-00EA  1C 50 08                               VIDEO_TRANSITION_REF          ref=0x0850 (CH[80]=?)
-00ED  9C 43 08                               VIDEO_TRANSITION_REF          ref=0x0843 (CH[67]=?)
-00F0  09 4D 08                               VIDEOREF                      ref=0x084D (CH[77]=?)
+00EA  1C 50 08                               VIDEO_TRANSITION_REF          ref=0x0850 (CH[80]=chpuzb.vdx)
+00ED  9C 43 08                               VIDEO_TRANSITION_REF          ref=0x0843 (CH[67]=chpuz25_.vdx)
+00F0  09 4D 08                               VIDEOREF                      ref=0x084D (CH[77]=chpuz30_.vdx)
 00F3  16 27 01 B1                            LOADSTRING                    dst=v[0x127], values=[1]
 00F7  16 28 01 B0                            LOADSTRING                    dst=v[0x128], values=[0]
 00FB  36 03 01 B9 15 01                      CHAR_LESS_JMP                 start=v[0x103], values=[9], target=0x0115
@@ -67,7 +67,7 @@
 0102  1A 28 01 B2 15 01                      STRCMP_NE_JMP                 start=v[0x128], values=[2], target=0x0115
 0108  46                                     RESOURCE_CONTEXT_SAVE         
 0109  16 28 01 B3                            LOADSTRING                    dst=v[0x128], values=[3]
-010D  09 3C 50                               VIDEOREF                      ref=0x503C (GAMWAV[60]=?)
+010D  09 3C 50                               VIDEOREF                      ref=0x503C (GAMWAV[60]=9_e_1.vdx)
 0110  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 0114  47                                     RESOURCE_CONTEXT_RESTORE      
 0115  36 03 01 B9 2F 01                      CHAR_LESS_JMP                 start=v[0x103], values=[9], target=0x012F
@@ -75,7 +75,7 @@
 011C  1A 28 01 B1 2F 01                      STRCMP_NE_JMP                 start=v[0x128], values=[1], target=0x012F
 0122  46                                     RESOURCE_CONTEXT_SAVE         
 0123  16 28 01 B2                            LOADSTRING                    dst=v[0x128], values=[2]
-0127  09 1D 50                               VIDEOREF                      ref=0x501D (GAMWAV[29]=?)
+0127  09 1D 50                               VIDEOREF                      ref=0x501D (GAMWAV[29]=6_e_3.vdx)
 012A  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 012E  47                                     RESOURCE_CONTEXT_RESTORE      
 012F  36 03 01 B9 49 01                      CHAR_LESS_JMP                 start=v[0x103], values=[9], target=0x0149
@@ -83,7 +83,7 @@
 0136  1A 28 01 B0 49 01                      STRCMP_NE_JMP                 start=v[0x128], values=[0], target=0x0149
 013C  46                                     RESOURCE_CONTEXT_SAVE         
 013D  16 28 01 B1                            LOADSTRING                    dst=v[0x128], values=[1]
-0141  09 3D 50                               VIDEOREF                      ref=0x503D (GAMWAV[61]=?)
+0141  09 3D 50                               VIDEOREF                      ref=0x503D (GAMWAV[61]=9_e_2.vdx)
 0144  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 0148  47                                     RESOURCE_CONTEXT_RESTORE      
 0149  22                                     COPY_BG_TO_FG                 
@@ -763,7 +763,7 @@
 0E65  96 19 E4                               LOADSTRING                    dst=v[0x019], values=[52]
 0E68  18 6D 0E                               CALL                          target=0x0E6D
 0E6B  17 00                                  RET                           value=0x00
-0E6D  1C 50 08                               VIDEO_TRANSITION_REF          ref=0x0850 (CH[80]=?)
+0E6D  1C 50 08                               VIDEO_TRANSITION_REF          ref=0x0850 (CH[80]=chpuzb.vdx)
 0E70  9A 02 33 B1 7C 0E                      STRCMP_NE_JMP                 start=v[0x002], values=[3, 1], target=0x0E7C
 0E76  18 E7 18                               CALL                          target=0x18E7
 0E79  15 C1 11                               JMP                           target=0x11C1
@@ -1023,562 +1023,562 @@
 11DA  26 63 68 70 75 7A 23 63 23 64 00       VIDEO_NAME                    name="chpuz{v002}{v003}"
 11E5  17 00                                  RET                           value=0x00
 11E7  9A 1A B0 F2 11                         STRCMP_NE_JMP                 start=v[0x01A], values=[0], target=0x11F2
-11EC  1C 13 08                               VIDEO_TRANSITION_REF          ref=0x0813 (CH[19]=?)
+11EC  1C 13 08                               VIDEO_TRANSITION_REF          ref=0x0813 (CH[19]=chpuz01_.vdx)
 11EF  15 05 12                               JMP                           target=0x1205
 11F2  9A 1A B1 FD 11                         STRCMP_NE_JMP                 start=v[0x01A], values=[1], target=0x11FD
-11F7  1C 12 08                               VIDEO_TRANSITION_REF          ref=0x0812 (CH[18]=?)
+11F7  1C 12 08                               VIDEO_TRANSITION_REF          ref=0x0812 (CH[18]=chpuz01.vdx)
 11FA  15 05 12                               JMP                           target=0x1205
 11FD  9A 1A B2 05 12                         STRCMP_NE_JMP                 start=v[0x01A], values=[2], target=0x1205
-1202  1C 12 08                               VIDEO_TRANSITION_REF          ref=0x0812 (CH[18]=?)
+1202  1C 12 08                               VIDEO_TRANSITION_REF          ref=0x0812 (CH[18]=chpuz01.vdx)
 1205  17 00                                  RET                           value=0x00
 1207  9A 1A B0 12 12                         STRCMP_NE_JMP                 start=v[0x01A], values=[0], target=0x1212
-120C  9C 13 08                               VIDEO_TRANSITION_REF          ref=0x0813 (CH[19]=?)
+120C  9C 13 08                               VIDEO_TRANSITION_REF          ref=0x0813 (CH[19]=chpuz01_.vdx)
 120F  15 25 12                               JMP                           target=0x1225
 1212  9A 1A B1 1D 12                         STRCMP_NE_JMP                 start=v[0x01A], values=[1], target=0x121D
-1217  9C 12 08                               VIDEO_TRANSITION_REF          ref=0x0812 (CH[18]=?)
+1217  9C 12 08                               VIDEO_TRANSITION_REF          ref=0x0812 (CH[18]=chpuz01.vdx)
 121A  15 25 12                               JMP                           target=0x1225
 121D  9A 1A B2 25 12                         STRCMP_NE_JMP                 start=v[0x01A], values=[2], target=0x1225
-1222  9C 12 08                               VIDEO_TRANSITION_REF          ref=0x0812 (CH[18]=?)
+1222  9C 12 08                               VIDEO_TRANSITION_REF          ref=0x0812 (CH[18]=chpuz01.vdx)
 1225  17 00                                  RET                           value=0x00
 1227  9A 1B B0 32 12                         STRCMP_NE_JMP                 start=v[0x01B], values=[0], target=0x1232
-122C  1C 15 08                               VIDEO_TRANSITION_REF          ref=0x0815 (CH[21]=?)
+122C  1C 15 08                               VIDEO_TRANSITION_REF          ref=0x0815 (CH[21]=chpuz02_.vdx)
 122F  15 45 12                               JMP                           target=0x1245
 1232  9A 1B B1 3D 12                         STRCMP_NE_JMP                 start=v[0x01B], values=[1], target=0x123D
-1237  1C 14 08                               VIDEO_TRANSITION_REF          ref=0x0814 (CH[20]=?)
+1237  1C 14 08                               VIDEO_TRANSITION_REF          ref=0x0814 (CH[20]=chpuz02.vdx)
 123A  15 45 12                               JMP                           target=0x1245
 123D  9A 1B B2 45 12                         STRCMP_NE_JMP                 start=v[0x01B], values=[2], target=0x1245
-1242  1C 14 08                               VIDEO_TRANSITION_REF          ref=0x0814 (CH[20]=?)
+1242  1C 14 08                               VIDEO_TRANSITION_REF          ref=0x0814 (CH[20]=chpuz02.vdx)
 1245  17 00                                  RET                           value=0x00
 1247  9A 1B B0 52 12                         STRCMP_NE_JMP                 start=v[0x01B], values=[0], target=0x1252
-124C  9C 15 08                               VIDEO_TRANSITION_REF          ref=0x0815 (CH[21]=?)
+124C  9C 15 08                               VIDEO_TRANSITION_REF          ref=0x0815 (CH[21]=chpuz02_.vdx)
 124F  15 65 12                               JMP                           target=0x1265
 1252  9A 1B B1 5D 12                         STRCMP_NE_JMP                 start=v[0x01B], values=[1], target=0x125D
-1257  9C 14 08                               VIDEO_TRANSITION_REF          ref=0x0814 (CH[20]=?)
+1257  9C 14 08                               VIDEO_TRANSITION_REF          ref=0x0814 (CH[20]=chpuz02.vdx)
 125A  15 65 12                               JMP                           target=0x1265
 125D  9A 1B B2 65 12                         STRCMP_NE_JMP                 start=v[0x01B], values=[2], target=0x1265
-1262  9C 14 08                               VIDEO_TRANSITION_REF          ref=0x0814 (CH[20]=?)
+1262  9C 14 08                               VIDEO_TRANSITION_REF          ref=0x0814 (CH[20]=chpuz02.vdx)
 1265  17 00                                  RET                           value=0x00
 1267  9A 1C B0 72 12                         STRCMP_NE_JMP                 start=v[0x01C], values=[0], target=0x1272
-126C  1C 17 08                               VIDEO_TRANSITION_REF          ref=0x0817 (CH[23]=?)
+126C  1C 17 08                               VIDEO_TRANSITION_REF          ref=0x0817 (CH[23]=chpuz03_.vdx)
 126F  15 85 12                               JMP                           target=0x1285
 1272  9A 1C B1 7D 12                         STRCMP_NE_JMP                 start=v[0x01C], values=[1], target=0x127D
-1277  1C 16 08                               VIDEO_TRANSITION_REF          ref=0x0816 (CH[22]=?)
+1277  1C 16 08                               VIDEO_TRANSITION_REF          ref=0x0816 (CH[22]=chpuz03.vdx)
 127A  15 85 12                               JMP                           target=0x1285
 127D  9A 1C B2 85 12                         STRCMP_NE_JMP                 start=v[0x01C], values=[2], target=0x1285
-1282  1C 16 08                               VIDEO_TRANSITION_REF          ref=0x0816 (CH[22]=?)
+1282  1C 16 08                               VIDEO_TRANSITION_REF          ref=0x0816 (CH[22]=chpuz03.vdx)
 1285  17 00                                  RET                           value=0x00
 1287  9A 1C B0 92 12                         STRCMP_NE_JMP                 start=v[0x01C], values=[0], target=0x1292
-128C  9C 17 08                               VIDEO_TRANSITION_REF          ref=0x0817 (CH[23]=?)
+128C  9C 17 08                               VIDEO_TRANSITION_REF          ref=0x0817 (CH[23]=chpuz03_.vdx)
 128F  15 A5 12                               JMP                           target=0x12A5
 1292  9A 1C B1 9D 12                         STRCMP_NE_JMP                 start=v[0x01C], values=[1], target=0x129D
-1297  9C 16 08                               VIDEO_TRANSITION_REF          ref=0x0816 (CH[22]=?)
+1297  9C 16 08                               VIDEO_TRANSITION_REF          ref=0x0816 (CH[22]=chpuz03.vdx)
 129A  15 A5 12                               JMP                           target=0x12A5
 129D  9A 1C B2 A5 12                         STRCMP_NE_JMP                 start=v[0x01C], values=[2], target=0x12A5
-12A2  9C 16 08                               VIDEO_TRANSITION_REF          ref=0x0816 (CH[22]=?)
+12A2  9C 16 08                               VIDEO_TRANSITION_REF          ref=0x0816 (CH[22]=chpuz03.vdx)
 12A5  17 00                                  RET                           value=0x00
 12A7  9A 1D B0 B2 12                         STRCMP_NE_JMP                 start=v[0x01D], values=[0], target=0x12B2
-12AC  1C 19 08                               VIDEO_TRANSITION_REF          ref=0x0819 (CH[25]=?)
+12AC  1C 19 08                               VIDEO_TRANSITION_REF          ref=0x0819 (CH[25]=chpuz04_.vdx)
 12AF  15 C5 12                               JMP                           target=0x12C5
 12B2  9A 1D B1 BD 12                         STRCMP_NE_JMP                 start=v[0x01D], values=[1], target=0x12BD
-12B7  1C 18 08                               VIDEO_TRANSITION_REF          ref=0x0818 (CH[24]=?)
+12B7  1C 18 08                               VIDEO_TRANSITION_REF          ref=0x0818 (CH[24]=chpuz04.vdx)
 12BA  15 C5 12                               JMP                           target=0x12C5
 12BD  9A 1D B2 C5 12                         STRCMP_NE_JMP                 start=v[0x01D], values=[2], target=0x12C5
-12C2  1C 18 08                               VIDEO_TRANSITION_REF          ref=0x0818 (CH[24]=?)
+12C2  1C 18 08                               VIDEO_TRANSITION_REF          ref=0x0818 (CH[24]=chpuz04.vdx)
 12C5  17 00                                  RET                           value=0x00
 12C7  9A 1D B0 D2 12                         STRCMP_NE_JMP                 start=v[0x01D], values=[0], target=0x12D2
-12CC  9C 19 08                               VIDEO_TRANSITION_REF          ref=0x0819 (CH[25]=?)
+12CC  9C 19 08                               VIDEO_TRANSITION_REF          ref=0x0819 (CH[25]=chpuz04_.vdx)
 12CF  15 E5 12                               JMP                           target=0x12E5
 12D2  9A 1D B1 DD 12                         STRCMP_NE_JMP                 start=v[0x01D], values=[1], target=0x12DD
-12D7  9C 18 08                               VIDEO_TRANSITION_REF          ref=0x0818 (CH[24]=?)
+12D7  9C 18 08                               VIDEO_TRANSITION_REF          ref=0x0818 (CH[24]=chpuz04.vdx)
 12DA  15 E5 12                               JMP                           target=0x12E5
 12DD  9A 1D B2 E5 12                         STRCMP_NE_JMP                 start=v[0x01D], values=[2], target=0x12E5
-12E2  9C 18 08                               VIDEO_TRANSITION_REF          ref=0x0818 (CH[24]=?)
+12E2  9C 18 08                               VIDEO_TRANSITION_REF          ref=0x0818 (CH[24]=chpuz04.vdx)
 12E5  17 00                                  RET                           value=0x00
 12E7  9A 1E B0 F2 12                         STRCMP_NE_JMP                 start=v[0x01E], values=[0], target=0x12F2
-12EC  1C 1B 08                               VIDEO_TRANSITION_REF          ref=0x081B (CH[27]=?)
+12EC  1C 1B 08                               VIDEO_TRANSITION_REF          ref=0x081B (CH[27]=chpuz05_.vdx)
 12EF  15 05 13                               JMP                           target=0x1305
 12F2  9A 1E B1 FD 12                         STRCMP_NE_JMP                 start=v[0x01E], values=[1], target=0x12FD
-12F7  1C 1A 08                               VIDEO_TRANSITION_REF          ref=0x081A (CH[26]=?)
+12F7  1C 1A 08                               VIDEO_TRANSITION_REF          ref=0x081A (CH[26]=chpuz05.vdx)
 12FA  15 05 13                               JMP                           target=0x1305
 12FD  9A 1E B2 05 13                         STRCMP_NE_JMP                 start=v[0x01E], values=[2], target=0x1305
-1302  1C 1A 08                               VIDEO_TRANSITION_REF          ref=0x081A (CH[26]=?)
+1302  1C 1A 08                               VIDEO_TRANSITION_REF          ref=0x081A (CH[26]=chpuz05.vdx)
 1305  17 00                                  RET                           value=0x00
 1307  9A 1E B0 12 13                         STRCMP_NE_JMP                 start=v[0x01E], values=[0], target=0x1312
-130C  9C 1B 08                               VIDEO_TRANSITION_REF          ref=0x081B (CH[27]=?)
+130C  9C 1B 08                               VIDEO_TRANSITION_REF          ref=0x081B (CH[27]=chpuz05_.vdx)
 130F  15 25 13                               JMP                           target=0x1325
 1312  9A 1E B1 1D 13                         STRCMP_NE_JMP                 start=v[0x01E], values=[1], target=0x131D
-1317  9C 1A 08                               VIDEO_TRANSITION_REF          ref=0x081A (CH[26]=?)
+1317  9C 1A 08                               VIDEO_TRANSITION_REF          ref=0x081A (CH[26]=chpuz05.vdx)
 131A  15 25 13                               JMP                           target=0x1325
 131D  9A 1E B2 25 13                         STRCMP_NE_JMP                 start=v[0x01E], values=[2], target=0x1325
-1322  9C 1A 08                               VIDEO_TRANSITION_REF          ref=0x081A (CH[26]=?)
+1322  9C 1A 08                               VIDEO_TRANSITION_REF          ref=0x081A (CH[26]=chpuz05.vdx)
 1325  17 00                                  RET                           value=0x00
 1327  9A 1F B0 32 13                         STRCMP_NE_JMP                 start=v[0x01F], values=[0], target=0x1332
-132C  1C 1D 08                               VIDEO_TRANSITION_REF          ref=0x081D (CH[29]=?)
+132C  1C 1D 08                               VIDEO_TRANSITION_REF          ref=0x081D (CH[29]=chpuz06_.vdx)
 132F  15 45 13                               JMP                           target=0x1345
 1332  9A 1F B1 3D 13                         STRCMP_NE_JMP                 start=v[0x01F], values=[1], target=0x133D
-1337  1C 1C 08                               VIDEO_TRANSITION_REF          ref=0x081C (CH[28]=?)
+1337  1C 1C 08                               VIDEO_TRANSITION_REF          ref=0x081C (CH[28]=chpuz06.vdx)
 133A  15 45 13                               JMP                           target=0x1345
 133D  9A 1F B2 45 13                         STRCMP_NE_JMP                 start=v[0x01F], values=[2], target=0x1345
-1342  1C 1C 08                               VIDEO_TRANSITION_REF          ref=0x081C (CH[28]=?)
+1342  1C 1C 08                               VIDEO_TRANSITION_REF          ref=0x081C (CH[28]=chpuz06.vdx)
 1345  17 00                                  RET                           value=0x00
 1347  9A 1F B0 52 13                         STRCMP_NE_JMP                 start=v[0x01F], values=[0], target=0x1352
-134C  9C 1D 08                               VIDEO_TRANSITION_REF          ref=0x081D (CH[29]=?)
+134C  9C 1D 08                               VIDEO_TRANSITION_REF          ref=0x081D (CH[29]=chpuz06_.vdx)
 134F  15 65 13                               JMP                           target=0x1365
 1352  9A 1F B1 5D 13                         STRCMP_NE_JMP                 start=v[0x01F], values=[1], target=0x135D
-1357  9C 1C 08                               VIDEO_TRANSITION_REF          ref=0x081C (CH[28]=?)
+1357  9C 1C 08                               VIDEO_TRANSITION_REF          ref=0x081C (CH[28]=chpuz06.vdx)
 135A  15 65 13                               JMP                           target=0x1365
 135D  9A 1F B2 65 13                         STRCMP_NE_JMP                 start=v[0x01F], values=[2], target=0x1365
-1362  9C 1C 08                               VIDEO_TRANSITION_REF          ref=0x081C (CH[28]=?)
+1362  9C 1C 08                               VIDEO_TRANSITION_REF          ref=0x081C (CH[28]=chpuz06.vdx)
 1365  17 00                                  RET                           value=0x00
 1367  9A 20 B0 72 13                         STRCMP_NE_JMP                 start=v[0x020], values=[0], target=0x1372
-136C  1C 1F 08                               VIDEO_TRANSITION_REF          ref=0x081F (CH[31]=?)
+136C  1C 1F 08                               VIDEO_TRANSITION_REF          ref=0x081F (CH[31]=chpuz07_.vdx)
 136F  15 85 13                               JMP                           target=0x1385
 1372  9A 20 B1 7D 13                         STRCMP_NE_JMP                 start=v[0x020], values=[1], target=0x137D
-1377  1C 1E 08                               VIDEO_TRANSITION_REF          ref=0x081E (CH[30]=?)
+1377  1C 1E 08                               VIDEO_TRANSITION_REF          ref=0x081E (CH[30]=chpuz07.vdx)
 137A  15 85 13                               JMP                           target=0x1385
 137D  9A 20 B2 85 13                         STRCMP_NE_JMP                 start=v[0x020], values=[2], target=0x1385
-1382  1C 1E 08                               VIDEO_TRANSITION_REF          ref=0x081E (CH[30]=?)
+1382  1C 1E 08                               VIDEO_TRANSITION_REF          ref=0x081E (CH[30]=chpuz07.vdx)
 1385  17 00                                  RET                           value=0x00
 1387  9A 20 B0 92 13                         STRCMP_NE_JMP                 start=v[0x020], values=[0], target=0x1392
-138C  9C 1F 08                               VIDEO_TRANSITION_REF          ref=0x081F (CH[31]=?)
+138C  9C 1F 08                               VIDEO_TRANSITION_REF          ref=0x081F (CH[31]=chpuz07_.vdx)
 138F  15 A5 13                               JMP                           target=0x13A5
 1392  9A 20 B1 9D 13                         STRCMP_NE_JMP                 start=v[0x020], values=[1], target=0x139D
-1397  9C 1E 08                               VIDEO_TRANSITION_REF          ref=0x081E (CH[30]=?)
+1397  9C 1E 08                               VIDEO_TRANSITION_REF          ref=0x081E (CH[30]=chpuz07.vdx)
 139A  15 A5 13                               JMP                           target=0x13A5
 139D  9A 20 B2 A5 13                         STRCMP_NE_JMP                 start=v[0x020], values=[2], target=0x13A5
-13A2  9C 1E 08                               VIDEO_TRANSITION_REF          ref=0x081E (CH[30]=?)
+13A2  9C 1E 08                               VIDEO_TRANSITION_REF          ref=0x081E (CH[30]=chpuz07.vdx)
 13A5  17 00                                  RET                           value=0x00
 13A7  9A 21 B0 B2 13                         STRCMP_NE_JMP                 start=v[0x021], values=[0], target=0x13B2
-13AC  1C 21 08                               VIDEO_TRANSITION_REF          ref=0x0821 (CH[33]=?)
+13AC  1C 21 08                               VIDEO_TRANSITION_REF          ref=0x0821 (CH[33]=chpuz08_.vdx)
 13AF  15 C5 13                               JMP                           target=0x13C5
 13B2  9A 21 B1 BD 13                         STRCMP_NE_JMP                 start=v[0x021], values=[1], target=0x13BD
-13B7  1C 20 08                               VIDEO_TRANSITION_REF          ref=0x0820 (CH[32]=?)
+13B7  1C 20 08                               VIDEO_TRANSITION_REF          ref=0x0820 (CH[32]=chpuz08.vdx)
 13BA  15 C5 13                               JMP                           target=0x13C5
 13BD  9A 21 B2 C5 13                         STRCMP_NE_JMP                 start=v[0x021], values=[2], target=0x13C5
-13C2  1C 20 08                               VIDEO_TRANSITION_REF          ref=0x0820 (CH[32]=?)
+13C2  1C 20 08                               VIDEO_TRANSITION_REF          ref=0x0820 (CH[32]=chpuz08.vdx)
 13C5  17 00                                  RET                           value=0x00
 13C7  9A 21 B0 D2 13                         STRCMP_NE_JMP                 start=v[0x021], values=[0], target=0x13D2
-13CC  9C 21 08                               VIDEO_TRANSITION_REF          ref=0x0821 (CH[33]=?)
+13CC  9C 21 08                               VIDEO_TRANSITION_REF          ref=0x0821 (CH[33]=chpuz08_.vdx)
 13CF  15 E5 13                               JMP                           target=0x13E5
 13D2  9A 21 B1 DD 13                         STRCMP_NE_JMP                 start=v[0x021], values=[1], target=0x13DD
-13D7  9C 20 08                               VIDEO_TRANSITION_REF          ref=0x0820 (CH[32]=?)
+13D7  9C 20 08                               VIDEO_TRANSITION_REF          ref=0x0820 (CH[32]=chpuz08.vdx)
 13DA  15 E5 13                               JMP                           target=0x13E5
 13DD  9A 21 B2 E5 13                         STRCMP_NE_JMP                 start=v[0x021], values=[2], target=0x13E5
-13E2  9C 20 08                               VIDEO_TRANSITION_REF          ref=0x0820 (CH[32]=?)
+13E2  9C 20 08                               VIDEO_TRANSITION_REF          ref=0x0820 (CH[32]=chpuz08.vdx)
 13E5  17 00                                  RET                           value=0x00
 13E7  9A 22 B0 F2 13                         STRCMP_NE_JMP                 start=v[0x022], values=[0], target=0x13F2
-13EC  1C 23 08                               VIDEO_TRANSITION_REF          ref=0x0823 (CH[35]=?)
+13EC  1C 23 08                               VIDEO_TRANSITION_REF          ref=0x0823 (CH[35]=chpuz09_.vdx)
 13EF  15 05 14                               JMP                           target=0x1405
 13F2  9A 22 B1 FD 13                         STRCMP_NE_JMP                 start=v[0x022], values=[1], target=0x13FD
-13F7  1C 22 08                               VIDEO_TRANSITION_REF          ref=0x0822 (CH[34]=?)
+13F7  1C 22 08                               VIDEO_TRANSITION_REF          ref=0x0822 (CH[34]=chpuz09.vdx)
 13FA  15 05 14                               JMP                           target=0x1405
 13FD  9A 22 B2 05 14                         STRCMP_NE_JMP                 start=v[0x022], values=[2], target=0x1405
-1402  1C 22 08                               VIDEO_TRANSITION_REF          ref=0x0822 (CH[34]=?)
+1402  1C 22 08                               VIDEO_TRANSITION_REF          ref=0x0822 (CH[34]=chpuz09.vdx)
 1405  17 00                                  RET                           value=0x00
 1407  9A 22 B0 12 14                         STRCMP_NE_JMP                 start=v[0x022], values=[0], target=0x1412
-140C  9C 23 08                               VIDEO_TRANSITION_REF          ref=0x0823 (CH[35]=?)
+140C  9C 23 08                               VIDEO_TRANSITION_REF          ref=0x0823 (CH[35]=chpuz09_.vdx)
 140F  15 25 14                               JMP                           target=0x1425
 1412  9A 22 B1 1D 14                         STRCMP_NE_JMP                 start=v[0x022], values=[1], target=0x141D
-1417  9C 22 08                               VIDEO_TRANSITION_REF          ref=0x0822 (CH[34]=?)
+1417  9C 22 08                               VIDEO_TRANSITION_REF          ref=0x0822 (CH[34]=chpuz09.vdx)
 141A  15 25 14                               JMP                           target=0x1425
 141D  9A 22 B2 25 14                         STRCMP_NE_JMP                 start=v[0x022], values=[2], target=0x1425
-1422  9C 22 08                               VIDEO_TRANSITION_REF          ref=0x0822 (CH[34]=?)
+1422  9C 22 08                               VIDEO_TRANSITION_REF          ref=0x0822 (CH[34]=chpuz09.vdx)
 1425  17 00                                  RET                           value=0x00
 1427  9A 23 B0 32 14                         STRCMP_NE_JMP                 start=v[0x023], values=[0], target=0x1432
-142C  1C 25 08                               VIDEO_TRANSITION_REF          ref=0x0825 (CH[37]=?)
+142C  1C 25 08                               VIDEO_TRANSITION_REF          ref=0x0825 (CH[37]=chpuz10_.vdx)
 142F  15 45 14                               JMP                           target=0x1445
 1432  9A 23 B1 3D 14                         STRCMP_NE_JMP                 start=v[0x023], values=[1], target=0x143D
-1437  1C 24 08                               VIDEO_TRANSITION_REF          ref=0x0824 (CH[36]=?)
+1437  1C 24 08                               VIDEO_TRANSITION_REF          ref=0x0824 (CH[36]=chpuz10.vdx)
 143A  15 45 14                               JMP                           target=0x1445
 143D  9A 23 B2 45 14                         STRCMP_NE_JMP                 start=v[0x023], values=[2], target=0x1445
-1442  1C 24 08                               VIDEO_TRANSITION_REF          ref=0x0824 (CH[36]=?)
+1442  1C 24 08                               VIDEO_TRANSITION_REF          ref=0x0824 (CH[36]=chpuz10.vdx)
 1445  17 00                                  RET                           value=0x00
 1447  9A 23 B0 52 14                         STRCMP_NE_JMP                 start=v[0x023], values=[0], target=0x1452
-144C  9C 25 08                               VIDEO_TRANSITION_REF          ref=0x0825 (CH[37]=?)
+144C  9C 25 08                               VIDEO_TRANSITION_REF          ref=0x0825 (CH[37]=chpuz10_.vdx)
 144F  15 65 14                               JMP                           target=0x1465
 1452  9A 23 B1 5D 14                         STRCMP_NE_JMP                 start=v[0x023], values=[1], target=0x145D
-1457  9C 24 08                               VIDEO_TRANSITION_REF          ref=0x0824 (CH[36]=?)
+1457  9C 24 08                               VIDEO_TRANSITION_REF          ref=0x0824 (CH[36]=chpuz10.vdx)
 145A  15 65 14                               JMP                           target=0x1465
 145D  9A 23 B2 65 14                         STRCMP_NE_JMP                 start=v[0x023], values=[2], target=0x1465
-1462  9C 24 08                               VIDEO_TRANSITION_REF          ref=0x0824 (CH[36]=?)
+1462  9C 24 08                               VIDEO_TRANSITION_REF          ref=0x0824 (CH[36]=chpuz10.vdx)
 1465  17 00                                  RET                           value=0x00
 1467  9A 24 B0 72 14                         STRCMP_NE_JMP                 start=v[0x024], values=[0], target=0x1472
-146C  1C 27 08                               VIDEO_TRANSITION_REF          ref=0x0827 (CH[39]=?)
+146C  1C 27 08                               VIDEO_TRANSITION_REF          ref=0x0827 (CH[39]=chpuz11_.vdx)
 146F  15 85 14                               JMP                           target=0x1485
 1472  9A 24 B1 7D 14                         STRCMP_NE_JMP                 start=v[0x024], values=[1], target=0x147D
-1477  1C 26 08                               VIDEO_TRANSITION_REF          ref=0x0826 (CH[38]=?)
+1477  1C 26 08                               VIDEO_TRANSITION_REF          ref=0x0826 (CH[38]=chpuz11.vdx)
 147A  15 85 14                               JMP                           target=0x1485
 147D  9A 24 B2 85 14                         STRCMP_NE_JMP                 start=v[0x024], values=[2], target=0x1485
-1482  1C 26 08                               VIDEO_TRANSITION_REF          ref=0x0826 (CH[38]=?)
+1482  1C 26 08                               VIDEO_TRANSITION_REF          ref=0x0826 (CH[38]=chpuz11.vdx)
 1485  17 00                                  RET                           value=0x00
 1487  9A 24 B0 92 14                         STRCMP_NE_JMP                 start=v[0x024], values=[0], target=0x1492
-148C  9C 27 08                               VIDEO_TRANSITION_REF          ref=0x0827 (CH[39]=?)
+148C  9C 27 08                               VIDEO_TRANSITION_REF          ref=0x0827 (CH[39]=chpuz11_.vdx)
 148F  15 A5 14                               JMP                           target=0x14A5
 1492  9A 24 B1 9D 14                         STRCMP_NE_JMP                 start=v[0x024], values=[1], target=0x149D
-1497  9C 26 08                               VIDEO_TRANSITION_REF          ref=0x0826 (CH[38]=?)
+1497  9C 26 08                               VIDEO_TRANSITION_REF          ref=0x0826 (CH[38]=chpuz11.vdx)
 149A  15 A5 14                               JMP                           target=0x14A5
 149D  9A 24 B2 A5 14                         STRCMP_NE_JMP                 start=v[0x024], values=[2], target=0x14A5
-14A2  9C 26 08                               VIDEO_TRANSITION_REF          ref=0x0826 (CH[38]=?)
+14A2  9C 26 08                               VIDEO_TRANSITION_REF          ref=0x0826 (CH[38]=chpuz11.vdx)
 14A5  17 00                                  RET                           value=0x00
 14A7  9A 25 B0 B2 14                         STRCMP_NE_JMP                 start=v[0x025], values=[0], target=0x14B2
-14AC  1C 29 08                               VIDEO_TRANSITION_REF          ref=0x0829 (CH[41]=?)
+14AC  1C 29 08                               VIDEO_TRANSITION_REF          ref=0x0829 (CH[41]=chpuz12_.vdx)
 14AF  15 C5 14                               JMP                           target=0x14C5
 14B2  9A 25 B1 BD 14                         STRCMP_NE_JMP                 start=v[0x025], values=[1], target=0x14BD
-14B7  1C 28 08                               VIDEO_TRANSITION_REF          ref=0x0828 (CH[40]=?)
+14B7  1C 28 08                               VIDEO_TRANSITION_REF          ref=0x0828 (CH[40]=chpuz12.vdx)
 14BA  15 C5 14                               JMP                           target=0x14C5
 14BD  9A 25 B2 C5 14                         STRCMP_NE_JMP                 start=v[0x025], values=[2], target=0x14C5
-14C2  1C 28 08                               VIDEO_TRANSITION_REF          ref=0x0828 (CH[40]=?)
+14C2  1C 28 08                               VIDEO_TRANSITION_REF          ref=0x0828 (CH[40]=chpuz12.vdx)
 14C5  17 00                                  RET                           value=0x00
 14C7  9A 25 B0 D2 14                         STRCMP_NE_JMP                 start=v[0x025], values=[0], target=0x14D2
-14CC  9C 29 08                               VIDEO_TRANSITION_REF          ref=0x0829 (CH[41]=?)
+14CC  9C 29 08                               VIDEO_TRANSITION_REF          ref=0x0829 (CH[41]=chpuz12_.vdx)
 14CF  15 E5 14                               JMP                           target=0x14E5
 14D2  9A 25 B1 DD 14                         STRCMP_NE_JMP                 start=v[0x025], values=[1], target=0x14DD
-14D7  9C 28 08                               VIDEO_TRANSITION_REF          ref=0x0828 (CH[40]=?)
+14D7  9C 28 08                               VIDEO_TRANSITION_REF          ref=0x0828 (CH[40]=chpuz12.vdx)
 14DA  15 E5 14                               JMP                           target=0x14E5
 14DD  9A 25 B2 E5 14                         STRCMP_NE_JMP                 start=v[0x025], values=[2], target=0x14E5
-14E2  9C 28 08                               VIDEO_TRANSITION_REF          ref=0x0828 (CH[40]=?)
+14E2  9C 28 08                               VIDEO_TRANSITION_REF          ref=0x0828 (CH[40]=chpuz12.vdx)
 14E5  17 00                                  RET                           value=0x00
 14E7  9A 26 B0 F2 14                         STRCMP_NE_JMP                 start=v[0x026], values=[0], target=0x14F2
-14EC  1C 2B 08                               VIDEO_TRANSITION_REF          ref=0x082B (CH[43]=?)
+14EC  1C 2B 08                               VIDEO_TRANSITION_REF          ref=0x082B (CH[43]=chpuz13_.vdx)
 14EF  15 05 15                               JMP                           target=0x1505
 14F2  9A 26 B1 FD 14                         STRCMP_NE_JMP                 start=v[0x026], values=[1], target=0x14FD
-14F7  1C 2A 08                               VIDEO_TRANSITION_REF          ref=0x082A (CH[42]=?)
+14F7  1C 2A 08                               VIDEO_TRANSITION_REF          ref=0x082A (CH[42]=chpuz13.vdx)
 14FA  15 05 15                               JMP                           target=0x1505
 14FD  9A 26 B2 05 15                         STRCMP_NE_JMP                 start=v[0x026], values=[2], target=0x1505
-1502  1C 2A 08                               VIDEO_TRANSITION_REF          ref=0x082A (CH[42]=?)
+1502  1C 2A 08                               VIDEO_TRANSITION_REF          ref=0x082A (CH[42]=chpuz13.vdx)
 1505  17 00                                  RET                           value=0x00
 1507  9A 26 B0 12 15                         STRCMP_NE_JMP                 start=v[0x026], values=[0], target=0x1512
-150C  9C 2B 08                               VIDEO_TRANSITION_REF          ref=0x082B (CH[43]=?)
+150C  9C 2B 08                               VIDEO_TRANSITION_REF          ref=0x082B (CH[43]=chpuz13_.vdx)
 150F  15 25 15                               JMP                           target=0x1525
 1512  9A 26 B1 1D 15                         STRCMP_NE_JMP                 start=v[0x026], values=[1], target=0x151D
-1517  9C 2A 08                               VIDEO_TRANSITION_REF          ref=0x082A (CH[42]=?)
+1517  9C 2A 08                               VIDEO_TRANSITION_REF          ref=0x082A (CH[42]=chpuz13.vdx)
 151A  15 25 15                               JMP                           target=0x1525
 151D  9A 26 B2 25 15                         STRCMP_NE_JMP                 start=v[0x026], values=[2], target=0x1525
-1522  9C 2A 08                               VIDEO_TRANSITION_REF          ref=0x082A (CH[42]=?)
+1522  9C 2A 08                               VIDEO_TRANSITION_REF          ref=0x082A (CH[42]=chpuz13.vdx)
 1525  17 00                                  RET                           value=0x00
 1527  9A 27 B0 32 15                         STRCMP_NE_JMP                 start=v[0x027], values=[0], target=0x1532
-152C  1C 2D 08                               VIDEO_TRANSITION_REF          ref=0x082D (CH[45]=?)
+152C  1C 2D 08                               VIDEO_TRANSITION_REF          ref=0x082D (CH[45]=chpuz14_.vdx)
 152F  15 45 15                               JMP                           target=0x1545
 1532  9A 27 B1 3D 15                         STRCMP_NE_JMP                 start=v[0x027], values=[1], target=0x153D
-1537  1C 2C 08                               VIDEO_TRANSITION_REF          ref=0x082C (CH[44]=?)
+1537  1C 2C 08                               VIDEO_TRANSITION_REF          ref=0x082C (CH[44]=chpuz14.vdx)
 153A  15 45 15                               JMP                           target=0x1545
 153D  9A 27 B2 45 15                         STRCMP_NE_JMP                 start=v[0x027], values=[2], target=0x1545
-1542  1C 2C 08                               VIDEO_TRANSITION_REF          ref=0x082C (CH[44]=?)
+1542  1C 2C 08                               VIDEO_TRANSITION_REF          ref=0x082C (CH[44]=chpuz14.vdx)
 1545  17 00                                  RET                           value=0x00
 1547  9A 27 B0 52 15                         STRCMP_NE_JMP                 start=v[0x027], values=[0], target=0x1552
-154C  9C 2D 08                               VIDEO_TRANSITION_REF          ref=0x082D (CH[45]=?)
+154C  9C 2D 08                               VIDEO_TRANSITION_REF          ref=0x082D (CH[45]=chpuz14_.vdx)
 154F  15 65 15                               JMP                           target=0x1565
 1552  9A 27 B1 5D 15                         STRCMP_NE_JMP                 start=v[0x027], values=[1], target=0x155D
-1557  9C 2C 08                               VIDEO_TRANSITION_REF          ref=0x082C (CH[44]=?)
+1557  9C 2C 08                               VIDEO_TRANSITION_REF          ref=0x082C (CH[44]=chpuz14.vdx)
 155A  15 65 15                               JMP                           target=0x1565
 155D  9A 27 B2 65 15                         STRCMP_NE_JMP                 start=v[0x027], values=[2], target=0x1565
-1562  9C 2C 08                               VIDEO_TRANSITION_REF          ref=0x082C (CH[44]=?)
+1562  9C 2C 08                               VIDEO_TRANSITION_REF          ref=0x082C (CH[44]=chpuz14.vdx)
 1565  17 00                                  RET                           value=0x00
 1567  9A 28 B0 72 15                         STRCMP_NE_JMP                 start=v[0x028], values=[0], target=0x1572
-156C  1C 2F 08                               VIDEO_TRANSITION_REF          ref=0x082F (CH[47]=?)
+156C  1C 2F 08                               VIDEO_TRANSITION_REF          ref=0x082F (CH[47]=chpuz15_.vdx)
 156F  15 85 15                               JMP                           target=0x1585
 1572  9A 28 B1 7D 15                         STRCMP_NE_JMP                 start=v[0x028], values=[1], target=0x157D
-1577  1C 2E 08                               VIDEO_TRANSITION_REF          ref=0x082E (CH[46]=?)
+1577  1C 2E 08                               VIDEO_TRANSITION_REF          ref=0x082E (CH[46]=chpuz15.vdx)
 157A  15 85 15                               JMP                           target=0x1585
 157D  9A 28 B2 85 15                         STRCMP_NE_JMP                 start=v[0x028], values=[2], target=0x1585
-1582  1C 2E 08                               VIDEO_TRANSITION_REF          ref=0x082E (CH[46]=?)
+1582  1C 2E 08                               VIDEO_TRANSITION_REF          ref=0x082E (CH[46]=chpuz15.vdx)
 1585  17 00                                  RET                           value=0x00
 1587  9A 28 B0 92 15                         STRCMP_NE_JMP                 start=v[0x028], values=[0], target=0x1592
-158C  9C 2F 08                               VIDEO_TRANSITION_REF          ref=0x082F (CH[47]=?)
+158C  9C 2F 08                               VIDEO_TRANSITION_REF          ref=0x082F (CH[47]=chpuz15_.vdx)
 158F  15 A5 15                               JMP                           target=0x15A5
 1592  9A 28 B1 9D 15                         STRCMP_NE_JMP                 start=v[0x028], values=[1], target=0x159D
-1597  9C 2E 08                               VIDEO_TRANSITION_REF          ref=0x082E (CH[46]=?)
+1597  9C 2E 08                               VIDEO_TRANSITION_REF          ref=0x082E (CH[46]=chpuz15.vdx)
 159A  15 A5 15                               JMP                           target=0x15A5
 159D  9A 28 B2 A5 15                         STRCMP_NE_JMP                 start=v[0x028], values=[2], target=0x15A5
-15A2  9C 2E 08                               VIDEO_TRANSITION_REF          ref=0x082E (CH[46]=?)
+15A2  9C 2E 08                               VIDEO_TRANSITION_REF          ref=0x082E (CH[46]=chpuz15.vdx)
 15A5  17 00                                  RET                           value=0x00
 15A7  9A 29 B0 B2 15                         STRCMP_NE_JMP                 start=v[0x029], values=[0], target=0x15B2
-15AC  1C 31 08                               VIDEO_TRANSITION_REF          ref=0x0831 (CH[49]=?)
+15AC  1C 31 08                               VIDEO_TRANSITION_REF          ref=0x0831 (CH[49]=chpuz16_.vdx)
 15AF  15 C5 15                               JMP                           target=0x15C5
 15B2  9A 29 B1 BD 15                         STRCMP_NE_JMP                 start=v[0x029], values=[1], target=0x15BD
-15B7  1C 30 08                               VIDEO_TRANSITION_REF          ref=0x0830 (CH[48]=?)
+15B7  1C 30 08                               VIDEO_TRANSITION_REF          ref=0x0830 (CH[48]=chpuz16.vdx)
 15BA  15 C5 15                               JMP                           target=0x15C5
 15BD  9A 29 B2 C5 15                         STRCMP_NE_JMP                 start=v[0x029], values=[2], target=0x15C5
-15C2  1C 30 08                               VIDEO_TRANSITION_REF          ref=0x0830 (CH[48]=?)
+15C2  1C 30 08                               VIDEO_TRANSITION_REF          ref=0x0830 (CH[48]=chpuz16.vdx)
 15C5  17 00                                  RET                           value=0x00
 15C7  9A 29 B0 D2 15                         STRCMP_NE_JMP                 start=v[0x029], values=[0], target=0x15D2
-15CC  9C 31 08                               VIDEO_TRANSITION_REF          ref=0x0831 (CH[49]=?)
+15CC  9C 31 08                               VIDEO_TRANSITION_REF          ref=0x0831 (CH[49]=chpuz16_.vdx)
 15CF  15 E5 15                               JMP                           target=0x15E5
 15D2  9A 29 B1 DD 15                         STRCMP_NE_JMP                 start=v[0x029], values=[1], target=0x15DD
-15D7  9C 30 08                               VIDEO_TRANSITION_REF          ref=0x0830 (CH[48]=?)
+15D7  9C 30 08                               VIDEO_TRANSITION_REF          ref=0x0830 (CH[48]=chpuz16.vdx)
 15DA  15 E5 15                               JMP                           target=0x15E5
 15DD  9A 29 B2 E5 15                         STRCMP_NE_JMP                 start=v[0x029], values=[2], target=0x15E5
-15E2  9C 30 08                               VIDEO_TRANSITION_REF          ref=0x0830 (CH[48]=?)
+15E2  9C 30 08                               VIDEO_TRANSITION_REF          ref=0x0830 (CH[48]=chpuz16.vdx)
 15E5  17 00                                  RET                           value=0x00
 15E7  9A 2A B0 F2 15                         STRCMP_NE_JMP                 start=v[0x02A], values=[0], target=0x15F2
-15EC  1C 33 08                               VIDEO_TRANSITION_REF          ref=0x0833 (CH[51]=?)
+15EC  1C 33 08                               VIDEO_TRANSITION_REF          ref=0x0833 (CH[51]=chpuz17_.vdx)
 15EF  15 05 16                               JMP                           target=0x1605
 15F2  9A 2A B1 FD 15                         STRCMP_NE_JMP                 start=v[0x02A], values=[1], target=0x15FD
-15F7  1C 32 08                               VIDEO_TRANSITION_REF          ref=0x0832 (CH[50]=?)
+15F7  1C 32 08                               VIDEO_TRANSITION_REF          ref=0x0832 (CH[50]=chpuz17.vdx)
 15FA  15 05 16                               JMP                           target=0x1605
 15FD  9A 2A B2 05 16                         STRCMP_NE_JMP                 start=v[0x02A], values=[2], target=0x1605
-1602  1C 32 08                               VIDEO_TRANSITION_REF          ref=0x0832 (CH[50]=?)
+1602  1C 32 08                               VIDEO_TRANSITION_REF          ref=0x0832 (CH[50]=chpuz17.vdx)
 1605  17 00                                  RET                           value=0x00
 1607  9A 2A B0 12 16                         STRCMP_NE_JMP                 start=v[0x02A], values=[0], target=0x1612
-160C  9C 33 08                               VIDEO_TRANSITION_REF          ref=0x0833 (CH[51]=?)
+160C  9C 33 08                               VIDEO_TRANSITION_REF          ref=0x0833 (CH[51]=chpuz17_.vdx)
 160F  15 25 16                               JMP                           target=0x1625
 1612  9A 2A B1 1D 16                         STRCMP_NE_JMP                 start=v[0x02A], values=[1], target=0x161D
-1617  9C 32 08                               VIDEO_TRANSITION_REF          ref=0x0832 (CH[50]=?)
+1617  9C 32 08                               VIDEO_TRANSITION_REF          ref=0x0832 (CH[50]=chpuz17.vdx)
 161A  15 25 16                               JMP                           target=0x1625
 161D  9A 2A B2 25 16                         STRCMP_NE_JMP                 start=v[0x02A], values=[2], target=0x1625
-1622  9C 32 08                               VIDEO_TRANSITION_REF          ref=0x0832 (CH[50]=?)
+1622  9C 32 08                               VIDEO_TRANSITION_REF          ref=0x0832 (CH[50]=chpuz17.vdx)
 1625  17 00                                  RET                           value=0x00
 1627  9A 2B B0 32 16                         STRCMP_NE_JMP                 start=v[0x02B], values=[0], target=0x1632
-162C  1C 35 08                               VIDEO_TRANSITION_REF          ref=0x0835 (CH[53]=?)
+162C  1C 35 08                               VIDEO_TRANSITION_REF          ref=0x0835 (CH[53]=chpuz18_.vdx)
 162F  15 45 16                               JMP                           target=0x1645
 1632  9A 2B B1 3D 16                         STRCMP_NE_JMP                 start=v[0x02B], values=[1], target=0x163D
-1637  1C 34 08                               VIDEO_TRANSITION_REF          ref=0x0834 (CH[52]=?)
+1637  1C 34 08                               VIDEO_TRANSITION_REF          ref=0x0834 (CH[52]=chpuz18.vdx)
 163A  15 45 16                               JMP                           target=0x1645
 163D  9A 2B B2 45 16                         STRCMP_NE_JMP                 start=v[0x02B], values=[2], target=0x1645
-1642  1C 34 08                               VIDEO_TRANSITION_REF          ref=0x0834 (CH[52]=?)
+1642  1C 34 08                               VIDEO_TRANSITION_REF          ref=0x0834 (CH[52]=chpuz18.vdx)
 1645  17 00                                  RET                           value=0x00
 1647  9A 2B B0 52 16                         STRCMP_NE_JMP                 start=v[0x02B], values=[0], target=0x1652
-164C  9C 35 08                               VIDEO_TRANSITION_REF          ref=0x0835 (CH[53]=?)
+164C  9C 35 08                               VIDEO_TRANSITION_REF          ref=0x0835 (CH[53]=chpuz18_.vdx)
 164F  15 65 16                               JMP                           target=0x1665
 1652  9A 2B B1 5D 16                         STRCMP_NE_JMP                 start=v[0x02B], values=[1], target=0x165D
-1657  9C 34 08                               VIDEO_TRANSITION_REF          ref=0x0834 (CH[52]=?)
+1657  9C 34 08                               VIDEO_TRANSITION_REF          ref=0x0834 (CH[52]=chpuz18.vdx)
 165A  15 65 16                               JMP                           target=0x1665
 165D  9A 2B B2 65 16                         STRCMP_NE_JMP                 start=v[0x02B], values=[2], target=0x1665
-1662  9C 34 08                               VIDEO_TRANSITION_REF          ref=0x0834 (CH[52]=?)
+1662  9C 34 08                               VIDEO_TRANSITION_REF          ref=0x0834 (CH[52]=chpuz18.vdx)
 1665  17 00                                  RET                           value=0x00
 1667  9A 2C B0 72 16                         STRCMP_NE_JMP                 start=v[0x02C], values=[0], target=0x1672
-166C  1C 37 08                               VIDEO_TRANSITION_REF          ref=0x0837 (CH[55]=?)
+166C  1C 37 08                               VIDEO_TRANSITION_REF          ref=0x0837 (CH[55]=chpuz19_.vdx)
 166F  15 85 16                               JMP                           target=0x1685
 1672  9A 2C B1 7D 16                         STRCMP_NE_JMP                 start=v[0x02C], values=[1], target=0x167D
-1677  1C 36 08                               VIDEO_TRANSITION_REF          ref=0x0836 (CH[54]=?)
+1677  1C 36 08                               VIDEO_TRANSITION_REF          ref=0x0836 (CH[54]=chpuz19.vdx)
 167A  15 85 16                               JMP                           target=0x1685
 167D  9A 2C B2 85 16                         STRCMP_NE_JMP                 start=v[0x02C], values=[2], target=0x1685
-1682  1C 36 08                               VIDEO_TRANSITION_REF          ref=0x0836 (CH[54]=?)
+1682  1C 36 08                               VIDEO_TRANSITION_REF          ref=0x0836 (CH[54]=chpuz19.vdx)
 1685  17 00                                  RET                           value=0x00
 1687  9A 2C B0 92 16                         STRCMP_NE_JMP                 start=v[0x02C], values=[0], target=0x1692
-168C  9C 37 08                               VIDEO_TRANSITION_REF          ref=0x0837 (CH[55]=?)
+168C  9C 37 08                               VIDEO_TRANSITION_REF          ref=0x0837 (CH[55]=chpuz19_.vdx)
 168F  15 A5 16                               JMP                           target=0x16A5
 1692  9A 2C B1 9D 16                         STRCMP_NE_JMP                 start=v[0x02C], values=[1], target=0x169D
-1697  9C 36 08                               VIDEO_TRANSITION_REF          ref=0x0836 (CH[54]=?)
+1697  9C 36 08                               VIDEO_TRANSITION_REF          ref=0x0836 (CH[54]=chpuz19.vdx)
 169A  15 A5 16                               JMP                           target=0x16A5
 169D  9A 2C B2 A5 16                         STRCMP_NE_JMP                 start=v[0x02C], values=[2], target=0x16A5
-16A2  9C 36 08                               VIDEO_TRANSITION_REF          ref=0x0836 (CH[54]=?)
+16A2  9C 36 08                               VIDEO_TRANSITION_REF          ref=0x0836 (CH[54]=chpuz19.vdx)
 16A5  17 00                                  RET                           value=0x00
 16A7  9A 2D B0 B2 16                         STRCMP_NE_JMP                 start=v[0x02D], values=[0], target=0x16B2
-16AC  1C 39 08                               VIDEO_TRANSITION_REF          ref=0x0839 (CH[57]=?)
+16AC  1C 39 08                               VIDEO_TRANSITION_REF          ref=0x0839 (CH[57]=chpuz20_.vdx)
 16AF  15 C5 16                               JMP                           target=0x16C5
 16B2  9A 2D B1 BD 16                         STRCMP_NE_JMP                 start=v[0x02D], values=[1], target=0x16BD
-16B7  1C 38 08                               VIDEO_TRANSITION_REF          ref=0x0838 (CH[56]=?)
+16B7  1C 38 08                               VIDEO_TRANSITION_REF          ref=0x0838 (CH[56]=chpuz20.vdx)
 16BA  15 C5 16                               JMP                           target=0x16C5
 16BD  9A 2D B2 C5 16                         STRCMP_NE_JMP                 start=v[0x02D], values=[2], target=0x16C5
-16C2  1C 38 08                               VIDEO_TRANSITION_REF          ref=0x0838 (CH[56]=?)
+16C2  1C 38 08                               VIDEO_TRANSITION_REF          ref=0x0838 (CH[56]=chpuz20.vdx)
 16C5  17 00                                  RET                           value=0x00
 16C7  9A 2D B0 D2 16                         STRCMP_NE_JMP                 start=v[0x02D], values=[0], target=0x16D2
-16CC  9C 39 08                               VIDEO_TRANSITION_REF          ref=0x0839 (CH[57]=?)
+16CC  9C 39 08                               VIDEO_TRANSITION_REF          ref=0x0839 (CH[57]=chpuz20_.vdx)
 16CF  15 E5 16                               JMP                           target=0x16E5
 16D2  9A 2D B1 DD 16                         STRCMP_NE_JMP                 start=v[0x02D], values=[1], target=0x16DD
-16D7  9C 38 08                               VIDEO_TRANSITION_REF          ref=0x0838 (CH[56]=?)
+16D7  9C 38 08                               VIDEO_TRANSITION_REF          ref=0x0838 (CH[56]=chpuz20.vdx)
 16DA  15 E5 16                               JMP                           target=0x16E5
 16DD  9A 2D B2 E5 16                         STRCMP_NE_JMP                 start=v[0x02D], values=[2], target=0x16E5
-16E2  9C 38 08                               VIDEO_TRANSITION_REF          ref=0x0838 (CH[56]=?)
+16E2  9C 38 08                               VIDEO_TRANSITION_REF          ref=0x0838 (CH[56]=chpuz20.vdx)
 16E5  17 00                                  RET                           value=0x00
 16E7  9A 2E B0 F2 16                         STRCMP_NE_JMP                 start=v[0x02E], values=[0], target=0x16F2
-16EC  1C 3B 08                               VIDEO_TRANSITION_REF          ref=0x083B (CH[59]=?)
+16EC  1C 3B 08                               VIDEO_TRANSITION_REF          ref=0x083B (CH[59]=chpuz21_.vdx)
 16EF  15 05 17                               JMP                           target=0x1705
 16F2  9A 2E B1 FD 16                         STRCMP_NE_JMP                 start=v[0x02E], values=[1], target=0x16FD
-16F7  1C 3A 08                               VIDEO_TRANSITION_REF          ref=0x083A (CH[58]=?)
+16F7  1C 3A 08                               VIDEO_TRANSITION_REF          ref=0x083A (CH[58]=chpuz21.vdx)
 16FA  15 05 17                               JMP                           target=0x1705
 16FD  9A 2E B2 05 17                         STRCMP_NE_JMP                 start=v[0x02E], values=[2], target=0x1705
-1702  1C 3A 08                               VIDEO_TRANSITION_REF          ref=0x083A (CH[58]=?)
+1702  1C 3A 08                               VIDEO_TRANSITION_REF          ref=0x083A (CH[58]=chpuz21.vdx)
 1705  17 00                                  RET                           value=0x00
 1707  9A 2E B0 12 17                         STRCMP_NE_JMP                 start=v[0x02E], values=[0], target=0x1712
-170C  9C 3B 08                               VIDEO_TRANSITION_REF          ref=0x083B (CH[59]=?)
+170C  9C 3B 08                               VIDEO_TRANSITION_REF          ref=0x083B (CH[59]=chpuz21_.vdx)
 170F  15 25 17                               JMP                           target=0x1725
 1712  9A 2E B1 1D 17                         STRCMP_NE_JMP                 start=v[0x02E], values=[1], target=0x171D
-1717  9C 3A 08                               VIDEO_TRANSITION_REF          ref=0x083A (CH[58]=?)
+1717  9C 3A 08                               VIDEO_TRANSITION_REF          ref=0x083A (CH[58]=chpuz21.vdx)
 171A  15 25 17                               JMP                           target=0x1725
 171D  9A 2E B2 25 17                         STRCMP_NE_JMP                 start=v[0x02E], values=[2], target=0x1725
-1722  9C 3A 08                               VIDEO_TRANSITION_REF          ref=0x083A (CH[58]=?)
+1722  9C 3A 08                               VIDEO_TRANSITION_REF          ref=0x083A (CH[58]=chpuz21.vdx)
 1725  17 00                                  RET                           value=0x00
 1727  9A 2F B0 32 17                         STRCMP_NE_JMP                 start=v[0x02F], values=[0], target=0x1732
-172C  1C 3D 08                               VIDEO_TRANSITION_REF          ref=0x083D (CH[61]=?)
+172C  1C 3D 08                               VIDEO_TRANSITION_REF          ref=0x083D (CH[61]=chpuz22_.vdx)
 172F  15 45 17                               JMP                           target=0x1745
 1732  9A 2F B1 3D 17                         STRCMP_NE_JMP                 start=v[0x02F], values=[1], target=0x173D
-1737  1C 3C 08                               VIDEO_TRANSITION_REF          ref=0x083C (CH[60]=?)
+1737  1C 3C 08                               VIDEO_TRANSITION_REF          ref=0x083C (CH[60]=chpuz22.vdx)
 173A  15 45 17                               JMP                           target=0x1745
 173D  9A 2F B2 45 17                         STRCMP_NE_JMP                 start=v[0x02F], values=[2], target=0x1745
-1742  1C 3C 08                               VIDEO_TRANSITION_REF          ref=0x083C (CH[60]=?)
+1742  1C 3C 08                               VIDEO_TRANSITION_REF          ref=0x083C (CH[60]=chpuz22.vdx)
 1745  17 00                                  RET                           value=0x00
 1747  9A 2F B0 52 17                         STRCMP_NE_JMP                 start=v[0x02F], values=[0], target=0x1752
-174C  9C 3D 08                               VIDEO_TRANSITION_REF          ref=0x083D (CH[61]=?)
+174C  9C 3D 08                               VIDEO_TRANSITION_REF          ref=0x083D (CH[61]=chpuz22_.vdx)
 174F  15 65 17                               JMP                           target=0x1765
 1752  9A 2F B1 5D 17                         STRCMP_NE_JMP                 start=v[0x02F], values=[1], target=0x175D
-1757  9C 3C 08                               VIDEO_TRANSITION_REF          ref=0x083C (CH[60]=?)
+1757  9C 3C 08                               VIDEO_TRANSITION_REF          ref=0x083C (CH[60]=chpuz22.vdx)
 175A  15 65 17                               JMP                           target=0x1765
 175D  9A 2F B2 65 17                         STRCMP_NE_JMP                 start=v[0x02F], values=[2], target=0x1765
-1762  9C 3C 08                               VIDEO_TRANSITION_REF          ref=0x083C (CH[60]=?)
+1762  9C 3C 08                               VIDEO_TRANSITION_REF          ref=0x083C (CH[60]=chpuz22.vdx)
 1765  17 00                                  RET                           value=0x00
 1767  9A 30 B0 72 17                         STRCMP_NE_JMP                 start=v[0x030], values=[0], target=0x1772
-176C  1C 3F 08                               VIDEO_TRANSITION_REF          ref=0x083F (CH[63]=?)
+176C  1C 3F 08                               VIDEO_TRANSITION_REF          ref=0x083F (CH[63]=chpuz23_.vdx)
 176F  15 85 17                               JMP                           target=0x1785
 1772  9A 30 B1 7D 17                         STRCMP_NE_JMP                 start=v[0x030], values=[1], target=0x177D
-1777  1C 3E 08                               VIDEO_TRANSITION_REF          ref=0x083E (CH[62]=?)
+1777  1C 3E 08                               VIDEO_TRANSITION_REF          ref=0x083E (CH[62]=chpuz23.vdx)
 177A  15 85 17                               JMP                           target=0x1785
 177D  9A 30 B2 85 17                         STRCMP_NE_JMP                 start=v[0x030], values=[2], target=0x1785
-1782  1C 3E 08                               VIDEO_TRANSITION_REF          ref=0x083E (CH[62]=?)
+1782  1C 3E 08                               VIDEO_TRANSITION_REF          ref=0x083E (CH[62]=chpuz23.vdx)
 1785  17 00                                  RET                           value=0x00
 1787  9A 30 B0 92 17                         STRCMP_NE_JMP                 start=v[0x030], values=[0], target=0x1792
-178C  9C 3F 08                               VIDEO_TRANSITION_REF          ref=0x083F (CH[63]=?)
+178C  9C 3F 08                               VIDEO_TRANSITION_REF          ref=0x083F (CH[63]=chpuz23_.vdx)
 178F  15 A5 17                               JMP                           target=0x17A5
 1792  9A 30 B1 9D 17                         STRCMP_NE_JMP                 start=v[0x030], values=[1], target=0x179D
-1797  9C 3E 08                               VIDEO_TRANSITION_REF          ref=0x083E (CH[62]=?)
+1797  9C 3E 08                               VIDEO_TRANSITION_REF          ref=0x083E (CH[62]=chpuz23.vdx)
 179A  15 A5 17                               JMP                           target=0x17A5
 179D  9A 30 B2 A5 17                         STRCMP_NE_JMP                 start=v[0x030], values=[2], target=0x17A5
-17A2  9C 3E 08                               VIDEO_TRANSITION_REF          ref=0x083E (CH[62]=?)
+17A2  9C 3E 08                               VIDEO_TRANSITION_REF          ref=0x083E (CH[62]=chpuz23.vdx)
 17A5  17 00                                  RET                           value=0x00
 17A7  9A 31 B0 B2 17                         STRCMP_NE_JMP                 start=v[0x031], values=[0], target=0x17B2
-17AC  1C 41 08                               VIDEO_TRANSITION_REF          ref=0x0841 (CH[65]=?)
+17AC  1C 41 08                               VIDEO_TRANSITION_REF          ref=0x0841 (CH[65]=chpuz24_.vdx)
 17AF  15 C5 17                               JMP                           target=0x17C5
 17B2  9A 31 B1 BD 17                         STRCMP_NE_JMP                 start=v[0x031], values=[1], target=0x17BD
-17B7  1C 40 08                               VIDEO_TRANSITION_REF          ref=0x0840 (CH[64]=?)
+17B7  1C 40 08                               VIDEO_TRANSITION_REF          ref=0x0840 (CH[64]=chpuz24.vdx)
 17BA  15 C5 17                               JMP                           target=0x17C5
 17BD  9A 31 B2 C5 17                         STRCMP_NE_JMP                 start=v[0x031], values=[2], target=0x17C5
-17C2  1C 40 08                               VIDEO_TRANSITION_REF          ref=0x0840 (CH[64]=?)
+17C2  1C 40 08                               VIDEO_TRANSITION_REF          ref=0x0840 (CH[64]=chpuz24.vdx)
 17C5  17 00                                  RET                           value=0x00
 17C7  9A 31 B0 D2 17                         STRCMP_NE_JMP                 start=v[0x031], values=[0], target=0x17D2
-17CC  9C 41 08                               VIDEO_TRANSITION_REF          ref=0x0841 (CH[65]=?)
+17CC  9C 41 08                               VIDEO_TRANSITION_REF          ref=0x0841 (CH[65]=chpuz24_.vdx)
 17CF  15 E5 17                               JMP                           target=0x17E5
 17D2  9A 31 B1 DD 17                         STRCMP_NE_JMP                 start=v[0x031], values=[1], target=0x17DD
-17D7  9C 40 08                               VIDEO_TRANSITION_REF          ref=0x0840 (CH[64]=?)
+17D7  9C 40 08                               VIDEO_TRANSITION_REF          ref=0x0840 (CH[64]=chpuz24.vdx)
 17DA  15 E5 17                               JMP                           target=0x17E5
 17DD  9A 31 B2 E5 17                         STRCMP_NE_JMP                 start=v[0x031], values=[2], target=0x17E5
-17E2  9C 40 08                               VIDEO_TRANSITION_REF          ref=0x0840 (CH[64]=?)
+17E2  9C 40 08                               VIDEO_TRANSITION_REF          ref=0x0840 (CH[64]=chpuz24.vdx)
 17E5  17 00                                  RET                           value=0x00
 17E7  9A 32 B0 F2 17                         STRCMP_NE_JMP                 start=v[0x032], values=[0], target=0x17F2
-17EC  1C 43 08                               VIDEO_TRANSITION_REF          ref=0x0843 (CH[67]=?)
+17EC  1C 43 08                               VIDEO_TRANSITION_REF          ref=0x0843 (CH[67]=chpuz25_.vdx)
 17EF  15 05 18                               JMP                           target=0x1805
 17F2  9A 32 B1 FD 17                         STRCMP_NE_JMP                 start=v[0x032], values=[1], target=0x17FD
-17F7  1C 42 08                               VIDEO_TRANSITION_REF          ref=0x0842 (CH[66]=?)
+17F7  1C 42 08                               VIDEO_TRANSITION_REF          ref=0x0842 (CH[66]=chpuz25.vdx)
 17FA  15 05 18                               JMP                           target=0x1805
 17FD  9A 32 B2 05 18                         STRCMP_NE_JMP                 start=v[0x032], values=[2], target=0x1805
-1802  1C 42 08                               VIDEO_TRANSITION_REF          ref=0x0842 (CH[66]=?)
+1802  1C 42 08                               VIDEO_TRANSITION_REF          ref=0x0842 (CH[66]=chpuz25.vdx)
 1805  17 00                                  RET                           value=0x00
 1807  9A 32 B0 12 18                         STRCMP_NE_JMP                 start=v[0x032], values=[0], target=0x1812
-180C  9C 43 08                               VIDEO_TRANSITION_REF          ref=0x0843 (CH[67]=?)
+180C  9C 43 08                               VIDEO_TRANSITION_REF          ref=0x0843 (CH[67]=chpuz25_.vdx)
 180F  15 25 18                               JMP                           target=0x1825
 1812  9A 32 B1 1D 18                         STRCMP_NE_JMP                 start=v[0x032], values=[1], target=0x181D
-1817  9C 42 08                               VIDEO_TRANSITION_REF          ref=0x0842 (CH[66]=?)
+1817  9C 42 08                               VIDEO_TRANSITION_REF          ref=0x0842 (CH[66]=chpuz25.vdx)
 181A  15 25 18                               JMP                           target=0x1825
 181D  9A 32 B2 25 18                         STRCMP_NE_JMP                 start=v[0x032], values=[2], target=0x1825
-1822  9C 42 08                               VIDEO_TRANSITION_REF          ref=0x0842 (CH[66]=?)
+1822  9C 42 08                               VIDEO_TRANSITION_REF          ref=0x0842 (CH[66]=chpuz25.vdx)
 1825  17 00                                  RET                           value=0x00
 1827  9A 33 B0 32 18                         STRCMP_NE_JMP                 start=v[0x033], values=[0], target=0x1832
-182C  1C 45 08                               VIDEO_TRANSITION_REF          ref=0x0845 (CH[69]=?)
+182C  1C 45 08                               VIDEO_TRANSITION_REF          ref=0x0845 (CH[69]=chpuz26_.vdx)
 182F  15 45 18                               JMP                           target=0x1845
 1832  9A 33 B1 3D 18                         STRCMP_NE_JMP                 start=v[0x033], values=[1], target=0x183D
-1837  1C 44 08                               VIDEO_TRANSITION_REF          ref=0x0844 (CH[68]=?)
+1837  1C 44 08                               VIDEO_TRANSITION_REF          ref=0x0844 (CH[68]=chpuz26.vdx)
 183A  15 45 18                               JMP                           target=0x1845
 183D  9A 33 B2 45 18                         STRCMP_NE_JMP                 start=v[0x033], values=[2], target=0x1845
-1842  1C 44 08                               VIDEO_TRANSITION_REF          ref=0x0844 (CH[68]=?)
+1842  1C 44 08                               VIDEO_TRANSITION_REF          ref=0x0844 (CH[68]=chpuz26.vdx)
 1845  17 00                                  RET                           value=0x00
 1847  9A 33 B0 52 18                         STRCMP_NE_JMP                 start=v[0x033], values=[0], target=0x1852
-184C  9C 45 08                               VIDEO_TRANSITION_REF          ref=0x0845 (CH[69]=?)
+184C  9C 45 08                               VIDEO_TRANSITION_REF          ref=0x0845 (CH[69]=chpuz26_.vdx)
 184F  15 65 18                               JMP                           target=0x1865
 1852  9A 33 B1 5D 18                         STRCMP_NE_JMP                 start=v[0x033], values=[1], target=0x185D
-1857  9C 44 08                               VIDEO_TRANSITION_REF          ref=0x0844 (CH[68]=?)
+1857  9C 44 08                               VIDEO_TRANSITION_REF          ref=0x0844 (CH[68]=chpuz26.vdx)
 185A  15 65 18                               JMP                           target=0x1865
 185D  9A 33 B2 65 18                         STRCMP_NE_JMP                 start=v[0x033], values=[2], target=0x1865
-1862  9C 44 08                               VIDEO_TRANSITION_REF          ref=0x0844 (CH[68]=?)
+1862  9C 44 08                               VIDEO_TRANSITION_REF          ref=0x0844 (CH[68]=chpuz26.vdx)
 1865  17 00                                  RET                           value=0x00
 1867  9A 34 B0 72 18                         STRCMP_NE_JMP                 start=v[0x034], values=[0], target=0x1872
-186C  1C 47 08                               VIDEO_TRANSITION_REF          ref=0x0847 (CH[71]=?)
+186C  1C 47 08                               VIDEO_TRANSITION_REF          ref=0x0847 (CH[71]=chpuz27_.vdx)
 186F  15 85 18                               JMP                           target=0x1885
 1872  9A 34 B1 7D 18                         STRCMP_NE_JMP                 start=v[0x034], values=[1], target=0x187D
-1877  1C 46 08                               VIDEO_TRANSITION_REF          ref=0x0846 (CH[70]=?)
+1877  1C 46 08                               VIDEO_TRANSITION_REF          ref=0x0846 (CH[70]=chpuz27.vdx)
 187A  15 85 18                               JMP                           target=0x1885
 187D  9A 34 B2 85 18                         STRCMP_NE_JMP                 start=v[0x034], values=[2], target=0x1885
-1882  1C 46 08                               VIDEO_TRANSITION_REF          ref=0x0846 (CH[70]=?)
+1882  1C 46 08                               VIDEO_TRANSITION_REF          ref=0x0846 (CH[70]=chpuz27.vdx)
 1885  17 00                                  RET                           value=0x00
 1887  9A 34 B0 92 18                         STRCMP_NE_JMP                 start=v[0x034], values=[0], target=0x1892
-188C  9C 47 08                               VIDEO_TRANSITION_REF          ref=0x0847 (CH[71]=?)
+188C  9C 47 08                               VIDEO_TRANSITION_REF          ref=0x0847 (CH[71]=chpuz27_.vdx)
 188F  15 A5 18                               JMP                           target=0x18A5
 1892  9A 34 B1 9D 18                         STRCMP_NE_JMP                 start=v[0x034], values=[1], target=0x189D
-1897  9C 46 08                               VIDEO_TRANSITION_REF          ref=0x0846 (CH[70]=?)
+1897  9C 46 08                               VIDEO_TRANSITION_REF          ref=0x0846 (CH[70]=chpuz27.vdx)
 189A  15 A5 18                               JMP                           target=0x18A5
 189D  9A 34 B2 A5 18                         STRCMP_NE_JMP                 start=v[0x034], values=[2], target=0x18A5
-18A2  9C 46 08                               VIDEO_TRANSITION_REF          ref=0x0846 (CH[70]=?)
+18A2  9C 46 08                               VIDEO_TRANSITION_REF          ref=0x0846 (CH[70]=chpuz27.vdx)
 18A5  17 00                                  RET                           value=0x00
 18A7  9A 35 B0 B2 18                         STRCMP_NE_JMP                 start=v[0x035], values=[0], target=0x18B2
-18AC  1C 49 08                               VIDEO_TRANSITION_REF          ref=0x0849 (CH[73]=?)
+18AC  1C 49 08                               VIDEO_TRANSITION_REF          ref=0x0849 (CH[73]=chpuz28_.vdx)
 18AF  15 C5 18                               JMP                           target=0x18C5
 18B2  9A 35 B1 BD 18                         STRCMP_NE_JMP                 start=v[0x035], values=[1], target=0x18BD
-18B7  1C 48 08                               VIDEO_TRANSITION_REF          ref=0x0848 (CH[72]=?)
+18B7  1C 48 08                               VIDEO_TRANSITION_REF          ref=0x0848 (CH[72]=chpuz28.vdx)
 18BA  15 C5 18                               JMP                           target=0x18C5
 18BD  9A 35 B2 C5 18                         STRCMP_NE_JMP                 start=v[0x035], values=[2], target=0x18C5
-18C2  1C 48 08                               VIDEO_TRANSITION_REF          ref=0x0848 (CH[72]=?)
+18C2  1C 48 08                               VIDEO_TRANSITION_REF          ref=0x0848 (CH[72]=chpuz28.vdx)
 18C5  17 00                                  RET                           value=0x00
 18C7  9A 35 B0 D2 18                         STRCMP_NE_JMP                 start=v[0x035], values=[0], target=0x18D2
-18CC  9C 49 08                               VIDEO_TRANSITION_REF          ref=0x0849 (CH[73]=?)
+18CC  9C 49 08                               VIDEO_TRANSITION_REF          ref=0x0849 (CH[73]=chpuz28_.vdx)
 18CF  15 E5 18                               JMP                           target=0x18E5
 18D2  9A 35 B1 DD 18                         STRCMP_NE_JMP                 start=v[0x035], values=[1], target=0x18DD
-18D7  9C 48 08                               VIDEO_TRANSITION_REF          ref=0x0848 (CH[72]=?)
+18D7  9C 48 08                               VIDEO_TRANSITION_REF          ref=0x0848 (CH[72]=chpuz28.vdx)
 18DA  15 E5 18                               JMP                           target=0x18E5
 18DD  9A 35 B2 E5 18                         STRCMP_NE_JMP                 start=v[0x035], values=[2], target=0x18E5
-18E2  9C 48 08                               VIDEO_TRANSITION_REF          ref=0x0848 (CH[72]=?)
+18E2  9C 48 08                               VIDEO_TRANSITION_REF          ref=0x0848 (CH[72]=chpuz28.vdx)
 18E5  17 00                                  RET                           value=0x00
 18E7  9A 36 B0 F2 18                         STRCMP_NE_JMP                 start=v[0x036], values=[0], target=0x18F2
-18EC  1C 4B 08                               VIDEO_TRANSITION_REF          ref=0x084B (CH[75]=?)
+18EC  1C 4B 08                               VIDEO_TRANSITION_REF          ref=0x084B (CH[75]=chpuz29_.vdx)
 18EF  15 05 19                               JMP                           target=0x1905
 18F2  9A 36 B1 FD 18                         STRCMP_NE_JMP                 start=v[0x036], values=[1], target=0x18FD
-18F7  1C 4A 08                               VIDEO_TRANSITION_REF          ref=0x084A (CH[74]=?)
+18F7  1C 4A 08                               VIDEO_TRANSITION_REF          ref=0x084A (CH[74]=chpuz29.vdx)
 18FA  15 05 19                               JMP                           target=0x1905
 18FD  9A 36 B2 05 19                         STRCMP_NE_JMP                 start=v[0x036], values=[2], target=0x1905
-1902  1C 4A 08                               VIDEO_TRANSITION_REF          ref=0x084A (CH[74]=?)
+1902  1C 4A 08                               VIDEO_TRANSITION_REF          ref=0x084A (CH[74]=chpuz29.vdx)
 1905  17 00                                  RET                           value=0x00
 1907  9A 36 B0 12 19                         STRCMP_NE_JMP                 start=v[0x036], values=[0], target=0x1912
-190C  9C 4B 08                               VIDEO_TRANSITION_REF          ref=0x084B (CH[75]=?)
+190C  9C 4B 08                               VIDEO_TRANSITION_REF          ref=0x084B (CH[75]=chpuz29_.vdx)
 190F  15 25 19                               JMP                           target=0x1925
 1912  9A 36 B1 1D 19                         STRCMP_NE_JMP                 start=v[0x036], values=[1], target=0x191D
-1917  9C 4A 08                               VIDEO_TRANSITION_REF          ref=0x084A (CH[74]=?)
+1917  9C 4A 08                               VIDEO_TRANSITION_REF          ref=0x084A (CH[74]=chpuz29.vdx)
 191A  15 25 19                               JMP                           target=0x1925
 191D  9A 36 B2 25 19                         STRCMP_NE_JMP                 start=v[0x036], values=[2], target=0x1925
-1922  9C 4A 08                               VIDEO_TRANSITION_REF          ref=0x084A (CH[74]=?)
+1922  9C 4A 08                               VIDEO_TRANSITION_REF          ref=0x084A (CH[74]=chpuz29.vdx)
 1925  17 00                                  RET                           value=0x00
 1927  9A 37 B0 32 19                         STRCMP_NE_JMP                 start=v[0x037], values=[0], target=0x1932
-192C  1C 4D 08                               VIDEO_TRANSITION_REF          ref=0x084D (CH[77]=?)
+192C  1C 4D 08                               VIDEO_TRANSITION_REF          ref=0x084D (CH[77]=chpuz30_.vdx)
 192F  15 45 19                               JMP                           target=0x1945
 1932  9A 37 B1 3D 19                         STRCMP_NE_JMP                 start=v[0x037], values=[1], target=0x193D
-1937  1C 4C 08                               VIDEO_TRANSITION_REF          ref=0x084C (CH[76]=?)
+1937  1C 4C 08                               VIDEO_TRANSITION_REF          ref=0x084C (CH[76]=chpuz30.vdx)
 193A  15 45 19                               JMP                           target=0x1945
 193D  9A 37 B2 45 19                         STRCMP_NE_JMP                 start=v[0x037], values=[2], target=0x1945
-1942  1C 4C 08                               VIDEO_TRANSITION_REF          ref=0x084C (CH[76]=?)
+1942  1C 4C 08                               VIDEO_TRANSITION_REF          ref=0x084C (CH[76]=chpuz30.vdx)
 1945  17 00                                  RET                           value=0x00
 1947  9A 37 B0 52 19                         STRCMP_NE_JMP                 start=v[0x037], values=[0], target=0x1952
-194C  9C 4D 08                               VIDEO_TRANSITION_REF          ref=0x084D (CH[77]=?)
+194C  9C 4D 08                               VIDEO_TRANSITION_REF          ref=0x084D (CH[77]=chpuz30_.vdx)
 194F  15 65 19                               JMP                           target=0x1965
 1952  9A 37 B1 5D 19                         STRCMP_NE_JMP                 start=v[0x037], values=[1], target=0x195D
-1957  9C 4C 08                               VIDEO_TRANSITION_REF          ref=0x084C (CH[76]=?)
+1957  9C 4C 08                               VIDEO_TRANSITION_REF          ref=0x084C (CH[76]=chpuz30.vdx)
 195A  15 65 19                               JMP                           target=0x1965
 195D  9A 37 B2 65 19                         STRCMP_NE_JMP                 start=v[0x037], values=[2], target=0x1965
-1962  9C 4C 08                               VIDEO_TRANSITION_REF          ref=0x084C (CH[76]=?)
+1962  9C 4C 08                               VIDEO_TRANSITION_REF          ref=0x084C (CH[76]=chpuz30.vdx)
 1965  17 00                                  RET                           value=0x00
 1967  9A 38 B0 72 19                         STRCMP_NE_JMP                 start=v[0x038], values=[0], target=0x1972
-196C  1C 4F 08                               VIDEO_TRANSITION_REF          ref=0x084F (CH[79]=?)
+196C  1C 4F 08                               VIDEO_TRANSITION_REF          ref=0x084F (CH[79]=chpuz31_.vdx)
 196F  15 85 19                               JMP                           target=0x1985
 1972  9A 38 B1 7D 19                         STRCMP_NE_JMP                 start=v[0x038], values=[1], target=0x197D
-1977  1C 4E 08                               VIDEO_TRANSITION_REF          ref=0x084E (CH[78]=?)
+1977  1C 4E 08                               VIDEO_TRANSITION_REF          ref=0x084E (CH[78]=chpuz31.vdx)
 197A  15 85 19                               JMP                           target=0x1985
 197D  9A 38 B2 85 19                         STRCMP_NE_JMP                 start=v[0x038], values=[2], target=0x1985
-1982  1C 4E 08                               VIDEO_TRANSITION_REF          ref=0x084E (CH[78]=?)
+1982  1C 4E 08                               VIDEO_TRANSITION_REF          ref=0x084E (CH[78]=chpuz31.vdx)
 1985  17 00                                  RET                           value=0x00
 1987  9A 38 B0 92 19                         STRCMP_NE_JMP                 start=v[0x038], values=[0], target=0x1992
-198C  9C 4F 08                               VIDEO_TRANSITION_REF          ref=0x084F (CH[79]=?)
+198C  9C 4F 08                               VIDEO_TRANSITION_REF          ref=0x084F (CH[79]=chpuz31_.vdx)
 198F  15 A5 19                               JMP                           target=0x19A5
 1992  9A 38 B1 9D 19                         STRCMP_NE_JMP                 start=v[0x038], values=[1], target=0x199D
-1997  9C 4E 08                               VIDEO_TRANSITION_REF          ref=0x084E (CH[78]=?)
+1997  9C 4E 08                               VIDEO_TRANSITION_REF          ref=0x084E (CH[78]=chpuz31.vdx)
 199A  15 A5 19                               JMP                           target=0x19A5
 199D  9A 38 B2 A5 19                         STRCMP_NE_JMP                 start=v[0x038], values=[2], target=0x19A5
-19A2  9C 4E 08                               VIDEO_TRANSITION_REF          ref=0x084E (CH[78]=?)
+19A2  9C 4E 08                               VIDEO_TRANSITION_REF          ref=0x084E (CH[78]=chpuz31.vdx)
 19A5  17 00                                  RET                           value=0x00
 19A7  9A 1A B2 B3 19                         STRCMP_NE_JMP                 start=v[0x01A], values=[2], target=0x19B3
 19AC  A3 1B B0 B3 19                         STRCMP_EQ_JMP                 start=v[0x01B], values=[0], target=0x19B3
@@ -1747,35 +1747,35 @@
 1C7C  07                                     VIDEOFLAG7_ON                 
 1C7D  0A                                     VIDEOFLAG5_ON                 
 1C7E  46                                     RESOURCE_CONTEXT_SAVE         
-1C7F  09 3F 50                               VIDEOREF                      ref=0x503F (GAMWAV[63]=?)
+1C7F  09 3F 50                               VIDEOREF                      ref=0x503F (GAMWAV[63]=9_s_2.vdx)
 1C82  47                                     RESOURCE_CONTEXT_RESTORE      
-1C83  1C 11 08                               VIDEO_TRANSITION_REF          ref=0x0811 (CH[17]=?)
+1C83  1C 11 08                               VIDEO_TRANSITION_REF          ref=0x0811 (CH[17]=chpub.vdx)
 1C86  18 B3 1C                               CALL                          target=0x1CB3
 1C89  43 00                                  RETURNSCRIPT                  value=0x00
-1C8B  1C 0B 08                               VIDEO_TRANSITION_REF          ref=0x080B (CH[11]=?)
+1C8B  1C 0B 08                               VIDEO_TRANSITION_REF          ref=0x080B (CH[11]=chfa.vdx)
 1C8E  18 B3 1C                               CALL                          target=0x1CB3
 1C91  07                                     VIDEOFLAG7_ON                 
 1C92  0A                                     VIDEOFLAG5_ON                 
 1C93  46                                     RESOURCE_CONTEXT_SAVE         
-1C94  09 3F 50                               VIDEOREF                      ref=0x503F (GAMWAV[63]=?)
+1C94  09 3F 50                               VIDEOREF                      ref=0x503F (GAMWAV[63]=9_s_2.vdx)
 1C97  47                                     RESOURCE_CONTEXT_RESTORE      
-1C98  09 0B 08                               VIDEOREF                      ref=0x080B (CH[11]=?)
+1C98  09 0B 08                               VIDEOREF                      ref=0x080B (CH[11]=chfa.vdx)
 1C9B  43 00                                  RETURNSCRIPT                  value=0x00
 1C9D  07                                     VIDEOFLAG7_ON                 
 1C9E  0A                                     VIDEOFLAG5_ON                 
 1C9F  46                                     RESOURCE_CONTEXT_SAVE         
-1CA0  09 98 50                               VIDEOREF                      ref=0x5098 (GAMWAV[152]=?)
+1CA0  09 98 50                               VIDEOREF                      ref=0x5098 (GAMWAV[152]=gen_s_1.vdx)
 1CA3  47                                     RESOURCE_CONTEXT_RESTORE      
-1CA4  1C 11 08                               VIDEO_TRANSITION_REF          ref=0x0811 (CH[17]=?)
+1CA4  1C 11 08                               VIDEO_TRANSITION_REF          ref=0x0811 (CH[17]=chpub.vdx)
 1CA7  18 B3 1C                               CALL                          target=0x1CB3
 1CAA  05                                     FIRSTFRAME_NEXT_VIDEO         
-1CAB  09 11 08                               VIDEOREF                      ref=0x0811 (CH[17]=?)
+1CAB  09 11 08                               VIDEOREF                      ref=0x0811 (CH[17]=chpub.vdx)
 1CAE  15 00 00                               JMP                           target=0x0000
 1CB1  43 01                                  RETURNSCRIPT                  value=0x01
 1CB3  0A                                     VIDEOFLAG5_ON                 
 1CB4  07                                     VIDEOFLAG7_ON                 
 1CB5  46                                     RESOURCE_CONTEXT_SAVE         
-1CB6  09 01 24                               VIDEOREF                      ref=0x2401 (INTRO[1]=?)
+1CB6  09 01 24                               VIDEOREF                      ref=0x2401 (INTRO[1]=fade.vdx)
 1CB9  37 00 00 50 00 7F 02 8F 01             COPY_RECT_TO_BG               left=0x0000, top=0x0050, right=0x027F, bottom=0x018F
 1CC2  47                                     RESOURCE_CONTEXT_RESTORE      
 1CC3  17 00                                  RET                           value=0x00

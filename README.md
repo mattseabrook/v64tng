@@ -23,7 +23,9 @@ Current release: **1.0.20261006.2**
 | [`V.EXE` 1.30](disassembly/V)             |                158 / 261 |                         103 |             **60.5%** | 101,624 / 101,624 bytes (**100%**) |
 | [`v32tng.exe` 1.02b1](disassembly/v32tng) |               170 / 336 |                         166 |             **50.6%** | 144,896 / 144,896 bytes (**100%**) |
 | [`T7GMac` 1.0 (Classic Mac)](disassembly/T7GMac) | 55 / 80 table-backed entries | 25 | 68.8% role coverage | 1,830,912 / 1,830,912 bytes (**100%; byte-identical**) |
-| [Philips CD-i files](disassembly/cdi_t7g) | 1 / 665 candidate entries | Unknown | Initial native recovery | 241,664 / 241,664 bytes (**100%; byte-identical**) |
+| [Philips CD-i files](disassembly/cdi_t7g) | 6 / 665 candidate entries | Unknown | Initial native recovery | 241,664 / 241,664 bytes (**100%; byte-identical**) |
+
+The October 7 platform follow-up identifies the Mac credits prelude and embedded save format, adds an internal Mac display routine and five CD-i loader roles, and updates Groovie v1 for Mac resource/data-fork modding. [Research and evidence](docs/PLATFORM_EASTER_EGGS.md) separates documented Easter eggs and port differences from locally supported behavior. These changes are unbuilt and untested; earlier reconstruction results remain historical.
 
 The connected recovery pass adds 70 static semantic roles to each x86 player, including the microscope puzzle search, cursor rendering, DOS configuration and allocation, and Win32 runtime helpers. Overall, 328 of 597 provisional x86 entries now have verified roles (54.9%). These counts measure identified behavior, not recovered original symbols or proof that every code/data boundary is correct. Both microscope neighbor tables are extracted into named data files. [Curated address/role evidence](disassembly/semantic_roles.json) includes contracts, direct callers, and cross-version matches for this pass and can seed the future wiki.
 
@@ -1300,8 +1302,17 @@ native board bytes at `v[0x19..0x49]`, writing source/destination row and column
 to `v[0..3]`. Scripts commit and animate the move. The recovered implementation
 covers neighbor ordering, clone/jump iteration, conversion, signed scoring,
 bounded recursive search, ranked moves, and tie selection. DOS policy is the
-default; Windows policy is available in `CellPuzzle`. Unrecovered Mac strategy
-initialization is excluded. Unknown modes fail explicitly.
+default; `config.json` can select `"grvMicroscopePolicy": "windows"` for the
+recovered Windows normalization, search threshold, and deterministic ties.
+This selection is independent of save-file conventions. Unknown policy values
+are rejected at GRV initialization. Unrecovered Mac strategy initialization is
+excluded. Unknown modes fail explicitly.
+
+The selected move persists outside the GRV variable/save block. A search with
+no legal move returns the stored coordinates even if the script has changed
+`v[0..3]`. The full recovery-to-engine report, including remaining gaps and
+host replacements, is [the integration report](docs/ENGINE_SEMANTIC_INTEGRATION.md).
+This follow-up was not built, tested, or verified.
 
 `RANDOM` and DOS puzzle ties share the recovered 24-bit feedback generator.
 The modern startup seed comes from the host rather than the DOS timer, so

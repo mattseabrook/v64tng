@@ -18,6 +18,9 @@ Current scope:
 
 GRV script authoring is not implemented yet.
 
+The October 7, 2026 platform-recovery changes below are **unbuilt and untested**.
+See [the platform research/evidence report](../docs/PLATFORM_EASTER_EGGS.md).
+
 ## Build (Linux -> Windows x64)
 
 ```bash
@@ -101,6 +104,65 @@ gives each such entry an index-prefixed filename and the manifest restores
 its original RL name. Thus edited assets retain all numeric GRV references.
 Repacking preserves resource bytes, names and indexes, while archive padding
 and physical offsets may change.
+
+Archive listing prints the numeric entry index used by GRV references.
+Extraction requires a new output directory and keeps generated duplicate-entry
+filenames from colliding with ordinary resources. Unknown archive options fail
+instead of being silently ignored.
+
+### Classic Mac embedded files and T7GData
+
+The 1994 Classic Mac application stores indexes and scripts as named `T7GM`
+resources. Extract them directly from a MacBinary application container:
+
+```sh
+python3 grooviev1/mac_resources.py list disassembly/T7GMac/T7GMac.bin --type T7GM
+python3 grooviev1/mac_resources.py extract disassembly/T7GMac/T7GMac.bin \
+  --type T7GM --out-dir mac-assets
+```
+
+The helper uses the resource map and supports signed IDs. Extraction preserves
+safe unique asset names and writes `resources.json` with their original types,
+IDs, names, sizes and container offsets. It needs Python's standard library;
+Pillow is not required. Omitting `--type` extracts all resources. `--type T7SG`
+can export saves from a MacBinary copy of an application used for gameplay.
+
+Use explicit fork handling when the companion archive is MacBinary:
+
+```sh
+grooviev1-native archive-list --rl mac-assets/hdisk.rl \
+  --gjd disassembly/T7GMac/T7GData.bin --macbinary
+grooviev1-native archive-unpack --rl mac-assets/hdisk.rl \
+  --gjd disassembly/T7GMac/T7GData.bin --macbinary --mac-t7gdata --out-dir mac-media
+grooviev1-native archive-pack --rl hdisk-new.rl --gjd T7GData-new --input-dir mac-media
+```
+
+`--macbinary` selects data-fork bytes, honoring the big-endian MacBinary fork
+length and padded secondary header; RL fields remain little-endian and their
+offsets remain relative to the data fork. For an already extracted data fork,
+omit `--macbinary` and pass its path explicitly with `--gjd`.
+
+`--mac-t7gdata` extraction requires contiguous indexed payloads with one `FF`
+separator after each. It writes `grooviev1.archive/mac-t7gdata/1` as the manifest
+header. Packing automatically uses that separator policy from the manifest;
+it can also be selected explicitly with `--mac-t7gdata`. The separator contributes
+to the next entry's offset, but not the current entry's length.
+
+Packing produces a raw data fork. Install it with a fork-aware Mac tool, and
+replace the application's matching `hdisk.rl` resource. Same-size replacement
+is supported without rebuilding the resource map:
+
+```sh
+python3 grooviev1/mac_resources.py replace disassembly/T7GMac/T7GMac.bin \
+  --type T7GM --id 32309 --replacement hdisk-new.rl --output T7GMac-mod.bin
+```
+
+Replacement requires exactly the original resource size and a new output path.
+The supplied Mac HDISK index has ten entries (200 bytes), including the credits
+stills `todd.vdx` and `hayes.vdx`; preserve their indexes 8 and 9. Copying a DOS
+eight-entry HDISK index would lose those Mac script references. The helper does
+not repair damaged resource maps, resize resources or package raw data forks.
+The VDX/RL encoder does not produce CD-i MPEG media or native OS-9 modules.
 
 ### Inspect SPHINX.FNT
 
@@ -270,3 +332,17 @@ production bitmap/delta decoders. RL arguments inspect resources directly
 inside GJD without extracting thousands of files. ASan/UBSan validation and
 native executable helper checks are recorded in
 [the deep-dive report](../docs/GROOVIEV1_DEEP_DIVE.md).
+# Microscope recovery follow-up
+
+GRV `GAMELOGIC` (`42h`) takes one strategy **mode** byte (recovered range 0–8),
+reads the 49-cell board at `v[0x19..0x49]`, and returns source/destination
+row/column in `v[0..3]`. Scripts apply and animate the selected move. Shared
+decoder output now labels the operand `mode`; its encoding is unchanged.
+
+The engine's `grvMicroscopePolicy` configuration selects `dos` (default) or
+`windows`, independently of save-file format. Those policies differ in board
+normalization, ranked-search threshold and tie selection. A no-move search
+returns stored selection coordinates; it does not mean the board was modified.
+Mac/CD-i policy equivalence is not claimed. See the
+[engine integration report](../docs/ENGINE_SEMANTIC_INTEGRATION.md).
+This follow-up was not built, tested or verified.

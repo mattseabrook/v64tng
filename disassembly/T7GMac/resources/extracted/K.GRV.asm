@@ -11,21 +11,21 @@
 001C  9A F9 B0 2A 00                         STRCMP_NE_JMP                 start=v[0x0F9], values=[0], target=0x002A
 0021  07                                     VIDEOFLAG7_ON                 
 0022  46                                     RESOURCE_CONTEXT_SAVE         
-0023  09 18 50                               VIDEOREF                      ref=0x5018 (GAMWAV[24]=?)
+0023  09 18 50                               VIDEOREF                      ref=0x5018 (GAMWAV[24]=5_s_1.vdx)
 0026  47                                     RESOURCE_CONTEXT_RESTORE      
 0027  96 F9 B1                               LOADSTRING                    dst=v[0x0F9], values=[1]
 002A  2C DF 04 08                            SET_HOTSPOT_TOP               target=0x04DF, cursor=0x08
 002E  2D E1 04 06                            SET_HOTSPOT_BOTTOM            target=0x04E1, cursor=0x06
 0032  44 D7 04                               SET_HOTSPOT_RIGHT             target=0x04D7
 0035  45 D7 04                               SET_HOTSPOT_LEFT              target=0x04D7
-0038  02 0E 4C                               PLAYSONG                      ref=0x4C0E (XMI[14]=?)
+0038  02 0E 4C                               PLAYSONG                      ref=0x4C0E (XMI[14]=gu17.xmi)
 003B  28 00 00                               RESERVED_28                   value=0x0000
 003E  22                                     COPY_BG_TO_FG                 
 003F  96 19 79 79 79 63 62 79 79 79 79 79 79 79 79 72 72 70 70 70 6D 6C 6C 6C 68 67 74 74 74 73 73 73 73 73 F2 LOADSTRING                    dst=v[0x019], values=[73, 73, 73, 51, 50, 73, 73, 73, 73, 73, 73, 73, 73, 66, 66, 64, 64, 64, 61, 60, 60, 60, 56, 55, 68, 68, 68, 67, 67, 67, 67, 67, 66]
 0062  9A 19 79 68 73 79 6C 79 6C 73 79 73 70 79 67 74 73 79 72 74 79 6C 79 72 70 73 74 70 79 72 63 79 6D 79 E2 93 00 STRCMP_NE_JMP                 start=v[0x019], values=[73, 56, 67, 73, 60, 73, 60, 67, 73, 67, 64, 73, 55, 68, 67, 73, 66, 68, 73, 60, 73, 66, 64, 67, 68, 64, 73, 66, 51, 73, 61, 73, 50], target=0x0093
 0087  46                                     RESOURCE_CONTEXT_SAVE         
 0088  07                                     VIDEOFLAG7_ON                 
-0089  09 93 50                               VIDEOREF                      ref=0x5093 (GAMWAV[147]=?)
+0089  09 93 50                               VIDEOREF                      ref=0x5093 (GAMWAV[147]=gen_e_13.vdx)
 008C  47                                     RESOURCE_CONTEXT_RESTORE      
 008D  96 F9 E1                               LOADSTRING                    dst=v[0x0F9], values=[49]
 0090  15 D7 04                               JMP                           target=0x04D7
@@ -36,7 +36,7 @@
 00A1  16 07 01 B2                            LOADSTRING                    dst=v[0x107], values=[2]
 00A5  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 00A9  07                                     VIDEOFLAG7_ON                 
-00AA  09 19 50                               VIDEOREF                      ref=0x5019 (GAMWAV[25]=?)
+00AA  09 19 50                               VIDEOREF                      ref=0x5019 (GAMWAV[25]=5_s_2.vdx)
 00AD  47                                     RESOURCE_CONTEXT_RESTORE      
 00AE  36 03 01 E6 C8 00                      CHAR_LESS_JMP                 start=v[0x103], values=[54], target=0x00C8
 00B4  1A 07 01 B0 C8 00                      STRCMP_NE_JMP                 start=v[0x107], values=[0], target=0x00C8
@@ -44,7 +44,7 @@
 00BB  16 07 01 B1                            LOADSTRING                    dst=v[0x107], values=[1]
 00BF  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 00C3  07                                     VIDEOFLAG7_ON                 
-00C4  09 16 50                               VIDEOREF                      ref=0x5016 (GAMWAV[22]=?)
+00C4  09 16 50                               VIDEOREF                      ref=0x5016 (GAMWAV[22]=5_e_3.vdx)
 00C7  47                                     RESOURCE_CONTEXT_RESTORE      
 00C8  0B                                     INPUTLOOPSTART                
 00C9  0D 50 01 58 00 6E 01 85 00 71 05 09    HOTSPOT_RECT                  left=0x0150, top=0x0058, right=0x016E, bottom=0x0085, target=0x0571, cursor=0x09
@@ -151,19 +151,19 @@
 04C3  A3 02 7C 33 B2 D6 04                   STRCMP_EQ_JMP                 start=v[0x002], values=[grid[3,2]], target=0x04D6
 04CA  0D 61 00 22 01 87 00 58 01 38 07 0A    HOTSPOT_RECT                  left=0x0061, top=0x0122, right=0x0087, bottom=0x0158, target=0x0738, cursor=0x0A
 04D6  13                                     INPUTLOOPEND                  
-04D7  1C 19 2C                               VIDEO_TRANSITION_REF          ref=0x2C19 (K[25]=?)
+04D7  1C 19 2C                               VIDEO_TRANSITION_REF          ref=0x2C19 (K[25]=shelf.vdx)
 04DA  18 3F 07                               CALL                          target=0x073F
 04DD  43 00                                  RETURNSCRIPT                  value=0x00
 04DF  43 01                                  RETURNSCRIPT                  value=0x01
 04E1  07                                     VIDEOFLAG7_ON                 
 04E2  46                                     RESOURCE_CONTEXT_SAVE         
-04E3  09 8B 50                               VIDEOREF                      ref=0x508B (GAMWAV[139]=?)
+04E3  09 8B 50                               VIDEOREF                      ref=0x508B (GAMWAV[139]=gen_e_5.vdx)
 04E6  47                                     RESOURCE_CONTEXT_RESTORE      
-04E7  1C 19 2C                               VIDEO_TRANSITION_REF          ref=0x2C19 (K[25]=?)
+04E7  1C 19 2C                               VIDEO_TRANSITION_REF          ref=0x2C19 (K[25]=shelf.vdx)
 04EA  18 3F 07                               CALL                          target=0x073F
 04ED  28 00 00                               RESERVED_28                   value=0x0000
 04F0  05                                     FIRSTFRAME_NEXT_VIDEO         
-04F1  09 19 2C                               VIDEOREF                      ref=0x2C19 (K[25]=?)
+04F1  09 19 2C                               VIDEOREF                      ref=0x2C19 (K[25]=shelf.vdx)
 04F4  15 3F 00                               JMP                           target=0x003F
 04F7  27 7A 23 61 23 62 00                   VIDEO_TRANSITION_NAME         name="z{v000}{v001}"
 04FE  26 7C 23 61 23 62 23 61 23 62 66 00    VIDEO_NAME                    name="{grid:v[0x001],v[0x000]}{v000}{v001}f"
@@ -315,7 +315,7 @@
 073F  0A                                     VIDEOFLAG5_ON                 
 0740  07                                     VIDEOFLAG7_ON                 
 0741  46                                     RESOURCE_CONTEXT_SAVE         
-0742  09 01 24                               VIDEOREF                      ref=0x2401 (INTRO[1]=?)
+0742  09 01 24                               VIDEOREF                      ref=0x2401 (INTRO[1]=fade.vdx)
 0745  37 00 00 50 00 7F 02 8F 01             COPY_RECT_TO_BG               left=0x0000, top=0x0050, right=0x027F, bottom=0x018F
 074E  47                                     RESOURCE_CONTEXT_RESTORE      
 074F  17 00                                  RET                           value=0x00

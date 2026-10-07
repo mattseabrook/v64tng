@@ -12,17 +12,17 @@
 001D  96 EE B5                               LOADSTRING                    dst=v[0x0EE], values=[5]
 0020  07                                     VIDEOFLAG7_ON                 
 0021  0A                                     VIDEOFLAG5_ON                 
-0022  09 9B 50                               VIDEOREF                      ref=0x509B (GAMWAV[155]=?)
+0022  09 9B 50                               VIDEOREF                      ref=0x509B (GAMWAV[155]=gen_s_4.vdx)
 0025  9A EE B2 32 00                         STRCMP_NE_JMP                 start=v[0x0EE], values=[2], target=0x0032
 002A  96 EE B3                               LOADSTRING                    dst=v[0x0EE], values=[3]
 002D  07                                     VIDEOFLAG7_ON                 
 002E  0A                                     VIDEOFLAG5_ON                 
-002F  09 AA 50                               VIDEOREF                      ref=0x50AA (GAMWAV[170]=?)
+002F  09 AA 50                               VIDEOREF                      ref=0x50AA (GAMWAV[170]=gen_s_19.vdx)
 0032  9A EE B0 3F 00                         STRCMP_NE_JMP                 start=v[0x0EE], values=[0], target=0x003F
 0037  96 EE B1                               LOADSTRING                    dst=v[0x0EE], values=[1]
 003A  07                                     VIDEOFLAG7_ON                 
 003B  0A                                     VIDEOFLAG5_ON                 
-003C  09 31 50                               VIDEOREF                      ref=0x5031 (GAMWAV[49]=?)
+003C  09 31 50                               VIDEOREF                      ref=0x5031 (GAMWAV[49]=8_s_5.vdx)
 003F  47                                     RESOURCE_CONTEXT_RESTORE      
 0040  28 06 0C                               RESERVED_28                   value=0x0C06
 0043  96 00 31 32 33 34 35 36 37 38 B9       LOADSTRING                    dst=v[0x000], values=[1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -54,16 +54,16 @@
 00FB  0D 28 01 65 01 59 01 90 01 6B 01 09    HOTSPOT_RECT                  left=0x0128, top=0x0165, right=0x0159, bottom=0x0190, target=0x016B, cursor=0x09
 0107  0D CB 01 66 01 FD 01 90 01 71 01 0A    HOTSPOT_RECT                  left=0x01CB, top=0x0166, right=0x01FD, bottom=0x0190, target=0x0171, cursor=0x0A
 0113  13                                     INPUTLOOPEND                  
-0114  1C 03 0C                               VIDEO_TRANSITION_REF          ref=0x0C03 (D[3]=?)
+0114  1C 03 0C                               VIDEO_TRANSITION_REF          ref=0x0C03 (D[3]=d1_3b.vdx)
 0117  18 22 08                               CALL                          target=0x0822
 011A  07                                     VIDEOFLAG7_ON                 
-011B  09 A6 50                               VIDEOREF                      ref=0x50A6 (GAMWAV[166]=?)
+011B  09 A6 50                               VIDEOREF                      ref=0x50A6 (GAMWAV[166]=gen_s_15.vdx)
 011E  96 EE E1                               LOADSTRING                    dst=v[0x0EE], values=[49]
 0121  43 00                                  RETURNSCRIPT                  value=0x00
-0123  1C 03 0C                               VIDEO_TRANSITION_REF          ref=0x0C03 (D[3]=?)
+0123  1C 03 0C                               VIDEO_TRANSITION_REF          ref=0x0C03 (D[3]=d1_3b.vdx)
 0126  18 22 08                               CALL                          target=0x0822
 0129  07                                     VIDEOFLAG7_ON                 
-012A  09 A1 50                               VIDEOREF                      ref=0x50A1 (GAMWAV[161]=?)
+012A  09 A1 50                               VIDEOREF                      ref=0x50A1 (GAMWAV[161]=gen_s_10.vdx)
 012D  43 00                                  RETURNSCRIPT                  value=0x00
 012F  18 77 01                               CALL                          target=0x0177
 0132  15 72 00                               JMP                           target=0x0072
@@ -89,8 +89,8 @@
 016E  15 72 00                               JMP                           target=0x0072
 0171  18 A6 04                               CALL                          target=0x04A6
 0174  15 72 00                               JMP                           target=0x0072
-0177  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-017A  9C 14 0C                               VIDEO_TRANSITION_REF          ref=0x0C14 (D[20]=?)
+0177  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+017A  9C 14 0C                               VIDEO_TRANSITION_REF          ref=0x0C14 (D[20]=d_mask0.vdx)
 017D  26 70 5F 68 23 61 61 66 00             VIDEO_NAME                    name="p_h{v000}af"
 0186  9A 4A B0 90 01                         STRCMP_NE_JMP                 start=v[0x04A], values=[0], target=0x0190
 018B  9F 00                                  INC                           var=v[0x000]
@@ -103,8 +103,8 @@
 01A2  96 00 B1                               LOADSTRING                    dst=v[0x000], values=[1]
 01A5  07                                     VIDEOFLAG7_ON                 
 01A6  26 70 5F 68 23 61 61 62 00             VIDEO_NAME                    name="p_h{v000}ab"
-01AF  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-01B2  9C 17 0C                               VIDEO_TRANSITION_REF          ref=0x0C17 (D[23]=?)
+01AF  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+01B2  9C 17 0C                               VIDEO_TRANSITION_REF          ref=0x0C17 (D[23]=d_mask3.vdx)
 01B5  27 70 5F 76 23 61 61 66 00             VIDEO_TRANSITION_NAME         name="p_v{v000}af"
 01BE  26 70 5F 68 23 64 64 66 00             VIDEO_NAME                    name="p_h{v003}df"
 01C7  9A 4A B0 D1 01                         STRCMP_NE_JMP                 start=v[0x04A], values=[0], target=0x01D1
@@ -118,8 +118,8 @@
 01E3  96 03 B1                               LOADSTRING                    dst=v[0x003], values=[1]
 01E6  07                                     VIDEOFLAG7_ON                 
 01E7  26 70 5F 68 23 64 64 62 00             VIDEO_NAME                    name="p_h{v003}db"
-01F0  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-01F3  9C 1A 0C                               VIDEO_TRANSITION_REF          ref=0x0C1A (D[26]=?)
+01F0  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+01F3  9C 1A 0C                               VIDEO_TRANSITION_REF          ref=0x0C1A (D[26]=d_mask6.vdx)
 01F6  27 70 5F 76 23 64 64 66 00             VIDEO_TRANSITION_NAME         name="p_v{v003}df"
 01FF  26 70 5F 68 23 67 67 66 00             VIDEO_NAME                    name="p_h{v006}gf"
 0208  9A 4A B0 12 02                         STRCMP_NE_JMP                 start=v[0x04A], values=[0], target=0x0212
@@ -134,8 +134,8 @@
 0227  07                                     VIDEOFLAG7_ON                 
 0228  26 70 5F 68 23 67 67 62 00             VIDEO_NAME                    name="p_h{v006}gb"
 0231  17 00                                  RET                           value=0x00
-0233  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-0236  9C 1A 0C                               VIDEO_TRANSITION_REF          ref=0x0C1A (D[26]=?)
+0233  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+0236  9C 1A 0C                               VIDEO_TRANSITION_REF          ref=0x0C1A (D[26]=d_mask6.vdx)
 0239  27 70 5F 76 23 64 64 66 00             VIDEO_TRANSITION_NAME         name="p_v{v003}df"
 0242  26 70 5F 68 23 67 67 66 00             VIDEO_NAME                    name="p_h{v006}gf"
 024B  A0 06                                  DEC                           var=v[0x006]
@@ -143,8 +143,8 @@
 0252  96 06 B9                               LOADSTRING                    dst=v[0x006], values=[9]
 0255  07                                     VIDEOFLAG7_ON                 
 0256  26 70 5F 68 23 67 67 62 00             VIDEO_NAME                    name="p_h{v006}gb"
-025F  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-0262  9C 17 0C                               VIDEO_TRANSITION_REF          ref=0x0C17 (D[23]=?)
+025F  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+0262  9C 17 0C                               VIDEO_TRANSITION_REF          ref=0x0C17 (D[23]=d_mask3.vdx)
 0265  27 70 5F 76 23 61 61 66 00             VIDEO_TRANSITION_NAME         name="p_v{v000}af"
 026E  26 70 5F 68 23 64 64 66 00             VIDEO_NAME                    name="p_h{v003}df"
 0277  A0 03                                  DEC                           var=v[0x003]
@@ -152,8 +152,8 @@
 027E  96 03 B9                               LOADSTRING                    dst=v[0x003], values=[9]
 0281  07                                     VIDEOFLAG7_ON                 
 0282  26 70 5F 68 23 64 64 62 00             VIDEO_NAME                    name="p_h{v003}db"
-028B  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-028E  9C 14 0C                               VIDEO_TRANSITION_REF          ref=0x0C14 (D[20]=?)
+028B  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+028E  9C 14 0C                               VIDEO_TRANSITION_REF          ref=0x0C14 (D[20]=d_mask0.vdx)
 0291  26 70 5F 68 23 61 61 66 00             VIDEO_NAME                    name="p_h{v000}af"
 029A  A0 00                                  DEC                           var=v[0x000]
 029C  9A 00 B0 A4 02                         STRCMP_NE_JMP                 start=v[0x000], values=[0], target=0x02A4
@@ -161,8 +161,8 @@
 02A4  07                                     VIDEOFLAG7_ON                 
 02A5  26 70 5F 68 23 61 61 62 00             VIDEO_NAME                    name="p_h{v000}ab"
 02AE  17 00                                  RET                           value=0x00
-02B0  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-02B3  9C 15 0C                               VIDEO_TRANSITION_REF          ref=0x0C15 (D[21]=?)
+02B0  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+02B3  9C 15 0C                               VIDEO_TRANSITION_REF          ref=0x0C15 (D[21]=d_mask1.vdx)
 02B6  26 70 5F 68 23 62 62 66 00             VIDEO_NAME                    name="p_h{v001}bf"
 02BF  9A 4A B0 C9 02                         STRCMP_NE_JMP                 start=v[0x04A], values=[0], target=0x02C9
 02C4  9F 01                                  INC                           var=v[0x001]
@@ -175,8 +175,8 @@
 02DB  96 01 B1                               LOADSTRING                    dst=v[0x001], values=[1]
 02DE  07                                     VIDEOFLAG7_ON                 
 02DF  26 70 5F 68 23 62 62 62 00             VIDEO_NAME                    name="p_h{v001}bb"
-02E8  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-02EB  9C 18 0C                               VIDEO_TRANSITION_REF          ref=0x0C18 (D[24]=?)
+02E8  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+02EB  9C 18 0C                               VIDEO_TRANSITION_REF          ref=0x0C18 (D[24]=d_mask4.vdx)
 02EE  27 70 5F 76 23 62 62 66 00             VIDEO_TRANSITION_NAME         name="p_v{v001}bf"
 02F7  26 70 5F 68 23 65 65 66 00             VIDEO_NAME                    name="p_h{v004}ef"
 0300  9A 4A B0 0A 03                         STRCMP_NE_JMP                 start=v[0x04A], values=[0], target=0x030A
@@ -190,8 +190,8 @@
 031C  96 04 B1                               LOADSTRING                    dst=v[0x004], values=[1]
 031F  07                                     VIDEOFLAG7_ON                 
 0320  26 70 5F 68 23 65 65 62 00             VIDEO_NAME                    name="p_h{v004}eb"
-0329  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-032C  9C 1B 0C                               VIDEO_TRANSITION_REF          ref=0x0C1B (D[27]=?)
+0329  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+032C  9C 1B 0C                               VIDEO_TRANSITION_REF          ref=0x0C1B (D[27]=d_mask7.vdx)
 032F  27 70 5F 76 23 65 65 66 00             VIDEO_TRANSITION_NAME         name="p_v{v004}ef"
 0338  07                                     VIDEOFLAG7_ON                 
 0339  26 70 5F 68 23 68 68 66 00             VIDEO_NAME                    name="p_h{v007}hf"
@@ -207,8 +207,8 @@
 0361  07                                     VIDEOFLAG7_ON                 
 0362  26 70 5F 68 23 68 68 62 00             VIDEO_NAME                    name="p_h{v007}hb"
 036B  17 00                                  RET                           value=0x00
-036D  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-0370  9C 1B 0C                               VIDEO_TRANSITION_REF          ref=0x0C1B (D[27]=?)
+036D  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+0370  9C 1B 0C                               VIDEO_TRANSITION_REF          ref=0x0C1B (D[27]=d_mask7.vdx)
 0373  27 70 5F 76 23 65 65 66 00             VIDEO_TRANSITION_NAME         name="p_v{v004}ef"
 037C  26 70 5F 68 23 68 68 66 00             VIDEO_NAME                    name="p_h{v007}hf"
 0385  A0 07                                  DEC                           var=v[0x007]
@@ -216,8 +216,8 @@
 038C  96 07 B9                               LOADSTRING                    dst=v[0x007], values=[9]
 038F  07                                     VIDEOFLAG7_ON                 
 0390  26 70 5F 68 23 68 68 62 00             VIDEO_NAME                    name="p_h{v007}hb"
-0399  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-039C  9C 18 0C                               VIDEO_TRANSITION_REF          ref=0x0C18 (D[24]=?)
+0399  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+039C  9C 18 0C                               VIDEO_TRANSITION_REF          ref=0x0C18 (D[24]=d_mask4.vdx)
 039F  27 70 5F 76 23 62 62 66 00             VIDEO_TRANSITION_NAME         name="p_v{v001}bf"
 03A8  26 70 5F 68 23 65 65 66 00             VIDEO_NAME                    name="p_h{v004}ef"
 03B1  A0 04                                  DEC                           var=v[0x004]
@@ -225,8 +225,8 @@
 03B8  96 04 B9                               LOADSTRING                    dst=v[0x004], values=[9]
 03BB  07                                     VIDEOFLAG7_ON                 
 03BC  26 70 5F 68 23 65 65 62 00             VIDEO_NAME                    name="p_h{v004}eb"
-03C5  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-03C8  9C 15 0C                               VIDEO_TRANSITION_REF          ref=0x0C15 (D[21]=?)
+03C5  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+03C8  9C 15 0C                               VIDEO_TRANSITION_REF          ref=0x0C15 (D[21]=d_mask1.vdx)
 03CB  26 70 5F 68 23 62 62 66 00             VIDEO_NAME                    name="p_h{v001}bf"
 03D4  A0 01                                  DEC                           var=v[0x001]
 03D6  9A 01 B0 DE 03                         STRCMP_NE_JMP                 start=v[0x001], values=[0], target=0x03DE
@@ -234,8 +234,8 @@
 03DE  07                                     VIDEOFLAG7_ON                 
 03DF  26 70 5F 68 23 62 62 62 00             VIDEO_NAME                    name="p_h{v001}bb"
 03E8  17 00                                  RET                           value=0x00
-03EA  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-03ED  9C 16 0C                               VIDEO_TRANSITION_REF          ref=0x0C16 (D[22]=?)
+03EA  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+03ED  9C 16 0C                               VIDEO_TRANSITION_REF          ref=0x0C16 (D[22]=d_mask2.vdx)
 03F0  26 70 5F 68 23 63 63 66 00             VIDEO_NAME                    name="p_h{v002}cf"
 03F9  9A 4A B0 03 04                         STRCMP_NE_JMP                 start=v[0x04A], values=[0], target=0x0403
 03FE  9F 02                                  INC                           var=v[0x002]
@@ -248,8 +248,8 @@
 0415  96 02 B1                               LOADSTRING                    dst=v[0x002], values=[1]
 0418  07                                     VIDEOFLAG7_ON                 
 0419  26 70 5F 68 23 63 63 62 00             VIDEO_NAME                    name="p_h{v002}cb"
-0422  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-0425  9C 19 0C                               VIDEO_TRANSITION_REF          ref=0x0C19 (D[25]=?)
+0422  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+0425  9C 19 0C                               VIDEO_TRANSITION_REF          ref=0x0C19 (D[25]=d_mask5.vdx)
 0428  27 70 5F 76 23 63 63 66 00             VIDEO_TRANSITION_NAME         name="p_v{v002}cf"
 0431  26 70 5F 68 23 66 66 66 00             VIDEO_NAME                    name="p_h{v005}ff"
 043A  9A 4A B0 44 04                         STRCMP_NE_JMP                 start=v[0x04A], values=[0], target=0x0444
@@ -263,8 +263,8 @@
 0456  96 05 B1                               LOADSTRING                    dst=v[0x005], values=[1]
 0459  07                                     VIDEOFLAG7_ON                 
 045A  26 70 5F 68 23 66 66 62 00             VIDEO_NAME                    name="p_h{v005}fb"
-0463  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-0466  9C 1C 0C                               VIDEO_TRANSITION_REF          ref=0x0C1C (D[28]=?)
+0463  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+0466  9C 1C 0C                               VIDEO_TRANSITION_REF          ref=0x0C1C (D[28]=d_mask8.vdx)
 0469  27 70 5F 76 23 66 66 66 00             VIDEO_TRANSITION_NAME         name="p_v{v005}ff"
 0472  26 70 5F 68 23 69 69 66 00             VIDEO_NAME                    name="p_h{v008}if"
 047B  9A 4A B0 85 04                         STRCMP_NE_JMP                 start=v[0x04A], values=[0], target=0x0485
@@ -279,8 +279,8 @@
 049A  07                                     VIDEOFLAG7_ON                 
 049B  26 70 5F 68 23 69 69 62 00             VIDEO_NAME                    name="p_h{v008}ib"
 04A4  17 00                                  RET                           value=0x00
-04A6  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-04A9  9C 1C 0C                               VIDEO_TRANSITION_REF          ref=0x0C1C (D[28]=?)
+04A6  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+04A9  9C 1C 0C                               VIDEO_TRANSITION_REF          ref=0x0C1C (D[28]=d_mask8.vdx)
 04AC  27 70 5F 76 23 66 66 66 00             VIDEO_TRANSITION_NAME         name="p_v{v005}ff"
 04B5  26 70 5F 68 23 69 69 66 00             VIDEO_NAME                    name="p_h{v008}if"
 04BE  A0 08                                  DEC                           var=v[0x008]
@@ -288,8 +288,8 @@
 04C5  96 08 B9                               LOADSTRING                    dst=v[0x008], values=[9]
 04C8  07                                     VIDEOFLAG7_ON                 
 04C9  26 70 5F 68 23 69 69 62 00             VIDEO_NAME                    name="p_h{v008}ib"
-04D2  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-04D5  9C 19 0C                               VIDEO_TRANSITION_REF          ref=0x0C19 (D[25]=?)
+04D2  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+04D5  9C 19 0C                               VIDEO_TRANSITION_REF          ref=0x0C19 (D[25]=d_mask5.vdx)
 04D8  27 70 5F 76 23 63 63 66 00             VIDEO_TRANSITION_NAME         name="p_v{v002}cf"
 04E1  26 70 5F 68 23 66 66 66 00             VIDEO_NAME                    name="p_h{v005}ff"
 04EA  A0 05                                  DEC                           var=v[0x005]
@@ -297,8 +297,8 @@
 04F1  96 05 B9                               LOADSTRING                    dst=v[0x005], values=[9]
 04F4  07                                     VIDEOFLAG7_ON                 
 04F5  26 70 5F 68 23 66 66 62 00             VIDEO_NAME                    name="p_h{v005}fb"
-04FE  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-0501  9C 16 0C                               VIDEO_TRANSITION_REF          ref=0x0C16 (D[22]=?)
+04FE  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+0501  9C 16 0C                               VIDEO_TRANSITION_REF          ref=0x0C16 (D[22]=d_mask2.vdx)
 0504  26 70 5F 68 23 63 63 66 00             VIDEO_NAME                    name="p_h{v002}cf"
 050D  A0 02                                  DEC                           var=v[0x002]
 050F  9A 02 B0 17 05                         STRCMP_NE_JMP                 start=v[0x002], values=[0], target=0x0517
@@ -306,24 +306,24 @@
 0517  07                                     VIDEOFLAG7_ON                 
 0518  26 70 5F 68 23 63 63 62 00             VIDEO_NAME                    name="p_h{v002}cb"
 0521  17 00                                  RET                           value=0x00
-0523  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-0526  9C 14 0C                               VIDEO_TRANSITION_REF          ref=0x0C14 (D[20]=?)
+0523  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+0526  9C 14 0C                               VIDEO_TRANSITION_REF          ref=0x0C14 (D[20]=d_mask0.vdx)
 0529  26 70 5F 76 23 61 61 66 00             VIDEO_NAME                    name="p_v{v000}af"
 0532  9F 00                                  INC                           var=v[0x000]
 0534  9A 00 BA 3C 05                         STRCMP_NE_JMP                 start=v[0x000], values=[10], target=0x053C
 0539  96 00 B1                               LOADSTRING                    dst=v[0x000], values=[1]
 053C  07                                     VIDEOFLAG7_ON                 
 053D  26 70 5F 76 23 61 61 62 00             VIDEO_NAME                    name="p_v{v000}ab"
-0546  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-0549  9C 15 0C                               VIDEO_TRANSITION_REF          ref=0x0C15 (D[21]=?)
+0546  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+0549  9C 15 0C                               VIDEO_TRANSITION_REF          ref=0x0C15 (D[21]=d_mask1.vdx)
 054C  26 70 5F 76 23 62 62 66 00             VIDEO_NAME                    name="p_v{v001}bf"
 0555  9F 01                                  INC                           var=v[0x001]
 0557  9A 01 BA 5F 05                         STRCMP_NE_JMP                 start=v[0x001], values=[10], target=0x055F
 055C  96 01 B1                               LOADSTRING                    dst=v[0x001], values=[1]
 055F  07                                     VIDEOFLAG7_ON                 
 0560  26 70 5F 76 23 62 62 62 00             VIDEO_NAME                    name="p_v{v001}bb"
-0569  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-056C  9C 16 0C                               VIDEO_TRANSITION_REF          ref=0x0C16 (D[22]=?)
+0569  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+056C  9C 16 0C                               VIDEO_TRANSITION_REF          ref=0x0C16 (D[22]=d_mask2.vdx)
 056F  26 70 5F 76 23 63 63 66 00             VIDEO_NAME                    name="p_v{v002}cf"
 0578  9F 02                                  INC                           var=v[0x002]
 057A  9A 02 BA 82 05                         STRCMP_NE_JMP                 start=v[0x002], values=[10], target=0x0582
@@ -331,24 +331,24 @@
 0582  07                                     VIDEOFLAG7_ON                 
 0583  26 70 5F 76 23 63 63 62 00             VIDEO_NAME                    name="p_v{v002}cb"
 058C  17 00                                  RET                           value=0x00
-058E  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-0591  9C 16 0C                               VIDEO_TRANSITION_REF          ref=0x0C16 (D[22]=?)
+058E  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+0591  9C 16 0C                               VIDEO_TRANSITION_REF          ref=0x0C16 (D[22]=d_mask2.vdx)
 0594  26 70 5F 76 23 63 63 66 00             VIDEO_NAME                    name="p_v{v002}cf"
 059D  A0 02                                  DEC                           var=v[0x002]
 059F  9A 02 B0 A7 05                         STRCMP_NE_JMP                 start=v[0x002], values=[0], target=0x05A7
 05A4  96 02 B9                               LOADSTRING                    dst=v[0x002], values=[9]
 05A7  07                                     VIDEOFLAG7_ON                 
 05A8  26 70 5F 76 23 63 63 62 00             VIDEO_NAME                    name="p_v{v002}cb"
-05B1  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-05B4  9C 15 0C                               VIDEO_TRANSITION_REF          ref=0x0C15 (D[21]=?)
+05B1  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+05B4  9C 15 0C                               VIDEO_TRANSITION_REF          ref=0x0C15 (D[21]=d_mask1.vdx)
 05B7  26 70 5F 76 23 62 62 66 00             VIDEO_NAME                    name="p_v{v001}bf"
 05C0  A0 01                                  DEC                           var=v[0x001]
 05C2  9A 01 B0 CA 05                         STRCMP_NE_JMP                 start=v[0x001], values=[0], target=0x05CA
 05C7  96 01 B9                               LOADSTRING                    dst=v[0x001], values=[9]
 05CA  07                                     VIDEOFLAG7_ON                 
 05CB  26 70 5F 76 23 62 62 62 00             VIDEO_NAME                    name="p_v{v001}bb"
-05D4  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-05D7  9C 14 0C                               VIDEO_TRANSITION_REF          ref=0x0C14 (D[20]=?)
+05D4  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+05D7  9C 14 0C                               VIDEO_TRANSITION_REF          ref=0x0C14 (D[20]=d_mask0.vdx)
 05DA  26 70 5F 76 23 61 61 66 00             VIDEO_NAME                    name="p_v{v000}af"
 05E3  A0 00                                  DEC                           var=v[0x000]
 05E5  9A 00 B0 ED 05                         STRCMP_NE_JMP                 start=v[0x000], values=[0], target=0x05ED
@@ -356,8 +356,8 @@
 05ED  07                                     VIDEOFLAG7_ON                 
 05EE  26 70 5F 76 23 61 61 62 00             VIDEO_NAME                    name="p_v{v000}ab"
 05F7  17 00                                  RET                           value=0x00
-05F9  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-05FC  9C 17 0C                               VIDEO_TRANSITION_REF          ref=0x0C17 (D[23]=?)
+05F9  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+05FC  9C 17 0C                               VIDEO_TRANSITION_REF          ref=0x0C17 (D[23]=d_mask3.vdx)
 05FF  27 70 5F 76 23 61 61 66 00             VIDEO_TRANSITION_NAME         name="p_v{v000}af"
 0608  26 70 5F 76 23 64 64 66 00             VIDEO_NAME                    name="p_v{v003}df"
 0611  9F 03                                  INC                           var=v[0x003]
@@ -365,8 +365,8 @@
 0618  96 03 B1                               LOADSTRING                    dst=v[0x003], values=[1]
 061B  07                                     VIDEOFLAG7_ON                 
 061C  26 70 5F 76 23 64 64 62 00             VIDEO_NAME                    name="p_v{v003}db"
-0625  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-0628  9C 18 0C                               VIDEO_TRANSITION_REF          ref=0x0C18 (D[24]=?)
+0625  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+0628  9C 18 0C                               VIDEO_TRANSITION_REF          ref=0x0C18 (D[24]=d_mask4.vdx)
 062B  27 70 5F 76 23 62 62 66 00             VIDEO_TRANSITION_NAME         name="p_v{v001}bf"
 0634  26 70 5F 76 23 65 65 66 00             VIDEO_NAME                    name="p_v{v004}ef"
 063D  9F 04                                  INC                           var=v[0x004]
@@ -374,8 +374,8 @@
 0644  96 04 B1                               LOADSTRING                    dst=v[0x004], values=[1]
 0647  07                                     VIDEOFLAG7_ON                 
 0648  26 70 5F 76 23 65 65 62 00             VIDEO_NAME                    name="p_v{v004}eb"
-0651  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-0654  9C 19 0C                               VIDEO_TRANSITION_REF          ref=0x0C19 (D[25]=?)
+0651  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+0654  9C 19 0C                               VIDEO_TRANSITION_REF          ref=0x0C19 (D[25]=d_mask5.vdx)
 0657  27 70 5F 76 23 63 63 66 00             VIDEO_TRANSITION_NAME         name="p_v{v002}cf"
 0660  26 70 5F 76 23 66 66 66 00             VIDEO_NAME                    name="p_v{v005}ff"
 0669  9F 05                                  INC                           var=v[0x005]
@@ -384,8 +384,8 @@
 0673  07                                     VIDEOFLAG7_ON                 
 0674  26 70 5F 76 23 66 66 62 00             VIDEO_NAME                    name="p_v{v005}fb"
 067D  17 00                                  RET                           value=0x00
-067F  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-0682  9C 19 0C                               VIDEO_TRANSITION_REF          ref=0x0C19 (D[25]=?)
+067F  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+0682  9C 19 0C                               VIDEO_TRANSITION_REF          ref=0x0C19 (D[25]=d_mask5.vdx)
 0685  27 70 5F 76 23 63 63 66 00             VIDEO_TRANSITION_NAME         name="p_v{v002}cf"
 068E  26 70 5F 76 23 66 66 66 00             VIDEO_NAME                    name="p_v{v005}ff"
 0697  A0 05                                  DEC                           var=v[0x005]
@@ -393,8 +393,8 @@
 069E  96 05 B9                               LOADSTRING                    dst=v[0x005], values=[9]
 06A1  07                                     VIDEOFLAG7_ON                 
 06A2  26 70 5F 76 23 66 66 62 00             VIDEO_NAME                    name="p_v{v005}fb"
-06AB  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-06AE  9C 18 0C                               VIDEO_TRANSITION_REF          ref=0x0C18 (D[24]=?)
+06AB  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+06AE  9C 18 0C                               VIDEO_TRANSITION_REF          ref=0x0C18 (D[24]=d_mask4.vdx)
 06B1  27 70 5F 76 23 62 62 66 00             VIDEO_TRANSITION_NAME         name="p_v{v001}bf"
 06BA  26 70 5F 76 23 65 65 66 00             VIDEO_NAME                    name="p_v{v004}ef"
 06C3  A0 04                                  DEC                           var=v[0x004]
@@ -402,8 +402,8 @@
 06CA  96 04 B9                               LOADSTRING                    dst=v[0x004], values=[9]
 06CD  07                                     VIDEOFLAG7_ON                 
 06CE  26 70 5F 76 23 65 65 62 00             VIDEO_NAME                    name="p_v{v004}eb"
-06D7  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-06DA  9C 17 0C                               VIDEO_TRANSITION_REF          ref=0x0C17 (D[23]=?)
+06D7  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+06DA  9C 17 0C                               VIDEO_TRANSITION_REF          ref=0x0C17 (D[23]=d_mask3.vdx)
 06DD  27 70 5F 76 23 61 61 66 00             VIDEO_TRANSITION_NAME         name="p_v{v000}af"
 06E6  26 70 5F 76 23 64 64 66 00             VIDEO_NAME                    name="p_v{v003}df"
 06EF  A0 03                                  DEC                           var=v[0x003]
@@ -412,8 +412,8 @@
 06F9  07                                     VIDEOFLAG7_ON                 
 06FA  26 70 5F 76 23 64 64 62 00             VIDEO_NAME                    name="p_v{v003}db"
 0703  17 00                                  RET                           value=0x00
-0705  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-0708  9C 1A 0C                               VIDEO_TRANSITION_REF          ref=0x0C1A (D[26]=?)
+0705  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+0708  9C 1A 0C                               VIDEO_TRANSITION_REF          ref=0x0C1A (D[26]=d_mask6.vdx)
 070B  27 70 5F 76 23 64 64 66 00             VIDEO_TRANSITION_NAME         name="p_v{v003}df"
 0714  26 70 5F 76 23 67 67 66 00             VIDEO_NAME                    name="p_v{v006}gf"
 071D  9F 06                                  INC                           var=v[0x006]
@@ -421,8 +421,8 @@
 0724  96 06 B1                               LOADSTRING                    dst=v[0x006], values=[1]
 0727  07                                     VIDEOFLAG7_ON                 
 0728  26 70 5F 76 23 67 67 62 00             VIDEO_NAME                    name="p_v{v006}gb"
-0731  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-0734  9C 1B 0C                               VIDEO_TRANSITION_REF          ref=0x0C1B (D[27]=?)
+0731  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+0734  9C 1B 0C                               VIDEO_TRANSITION_REF          ref=0x0C1B (D[27]=d_mask7.vdx)
 0737  27 70 5F 76 23 65 65 66 00             VIDEO_TRANSITION_NAME         name="p_v{v004}ef"
 0740  26 70 5F 76 23 68 68 66 00             VIDEO_NAME                    name="p_v{v007}hf"
 0749  9F 07                                  INC                           var=v[0x007]
@@ -430,8 +430,8 @@
 0750  96 07 B1                               LOADSTRING                    dst=v[0x007], values=[1]
 0753  07                                     VIDEOFLAG7_ON                 
 0754  26 70 5F 76 23 68 68 62 00             VIDEO_NAME                    name="p_v{v007}hb"
-075D  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-0760  9C 1C 0C                               VIDEO_TRANSITION_REF          ref=0x0C1C (D[28]=?)
+075D  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+0760  9C 1C 0C                               VIDEO_TRANSITION_REF          ref=0x0C1C (D[28]=d_mask8.vdx)
 0763  27 70 5F 76 23 66 66 66 00             VIDEO_TRANSITION_NAME         name="p_v{v005}ff"
 076C  26 70 5F 76 23 69 69 66 00             VIDEO_NAME                    name="p_v{v008}if"
 0775  9F 08                                  INC                           var=v[0x008]
@@ -440,8 +440,8 @@
 077F  07                                     VIDEOFLAG7_ON                 
 0780  26 70 5F 76 23 69 69 62 00             VIDEO_NAME                    name="p_v{v008}ib"
 0789  17 00                                  RET                           value=0x00
-078B  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-078E  9C 1C 0C                               VIDEO_TRANSITION_REF          ref=0x0C1C (D[28]=?)
+078B  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+078E  9C 1C 0C                               VIDEO_TRANSITION_REF          ref=0x0C1C (D[28]=d_mask8.vdx)
 0791  27 70 5F 76 23 66 66 66 00             VIDEO_TRANSITION_NAME         name="p_v{v005}ff"
 079A  26 70 5F 76 23 69 69 66 00             VIDEO_NAME                    name="p_v{v008}if"
 07A3  A0 08                                  DEC                           var=v[0x008]
@@ -449,8 +449,8 @@
 07AA  96 08 B9                               LOADSTRING                    dst=v[0x008], values=[9]
 07AD  07                                     VIDEOFLAG7_ON                 
 07AE  26 70 5F 76 23 69 69 62 00             VIDEO_NAME                    name="p_v{v008}ib"
-07B7  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-07BA  9C 1B 0C                               VIDEO_TRANSITION_REF          ref=0x0C1B (D[27]=?)
+07B7  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+07BA  9C 1B 0C                               VIDEO_TRANSITION_REF          ref=0x0C1B (D[27]=d_mask7.vdx)
 07BD  27 70 5F 76 23 65 65 66 00             VIDEO_TRANSITION_NAME         name="p_v{v004}ef"
 07C6  26 70 5F 76 23 68 68 66 00             VIDEO_NAME                    name="p_v{v007}hf"
 07CF  A0 07                                  DEC                           var=v[0x007]
@@ -458,8 +458,8 @@
 07D6  96 07 B9                               LOADSTRING                    dst=v[0x007], values=[9]
 07D9  07                                     VIDEOFLAG7_ON                 
 07DA  26 70 5F 76 23 68 68 62 00             VIDEO_NAME                    name="p_v{v007}hb"
-07E3  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=?)
-07E6  9C 1A 0C                               VIDEO_TRANSITION_REF          ref=0x0C1A (D[26]=?)
+07E3  1C 06 0C                               VIDEO_TRANSITION_REF          ref=0x0C06 (D[6]=dpuzback.vdx)
+07E6  9C 1A 0C                               VIDEO_TRANSITION_REF          ref=0x0C1A (D[26]=d_mask6.vdx)
 07E9  27 70 5F 76 23 64 64 66 00             VIDEO_TRANSITION_NAME         name="p_v{v003}df"
 07F2  26 70 5F 76 23 67 67 66 00             VIDEO_NAME                    name="p_v{v006}gf"
 07FB  A0 06                                  DEC                           var=v[0x006]
@@ -470,16 +470,16 @@
 080F  17 00                                  RET                           value=0x00
 0811  07                                     VIDEOFLAG7_ON                 
 0812  46                                     RESOURCE_CONTEXT_SAVE         
-0813  09 8B 50                               VIDEOREF                      ref=0x508B (GAMWAV[139]=?)
+0813  09 8B 50                               VIDEOREF                      ref=0x508B (GAMWAV[139]=gen_e_5.vdx)
 0816  47                                     RESOURCE_CONTEXT_RESTORE      
-0817  1C 03 0C                               VIDEO_TRANSITION_REF          ref=0x0C03 (D[3]=?)
+0817  1C 03 0C                               VIDEO_TRANSITION_REF          ref=0x0C03 (D[3]=d1_3b.vdx)
 081A  18 22 08                               CALL                          target=0x0822
 081D  15 00 00                               JMP                           target=0x0000
 0820  43 01                                  RETURNSCRIPT                  value=0x01
 0822  0A                                     VIDEOFLAG5_ON                 
 0823  07                                     VIDEOFLAG7_ON                 
 0824  46                                     RESOURCE_CONTEXT_SAVE         
-0825  09 01 24                               VIDEOREF                      ref=0x2401 (INTRO[1]=?)
+0825  09 01 24                               VIDEOREF                      ref=0x2401 (INTRO[1]=fade.vdx)
 0828  37 00 00 50 00 7F 02 8F 01             COPY_RECT_TO_BG               left=0x0000, top=0x0050, right=0x027F, bottom=0x018F
 0831  47                                     RESOURCE_CONTEXT_RESTORE      
 0832  17 00                                  RET                           value=0x00

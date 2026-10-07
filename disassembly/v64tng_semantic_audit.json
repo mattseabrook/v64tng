@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "scope": "Recovered role inventory compared with modern engine; platform replacement is not native ABI emulation. Unknown routines excluded.",
-  "validation": "Static review and compilation only; no runtime, emulator or unit tests.",
+  "validation": "Source/disassembly reading only for the 2026-10-07 integration follow-up; no tests, builds, verification commands or runtime checks run in this follow-up.",
   "mac_coverage": {
     "verified_original_jump_table_entries": 55,
     "denominator": 80,
     "unknown": 25,
     "percent": 68.75,
-    "verified_role_records": 204,
+    "verified_role_records": 205,
     "unverified_candidates": 21
   },
   "changes": [
@@ -44,6 +44,29 @@
       "files": [
         "src/grv_runtime.cpp"
       ]
+    },
+    {
+      "behavior": "Expose recovered DOS/Windows microscope policy through runtime load and grvMicroscopePolicy configuration, independently of save-file format",
+      "files": [
+        "include/grv_runtime.h",
+        "src/grv_runtime.cpp",
+        "src/game.cpp",
+        "include/config.h",
+        "config.json"
+      ]
+    },
+    {
+      "behavior": "Keep microscope selected-move state outside GRV variables; no-move searches restore stored coordinates",
+      "files": [
+        "include/grv_runtime.h",
+        "src/grv_runtime.cpp"
+      ]
+    },
+    {
+      "behavior": "Case-insensitive complete RL basename resolution, including extracted Mac lowercase names (preceding research pass)",
+      "files": [
+        "src/grv.cpp"
+      ]
     }
   ],
   "x86_roles": [
@@ -55,7 +78,7 @@
         "include/cell_puzzle.h",
         "src/cell_puzzle.cpp"
       ],
-      "note": "CellPuzzle::search"
+      "note": "CellPuzzle::search is called by opcode 42 with configured DOS/Windows policy. GrvRuntime retains selection outside variables and restores it on a no-move result."
     },
     {
       "origin": "v32tng:00406809",
@@ -65,7 +88,7 @@
         "include/cell_puzzle.h",
         "src/cell_puzzle.cpp"
       ],
-      "note": "CellPuzzle::search"
+      "note": "CellPuzzle::search is called by opcode 42 with configured DOS/Windows policy. GrvRuntime retains selection outside variables and restores it on a no-move result."
     },
     {
       "origin": "V:05F22",
@@ -499,12 +522,12 @@
     {
       "origin": "v32tng:00404EF6",
       "name": "cell_request_search_abort",
-      "status": "implemented-recovered-behavior",
+      "status": "partial-integration",
       "implementation": [
         "include/cell_puzzle.h",
         "src/cell_puzzle.cpp"
       ],
-      "note": "CellPuzzle::requestSearchAbort"
+      "note": "CellPuzzle has abort flag checks and requestSearchAbort, but synchronous GRV execution has no host event/cancellation caller; native abort interaction is not integrated."
     },
     {
       "origin": "v32tng:00405B6F",
@@ -2521,7 +2544,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:040A",
@@ -2531,7 +2554,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:0478",
@@ -2541,7 +2564,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:04A2",
@@ -2551,7 +2574,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:04B0",
@@ -2561,7 +2584,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:05BE",
@@ -2571,7 +2594,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:06F2",
@@ -2581,7 +2604,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:07E4",
@@ -2591,7 +2614,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:085A",
@@ -2601,7 +2624,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:095E",
@@ -2611,7 +2634,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:09E0",
@@ -2621,7 +2644,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:09FA",
@@ -2631,7 +2654,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:0A1C",
@@ -2641,7 +2664,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:0B3C",
@@ -2651,7 +2674,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:0F2E",
@@ -2661,7 +2684,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:11B2",
@@ -2671,7 +2694,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:11C6",
@@ -2681,7 +2704,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:1250",
@@ -2691,7 +2714,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:14AE",
@@ -2701,7 +2724,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:15A4",
@@ -2711,7 +2734,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:15FC",
@@ -2721,7 +2744,7 @@
       "implementation": [
         "src/cell_puzzle.cpp"
       ],
-      "note": "Shared board/search behavior recovered alongside DOS/Windows; Mac-specific Random trap and strategy initialization are excluded."
+      "note": "Algorithm comparison anchor only. Runtime offers DOS/Windows policies; Mac strategy initialization and Random-trap behavior are not implemented as a Mac policy."
     },
     {
       "origin": "T7GMac:CODE5:19DA",
@@ -2924,7 +2947,7 @@
       "implementation": [
         "src/grv_runtime.cpp"
       ],
-      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+      "note": "Native Mac T7SG IDs 1000+slot hold 0x400-byte resource payloads; modern persistence supports DOS/Windows files, not application resource-fork saves."
     },
     {
       "origin": "T7GMac:CODE5:3E1A",
@@ -2934,7 +2957,7 @@
       "implementation": [
         "src/grv_runtime.cpp"
       ],
-      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+      "note": "Native Mac T7SG IDs 1000+slot hold 0x400-byte resource payloads; modern persistence supports DOS/Windows files, not application resource-fork saves."
     },
     {
       "origin": "T7GMac:CODE5:3E72",
@@ -2944,7 +2967,7 @@
       "implementation": [
         "src/grv_runtime.cpp"
       ],
-      "note": "Modern subsystem comparison anchor; not a claim of complete Mac interpreter, save-format or audio-routing compatibility."
+      "note": "Native Mac T7SG IDs 1000+slot hold 0x400-byte resource payloads; modern persistence supports DOS/Windows files, not application resource-fork saves."
     },
     {
       "origin": "T7GMac:CODE5:3F08",
@@ -3309,6 +3332,14 @@
       "status": "unverified-excluded",
       "implementation": [],
       "note": "Ambiguous symbol/body association; no implementation inferred."
+    },
+    {
+      "origin": "T7GMac:CODE5:22CA",
+      "name": "ensure_8bit_display",
+      "native_status": "verified-role",
+      "status": "reference-only-platform-or-library",
+      "implementation": [],
+      "note": "Recovered MaxDevice/HasDepth/SetDepth and Alert128/129 path; host renderer replaces indexed QuickDraw device selection."
     }
   ],
   "remaining_limits": [
@@ -3316,6 +3347,12 @@
     "Mac strategy initialization, full music routing and uncertain function boundaries remain unrecovered.",
     "Host startup seeding differs from DOS; no historical-session random sequence claim.",
     "No native Mac resource-fork playback or Mac save-format compatibility added.",
-    "Unknown opcode and function behaviors remain explicit rather than guessed."
-  ]
+    "Unknown opcode and function behaviors remain explicit rather than guessed.",
+    "Microscope abort flag behavior exists in CellPuzzle but is not connected to synchronous host input/event handling.",
+    "Windows microscope policy does not claim the complete Windows GRV/media dialect; save-file convention remains independent.",
+    "CD-i loader roles are reference-only: OS-9 CSD selection and process chaining are not engine gameplay routines; CD-i disc media/scripts are unavailable.",
+    "DOS arbitrary board-byte pass-through is safely normalized for blockers; native out-of-range counter accesses are not reproduced."
+  ],
+  "integration_followup_date": "2026-10-07",
+  "integration_report": "docs/ENGINE_SEMANTIC_INTEGRATION.md"
 }

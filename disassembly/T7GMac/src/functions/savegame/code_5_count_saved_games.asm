@@ -1,4 +1,4 @@
-; verified-role: Native CountSavedGames routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.
+; verified-role: Scan T7SG resource IDs 1000..1009, set ten availability bytes in the state pointed to by A5:F7A0, copy the first 14 bytes of existing saves to 15-byte menu records beginning A5:F7E4, release their handles and return the count. Missing slots receive an encoded empty-name marker.
 ; Original native symbol: CountSavedGames; evidence file offset 0xb65c.
 ; Exact bytes retained; instruction decoding remains provisional where inline data may occur.
 mac_code_5_count_saved_games:

@@ -1,5 +1,8 @@
-; Provisional entry from module header or linear decoded direct call; slice end is NOT a proved function end.
+; verified-role: Measure the NUL-terminated string passed on the stack, write it through I$Write on path zero, restore condition codes and remove the pointer argument.
+; Evidence: docs/PLATFORM_EASTER_EGGS.md and resources/semantic_roles.json.
+; Ordered emission slice; named entry does not classify every subsequent byte as code.
 ; File offsets 0001EC–000219, inclusive.
+cdi_loader_write_console_c_string:
 cdi_loader_entry_0001ec:
 db 0x42, 0xE7 ; file 0001EC
 db 0x48, 0xE7, 0xC0, 0x80 ; 0001EE: provisional 68k movem.l d0-d1/a0, -(a7)

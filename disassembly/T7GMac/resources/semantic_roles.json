@@ -30939,6 +30939,20 @@
     },
     {
       "segment": 5,
+      "entry": 8906,
+      "file": 39472,
+      "end": 39690,
+      "name": "ensure_8bit_display",
+      "original_symbol": null,
+      "status": "verified-role",
+      "subsystem": "platform",
+      "contract": "Select the maximum display device and require pixel depth 8. If depth differs, query whether depth 8 is supported, show Alert 128 when unavailable or Alert 129 to ask permission, and request the depth change. Return Boolean success. Dialog resources identify 256 colors/grays and the Quit/256 Colors choices.",
+      "source": "src/functions/platform/code_5_ensure_8bit_display.asm",
+      "decoded": [],
+      "platform_evidence": "docs/PLATFORM_EASTER_EGGS.md"
+    },
+    {
+      "segment": 5,
       "entry": 9124,
       "file": 39690,
       "end": 40390,
@@ -32057,7 +32071,7 @@
       "debug_file": 40518,
       "status": "verified-role",
       "subsystem": "platform",
-      "contract": "Native CheckSystem routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.",
+      "contract": "Require virtual memory off (Gestalt 'vm  ' bit 0 clear), 32-bit addressing on (Gestalt 'addr' bit 0 set), and a successful installation predicate via A5:0212. Show Alert 138 for memory/addressing failure or Alert 139 for installation failure; return Boolean success. Gestalt error results are not checked before testing the response.",
       "source": "src/functions/platform/code_5_check_system.asm",
       "decoded": [
         {
@@ -32240,7 +32254,8 @@
           "size": 2,
           "instruction": "rts "
         }
-      ]
+      ],
+      "platform_evidence": "docs/PLATFORM_EASTER_EGGS.md"
     },
     {
       "segment": 5,
@@ -40547,7 +40562,7 @@
       "debug_file": 46452,
       "status": "verified-role",
       "subsystem": "savegame",
-      "contract": "Native SaveGame routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.",
+      "contract": "Save the byte-sized slot as T7SG resource ID 1000+slot. Create a 1024-byte handle when absent, copy 1024 bytes from the state pointer at A5:F7A0, add or mark the resource changed, write it when ResError is zero, update/flush the current resource file and refresh slot availability. The routine itself does not range-check the slot.",
       "source": "src/functions/savegame/code_5_save_game.asm",
       "decoded": [
         {
@@ -40860,7 +40875,8 @@
           "size": 2,
           "instruction": "rts "
         }
-      ]
+      ],
+      "platform_evidence": "docs/PLATFORM_EASTER_EGGS.md"
     },
     {
       "segment": 5,
@@ -40872,7 +40888,7 @@
       "debug_file": 46540,
       "status": "verified-role",
       "subsystem": "savegame",
-      "contract": "Native LoadGame routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.",
+      "contract": "Look up T7SG resource ID 1000+byte-sized slot; return zero if absent, otherwise lock the resource, copy 1024 bytes into the state pointer at A5:F7A0, unlock/release it and return one. The routine does not check resource size before the fixed-size copy.",
       "source": "src/functions/savegame/code_5_load_game.asm",
       "decoded": [
         {
@@ -41015,7 +41031,8 @@
           "size": 2,
           "instruction": "rts "
         }
-      ]
+      ],
+      "platform_evidence": "docs/PLATFORM_EASTER_EGGS.md"
     },
     {
       "segment": 5,
@@ -41027,7 +41044,7 @@
       "debug_file": 46684,
       "status": "verified-role",
       "subsystem": "savegame",
-      "contract": "Native CountSavedGames routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.",
+      "contract": "Scan T7SG resource IDs 1000..1009, set ten availability bytes in the state pointed to by A5:F7A0, copy the first 14 bytes of existing saves to 15-byte menu records beginning A5:F7E4, release their handles and return the count. Missing slots receive an encoded empty-name marker.",
       "source": "src/functions/savegame/code_5_count_saved_games.asm",
       "decoded": [
         {
@@ -41235,7 +41252,8 @@
           "size": 2,
           "instruction": "rts "
         }
-      ]
+      ],
+      "platform_evidence": "docs/PLATFORM_EASTER_EGGS.md"
     },
     {
       "segment": 5,
@@ -43622,7 +43640,7 @@
       "debug_file": 48790,
       "status": "verified-role",
       "subsystem": "runtime",
-      "contract": "Native keyEquivFilter routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.",
+      "contract": "Filter modal-dialog events: handle update events for the supplied dialog; on keyDown, map unmodified Return/Enter to item 1 or parse nine-character hexadecimal key/modifier/item records from dialog item 2. Flash the selected control and return its item through the output pointer. This is dialog keyboard-equivalent handling, not the GRV Zaphod recognizer.",
       "source": "src/functions/runtime/code_5_key_equiv_filter.asm",
       "decoded": [
         {
@@ -44140,7 +44158,8 @@
           "size": 4,
           "instruction": "rtd #$c"
         }
-      ]
+      ],
+      "platform_evidence": "docs/PLATFORM_EASTER_EGGS.md"
     },
     {
       "segment": 5,

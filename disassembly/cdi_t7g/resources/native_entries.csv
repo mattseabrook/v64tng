@@ -330,11 +330,11 @@ cdi_t7g,cdi_t7g,0x013E24,0x013E24,0x013E3E,provisional-entry,unknown,call@00CA22
 cdi_t7g,cdi_t7g,0x013E3E,0x013E3E,0x013E52,provisional-entry,unknown,call@00CA16;call@00CA9A;call@00CD18;call@00F486;call@00F736,src/functions/unknown/cdi_t7g_013e3e_unknown.asm
 cdi_t7g,cdi_t7g,0x013E52,0x013E52,0x013ED6,provisional-entry,unknown,call@00CA06;call@00CA8A;call@00CD08;call@00F476;call@00F726,src/functions/unknown/cdi_t7g_013e52_unknown.asm
 cdi_t7g,cdi_data,0x000052,0x0140CA,0x00005C,verified-role,return_embedded_data_pointers,header-entry,src/functions/resource_io/return_embedded_data_pointers.asm
-cdi_loader,cdi_loader,0x000054,0x000054,0x0001D2,provisional-entry,unknown,header-entry,src/functions/unknown/cdi_loader_000054_unknown.asm
-cdi_loader,cdi_loader,0x0001D2,0x0001D2,0x0001EC,provisional-entry,unknown,call@0000CE;call@00023E;call@000242;call@000264;call@00031C;call@000320,src/functions/unknown/cdi_loader_0001d2_unknown.asm
-cdi_loader,cdi_loader,0x0001EC,0x0001EC,0x00021A,provisional-entry,unknown,call@0000D6;call@000124;call@00016E;call@0001BC;call@00024A;call@000328,src/functions/unknown/cdi_loader_0001ec_unknown.asm
-cdi_loader,cdi_loader,0x00021A,0x00021A,0x0002B2,provisional-entry,unknown,call@0000EC;call@00026A;call@000340,src/functions/unknown/cdi_loader_00021a_unknown.asm
-cdi_loader,cdi_loader,0x0002B2,0x0002B2,0x00034E,provisional-entry,unknown,call@00005C;call@00006A,src/functions/unknown/cdi_loader_0002b2_unknown.asm
+cdi_loader,cdi_loader,0x000054,0x000054,0x0001D2,verified-role,select_player_from_csd,header-entry,src/functions/platform/cdi_loader_select_player_from_csd.asm
+cdi_loader,cdi_loader,0x0001D2,0x0001D2,0x0001EC,verified-role,write_console_crlf,call@0000CE;call@00023E;call@000242;call@000264;call@00031C;call@000320,src/functions/platform/cdi_loader_write_console_crlf.asm
+cdi_loader,cdi_loader,0x0001EC,0x0001EC,0x00021A,verified-role,write_console_c_string,call@0000D6;call@000124;call@00016E;call@0001BC;call@00024A;call@000328,src/functions/platform/cdi_loader_write_console_c_string.asm
+cdi_loader,cdi_loader,0x00021A,0x00021A,0x0002B2,verified-role,report_error_and_exit,call@0000EC;call@00026A;call@000340,src/functions/platform/cdi_loader_report_error_and_exit.asm
+cdi_loader,cdi_loader,0x0002B2,0x0002B2,0x00034E,verified-role,find_csd_record,call@00005C;call@00006A,src/functions/platform/cdi_loader_find_csd_record.asm
 cdi_nodv,cdi_nodv,0x000052,0x000052,0x0001E2,provisional-entry,unknown,header-entry,src/functions/unknown/cdi_nodv_000052_unknown.asm
 cdi_nodv,cdi_nodv,0x0001E2,0x0001E2,0x000236,provisional-entry,unknown,call@0001AE;call@0001BE;call@0001D0,src/functions/unknown/cdi_nodv_0001e2_unknown.asm
 cdi_nodv,cdi_nodv,0x000236,0x000236,0x000294,provisional-entry,unknown,call@0001AA,src/functions/unknown/cdi_nodv_000236_unknown.asm

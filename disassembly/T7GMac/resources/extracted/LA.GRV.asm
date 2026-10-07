@@ -2,7 +2,7 @@
 ; size=6524 instructions=1363 input_loops=2
 
 0000  04                                     PALFADEOUT                    
-0001  02 3A 4C                               PLAYSONG                      ref=0x4C3A (XMI[58]=?)
+0001  02 3A 4C                               PLAYSONG                      ref=0x4C3A (XMI[58]=gu63.xmi)
 0004  2C 77 19 08                            SET_HOTSPOT_TOP               target=0x1977, cursor=0x08
 0008  2D 32 00 06                            SET_HOTSPOT_BOTTOM            target=0x0032, cursor=0x06
 000C  44 79 19                               SET_HOTSPOT_RIGHT             target=0x1979
@@ -20,20 +20,20 @@
 003A  16 0A 01 B0                            LOADSTRING                    dst=v[0x10A], values=[0]
 003E  16 0B 01 B0                            LOADSTRING                    dst=v[0x10B], values=[0]
 0042  16 0C 01 B0                            LOADSTRING                    dst=v[0x10C], values=[0]
-0046  09 00 30                               VIDEOREF                      ref=0x3000 (LA[0]=?)
+0046  09 00 30                               VIDEOREF                      ref=0x3000 (LA[0]=borup.vdx)
 0049  22                                     COPY_BG_TO_FG                 
 004A  40 D8 FF D8 FF                         SET_VIDEO_ORIGIN              x=-40, y=-40
-004F  09 33 30                               VIDEOREF                      ref=0x3033 (LA[51]=?)
+004F  09 33 30                               VIDEOREF                      ref=0x3033 (LA[51]=la_b44.vdx)
 0052  40 D8 FF 28 00                         SET_VIDEO_ORIGIN              x=-40, y=40
-0057  09 38 30                               VIDEOREF                      ref=0x3038 (LA[56]=?)
+0057  09 38 30                               VIDEOREF                      ref=0x3038 (LA[56]=la_r04.vdx)
 005A  40 28 00 28 00                         SET_VIDEO_ORIGIN              x=40, y=40
-005F  09 1C 30                               VIDEOREF                      ref=0x301C (LA[28]=?)
+005F  09 1C 30                               VIDEOREF                      ref=0x301C (LA[28]=la_b00.vdx)
 0062  40 28 00 D8 FF                         SET_VIDEO_ORIGIN              x=40, y=-40
-0067  09 47 30                               VIDEOREF                      ref=0x3047 (LA[71]=?)
+0067  09 47 30                               VIDEOREF                      ref=0x3047 (LA[71]=la_r40.vdx)
 006A  1A 07 01 B0 79 00                      STRCMP_NE_JMP                 start=v[0x107], values=[0], target=0x0079
 0070  46                                     RESOURCE_CONTEXT_SAVE         
 0071  07                                     VIDEOFLAG7_ON                 
-0072  09 62 50                               VIDEOREF                      ref=0x5062 (GAMWAV[98]=?)
+0072  09 62 50                               VIDEOREF                      ref=0x5062 (GAMWAV[98]=17_e_2.vdx)
 0075  47                                     RESOURCE_CONTEXT_RESTORE      
 0076  1F 07 01                               INC                           var=v[0x107]
 0079  96 19 62 30 30 30 30 30 72 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 72 30 30 30 30 30 E2 LOADSTRING                    dst=v[0x019], values=[50, 0, 0, 0, 0, 0, 66, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 66, 0, 0, 0, 0, 0, 50]
@@ -49,11 +49,11 @@
 00D1  15 1C 01                               JMP                           target=0x011C
 00D4  15 AC 00                               JMP                           target=0x00AC
 00D7  07                                     VIDEOFLAG7_ON                 
-00D8  09 A0 50                               VIDEOREF                      ref=0x50A0 (GAMWAV[160]=?)
+00D8  09 A0 50                               VIDEOREF                      ref=0x50A0 (GAMWAV[160]=gen_s_9.vdx)
 00DB  96 EB E1                               LOADSTRING                    dst=v[0x0EB], values=[49]
 00DE  43 00                                  RETURNSCRIPT                  value=0x00
 00E0  07                                     VIDEOFLAG7_ON                 
-00E1  09 90 50                               VIDEOREF                      ref=0x5090 (GAMWAV[144]=?)
+00E1  09 90 50                               VIDEOREF                      ref=0x5090 (GAMWAV[144]=gen_e_10.vdx)
 00E4  15 32 00                               JMP                           target=0x0032
 00E7  96 00 30 30 30 B0                      LOADSTRING                    dst=v[0x000], values=[0, 0, 0, 0]
 00ED  96 04 7C 23 63 23 E4                   LOADSTRING                    dst=v[0x004], values=[grid[v[0x002],v[0x003]]]
@@ -1089,7 +1089,7 @@
 1547  9A 00 23 63 23 E4 58 15                STRCMP_NE_JMP                 start=v[0x000], values=[v[0x002], v[0x003]], target=0x1558
 154F  07                                     VIDEOFLAG7_ON                 
 1550  46                                     RESOURCE_CONTEXT_SAVE         
-1551  09 8A 50                               VIDEOREF                      ref=0x508A (GAMWAV[138]=?)
+1551  09 8A 50                               VIDEOREF                      ref=0x508A (GAMWAV[138]=gen_e_4.vdx)
 1554  47                                     RESOURCE_CONTEXT_RESTORE      
 1555  15 AC 08                               JMP                           target=0x08AC
 1558  96 05 23 61 23 E2                      LOADSTRING                    dst=v[0x005], values=[v[0x000], v[0x001]]
@@ -1205,32 +1205,32 @@
 171D  9A 04 F2 4D 17                         STRCMP_NE_JMP                 start=v[0x004], values=[66], target=0x174D
 1722  1A 17 01 B8 2C 17                      STRCMP_NE_JMP                 start=v[0x117], values=[8], target=0x172C
 1728  07                                     VIDEOFLAG7_ON                 
-1729  09 A4 50                               VIDEOREF                      ref=0x50A4 (GAMWAV[164]=?)
+1729  09 A4 50                               VIDEOREF                      ref=0x50A4 (GAMWAV[164]=gen_s_13.vdx)
 172C  1A 17 01 B7 36 17                      STRCMP_NE_JMP                 start=v[0x117], values=[7], target=0x1736
 1732  07                                     VIDEOFLAG7_ON                 
-1733  09 8C 50                               VIDEOREF                      ref=0x508C (GAMWAV[140]=?)
+1733  09 8C 50                               VIDEOREF                      ref=0x508C (GAMWAV[140]=gen_e_6.vdx)
 1736  1A 17 01 B6 40 17                      STRCMP_NE_JMP                 start=v[0x117], values=[6], target=0x1740
 173C  07                                     VIDEOFLAG7_ON                 
-173D  09 8D 50                               VIDEOREF                      ref=0x508D (GAMWAV[141]=?)
+173D  09 8D 50                               VIDEOREF                      ref=0x508D (GAMWAV[141]=gen_e_7.vdx)
 1740  1A 17 01 B5 4A 17                      STRCMP_NE_JMP                 start=v[0x117], values=[5], target=0x174A
 1746  07                                     VIDEOFLAG7_ON                 
-1747  09 8B 50                               VIDEOREF                      ref=0x508B (GAMWAV[139]=?)
+1747  09 8B 50                               VIDEOREF                      ref=0x508B (GAMWAV[139]=gen_e_5.vdx)
 174A  15 7F 17                               JMP                           target=0x177F
 174D  1A 17 01 B8 57 17                      STRCMP_NE_JMP                 start=v[0x117], values=[8], target=0x1757
 1753  07                                     VIDEOFLAG7_ON                 
-1754  09 A6 50                               VIDEOREF                      ref=0x50A6 (GAMWAV[166]=?)
+1754  09 A6 50                               VIDEOREF                      ref=0x50A6 (GAMWAV[166]=gen_s_15.vdx)
 1757  1A 17 01 B7 61 17                      STRCMP_NE_JMP                 start=v[0x117], values=[7], target=0x1761
 175D  07                                     VIDEOFLAG7_ON                 
-175E  09 88 50                               VIDEOREF                      ref=0x5088 (GAMWAV[136]=?)
+175E  09 88 50                               VIDEOREF                      ref=0x5088 (GAMWAV[136]=gen_e_2.vdx)
 1761  1A 17 01 B6 6B 17                      STRCMP_NE_JMP                 start=v[0x117], values=[6], target=0x176B
 1767  07                                     VIDEOFLAG7_ON                 
-1768  09 93 50                               VIDEOREF                      ref=0x5093 (GAMWAV[147]=?)
+1768  09 93 50                               VIDEOREF                      ref=0x5093 (GAMWAV[147]=gen_e_13.vdx)
 176B  1A 17 01 B5 75 17                      STRCMP_NE_JMP                 start=v[0x117], values=[5], target=0x1775
 1771  07                                     VIDEOFLAG7_ON                 
-1772  09 87 50                               VIDEOREF                      ref=0x5087 (GAMWAV[135]=?)
+1772  09 87 50                               VIDEOREF                      ref=0x5087 (GAMWAV[135]=gen_e_1.vdx)
 1775  1A 17 01 B4 7F 17                      STRCMP_NE_JMP                 start=v[0x117], values=[4], target=0x177F
 177B  07                                     VIDEOFLAG7_ON                 
-177C  09 99 50                               VIDEOREF                      ref=0x5099 (GAMWAV[153]=?)
+177C  09 99 50                               VIDEOREF                      ref=0x5099 (GAMWAV[153]=gen_s_2.vdx)
 177F  47                                     RESOURCE_CONTEXT_RESTORE      
 1780  17 00                                  RET                           value=0x00
 1782  40 00 00 00 00                         SET_VIDEO_ORIGIN              x=0, y=0

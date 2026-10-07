@@ -122,7 +122,7 @@ now include named internal routines while preserving every intervening byte.
 
 The stable coverage denominator is the original **80 jump-table entries**:
 55 now have verified static roles, and 25 remain unknown. The larger inventory
-contains 204 verified-role records, including internal routines, plus 21
+contains 205 verified-role records, including internal routines, plus 21
 unverified symbol candidates. Those additional records do not increase the
 coverage denominator or imply that every byte is executable code.
 
@@ -211,8 +211,10 @@ archive resource names. These are script VM instructions, not Motorola or
 x86 instructions.
 
 Twenty scripts match the currently supplied DOS scripts exactly. The differing
-files are `DEMO.GRV`, `LA.GRV`, and `script.grv`; byte differences are observed,
-but their behavioral causes have not been assigned. The supplied DOS
+files are `DEMO.GRV`, `LA.GRV`, and `script.grv`. The subsequent platform pass
+identifies a Mac-only credits prelude in `script.grv`: VIDEOREFs at `03FF` and
+`0407` select HDISK entries 8/9 (`todd.vdx` and `hayes.vdx`). Other differences
+remain under study. The supplied DOS
 `DEMO.GRV` is only 57 bytes, so that comparison is specifically against the
 current repository artifact, not an assumed pristine retail demo.
 `ROB.GJD` also matches its supplied DOS counterpart exactly.
@@ -258,8 +260,9 @@ for **all 4,202,291 data-fork bytes**, with no unexplained remainder.
 The ten VDX files contain **1,716 chunks**: 10 still chunks (`20h`), 603
 animation/delta chunks (`25h`), and 1,103 type-zero chunks. None has an
 `80h` audio chunk. Type-zero contents were not assigned a new meaning.
-`todd.vdx` and `hayes.vdx` each consist of a single still chunk; their names
-alone do not prove who or what the images depict. All ten payloads are
+`todd.vdx` and `hayes.vdx` each consist of a single still chunk and now have
+script-backed credits-prelude roles; their depicted content remains unknown.
+All ten payloads are
 extracted into `resources/extracted/T7GData/`.
 
 [`resources/t7gdata_inventory.csv`](resources/t7gdata_inventory.csv) records
@@ -321,7 +324,7 @@ code outside the five `CODE` resources.
 | LINK-pattern native entry candidates | 475 |
 | Verified roles among original jump-table entries | 55 / 80 (68.8%) |
 | Unknown original jump-table entries | 25 |
-| Named verified-role records, including internal routines | 204 |
+| Named verified-role records, including internal routines | 205 |
 | Unverified debug-symbol/body association candidates | 21 |
 | Extracted GRV scripts / total script bytes | 23 / 84,517 |
 | Decoded script instructions | 20,872 |
@@ -335,6 +338,27 @@ Resource names justify asset identities; recovered native roles have their
 static evidence recorded in the semantic inventory. Unverified routines retain
 unknown or explicitly candidate status. Do not count jump-table entries, prologue candidates, linear decoded
 instructions, and verified functions as interchangeable measures.
+
+## October 2026 platform and Easter-egg recovery
+
+The [platform research report](../../docs/PLATFORM_EASTER_EGGS.md) connects
+historical Mac documentation to script and native evidence. New recovery adds
+the internal `ensure_8bit_display` routine at CODE 5 `22CA`; it refines the
+`CheckSystem`, `SaveGame`, `LoadGame`, `CountSavedGames` and `keyEquivFilter`
+contracts and identifies associated DITL/SIZE data. Saves use `T7SG` resources,
+IDs 1000–1009, with fixed 1024-byte state copies. The Zaphod cheat is identified
+in GRV, separately from modal-dialog keyboard handling.
+
+[Platform data/script roles](resources/platform_roles.json) records the new
+asset identities without adding script instructions or resources to the native
+jump-table denominator. Existing GRV listings have resource names annotated
+from the RL inventory; the shared reader now handles lowercase RL basenames.
+The [Groovie v1 toolkit](../../grooviev1/README.md) adds MacBinary resource/fork
+handling and Mac T7GData separator-aware repacking.
+
+This follow-up performed no builds, tests, hash checks or verification runs;
+the byte-identical results above refer to earlier passes. Its edited sources
+and new tools remain for the user's verification.
 
 Future naming should cite static control flow, callers/callees, constants,
 resource references, DOS/Win32 correspondence, or runtime behavior. Preserve

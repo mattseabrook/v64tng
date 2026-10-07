@@ -1,3 +1,4 @@
+; Semantic data role: installation_missing; see docs/PLATFORM_EASTER_EGGS.md.
 ; Resource 'DITL', ID 139; name ''; payload 144 bytes
 ; MacBinary file offsets 13CD43–13CDD6 (inclusive).
 ; Linear CODE decoding is provisional: embedded data can decode as instructions.

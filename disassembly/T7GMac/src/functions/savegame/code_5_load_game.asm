@@ -1,4 +1,4 @@
-; verified-role: Native LoadGame routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.
+; verified-role: Look up T7SG resource ID 1000+byte-sized slot; return zero if absent, otherwise lock the resource, copy 1024 bytes into the state pointer at A5:F7A0, unlock/release it and return one. The routine does not check resource size before the fixed-size copy.
 ; Original native symbol: LoadGame; evidence file offset 0xb5cc.
 ; Exact bytes retained; instruction decoding remains provisional where inline data may occur.
 mac_code_5_load_game:

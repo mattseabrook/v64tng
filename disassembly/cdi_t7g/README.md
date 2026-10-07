@@ -10,7 +10,7 @@ Native instructions are Motorola 68k. NASM emits exact bytes; provisional
 68k mnemonics are comments. The layout follows `V`, `v32tng`, and `T7GMac`.
 This pass establishes mechanical reconstruction and provisional native entries,
 not complete semantic recovery. No emulator, gameplay, unit, or regression
-tests were run. Mac work is paused.
+tests were run. Mac and CD-i platform recovery is documented in the follow-up below.
 
 ## Canonical artifacts
 
@@ -102,9 +102,9 @@ these emission slices:
 |---|---:|---:|
 | `cdi_t7g` | 330 | 0 |
 | `cdi_nodv` | 329 | 0 |
-| `cdi_loader` | 5 | 0 |
+| `cdi_loader` | 5 | 5 |
 | `cdi_data` | 1 | 1 |
-| Total | 665 | 1 |
+| Total | 665 | 6 |
 
 These are **candidate entries, not 665 verified functions**. Linear decoding
 can interpret strings or tables as code and produce false calls. Each slice
@@ -163,8 +163,9 @@ sprite operations. These are valuable clues to platform/media ownership,
 but string presence alone does not establish a native routine's entry.
 
 The loader contains `cdi_nodv`, `err_initialise`, `/cd/errors.txt`, and
-`/nvr/csd`. The name `nodv` suggests a no-digital-video variant, but that
-interpretation has not been proved. The `cdi_nodv` file itself also contains
+`/nvr/csd`. Its recovered startup queries CSD codes 91 and 90 and selects
+`cdi_nodv` if either is absent, otherwise `cdi_t7g`. The individual CSD code
+meanings remain unassigned. The `cdi_nodv` file itself also contains
 MPEG and FMV diagnostics, so the name does not prove those subsystems are
 absent. No GRV interpreter, VDX decoder, or DOS-equivalent RL structure has
 been verified in these three files.
@@ -173,6 +174,36 @@ been verified in these three files.
 runs with module offsets. Runs were selected mechanically and can include
 instruction bytes attached to real strings or coincidental printable data.
 It is an evidence index, not an original string-symbol table.
+
+## October 2026 platform and Easter-egg recovery
+
+The [platform research report](../../docs/PLATFORM_EASTER_EGGS.md) links the
+documented `badger` scene selector, DVC-dependent cake-puzzle crash, and
+localized `cdi_data` imagery to specific recovery targets. Those external
+reports are distinguished from locally supported roles.
+
+Five loader entries now have instruction-backed roles, recorded in
+[semantic_roles.json](resources/semantic_roles.json) and the existing native
+entry inventory. Their named source files live in `src/functions/platform/`
+and retain original placement and entry aliases:
+
+| Module offset | Working role |
+|---|---|
+| `0054` | Select player from CSD records, link and chain |
+| `01D2` | Write CR/LF through I$Write |
+| `01EC` | Write stack-supplied NUL-terminated string |
+| `021A` | Report saved error through F$PErr and exit |
+| `02B2` | Find decimal-code CSD record via I$ReadLn |
+
+Inline strings and output templates in these slices are now annotated as data;
+old linear decoding of those bytes was not executable evidence. The error-file
+initializer at `0228` is separate from the terminating `021A` entry.
+
+Together with the prior `cdi_data` pointer return, this gives **6 supported roles
+among the original 665 candidate entries**. This follow-up performed no builds,
+tests, hash checks or verification runs. Earlier byte-identical build results
+do not constitute verification of these edits. CD-i game scripts, media and
+disc layout remain outside the supplied artifact set.
 
 ## Source organization and addresses
 

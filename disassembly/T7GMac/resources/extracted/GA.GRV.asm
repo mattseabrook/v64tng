@@ -2,8 +2,8 @@
 ; size=2442 instructions=477 input_loops=1
 
 0000  01                                     RESERVED_01                   
-0001  02 1C 4C                               PLAYSONG                      ref=0x4C1C (XMI[28]=?)
-0004  08 1C 4C                               SETBACKGROUNDSONG             ref=0x4C1C (XMI[28]=?)
+0001  02 1C 4C                               PLAYSONG                      ref=0x4C1C (XMI[28]=gu31.xmi)
+0004  08 1C 4C                               SETBACKGROUNDSONG             ref=0x4C1C (XMI[28]=gu31.xmi)
 0007  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 000B  16 07 01 B0                            LOADSTRING                    dst=v[0x107], values=[0]
 000F  46                                     RESOURCE_CONTEXT_SAVE         
@@ -14,7 +14,7 @@
 0020  9A F0 B0 2D 00                         STRCMP_NE_JMP                 start=v[0x0F0], values=[0], target=0x002D
 0025  07                                     VIDEOFLAG7_ON                 
 0026  0A                                     VIDEOFLAG5_ON                 
-0027  09 4F 50                               VIDEOREF                      ref=0x504F (GAMWAV[79]=?)
+0027  09 4F 50                               VIDEOREF                      ref=0x504F (GAMWAV[79]=12_s_1.vdx)
 002A  96 F0 B1                               LOADSTRING                    dst=v[0x0F0], values=[1]
 002D  47                                     RESOURCE_CONTEXT_RESTORE      
 002E  2C D5 03 08                            SET_HOTSPOT_TOP               target=0x03D5, cursor=0x08
@@ -24,15 +24,15 @@
 003C  96 00 30 30 30 30 30 30 30 B0          LOADSTRING                    dst=v[0x000], values=[0, 0, 0, 0, 0, 0, 0, 0]
 0046  96 19 B0                               LOADSTRING                    dst=v[0x019], values=[0]
 0049  28 0A 18                               RESERVED_28                   value=0x180A
-004C  1C 0A 18                               VIDEO_TRANSITION_REF          ref=0x180A (GA[10]=?)
+004C  1C 0A 18                               VIDEO_TRANSITION_REF          ref=0x180A (GA[10]=gaback.vdx)
 004F  9A 19 B8 6E 00                         STRCMP_NE_JMP                 start=v[0x019], values=[8], target=0x006E
-0054  1C 0A 18                               VIDEO_TRANSITION_REF          ref=0x180A (GA[10]=?)
+0054  1C 0A 18                               VIDEO_TRANSITION_REF          ref=0x180A (GA[10]=gaback.vdx)
 0057  18 78 09                               CALL                          target=0x0978
 005A  96 F0 E1                               LOADSTRING                    dst=v[0x0F0], values=[49]
 005D  1A 00 01 B0 69 00                      STRCMP_NE_JMP                 start=v[0x100], values=[0], target=0x0069
-0063  08 0C 4C                               SETBACKGROUNDSONG             ref=0x4C0C (XMI[12]=?)
+0063  08 0C 4C                               SETBACKGROUNDSONG             ref=0x4C0C (XMI[12]=gu16.xmi)
 0066  15 6C 00                               JMP                           target=0x006C
-0069  08 00 4C                               SETBACKGROUNDSONG             ref=0x4C00 (XMI[0]=?)
+0069  08 00 4C                               SETBACKGROUNDSONG             ref=0x4C00 (XMI[0]=agu16.xmi)
 006C  43 00                                  RETURNSCRIPT                  value=0x00
 006E  0B                                     INPUTLOOPSTART                
 006F  0D 88 00 47 01 B2 00 73 01 F5 03 0A    HOTSPOT_RECT                  left=0x0088, top=0x0147, right=0x00B2, bottom=0x0173, target=0x03F5, cursor=0x0A
@@ -105,7 +105,7 @@
 037C  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 0380  16 07 01 B2                            LOADSTRING                    dst=v[0x107], values=[2]
 0384  07                                     VIDEOFLAG7_ON                 
-0385  09 4D 50                               VIDEOREF                      ref=0x504D (GAMWAV[77]=?)
+0385  09 4D 50                               VIDEOREF                      ref=0x504D (GAMWAV[77]=12_e_4.vdx)
 0388  47                                     RESOURCE_CONTEXT_RESTORE      
 0389  36 03 01 F9 A3 03                      CHAR_LESS_JMP                 start=v[0x103], values=[73], target=0x03A3
 038F  1A 07 01 B2 A3 03                      STRCMP_NE_JMP                 start=v[0x107], values=[2], target=0x03A3
@@ -113,7 +113,7 @@
 0396  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 039A  16 07 01 B3                            LOADSTRING                    dst=v[0x107], values=[3]
 039E  07                                     VIDEOFLAG7_ON                 
-039F  09 49 50                               VIDEOREF                      ref=0x5049 (GAMWAV[73]=?)
+039F  09 49 50                               VIDEOREF                      ref=0x5049 (GAMWAV[73]=11_s_5.vdx)
 03A2  47                                     RESOURCE_CONTEXT_RESTORE      
 03A3  36 03 01 E3 BD 03                      CHAR_LESS_JMP                 start=v[0x103], values=[51], target=0x03BD
 03A9  1A 07 01 B0 BD 03                      STRCMP_NE_JMP                 start=v[0x107], values=[0], target=0x03BD
@@ -121,26 +121,26 @@
 03B0  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 03B4  16 07 01 B1                            LOADSTRING                    dst=v[0x107], values=[1]
 03B8  07                                     VIDEOFLAG7_ON                 
-03B9  09 4C 50                               VIDEOREF                      ref=0x504C (GAMWAV[76]=?)
+03B9  09 4C 50                               VIDEOREF                      ref=0x504C (GAMWAV[76]=12_e_3.vdx)
 03BC  47                                     RESOURCE_CONTEXT_RESTORE      
 03BD  13                                     INPUTLOOPEND                  
-03BE  1C 0A 18                               VIDEO_TRANSITION_REF          ref=0x180A (GA[10]=?)
+03BE  1C 0A 18                               VIDEO_TRANSITION_REF          ref=0x180A (GA[10]=gaback.vdx)
 03C1  18 78 09                               CALL                          target=0x0978
 03C4  1A 00 01 B0 D0 03                      STRCMP_NE_JMP                 start=v[0x100], values=[0], target=0x03D0
-03CA  08 0C 4C                               SETBACKGROUNDSONG             ref=0x4C0C (XMI[12]=?)
+03CA  08 0C 4C                               SETBACKGROUNDSONG             ref=0x4C0C (XMI[12]=gu16.xmi)
 03CD  15 D3 03                               JMP                           target=0x03D3
-03D0  08 00 4C                               SETBACKGROUNDSONG             ref=0x4C00 (XMI[0]=?)
+03D0  08 00 4C                               SETBACKGROUNDSONG             ref=0x4C00 (XMI[0]=agu16.xmi)
 03D3  43 00                                  RETURNSCRIPT                  value=0x00
 03D5  1A 00 01 B0 E1 03                      STRCMP_NE_JMP                 start=v[0x100], values=[0], target=0x03E1
-03DB  08 0C 4C                               SETBACKGROUNDSONG             ref=0x4C0C (XMI[12]=?)
+03DB  08 0C 4C                               SETBACKGROUNDSONG             ref=0x4C0C (XMI[12]=gu16.xmi)
 03DE  15 E4 03                               JMP                           target=0x03E4
-03E1  08 00 4C                               SETBACKGROUNDSONG             ref=0x4C00 (XMI[0]=?)
+03E1  08 00 4C                               SETBACKGROUNDSONG             ref=0x4C00 (XMI[0]=agu16.xmi)
 03E4  43 01                                  RETURNSCRIPT                  value=0x01
 03E6  07                                     VIDEOFLAG7_ON                 
 03E7  46                                     RESOURCE_CONTEXT_SAVE         
-03E8  09 8B 50                               VIDEOREF                      ref=0x508B (GAMWAV[139]=?)
+03E8  09 8B 50                               VIDEOREF                      ref=0x508B (GAMWAV[139]=gen_e_5.vdx)
 03EB  47                                     RESOURCE_CONTEXT_RESTORE      
-03EC  1C 0A 18                               VIDEO_TRANSITION_REF          ref=0x180A (GA[10]=?)
+03EC  1C 0A 18                               VIDEO_TRANSITION_REF          ref=0x180A (GA[10]=gaback.vdx)
 03EF  18 78 09                               CALL                          target=0x0978
 03F2  15 01 00                               JMP                           target=0x0001
 03F5  96 17 61 B1                            LOADSTRING                    dst=v[0x017], values=[49, 1]
@@ -432,7 +432,7 @@
 087F  9F 19                                  INC                           var=v[0x019]
 0881  B3 17 23 F9                            LOADSTRING_INDIRECT           dst=v[0x017], values=[v[0x018]]
 0885  15 4F 00                               JMP                           target=0x004F
-0888  1C 0A 18                               VIDEO_TRANSITION_REF          ref=0x180A (GA[10]=?)
+0888  1C 0A 18                               VIDEO_TRANSITION_REF          ref=0x180A (GA[10]=gaback.vdx)
 088B  A3 00 B0 B2 08                         STRCMP_EQ_JMP                 start=v[0x000], values=[0], target=0x08B2
 0890  A3 08 E1 B2 08                         STRCMP_EQ_JMP                 start=v[0x008], values=[49], target=0x08B2
 0895  B6 00 23 EA A8 08                      CHAR_LESS_JMP                 start=v[0x000], values=[v[0x009]], target=0x08A8
@@ -474,7 +474,7 @@
 0978  0A                                     VIDEOFLAG5_ON                 
 0979  07                                     VIDEOFLAG7_ON                 
 097A  46                                     RESOURCE_CONTEXT_SAVE         
-097B  09 01 24                               VIDEOREF                      ref=0x2401 (INTRO[1]=?)
+097B  09 01 24                               VIDEOREF                      ref=0x2401 (INTRO[1]=fade.vdx)
 097E  37 00 00 50 00 7F 02 8F 01             COPY_RECT_TO_BG               left=0x0000, top=0x0050, right=0x027F, bottom=0x018F
 0987  47                                     RESOURCE_CONTEXT_RESTORE      
 0988  17 00                                  RET                           value=0x00

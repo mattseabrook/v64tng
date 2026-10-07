@@ -1,3 +1,4 @@
+; Mac credits prelude GRV 03FD..040D displays HDISK[8]=todd.vdx and HDISK[9]=hayes.vdx; see docs/PLATFORM_EASTER_EGGS.md.
 ; Resource 'T7GM', ID 32345; name 'script.grv'; payload 17191 bytes
 ; MacBinary file offsets 1A5BBC–1A9EE6 (inclusive).
 ; Linear CODE decoding is provisional: embedded data can decode as instructions.

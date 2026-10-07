@@ -1,3 +1,4 @@
+; Semantic data role: disable_vm_enable_32bit_addressing; see docs/PLATFORM_EASTER_EGGS.md.
 ; Resource 'DITL', ID 138; name ''; payload 182 bytes
 ; MacBinary file offsets 13CDD7–13CE90 (inclusive).
 ; Linear CODE decoding is provisional: embedded data can decode as instructions.

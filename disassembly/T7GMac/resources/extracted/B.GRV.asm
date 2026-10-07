@@ -7,13 +7,13 @@
 000C  9A EC B2 1A 00                         STRCMP_NE_JMP                 start=v[0x0EC], values=[2], target=0x001A
 0011  46                                     RESOURCE_CONTEXT_SAVE         
 0012  07                                     VIDEOFLAG7_ON                 
-0013  09 A5 50                               VIDEOREF                      ref=0x50A5 (GAMWAV[165]=?)
+0013  09 A5 50                               VIDEOREF                      ref=0x50A5 (GAMWAV[165]=gen_s_14.vdx)
 0016  96 EC B3                               LOADSTRING                    dst=v[0x0EC], values=[3]
 0019  47                                     RESOURCE_CONTEXT_RESTORE      
 001A  9A EC B0 28 00                         STRCMP_NE_JMP                 start=v[0x0EC], values=[0], target=0x0028
 001F  46                                     RESOURCE_CONTEXT_SAVE         
 0020  07                                     VIDEOFLAG7_ON                 
-0021  09 5F 50                               VIDEOREF                      ref=0x505F (GAMWAV[95]=?)
+0021  09 5F 50                               VIDEOREF                      ref=0x505F (GAMWAV[95]=16_s_1.vdx)
 0024  96 EC B1                               LOADSTRING                    dst=v[0x0EC], values=[1]
 0027  47                                     RESOURCE_CONTEXT_RESTORE      
 0028  28 00 00                               RESERVED_28                   value=0x0000
@@ -23,13 +23,13 @@
 0036  45 D0 04                               SET_HOTSPOT_LEFT              target=0x04D0
 0039  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 003D  16 07 01 B0                            LOADSTRING                    dst=v[0x107], values=[0]
-0041  09 0E 04                               VIDEOREF                      ref=0x040E (B[14]=?)
+0041  09 0E 04                               VIDEOREF                      ref=0x040E (B[14]=b_pf.vdx)
 0044  96 19 6D 62 77 77 77 77 62 62 77 77 77 62 62 73 77 77 62 62 62 77 77 62 62 62 62 F7 LOADSTRING                    dst=v[0x019], values=[61, 50, 71, 71, 71, 71, 50, 50, 71, 71, 71, 50, 50, 67, 71, 71, 50, 50, 50, 71, 71, 50, 50, 50, 50, 71]
 0060  36 03 01 EA 70 00                      CHAR_LESS_JMP                 start=v[0x103], values=[58], target=0x0070
 0066  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 006A  46                                     RESOURCE_CONTEXT_SAVE         
 006B  07                                     VIDEOFLAG7_ON                 
-006C  09 60 50                               VIDEOREF                      ref=0x5060 (GAMWAV[96]=?)
+006C  09 60 50                               VIDEOREF                      ref=0x5060 (GAMWAV[96]=16_s_2.vdx)
 006F  47                                     RESOURCE_CONTEXT_RESTORE      
 0070  36 03 01 B9 8A 00                      CHAR_LESS_JMP                 start=v[0x103], values=[9], target=0x008A
 0076  1A 07 01 B1 8A 00                      STRCMP_NE_JMP                 start=v[0x107], values=[1], target=0x008A
@@ -37,7 +37,7 @@
 007D  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 0081  16 07 01 B2                            LOADSTRING                    dst=v[0x107], values=[2]
 0085  07                                     VIDEOFLAG7_ON                 
-0086  09 5B 50                               VIDEOREF                      ref=0x505B (GAMWAV[91]=?)
+0086  09 5B 50                               VIDEOREF                      ref=0x505B (GAMWAV[91]=16_e_2.vdx)
 0089  47                                     RESOURCE_CONTEXT_RESTORE      
 008A  36 03 01 B9 A4 00                      CHAR_LESS_JMP                 start=v[0x103], values=[9], target=0x00A4
 0090  1A 07 01 B0 A4 00                      STRCMP_NE_JMP                 start=v[0x107], values=[0], target=0x00A4
@@ -45,7 +45,7 @@
 0097  16 03 01 B0                            LOADSTRING                    dst=v[0x103], values=[0]
 009B  16 07 01 B1                            LOADSTRING                    dst=v[0x107], values=[1]
 009F  07                                     VIDEOFLAG7_ON                 
-00A0  09 5A 50                               VIDEOREF                      ref=0x505A (GAMWAV[90]=?)
+00A0  09 5A 50                               VIDEOREF                      ref=0x505A (GAMWAV[90]=16_e_1.vdx)
 00A3  47                                     RESOURCE_CONTEXT_RESTORE      
 00A4  9A 1A 77 77 77 77 62 77 77 77 62 62 77 77 73 62 62 77 77 62 62 62 77 62 62 62 E2 C4 00 STRCMP_NE_JMP                 start=v[0x01A], values=[71, 71, 71, 71, 50, 71, 71, 71, 50, 50, 71, 71, 67, 50, 50, 71, 71, 50, 50, 50, 71, 50, 50, 50, 50], target=0x00C4
 00C1  15 E9 04                               JMP                           target=0x04E9
@@ -254,19 +254,19 @@
 04BE  9A 18 B1 CF 04                         STRCMP_NE_JMP                 start=v[0x018], values=[1], target=0x04CF
 04C3  0D 8E 01 8D 00 B9 01 AA 00 1F 09 09    HOTSPOT_RECT                  left=0x018E, top=0x008D, right=0x01B9, bottom=0x00AA, target=0x091F, cursor=0x09
 04CF  13                                     INPUTLOOPEND                  
-04D0  1C 01 04                               VIDEO_TRANSITION_REF          ref=0x0401 (B[1]=?)
+04D0  1C 01 04                               VIDEO_TRANSITION_REF          ref=0x0401 (B[1]=b1_2b.vdx)
 04D3  18 42 09                               CALL                          target=0x0942
 04D6  43 00                                  RETURNSCRIPT                  value=0x00
 04D8  43 01                                  RETURNSCRIPT                  value=0x01
 04DA  07                                     VIDEOFLAG7_ON                 
 04DB  46                                     RESOURCE_CONTEXT_SAVE         
-04DC  09 8B 50                               VIDEOREF                      ref=0x508B (GAMWAV[139]=?)
+04DC  09 8B 50                               VIDEOREF                      ref=0x508B (GAMWAV[139]=gen_e_5.vdx)
 04DF  47                                     RESOURCE_CONTEXT_RESTORE      
-04E0  1C 01 04                               VIDEO_TRANSITION_REF          ref=0x0401 (B[1]=?)
+04E0  1C 01 04                               VIDEO_TRANSITION_REF          ref=0x0401 (B[1]=b1_2b.vdx)
 04E3  18 42 09                               CALL                          target=0x0942
 04E6  15 00 00                               JMP                           target=0x0000
 04E9  96 EC E1                               LOADSTRING                    dst=v[0x0EC], values=[49]
-04EC  1C 01 04                               VIDEO_TRANSITION_REF          ref=0x0401 (B[1]=?)
+04EC  1C 01 04                               VIDEO_TRANSITION_REF          ref=0x0401 (B[1]=b1_2b.vdx)
 04EF  18 42 09                               CALL                          target=0x0942
 04F2  43 00                                  RETURNSCRIPT                  value=0x00
 04F4  9A 1A F3 FD 04                         STRCMP_NE_JMP                 start=v[0x01A], values=[67], target=0x04FD
@@ -320,7 +320,7 @@
 05CC  9A 32 F3 D5 05                         STRCMP_NE_JMP                 start=v[0x032], values=[67], target=0x05D5
 05D1  A4 32 19 00                            MOV                           dst=v[0x032], src=0x0019
 05D5  17 00                                  RET                           value=0x00
-05D7  1C 0F 04                               VIDEO_TRANSITION_REF          ref=0x040F (B[15]=?)
+05D7  1C 0F 04                               VIDEO_TRANSITION_REF          ref=0x040F (B[15]=bsten_01.vdx)
 05DA  26 7C 30 31 61 66 00                   VIDEO_NAME                    name="{grid:1,0}af"
 05E1  07                                     VIDEOFLAG7_ON                 
 05E2  26 7C 30 31 23 7A 62 00                VIDEO_NAME                    name="{grid:1,0}{v019}b"
@@ -329,7 +329,7 @@
 05F1  96 1A F3                               LOADSTRING                    dst=v[0x01A], values=[67]
 05F4  96 19 E1                               LOADSTRING                    dst=v[0x019], values=[49]
 05F7  15 60 00                               JMP                           target=0x0060
-05FA  1C 10 04                               VIDEO_TRANSITION_REF          ref=0x0410 (B[16]=?)
+05FA  1C 10 04                               VIDEO_TRANSITION_REF          ref=0x0410 (B[16]=bsten_02.vdx)
 05FD  26 7C 30 32 62 66 00                   VIDEO_NAME                    name="{grid:2,0}bf"
 0604  07                                     VIDEOFLAG7_ON                 
 0605  26 7C 30 32 23 7A 62 00                VIDEO_NAME                    name="{grid:2,0}{v019}b"
@@ -338,7 +338,7 @@
 0614  96 1B F3                               LOADSTRING                    dst=v[0x01B], values=[67]
 0617  96 19 E2                               LOADSTRING                    dst=v[0x019], values=[50]
 061A  15 60 00                               JMP                           target=0x0060
-061D  1C 11 04                               VIDEO_TRANSITION_REF          ref=0x0411 (B[17]=?)
+061D  1C 11 04                               VIDEO_TRANSITION_REF          ref=0x0411 (B[17]=bsten_03.vdx)
 0620  26 7C 30 33 63 66 00                   VIDEO_NAME                    name="{grid:3,0}cf"
 0627  07                                     VIDEOFLAG7_ON                 
 0628  26 7C 30 33 23 7A 62 00                VIDEO_NAME                    name="{grid:3,0}{v019}b"
@@ -347,7 +347,7 @@
 0637  96 1C F3                               LOADSTRING                    dst=v[0x01C], values=[67]
 063A  96 19 E3                               LOADSTRING                    dst=v[0x019], values=[51]
 063D  15 60 00                               JMP                           target=0x0060
-0640  1C 12 04                               VIDEO_TRANSITION_REF          ref=0x0412 (B[18]=?)
+0640  1C 12 04                               VIDEO_TRANSITION_REF          ref=0x0412 (B[18]=bsten_04.vdx)
 0643  26 7C 30 34 64 66 00                   VIDEO_NAME                    name="{grid:4,0}df"
 064A  07                                     VIDEOFLAG7_ON                 
 064B  26 7C 30 34 23 7A 62 00                VIDEO_NAME                    name="{grid:4,0}{v019}b"
@@ -356,7 +356,7 @@
 065A  96 1D F3                               LOADSTRING                    dst=v[0x01D], values=[67]
 065D  96 19 E4                               LOADSTRING                    dst=v[0x019], values=[52]
 0660  15 60 00                               JMP                           target=0x0060
-0663  1C 13 04                               VIDEO_TRANSITION_REF          ref=0x0413 (B[19]=?)
+0663  1C 13 04                               VIDEO_TRANSITION_REF          ref=0x0413 (B[19]=bsten_05.vdx)
 0666  26 7C 30 35 65 66 00                   VIDEO_NAME                    name="{grid:5,0}ef"
 066D  07                                     VIDEOFLAG7_ON                 
 066E  26 7C 30 35 23 7A 62 00                VIDEO_NAME                    name="{grid:5,0}{v019}b"
@@ -365,7 +365,7 @@
 067D  96 1E F3                               LOADSTRING                    dst=v[0x01E], values=[67]
 0680  96 19 E5                               LOADSTRING                    dst=v[0x019], values=[53]
 0683  15 60 00                               JMP                           target=0x0060
-0686  1C 14 04                               VIDEO_TRANSITION_REF          ref=0x0414 (B[20]=?)
+0686  1C 14 04                               VIDEO_TRANSITION_REF          ref=0x0414 (B[20]=bsten_06.vdx)
 0689  26 7C 30 36 66 66 00                   VIDEO_NAME                    name="{grid:6,0}ff"
 0690  07                                     VIDEOFLAG7_ON                 
 0691  26 7C 30 36 23 7A 62 00                VIDEO_NAME                    name="{grid:6,0}{v019}b"
@@ -374,7 +374,7 @@
 06A0  96 1F F3                               LOADSTRING                    dst=v[0x01F], values=[67]
 06A3  96 19 E6                               LOADSTRING                    dst=v[0x019], values=[54]
 06A6  15 60 00                               JMP                           target=0x0060
-06A9  1C 15 04                               VIDEO_TRANSITION_REF          ref=0x0415 (B[21]=?)
+06A9  1C 15 04                               VIDEO_TRANSITION_REF          ref=0x0415 (B[21]=bsten_07.vdx)
 06AC  26 7C 30 37 67 66 00                   VIDEO_NAME                    name="{grid:7,0}gf"
 06B3  07                                     VIDEOFLAG7_ON                 
 06B4  26 7C 30 37 23 7A 62 00                VIDEO_NAME                    name="{grid:7,0}{v019}b"
@@ -383,7 +383,7 @@
 06C3  96 20 F3                               LOADSTRING                    dst=v[0x020], values=[67]
 06C6  96 19 E7                               LOADSTRING                    dst=v[0x019], values=[55]
 06C9  15 60 00                               JMP                           target=0x0060
-06CC  1C 16 04                               VIDEO_TRANSITION_REF          ref=0x0416 (B[22]=?)
+06CC  1C 16 04                               VIDEO_TRANSITION_REF          ref=0x0416 (B[22]=bsten_08.vdx)
 06CF  26 7C 30 38 68 66 00                   VIDEO_NAME                    name="{grid:8,0}hf"
 06D6  07                                     VIDEOFLAG7_ON                 
 06D7  26 7C 30 38 23 7A 62 00                VIDEO_NAME                    name="{grid:8,0}{v019}b"
@@ -392,7 +392,7 @@
 06E6  96 21 F3                               LOADSTRING                    dst=v[0x021], values=[67]
 06E9  96 19 E8                               LOADSTRING                    dst=v[0x019], values=[56]
 06EC  15 60 00                               JMP                           target=0x0060
-06EF  1C 17 04                               VIDEO_TRANSITION_REF          ref=0x0417 (B[23]=?)
+06EF  1C 17 04                               VIDEO_TRANSITION_REF          ref=0x0417 (B[23]=bsten_09.vdx)
 06F2  26 7C 30 39 69 66 00                   VIDEO_NAME                    name="{grid:9,0}if"
 06F9  07                                     VIDEOFLAG7_ON                 
 06FA  26 7C 30 39 23 7A 62 00                VIDEO_NAME                    name="{grid:9,0}{v019}b"
@@ -401,7 +401,7 @@
 0709  96 22 F3                               LOADSTRING                    dst=v[0x022], values=[67]
 070C  96 19 E9                               LOADSTRING                    dst=v[0x019], values=[57]
 070F  15 60 00                               JMP                           target=0x0060
-0712  1C 18 04                               VIDEO_TRANSITION_REF          ref=0x0418 (B[24]=?)
+0712  1C 18 04                               VIDEO_TRANSITION_REF          ref=0x0418 (B[24]=bsten_10.vdx)
 0715  26 7C 31 30 6A 66 00                   VIDEO_NAME                    name="{grid:0,1}jf"
 071C  07                                     VIDEOFLAG7_ON                 
 071D  26 7C 31 30 23 7A 62 00                VIDEO_NAME                    name="{grid:0,1}{v019}b"
@@ -410,7 +410,7 @@
 072C  96 23 F3                               LOADSTRING                    dst=v[0x023], values=[67]
 072F  96 19 EA                               LOADSTRING                    dst=v[0x019], values=[58]
 0732  15 60 00                               JMP                           target=0x0060
-0735  1C 19 04                               VIDEO_TRANSITION_REF          ref=0x0419 (B[25]=?)
+0735  1C 19 04                               VIDEO_TRANSITION_REF          ref=0x0419 (B[25]=bsten_11.vdx)
 0738  26 7C 31 31 6B 66 00                   VIDEO_NAME                    name="{grid:1,1}kf"
 073F  07                                     VIDEOFLAG7_ON                 
 0740  26 7C 31 31 23 7A 62 00                VIDEO_NAME                    name="{grid:1,1}{v019}b"
@@ -419,7 +419,7 @@
 074F  96 24 F3                               LOADSTRING                    dst=v[0x024], values=[67]
 0752  96 19 EB                               LOADSTRING                    dst=v[0x019], values=[59]
 0755  15 60 00                               JMP                           target=0x0060
-0758  1C 1A 04                               VIDEO_TRANSITION_REF          ref=0x041A (B[26]=?)
+0758  1C 1A 04                               VIDEO_TRANSITION_REF          ref=0x041A (B[26]=bsten_12.vdx)
 075B  26 7C 31 32 6C 66 00                   VIDEO_NAME                    name="{grid:2,1}lf"
 0762  07                                     VIDEOFLAG7_ON                 
 0763  26 7C 31 32 23 7A 62 00                VIDEO_NAME                    name="{grid:2,1}{v019}b"
@@ -428,7 +428,7 @@
 0772  96 25 F3                               LOADSTRING                    dst=v[0x025], values=[67]
 0775  96 19 EC                               LOADSTRING                    dst=v[0x019], values=[60]
 0778  15 60 00                               JMP                           target=0x0060
-077B  1C 1B 04                               VIDEO_TRANSITION_REF          ref=0x041B (B[27]=?)
+077B  1C 1B 04                               VIDEO_TRANSITION_REF          ref=0x041B (B[27]=bsten_13.vdx)
 077E  26 7C 31 33 6D 66 00                   VIDEO_NAME                    name="{grid:3,1}mf"
 0785  07                                     VIDEOFLAG7_ON                 
 0786  26 7C 31 33 23 7A 62 00                VIDEO_NAME                    name="{grid:3,1}{v019}b"
@@ -437,7 +437,7 @@
 0795  96 26 F3                               LOADSTRING                    dst=v[0x026], values=[67]
 0798  96 19 ED                               LOADSTRING                    dst=v[0x019], values=[61]
 079B  15 60 00                               JMP                           target=0x0060
-079E  1C 1C 04                               VIDEO_TRANSITION_REF          ref=0x041C (B[28]=?)
+079E  1C 1C 04                               VIDEO_TRANSITION_REF          ref=0x041C (B[28]=bsten_14.vdx)
 07A1  26 7C 31 34 6E 66 00                   VIDEO_NAME                    name="{grid:4,1}nf"
 07A8  07                                     VIDEOFLAG7_ON                 
 07A9  26 7C 31 34 23 7A 62 00                VIDEO_NAME                    name="{grid:4,1}{v019}b"
@@ -446,7 +446,7 @@
 07B8  96 27 F3                               LOADSTRING                    dst=v[0x027], values=[67]
 07BB  96 19 EE                               LOADSTRING                    dst=v[0x019], values=[62]
 07BE  15 60 00                               JMP                           target=0x0060
-07C1  1C 1D 04                               VIDEO_TRANSITION_REF          ref=0x041D (B[29]=?)
+07C1  1C 1D 04                               VIDEO_TRANSITION_REF          ref=0x041D (B[29]=bsten_15.vdx)
 07C4  26 7C 31 35 6F 66 00                   VIDEO_NAME                    name="{grid:5,1}of"
 07CB  07                                     VIDEOFLAG7_ON                 
 07CC  26 7C 31 35 23 7A 62 00                VIDEO_NAME                    name="{grid:5,1}{v019}b"
@@ -455,7 +455,7 @@
 07DB  96 28 F3                               LOADSTRING                    dst=v[0x028], values=[67]
 07DE  96 19 EF                               LOADSTRING                    dst=v[0x019], values=[63]
 07E1  15 60 00                               JMP                           target=0x0060
-07E4  1C 1E 04                               VIDEO_TRANSITION_REF          ref=0x041E (B[30]=?)
+07E4  1C 1E 04                               VIDEO_TRANSITION_REF          ref=0x041E (B[30]=bsten_16.vdx)
 07E7  26 7C 31 36 70 66 00                   VIDEO_NAME                    name="{grid:6,1}pf"
 07EE  07                                     VIDEOFLAG7_ON                 
 07EF  26 7C 31 36 23 7A 62 00                VIDEO_NAME                    name="{grid:6,1}{v019}b"
@@ -464,7 +464,7 @@
 07FE  96 29 F3                               LOADSTRING                    dst=v[0x029], values=[67]
 0801  96 19 F0                               LOADSTRING                    dst=v[0x019], values=[64]
 0804  15 60 00                               JMP                           target=0x0060
-0807  1C 1F 04                               VIDEO_TRANSITION_REF          ref=0x041F (B[31]=?)
+0807  1C 1F 04                               VIDEO_TRANSITION_REF          ref=0x041F (B[31]=bsten_17.vdx)
 080A  26 7C 31 37 71 66 00                   VIDEO_NAME                    name="{grid:7,1}qf"
 0811  07                                     VIDEOFLAG7_ON                 
 0812  26 7C 31 37 23 7A 62 00                VIDEO_NAME                    name="{grid:7,1}{v019}b"
@@ -473,7 +473,7 @@
 0821  96 2A F3                               LOADSTRING                    dst=v[0x02A], values=[67]
 0824  96 19 F1                               LOADSTRING                    dst=v[0x019], values=[65]
 0827  15 60 00                               JMP                           target=0x0060
-082A  1C 20 04                               VIDEO_TRANSITION_REF          ref=0x0420 (B[32]=?)
+082A  1C 20 04                               VIDEO_TRANSITION_REF          ref=0x0420 (B[32]=bsten_18.vdx)
 082D  26 7C 31 38 72 66 00                   VIDEO_NAME                    name="{grid:8,1}rf"
 0834  07                                     VIDEOFLAG7_ON                 
 0835  26 7C 31 38 23 7A 62 00                VIDEO_NAME                    name="{grid:8,1}{v019}b"
@@ -482,7 +482,7 @@
 0844  96 2B F3                               LOADSTRING                    dst=v[0x02B], values=[67]
 0847  96 19 F2                               LOADSTRING                    dst=v[0x019], values=[66]
 084A  15 60 00                               JMP                           target=0x0060
-084D  1C 21 04                               VIDEO_TRANSITION_REF          ref=0x0421 (B[33]=?)
+084D  1C 21 04                               VIDEO_TRANSITION_REF          ref=0x0421 (B[33]=bsten_19.vdx)
 0850  26 7C 31 39 73 66 00                   VIDEO_NAME                    name="{grid:9,1}sf"
 0857  07                                     VIDEOFLAG7_ON                 
 0858  26 7C 31 39 23 7A 62 00                VIDEO_NAME                    name="{grid:9,1}{v019}b"
@@ -491,7 +491,7 @@
 0867  96 2C F3                               LOADSTRING                    dst=v[0x02C], values=[67]
 086A  96 19 F3                               LOADSTRING                    dst=v[0x019], values=[67]
 086D  15 60 00                               JMP                           target=0x0060
-0870  1C 22 04                               VIDEO_TRANSITION_REF          ref=0x0422 (B[34]=?)
+0870  1C 22 04                               VIDEO_TRANSITION_REF          ref=0x0422 (B[34]=bsten_20.vdx)
 0873  26 7C 32 30 74 66 00                   VIDEO_NAME                    name="{grid:0,2}tf"
 087A  07                                     VIDEOFLAG7_ON                 
 087B  26 7C 32 30 23 7A 62 00                VIDEO_NAME                    name="{grid:0,2}{v019}b"
@@ -500,7 +500,7 @@
 088A  96 2D F3                               LOADSTRING                    dst=v[0x02D], values=[67]
 088D  96 19 F4                               LOADSTRING                    dst=v[0x019], values=[68]
 0890  15 60 00                               JMP                           target=0x0060
-0893  1C 23 04                               VIDEO_TRANSITION_REF          ref=0x0423 (B[35]=?)
+0893  1C 23 04                               VIDEO_TRANSITION_REF          ref=0x0423 (B[35]=bsten_21.vdx)
 0896  26 7C 32 31 75 66 00                   VIDEO_NAME                    name="{grid:1,2}uf"
 089D  07                                     VIDEOFLAG7_ON                 
 089E  26 7C 32 31 23 7A 62 00                VIDEO_NAME                    name="{grid:1,2}{v019}b"
@@ -509,7 +509,7 @@
 08AD  96 2E F3                               LOADSTRING                    dst=v[0x02E], values=[67]
 08B0  96 19 F5                               LOADSTRING                    dst=v[0x019], values=[69]
 08B3  15 60 00                               JMP                           target=0x0060
-08B6  1C 24 04                               VIDEO_TRANSITION_REF          ref=0x0424 (B[36]=?)
+08B6  1C 24 04                               VIDEO_TRANSITION_REF          ref=0x0424 (B[36]=bsten_22.vdx)
 08B9  26 7C 32 32 76 66 00                   VIDEO_NAME                    name="{grid:2,2}vf"
 08C0  07                                     VIDEOFLAG7_ON                 
 08C1  26 7C 32 32 23 7A 62 00                VIDEO_NAME                    name="{grid:2,2}{v019}b"
@@ -518,7 +518,7 @@
 08D0  96 2F F3                               LOADSTRING                    dst=v[0x02F], values=[67]
 08D3  96 19 F6                               LOADSTRING                    dst=v[0x019], values=[70]
 08D6  15 60 00                               JMP                           target=0x0060
-08D9  1C 25 04                               VIDEO_TRANSITION_REF          ref=0x0425 (B[37]=?)
+08D9  1C 25 04                               VIDEO_TRANSITION_REF          ref=0x0425 (B[37]=bsten_23.vdx)
 08DC  26 7C 32 33 77 66 00                   VIDEO_NAME                    name="{grid:3,2}wf"
 08E3  07                                     VIDEOFLAG7_ON                 
 08E4  26 7C 32 33 23 7A 62 00                VIDEO_NAME                    name="{grid:3,2}{v019}b"
@@ -527,7 +527,7 @@
 08F3  96 30 F3                               LOADSTRING                    dst=v[0x030], values=[67]
 08F6  96 19 F7                               LOADSTRING                    dst=v[0x019], values=[71]
 08F9  15 60 00                               JMP                           target=0x0060
-08FC  1C 26 04                               VIDEO_TRANSITION_REF          ref=0x0426 (B[38]=?)
+08FC  1C 26 04                               VIDEO_TRANSITION_REF          ref=0x0426 (B[38]=bsten_24.vdx)
 08FF  26 7C 32 34 78 66 00                   VIDEO_NAME                    name="{grid:4,2}xf"
 0906  07                                     VIDEOFLAG7_ON                 
 0907  26 7C 32 34 23 7A 62 00                VIDEO_NAME                    name="{grid:4,2}{v019}b"
@@ -536,7 +536,7 @@
 0916  96 31 F3                               LOADSTRING                    dst=v[0x031], values=[67]
 0919  96 19 F8                               LOADSTRING                    dst=v[0x019], values=[72]
 091C  15 60 00                               JMP                           target=0x0060
-091F  1C 27 04                               VIDEO_TRANSITION_REF          ref=0x0427 (B[39]=?)
+091F  1C 27 04                               VIDEO_TRANSITION_REF          ref=0x0427 (B[39]=bsten_25.vdx)
 0922  26 7C 32 35 79 66 00                   VIDEO_NAME                    name="{grid:5,2}yf"
 0929  07                                     VIDEOFLAG7_ON                 
 092A  26 7C 32 35 23 7A 62 00                VIDEO_NAME                    name="{grid:5,2}{v019}b"
@@ -548,7 +548,7 @@
 0942  0A                                     VIDEOFLAG5_ON                 
 0943  07                                     VIDEOFLAG7_ON                 
 0944  46                                     RESOURCE_CONTEXT_SAVE         
-0945  09 01 24                               VIDEOREF                      ref=0x2401 (INTRO[1]=?)
+0945  09 01 24                               VIDEOREF                      ref=0x2401 (INTRO[1]=fade.vdx)
 0948  37 00 00 50 00 7F 02 8F 01             COPY_RECT_TO_BG               left=0x0000, top=0x0050, right=0x027F, bottom=0x018F
 0951  47                                     RESOURCE_CONTEXT_RESTORE      
 0952  17 00                                  RET                           value=0x00

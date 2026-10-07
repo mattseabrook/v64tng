@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "analysis_date": "2026-10-07",
+  "supported_candidate_entries": 6,
+  "candidate_entry_denominator": 665,
+  "verification_run": false,
+  "functions": [
+    {
+      "module": "cdi_data",
+      "entry": 82,
+      "name": "return_embedded_data_pointers",
+      "status": "verified-role",
+      "contract": "Return pointers to module+0x111A in A0 and module+0x005C in A1.",
+      "source": "src/functions/resource_io/return_embedded_data_pointers.asm",
+      "function_end_exclusive": 92,
+      "evidence": [
+        "Existing native recovery; LEA PC-relative twice followed by RTS"
+      ]
+    },
+    {
+      "module": "cdi_loader",
+      "entry": 84,
+      "name": "select_player_from_csd",
+      "status": "verified-role",
+      "contract": "Query CSD records 91 then 90; link cdi_t7g only when both queries succeed, otherwise link cdi_nodv; chain into the chosen program. The meanings of the individual CSD codes remain unassigned.",
+      "source": "src/functions/platform/cdi_loader_select_player_from_csd.asm",
+      "slice_end": 466,
+      "evidence": [
+        "Direct instruction/control-flow reading of existing emitted source",
+        "Microware OS-9/68K Technical Manual: F$Link, F$Chain, F$Exit, F$PErr, I$Open, I$Write, I$ReadLn, I$Close"
+      ]
+    },
+    {
+      "module": "cdi_loader",
+      "entry": 466,
+      "name": "write_console_crlf",
+      "status": "verified-role",
+      "contract": "Write the two embedded CR/LF bytes through I$Write on path zero; restore registers and condition codes with RTR.",
+      "source": "src/functions/platform/cdi_loader_write_console_crlf.asm",
+      "slice_end": 492,
+      "evidence": [
+        "Direct instruction/control-flow reading of existing emitted source",
+        "Microware OS-9/68K Technical Manual: F$Link, F$Chain, F$Exit, F$PErr, I$Open, I$Write, I$ReadLn, I$Close"
+      ]
+    },
+    {
+      "module": "cdi_loader",
+      "entry": 492,
+      "name": "write_console_c_string",
+      "status": "verified-role",
+      "contract": "Measure the NUL-terminated string passed on the stack, write it through I$Write on path zero, restore condition codes and remove the pointer argument.",
+      "source": "src/functions/platform/cdi_loader_write_console_c_string.asm",
+      "slice_end": 538,
+      "evidence": [
+        "Direct instruction/control-flow reading of existing emitted source",
+        "Microware OS-9/68K Technical Manual: F$Link, F$Chain, F$Exit, F$PErr, I$Open, I$Write, I$ReadLn, I$Close"
+      ]
+    },
+    {
+      "module": "cdi_loader",
+      "entry": 538,
+      "name": "report_error_and_exit",
+      "status": "verified-role",
+      "contract": "Load the saved error word at A6-0x7FE0, call F$PErr, then call F$Exit with D1=0. The following bytes at 0x228 are a separate error-file initializer, not a return path from F$Exit.",
+      "source": "src/functions/platform/cdi_loader_report_error_and_exit.asm",
+      "slice_end": 690,
+      "evidence": [
+        "Direct instruction/control-flow reading of existing emitted source",
+        "Microware OS-9/68K Technical Manual: F$Link, F$Chain, F$Exit, F$PErr, I$Open, I$Write, I$ReadLn, I$Close"
+      ],
+      "function_end_exclusive": 552
+    },
+    {
+      "module": "cdi_loader",
+      "entry": 690,
+      "name": "find_csd_record",
+      "status": "verified-role",
+      "contract": "Open /nvr/csd with I$Open mode 0x41; read up to 32 bytes per line with I$ReadLn; parse a decimal record code up to colon and compare it to incoming D0.W; close the path. EOF without a match returns carry set and D1.W=0x8100; other I/O errors print diagnostics and terminate.",
+      "source": "src/functions/platform/cdi_loader_find_csd_record.asm",
+      "slice_end": 846,
+      "evidence": [
+        "Direct instruction/control-flow reading of existing emitted source",
+        "Microware OS-9/68K Technical Manual: F$Link, F$Chain, F$Exit, F$PErr, I$Open, I$Write, I$ReadLn, I$Close"
+      ]
+    }
+  ],
+  "documentation_sources": [
+    "https://www.peripheraltech.com/OS9%20-%2068K%20V2.4%20Technical%20Manual.pdf",
+    "https://www.icdia.co.uk/docs/GRNBK/BY_NAME/rtos_app"
+  ]
+}

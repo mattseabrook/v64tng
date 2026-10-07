@@ -1947,7 +1947,23 @@ bool initializeGrvMainMenu()
 {
 	previousGrvVideoWasForegroundStill = false;
 	setGameplayMusicMix(false);
-	auto runtime = GrvRuntime::load(assetPath("SCRIPT.GRV"), assetRoot());
+	CellPuzzle::Flavor microscopeFlavor = CellPuzzle::Flavor::Dos;
+	const auto policy = config.find("grvMicroscopePolicy");
+	if (policy != config.end())
+	{
+		if (!policy->is_string() ||
+			(*policy != "dos" && *policy != "windows"))
+		{
+			std::println(stderr,
+				"WARNING: grvMicroscopePolicy must be dos or windows");
+			return false;
+		}
+		if (*policy == "windows") microscopeFlavor = CellPuzzle::Flavor::Windows;
+	}
+	consoleLogf("GRV", "microscope policy: {}",
+		microscopeFlavor == CellPuzzle::Flavor::Windows ? "windows" : "dos");
+	auto runtime = GrvRuntime::load(assetPath("SCRIPT.GRV"), assetRoot(),
+		GrvSaveConvention::Auto, microscopeFlavor);
 	if (!runtime)
 	{
 		std::println(stderr, "WARNING: {}", runtime.error());
