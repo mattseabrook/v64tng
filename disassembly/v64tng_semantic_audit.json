@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "scope": "Recovered role inventory compared with modern engine; platform replacement is not native ABI emulation. Unknown routines excluded.",
-  "validation": "Source/disassembly reading only for the 2026-10-07 integration follow-up; no tests, builds, verification commands or runtime checks run in this follow-up.",
+  "validation": "2026-10-25: source review and permitted builds. Auxiliary test harnesses removed by maintainer instruction; no further engine/toolkit tests or standalone verification run after that instruction. Historical observations are not current gameplay acceptance.",
   "mac_coverage": {
     "verified_original_jump_table_entries": 55,
     "denominator": 80,
     "unknown": 25,
     "percent": 68.75,
-    "verified_role_records": 205,
-    "unverified_candidates": 21
+    "verified_role_records": 207,
+    "unverified_candidates": 20
   },
   "changes": [
     {
@@ -3354,5 +3354,87 @@
     "DOS arbitrary board-byte pass-through is safely normalized for blockers; native out-of-range counter accesses are not reproduced."
   ],
   "integration_followup_date": "2026-10-07",
-  "integration_report": "docs/ENGINE_SEMANTIC_INTEGRATION.md"
+  "integration_report": "docs/ENGINE_SEMANTIC_INTEGRATION.md",
+  "dos_coverage": {
+    "known_function_entries": 283,
+    "verified_descriptive_roles": 283,
+    "recovered_entries_included": 22,
+    "full_semantic_or_gameplay_equivalence": false
+  },
+  "current_changes": [
+    {
+      "area": "Hotspot contracts",
+      "implementation": [
+        "include/grv_hotspot.h",
+        "include/grv_runtime.h",
+        "src/grv_runtime.cpp",
+        "src/grv.cpp",
+        "src/game.cpp",
+        "include/config.h",
+        "config.json"
+      ],
+      "behavior": "Default DOS logical geometry/cursors from DS:E057..E0C4; explicit script rectangle operand decoding retained. Existing responsive window mapping, resizing, bar-free crop and top-bar shortcut unchanged. Windows logical convention remains selectable."
+    },
+    {
+      "area": "Authoring tools",
+      "implementation": [
+        "grooviev1/main.cpp",
+        "grooviev1/build.sh",
+        "grooviev1/README.md"
+      ],
+      "behavior": "Shared-decoder GRV listings, explicit raw-byte fallback and raw-column assembly; preserve 16-bit offsets and refuse existing outputs. This is not a mnemonic compiler or branch relocator."
+    },
+    {
+      "area": "Disassembly data ownership",
+      "implementation": [
+        "disassembly/V/src/data/vdx/xms_still_cache_state.asm",
+        "disassembly/V/src/data/puzzle/cell_search_state_and_strategies.asm",
+        "disassembly/V/src/data/puzzle/cell_search_workspace.asm",
+        "disassembly/V/src/data/savegame/empty_slot_caption.asm"
+      ],
+      "behavior": "Original descriptor C8C8 retained, cache fields and 200 records named, microscope strategy and move-list fields named, encoded caption extracted. Unknown subranges explicitly retained."
+    },
+    {
+      "area": "Build cache",
+      "implementation": [
+        "build.sh"
+      ],
+      "behavior": "Project header timestamps invalidate cached objects; version.h remains handled through its existing direct-consumer release-stamp mechanism. Resolves stale grv_editor.o after shared decoder header changes."
+    }
+  ],
+  "review_limits_and_remaining_work": [
+    {
+      "area": "GRV and resource flow",
+      "finding": "Existing variable/save layout, child-script snapshots, resource IDs, RNG nibble rejection and presentation command ordering retained. DOS 1Eh consumes a word but retail/Windows corpus uses one-byte layout; preserve the working corpus exception. No complete control-flow/gameplay acceptance claimed."
+    },
+    {
+      "area": "Microscope",
+      "finding": "Retain original ordered neighbor generation and strategy rows, DOS/Windows board normalization, rank threshold and tie policies. This pass names corresponding original storage; no new algorithm claim."
+    },
+    {
+      "area": "VDX/cursor/palette",
+      "finding": "Retain row-end delta sentinels, indexed palette state, one-shot palette merge/fade commands and host cursor handling. No new acceptance claim for every visual stream."
+    },
+    {
+      "area": "Audio and CD",
+      "finding": "Host WASAPI/WinMM/OPL/Ogg replace BIOS/Miles/DIGPAK/MSCDEX. Current PLAYCD handling retains Windows-oriented selection 62h behavior and host track mapping; DOS 62h/63h stop semantics, selection 03 offset/length, and legacy driver ABI bugs are not full host equivalence. PCM command 81h external meaning remains unknown; opcode 4Ah stays a host no-op."
+    },
+    {
+      "area": "Memory/cache/platform",
+      "finding": "Host allocation, archives and caches replace segmented/XMS/hardware services. Original first-allocation XMS key overwrite, interrupt flag/stack bugs and conversion faults remain in the original source; no unsafe host defect was introduced to imitate them."
+    },
+    {
+      "area": "QoL and testing policy",
+      "finding": "Keep cropped presentation, top-bar access, save companion observer, raycast and development features. Runtime gameplay, saves/loads, audio and new authoring commands require human acceptance. Only one build/identity gate per original disassembly is maintained."
+    }
+  ],
+  "build_outcome": {
+    "modern_engine": "v64tng.exe 1.0.20261025.3: build succeeded, no deployment",
+    "toolkit": "Windows grooviev1.exe and Linux grooviev1-native: builds succeeded, no deployment",
+    "original_players": "DOS, Windows and Mac canonical byte-identity gates passed inside their build.sh scripts",
+    "compiler_warning": "Unchanged src/music.cpp: g_soundfontReady set but unused",
+    "testing": "No further tests or standalone verification after the maintainer instruction; 23 auxiliary harness source/scripts removed."
+  },
+  "presentation_policy": "Maintainer clarification: use accurate DOS logical hotspot rectangles/cursors by default, feeding the existing instantaneous responsive window-coordinate transform. Preserve modern window sizing, bar-free 640x320 presentation, top-bar access and QoL. Windows logical geometry remains selectable. Logical coordinates and window scaling are separate layers.",
+  "latest_original_source_followup": "17 supported bank/probe entries recovered by static indirect-pointer references; original DOS build identity passes. Modern engine/toolkit code unchanged in this follow-up."
 }

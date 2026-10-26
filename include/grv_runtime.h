@@ -18,6 +18,7 @@
 
 #include "cell_puzzle.h"
 #include "grv_random.h"
+#include "grv_hotspot.h"
 
 // A view into one hotspot instruction in the mapped GRV image.  Geometry is
 // decoded on demand; no parallel ClickArea/Hotspot object is constructed.
@@ -35,11 +36,13 @@ public:
 
 private:
 	friend class GrvRuntime;
-	GrvHotspotView(std::span<const uint8_t> instruction, uint16_t offset)
-		: instruction_(instruction), offset_(offset) {}
+	GrvHotspotView(std::span<const uint8_t> instruction, uint16_t offset,
+		GrvHotspotConvention convention)
+		: instruction_(instruction), offset_(offset), convention_(convention) {}
 
 	std::span<const uint8_t> instruction_;
 	uint16_t offset_ = 0;
+	GrvHotspotConvention convention_ = GrvHotspotConvention::Dos;
 };
 
 struct GrvResource
@@ -140,7 +143,8 @@ public:
 		const std::filesystem::path &scriptPath,
 		const std::filesystem::path &assetRoot,
 		GrvSaveConvention saveConvention = GrvSaveConvention::Auto,
-		CellPuzzle::Flavor microscopeFlavor = CellPuzzle::Flavor::Dos);
+		CellPuzzle::Flavor microscopeFlavor = CellPuzzle::Flavor::Dos,
+		GrvHotspotConvention hotspotConvention = GrvHotspotConvention::Dos);
 
 	[[nodiscard]] std::expected<GrvBoot, std::string> boot();
 	[[nodiscard]] std::optional<GrvHotspotView> hotspotAt(
@@ -228,6 +232,7 @@ private:
 	std::array<uint16_t, 4> persistentHotspots_{};
 	GrvRandom random_{std::random_device{}() | 1u};
 	CellPuzzle cellPuzzle_;
+	GrvHotspotConvention hotspotConvention_ = GrvHotspotConvention::Dos;
 	CellPuzzle::Flavor microscopeFlavor_ = CellPuzzle::Flavor::Dos;
 	// Native selection globals live outside the GRV variable/save block.
 	CellPuzzle::Move lastMicroscopeMove_{0, 0, 1};

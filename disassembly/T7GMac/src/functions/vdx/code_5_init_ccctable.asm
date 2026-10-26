@@ -1,3 +1,7 @@
+; Verified InitCCCTable role by full-output comparison with Windows 0040BFF4.
+; 256 repeated-color dwords, then 32768 inverse masks with low-byte half first.
+; Original bytes and debug trailer remain unchanged. M68020 isolated checks:
+; grooviev1/verify_cache_cd_and_ccc.py.
 ; recovered-symbol-candidate: Native InitCCCTable routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.
 ; Original native symbol: InitCCCTable; evidence file offset 0xecc0.
 ; Exact bytes retained; instruction decoding remains provisional where inline data may occur.

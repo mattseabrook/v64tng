@@ -1,6 +1,11 @@
 ; Linear entry 02997 (1000:2997)
 ; Ghidra working symbol: FUN_1000_2997
 ; Verified VDX chunk-stream/refill path; distinguishes interleaved 80h PCM from visual chunks while one VIDEOREF remains synchronous.
+; Shared tail 02A0F also entered by pump_pending_pcm_buffers after the same
+; ES/DS/PUSHA prologue. Miles: query two slots, submit min(pending, block size),
+; advance ring offset by a full block even for a short tail, then command 7Dh.
+; BIOS: stage 4000h/8000h blocks, install the recovered INT 15h completion handler.
+; Verified in grooviev1/verify_pcm_streaming_helpers.py with external services mocked.
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
 %macro emit_stream_media_buffer_part_00 0

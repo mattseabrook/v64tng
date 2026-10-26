@@ -1,6 +1,6 @@
 # v64tng
 
-Current release: **1.0.20261006.2**
+Current release: **1.0.20261025.5**
 
 [![v64tng build](https://img.shields.io/badge/v64tng%20build-passing-2ea44f?logo=github)](build.sh)
 
@@ -10,24 +10,40 @@ Current release: **1.0.20261006.2**
 
 [![T7GMac reconstruction](https://img.shields.io/badge/T7GMac%20reconstruction-byte--identical-2ea44f)](disassembly/T7GMac)
 
-[![CD-i reconstruction](https://img.shields.io/badge/CD--i%20reconstruction-byte--identical-2ea44f)](disassembly/cdi_t7g)
-
-[![semantic disassembly](https://img.shields.io/badge/semantic%20disassembly-54.9%25-7c3aed)](#semantic-disassembly-progress)
-
 `v64tng.exe` is a Windows x86_64 executable that is an attempt at re-creating the complete 7th Guest game engine from scratch. It is written in C++23 and uses Vulkan or DirectX for graphics, WASAPI for PCM and software-synthesized audio, WinMM for General MIDI output, and Win32 input handling. The game engine is designed to work placed into the original game directory (*regardless of where you purchased it/what version you have*), and it is required to be used with the original game data files.
 
 ## Semantic Disassembly Progress
 
-| Original executable                       | Verified semantic roles | Provisional roles remaining | Semantic completeness |      Lossless source-byte coverage |
+Current source inventory: DOS **283/283 (100.0% entry-role coverage)**, Windows **174/336 (51.8%)**, and Mac **55/80 (68.8%)** jump-table entries, with 207 verified Mac records including internal routines. The DOS total includes all 22 entries recovered beyond the analyzer seed, including indirect bank handlers, interrupts and callbacks. Newly discovered entries will be added to the denominator. Entry-role coverage does not establish complete code/data ownership, original symbols, external-driver internals, or full gameplay correctness. All executable source changes preserve the canonical artifact hashes.
+
+| Original executable                       | Verified semantic roles | Provisional roles remaining | Verified entry-role coverage |      Lossless source-byte coverage |
 | ----------------------------------------- | ----------------------: | --------------------------: | --------------------: | ---------------------------------: |
-| [`V.EXE` 1.30](disassembly/V)             |                158 / 261 |                         103 |             **60.5%** | 101,624 / 101,624 bytes (**100%**) |
-| [`v32tng.exe` 1.02b1](disassembly/v32tng) |               170 / 336 |                         166 |             **50.6%** | 144,896 / 144,896 bytes (**100%**) |
+| [`V.EXE` 1.30](disassembly/V)             | 283 / 283 | 0 | **100.0%** | 101,624 / 101,624 bytes (**100%**) |
+| [`v32tng.exe` 1.02b1](disassembly/v32tng) | 174 / 336 | 162 | **51.8%** | 144,896 / 144,896 bytes (**100%**) |
 | [`T7GMac` 1.0 (Classic Mac)](disassembly/T7GMac) | 55 / 80 table-backed entries | 25 | 68.8% role coverage | 1,830,912 / 1,830,912 bytes (**100%; byte-identical**) |
-| [Philips CD-i files](disassembly/cdi_t7g) | 6 / 665 candidate entries | Unknown | Initial native recovery | 241,664 / 241,664 bytes (**100%; byte-identical**) |
 
-The October 7 platform follow-up identifies the Mac credits prelude and embedded save format, adds an internal Mac display routine and five CD-i loader roles, and updates Groovie v1 for Mac resource/data-fork modding. [Research and evidence](docs/PLATFORM_EASTER_EGGS.md) separates documented Easter eggs and port differences from locally supported behavior. These changes are unbuilt and untested; earlier reconstruction results remain historical.
+The DOS inventory includes recovered interrupt/callback entries and grows when
+new entries are found. The current data pass identifies cursor pointer tables, palette/stream state,
+XMS descriptors and control pointer, embedded DIGPAK command/state data, cache
+controls and 200 entries, microscope fields, and the encoded empty-save caption.
+Seventeen additional video-bank/probe entries are now included in DOS coverage. Data is organized by subsystem; mixed regions and
+unproven gap ownership remain explicitly unresolved.
 
-The connected recovery pass adds 70 static semantic roles to each x86 player, including the microscope puzzle search, cursor rendering, DOS configuration and allocation, and Win32 runtime helpers. Overall, 328 of 597 provisional x86 entries now have verified roles (54.9%). These counts measure identified behavior, not recovered original symbols or proof that every code/data boundary is correct. Both microscope neighbor tables are extracted into named data files. [Curated address/role evidence](disassembly/semantic_roles.json) includes contracts, direct callers, and cross-version matches for this pass and can seed the future wiki.
+v64tng defaults to recovered DOS logical hotspot geometry and cursor values
+(`grvHotspotPolicy: "dos"`), feeding the existing responsive window-coordinate
+transform. `"windows"` retains the previous logical geometry independently of
+save format and `grvMicroscopePolicy`.
+Window sizing, coordinate scaling, the intentional 640×320 crop without the
+original top/bottom bars, and the top-bar shortcut remain in place. Original logical hotspot accuracy and modern responsive scaling are separate
+steps; recovery does not override the presentation choices. Full gameplay and
+platform equivalence remain human review work.
+
+The [grooviev1 modding guide](grooviev1/README.md) documents media, archives,
+fonts, Mac resources and the new shared-decoder GRV listing/assembly commands.
+Auxiliary automated test harnesses have been removed at the maintainer's
+request. Each original disassembly retains one `build.sh` containing its
+canonical byte-identity gate. Builds are permitted; engine/toolkit testing is
+performed by the maintainer.
 
 ---
 
@@ -1085,11 +1101,11 @@ include the opcode byte; `V` sizes are shown as short/long where useful.
 | `0B` | `INPUTLOOPSTART`        | —                                                     |        1 | Begins an input/hotspot declaration loop and captures current input. DOS/Win/ScummVM.                                                                                                                                                                                              |
 | `0C` | `KEYACTION`             | `U8 key, A16 target`                                  |        4 | Branches to `target` when the captured keyboard byte equals `key`. DOS/Win/ScummVM.                                                                                                                                                                                                |
 | `0D` | `HOTSPOT_RECT`          | `U16 left, top, right, bottom, A16 target, U8 cursor` |       12 | Declares an explicit clickable rectangle. DOS/Win/ScummVM.                                                                                                                                                                                                                         |
-| `0E` | `HOTSPOT_LEFT`          | `A16 target`                                          |        3 | Declares the built-in left navigation region with cursor 1. DOS/Win/ScummVM.                                                                                                                                                                                                       |
-| `0F` | `HOTSPOT_RIGHT`         | `A16 target`                                          |        3 | Declares the built-in right navigation region with cursor 2. DOS/Win/ScummVM.                                                                                                                                                                                                      |
-| `10` | `HOTSPOT_CENTER`        | `A16 target`                                          |        3 | Declares the center navigation region with cursor 0. DOS/Win/ScummVM.                                                                                                                                                                                                              |
-| `11` | `HOTSPOT_CENTER_2`      | `A16 target`                                          |        3 | Exact alias of `0x10` in all recovered T7G interpreters.                                                                                                                                                                                                                           |
-| `12` | `HOTSPOT_CURRENT`       | `A16 target`                                          |        3 | Action for the current/whole-screen region; the original does not perform a position test.                                                                                                                                                                                         |
+| `0E` | `HOTSPOT_LEFT`          | `A16 target`                                          |        3 | Declares the built-in left navigation region. DOS 1.30 uses inclusive `(0,80)–(63,399)` with cursor 2. |
+| `0F` | `HOTSPOT_RIGHT`         | `A16 target`                                          |        3 | Declares the built-in right navigation region. DOS 1.30 uses inclusive `(576,80)–(639,399)` with cursor 1. |
+| `10` | `HOTSPOT_CENTER`        | `A16 target`                                          |        3 | Declares the center navigation region. DOS 1.30 uses inclusive `(156,80)–(483,399)` with cursor 3. |
+| `11` | `HOTSPOT_CENTER_2`      | `A16 target`                                          |        3 | Shares the center geometry of `10h`; DOS 1.30 selects cursor 0 rather than cursor 3. |
+| `12` | `HOTSPOT_CURRENT`       | `A16 target`                                          |        3 | DOS 1.30 tests inclusive `(0,80)–(639,399)` with cursor 0 through the shared rectangle hit test. |
 | `13` | `INPUTLOOPEND`          | —                                                     |        1 | Resolves persistent hotspots, loops to `0x0B`, updates the cursor, and waits when no action fired.                                                                                                                                                                                 |
 | `14` | `RANDOM`                | `V dst, U8 max`                                       |      3/4 | Stores a bounded pseudo-random byte in `variables[dst]`. ScummVM models DOS T7G as inclusive `0..max`; Windows appears to use modulo `max`, producing `0..max-1`.                                                                                                                  |
 | `15` | `JMP`                   | `A16 target`                                          |        3 | Unconditional absolute jump in the current file.                                                                                                                                                                                                                                   |
@@ -1155,7 +1171,7 @@ include the opcode byte; `V` sizes are shown as short/long where useful.
 | `47` | `RESOURCE_CONTEXT_RESTORE`  | —                                          |        1 | DOS synchronizes/reopens the selected resource archive; Win and ScummVM treat it as NOP.                                                                                                                                                                                                                                             |
 | `48` | `SET_VDX_RATE_OVERRIDE`     | `U8 rate`                                  |        2 | DOS overrides the frame interval read from VDX header offset 6 when nonzero. Win/ScummVM consume it as NOP.                                                                                                                                                                                                                          |
 | `49` | `PALETTE_MERGE_ONCE`        | —                                          |        1 | DOS enables a one-shot palette-preservation/merge path for the next still frame, then clears it. Win/ScummVM treat it as NOP.                                                                                                                                                                                                        |
-| `4A` | `MIDI_DRIVER_PARAM`         | `U16 value`                                |        3 | DOS forwards a changed value to the active Miles sequence/driver; exact musical meaning is unresolved. Win/ScummVM consume it as NOP.                                                                                                                                                                                                |
+| `4A` | `PCM_DRIVER_PARAM` | `U16 value`                                |        3 | DOS forwards a changed value through command 81h using the type-2 PCM driver handle. The exact external-driver meaning remains unresolved. Win/ScummVM consume it as NOP. |
 | `4B` | `SET_VIDEO_MODE`            | `U8 mode`                                  |        2 | DOS: zero re-enters the detected SVGA path; nonzero selects BIOS mode `0x13`. Win/ScummVM consume the byte as NOP.                                                                                                                                                                                                                   |
 | `4C` | `GETCD`                     | —                                          |        1 | Writes media availability to variable `0x106`. DOS values: 0=both `B.GJD` and `AT.GJD`, 1=B, 2=AT, 3=neither.                                                                                                                                                                                                                        |
 | `4D` | `PLAYCD`                    | `U8 track/mode`                            |        2 | Stops MIDI and starts the requested CD/Redbook selection. v64tng maps original audio track 2 to modern `track1.ogg`, track 3 to `track2.ogg`, and so on. Like v32tng, `62h` waits for selection 2 to finish naturally but stops the later selection 3 immediately. An active Ogg track selects the native 100 ms silent-VDX cadence. |
@@ -1312,7 +1328,7 @@ The selected move persists outside the GRV variable/save block. A search with
 no legal move returns the stored coordinates even if the script has changed
 `v[0..3]`. The full recovery-to-engine report, including remaining gaps and
 host replacements, is [the integration report](docs/ENGINE_SEMANTIC_INTEGRATION.md).
-This follow-up was not built, tested, or verified.
+The modern engine and toolkit build successfully; gameplay acceptance remains human work.
 
 `RANDOM` and DOS puzzle ties share the recovered 24-bit feedback generator.
 The modern startup seed comes from the host rather than the DOS timer, so
@@ -1472,7 +1488,7 @@ The bytecode is a family, not one perfectly frozen specification:
 
 Still unresolved:
 
-1. The original names and precise Miles-driver meaning of opcode `0x4A`.
+1. The original names and precise external-driver meaning of opcode `0x4A`; its changed-value forwarding through command 81h and PCM handle are identified.
 2. Whether `0x51` and `0x55`, absent from all 23 supplied retail scripts, were
    active in another shipped T7G revision or merely forward-compatible fields.
 3. The meaning of the `mode` byte consumed by Windows opcode `0x52`.
@@ -2615,13 +2631,13 @@ The permanent disassembly projects now begin at:
   deterministically from the hashed LZEXE original. Its complete lossless NASM
   tree represents the MZ header, relocations, all analyzer-owned instructions,
   and every remaining data byte without `incbin`, then verifies byte-identical
-  unpacked MZ output. The current 261 function boundaries are provisional; 158
-  roles are verified and the remaining 103 names stay address-based.
+  unpacked MZ output. The current inventory contains 283 verified descriptive function roles,
+  including recovered interrupt/callback entries; boundaries remain provisional.
 - [`disassembly/v32tng`](disassembly/v32tng): Windows player 1.02b1. Its loose
   VDX open/magic path, game/VDX command dispatch, `SETUPEXEC` handling, and
   `WinMain` message loop retain verified names inside a complete lossless NASM
   tree. All 144,896 PE bytes and 336 provisional function entries are explicit
-  source with no `incbin`; 170 roles are verified and 166 remain address-based.
+  source with no `incbin`; 174 roles are verified and 162 remain address-based.
   The project rebuilds into a byte-identical PE.
 
 - [`disassembly/T7GMac`](disassembly/T7GMac): Classic Macintosh player 1.0,
@@ -2631,29 +2647,19 @@ The permanent disassembly projects now begin at:
   All 671 application resources are inventoried. Eighty jump-table-backed
   native entries retain ordered source wrappers; 55 have verified roles (68.8%),
   while 25 remain unknown. An additional internal-routine inventory records
-  204 verified roles and 21 unverified debug-symbol candidates. The application
+  207 verified roles and 20 unverified debug-symbol candidates. The application
   embeds 21 RL indexes, 23 GRV scripts, and `ROB.GJD`; all scripts now have
   bytecode listings. The embedded `hdisk.rl` maps T7GData to ten VDX files,
   including `todd.vdx` and `hayes.vdx`. Twenty RL indexes and twenty scripts
   match the supplied DOS counterparts exactly. NASM emits exact 68k bytes
-  with provisional mnemonics in comments. No native game-function roles are
-  verified; no emulator, gameplay, unit, or regression tests were run.
+  with provisional mnemonics in comments. Isolated native helper checks cover the CCC table and unsigned division;
+  full Mac gameplay remains unverified.
 
-- [`disassembly/cdi_t7g`](disassembly/cdi_t7g): Philips CD-i OS-9/68K files
-  `cdi_t7g`, `cdi_loader`, and `cdi_nodv`. All 241,664 supplied bytes rebuild
-  exactly, including original headers, initialized data, reference lists, CRCs,
-  and padding. The player file contains an appended `cdi_data` module. There
-  are 665 provisional native entry slices from header entries and decoded
-  direct calls, not 665 proved functions. One ten-byte routine has a supported
-  pointer-accessor role; its embedded 4,286-byte payload and 65,536-byte table
-  remain unknown. NASM emits exact 68k bytes with provisional comments. No
-  emulator, gameplay, unit, or regression tests were run.
 
-All four platform projects have byte-identical builds. Byte coverage and
+The DOS, Windows, and Mac projects have byte-identical builds. Byte coverage and
 semantic understanding are tracked separately. Native Mac function boundaries
 remain provisional, and additional internal entries remain undiscovered. The
-semantic percentage badge above covers the DOS/Win32 function inventories;
-Mac and CD-i native recovery are tracked separately. Detailed evidence, source maps,
+coverage table above reports each of DOS, Windows, and Mac separately. Detailed evidence, source maps,
 archive extraction, and build instructions are in each project's README.
 
 ## Portable reverse-engineering kit

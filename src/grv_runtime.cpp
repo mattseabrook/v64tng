@@ -282,6 +282,16 @@ std::string GrvResource::stem() const
 
 uint16_t GrvHotspotView::left() const
 {
+	// DOS mutable rectangle records at DS:E057..E0C4.
+	if (convention_ == GrvHotspotConvention::Dos)
+	{
+		switch (instruction_[0] & 0x7f)
+		{
+		case 0x0f: case 0x44: return 576;
+		case 0x10: case 0x11: return 156;
+		default: break;
+		}
+	}
 	switch (instruction_[0] & 0x7f)
 	{
 	case 0x0d: return hotspotField(instruction_, 1);
@@ -298,6 +308,16 @@ uint16_t GrvHotspotView::left() const
 
 uint16_t GrvHotspotView::top() const
 {
+	// DOS mutable rectangle records at DS:E057..E0C4.
+	if (convention_ == GrvHotspotConvention::Dos)
+	{
+		switch (instruction_[0] & 0x7f)
+		{
+		case 0x0e: case 0x0f: case 0x10: case 0x11:
+		case 0x12: case 0x44: case 0x45: return 80;
+		default: break;
+		}
+	}
 	switch (instruction_[0] & 0x7f)
 	{
 	case 0x0d: return hotspotField(instruction_, 3);
@@ -311,6 +331,17 @@ uint16_t GrvHotspotView::top() const
 
 uint16_t GrvHotspotView::right() const
 {
+	// DOS mutable rectangle records at DS:E057..E0C4.
+	if (convention_ == GrvHotspotConvention::Dos)
+	{
+		switch (instruction_[0] & 0x7f)
+		{
+		case 0x0e: case 0x45: return 63;
+		case 0x0f: case 0x44: case 0x12: case 0x2c: case 0x2d: case 0x30: return 639;
+		case 0x10: case 0x11: return 483;
+		default: break;
+		}
+	}
 	switch (instruction_[0] & 0x7f)
 	{
 	case 0x0d: return hotspotField(instruction_, 5);
@@ -326,6 +357,18 @@ uint16_t GrvHotspotView::right() const
 
 uint16_t GrvHotspotView::bottom() const
 {
+	// DOS mutable rectangle records at DS:E057..E0C4.
+	if (convention_ == GrvHotspotConvention::Dos)
+	{
+		switch (instruction_[0] & 0x7f)
+		{
+		case 0x0e: case 0x0f: case 0x10: case 0x11:
+		case 0x12: case 0x44: case 0x45: return 399;
+		case 0x2c: return 79;
+		case 0x2d: case 0x30: return 479;
+		default: break;
+		}
+	}
 	switch (instruction_[0] & 0x7f)
 	{
 	case 0x0d: return hotspotField(instruction_, 7);
@@ -350,6 +393,17 @@ uint16_t GrvHotspotView::target() const
 
 uint8_t GrvHotspotView::cursor() const
 {
+	// DOS mutable rectangle records at DS:E057..E0C4.
+	if (convention_ == GrvHotspotConvention::Dos)
+	{
+		switch (instruction_[0] & 0x7f)
+		{
+		case 0x0e: case 0x45: return 2;
+		case 0x0f: case 0x44: return 1;
+		case 0x10: return 3;
+		default: break;
+		}
+	}
 	switch (instruction_[0] & 0x7f)
 	{
 	case 0x0d: return instruction_[11];
@@ -364,8 +418,10 @@ uint8_t GrvHotspotView::cursor() const
 
 bool GrvHotspotView::contains(uint16_t x, uint16_t y) const
 {
-	// Retail uses half-open rectangles, matching Win32 RECT/Common::Rect.
-	const bool inside = x >= left() && x < right() && y >= top() && y < bottom();
+	// DOS 047DCh compares unsigned inclusive bounds; Windows uses half-open bounds.
+	const bool inside = convention_ == GrvHotspotConvention::Dos
+		? x >= left() && x <= right() && y >= top() && y <= bottom()
+		: x >= left() && x < right() && y >= top() && y < bottom();
 	return (instruction_[0] & 0x7f) == 0x53 ? !inside : inside;
 }
 
@@ -373,7 +429,8 @@ std::expected<GrvRuntime, std::string> GrvRuntime::load(
 	const std::filesystem::path &scriptPath,
 	const std::filesystem::path &assetRoot,
 	GrvSaveConvention saveConvention,
-	CellPuzzle::Flavor microscopeFlavor)
+	CellPuzzle::Flavor microscopeFlavor,
+	GrvHotspotConvention hotspotConvention)
 {
 	auto mapping = mapReadOnly(scriptPath);
 	if (!mapping)
@@ -385,6 +442,7 @@ std::expected<GrvRuntime, std::string> GrvRuntime::load(
 	runtime.assetRoot_ = assetRoot;
 	runtime.saveConvention_ = saveConvention;
 	runtime.microscopeFlavor_ = microscopeFlavor;
+	runtime.hotspotConvention_ = hotspotConvention;
 	consoleLogf("GRV", "loaded {} ({} bytes) from {}", scriptPath.filename().string(),
 		runtime.bytes_.size(), scriptPath.string());
 	return runtime;
@@ -1447,7 +1505,7 @@ std::optional<GrvHotspotView> GrvRuntime::hotspotAtCanonical(uint16_t x, uint16_
 			op == 0x30 || op == 0x3b || op == 0x53;
 		if (hotspot)
 		{
-			GrvHotspotView view(bytes_.subspan(pc, next - pc), static_cast<uint16_t>(pc));
+			GrvHotspotView view(bytes_.subspan(pc, next - pc), static_cast<uint16_t>(pc), hotspotConvention_);
 			// v64tng intentionally discards the two native 80-row bars. Do not
 			// collapse a bar-only hotspot onto an edge of the visible band.
 			if (view.bottom() <= 80 || view.top() >= 400)
@@ -1470,7 +1528,7 @@ std::optional<GrvHotspotView> GrvRuntime::hotspotAtCanonical(uint16_t x, uint16_
 		if (!end)
 			continue;
 		GrvHotspotView view(
-			bytes_.subspan(offset, *end - offset), offset);
+			bytes_.subspan(offset, *end - offset), offset, hotspotConvention_);
 		if (view.bottom() <= 80 || view.top() >= 400)
 			continue;
 		if (view.contains(x, y))
@@ -1516,7 +1574,7 @@ std::optional<uint16_t> GrvRuntime::topBarTarget() const
 		if (hotspot)
 		{
 			GrvHotspotView view(
-				bytes_.subspan(pc, next - pc), static_cast<uint16_t>(pc));
+				bytes_.subspan(pc, next - pc), static_cast<uint16_t>(pc), hotspotConvention_);
 			if (view.top() < 80 && view.bottom() <= 80)
 				return view.target();
 		}
@@ -1530,7 +1588,7 @@ std::optional<uint16_t> GrvRuntime::topBarTarget() const
 	if (!end)
 		return std::nullopt;
 	GrvHotspotView top(
-		bytes_.subspan(topOffset, *end - topOffset), topOffset);
+		bytes_.subspan(topOffset, *end - topOffset), topOffset, hotspotConvention_);
 	return top.bottom() <= 80 ? std::optional<uint16_t>{top.target()} : std::nullopt;
 }
 

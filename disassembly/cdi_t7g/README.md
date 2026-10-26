@@ -200,9 +200,9 @@ old linear decoding of those bytes was not executable evidence. The error-file
 initializer at `0228` is separate from the terminating `021A` entry.
 
 Together with the prior `cdi_data` pointer return, this gives **6 supported roles
-among the original 665 candidate entries**. This follow-up performed no builds,
-tests, hash checks or verification runs. Earlier byte-identical build results
-do not constitute verification of these edits. CD-i game scripts, media and
+among the original 665 candidate entries**. The original October 7 follow-up performed no builds or runtime tests.
+The current October 25 pass rebuilt all three files and verified their
+canonical hashes; this proves byte identity, not the loader runtime contracts. CD-i game scripts, media and
 disc layout remain outside the supplied artifact set.
 
 ## Source organization and addresses
@@ -252,9 +252,10 @@ replace generated source and CSV maps. The normal build never runs it.
 ## Coverage and evidence policy
 
 All **241,664 supplied file bytes** are explicit source and rebuild exactly.
-There are four declared modules, 665 provisional entry slices, one supported
-native role, and zero `incbin` directives. No game-function role is verified.
-No runtime or test work was performed.
+There are four declared modules, 665 provisional entry slices, six supported
+native roles, and zero `incbin` directives. The six roles cover the data-pointer
+return and loader helpers; no main-game function role is verified. No runtime
+or gameplay test work was performed.
 
 Preserve module identity, original offsets, exact bytes, and supporting
 callers/data references when promoting a name. DOS, Win32, or Mac behavior
@@ -263,3 +264,11 @@ useful work is reachable control flow from module entries, loader dispatch,
 indirect-call and syscall mapping, and interpretation of the two embedded
 payloads. Complete media/script recovery additionally depends on the rest of
 the CD files. Any source refinement must preserve the canonical build hashes.
+
+## Current reconstruction status
+
+The October 25 revalidation rebuilt `cdi_t7g`, `cdi_loader`, and `cdi_nodv`
+and matched all three canonical SHA-256 values. Semantic coverage remains
+six supported native roles among 665 provisional entries (0.9% candidate-role
+coverage). No additional
+CD-i role or runtime/gameplay verification is claimed by the DOS recovery.

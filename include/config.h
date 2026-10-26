@@ -20,6 +20,7 @@ constexpr const char *default_config = R"({
     "width": 640,
     "renderer": "Vulkan",
     "grvMicroscopePolicy": "dos",
+    "grvHotspotPolicy": "dos",
     "display": 1,
     "x": 100,
     "y": 100,

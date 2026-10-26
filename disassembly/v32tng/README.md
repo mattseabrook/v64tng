@@ -33,8 +33,8 @@ The project has complete mechanical source coverage:
 This is not yet complete semantic recovery. Ghidra's function ownership is
 provisional and does not reveal the original Visual C++ object-module layout.
 Some explicit data may later prove to be code, jump tables, inline constants,
-or alignment. 170 entries currently have verified semantic roles; the
-other 166 retain neutral address-based names.
+or alignment. 174 entries currently have verified semantic roles; the
+other 162 retain neutral address-based names.
 
 Exact coverage and the complete function address map are maintained later in
 this README. This file is the public, monolithic research record for the
@@ -348,8 +348,8 @@ understanding.
 | Function-body instructions decoded | 25,181 |
 | Instructions requiring exact `db` encoding fallback | 1,992 |
 | Bytes in encoding fallbacks | 4,159 |
-| Verified semantic function roles | 170 |
-| Unidentified/provisionally bounded functions | 166 |
+| Verified semantic function roles | 174 |
+| Unidentified/provisionally bounded functions | 162 |
 | Non-function PE file bytes | 63,737 |
 
 All headers, section padding, code gaps, `.rdata`, `.data`, imports, resources,
@@ -391,8 +391,8 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `00401CDD` | verified-role | `play_optional_numbered_credit_video` | `FUN_00401cdd` | `00401CDD–00401D39` | [`src/functions/vdx/play_optional_numbered_credit_video.asm`](src/functions/vdx/play_optional_numbered_credit_video.asm) |
 | `00401D3A` | verified-role | `select_grv_video_resource` | `FUN_00401d3a` | `00401D3A–00401F5E` | [`src/functions/resource_io/select_grv_video_resource.asm`](src/functions/resource_io/select_grv_video_resource.asm) |
 | `00401F5F` | verified-role | `select_grv_song_resource` | `FUN_00401f5f` | `00401F5F–00402066` | [`src/functions/resource_io/select_grv_song_resource.asm`](src/functions/resource_io/select_grv_song_resource.asm) |
-| `00402067` | verified GRV save helper | `grv_save_game_00402067` | `FUN_00402067` | `00402067–004020E6` | [`src/functions/savegame/grv_save_game_00402067.asm`](src/functions/savegame/grv_save_game_00402067.asm) |
-| `004020E7` | verified GRV load helper | `grv_load_game_004020e7` | `FUN_004020e7` | `004020E7–00402171` | [`src/functions/savegame/grv_load_game_004020e7.asm`](src/functions/savegame/grv_load_game_004020e7.asm) |
+| `00402067` | verified-role | `grv_save_game_00402067` | `FUN_00402067` | `00402067–004020E6` | [`src/functions/savegame/grv_save_game_00402067.asm`](src/functions/savegame/grv_save_game_00402067.asm) |
+| `004020E7` | verified-role | `grv_load_game_004020e7` | `FUN_004020e7` | `004020E7–00402171` | [`src/functions/savegame/grv_load_game_004020e7.asm`](src/functions/savegame/grv_load_game_004020e7.asm) |
 | `00402172` | verified-role | `detect_t7g_archive_set` | `FUN_00402172` | `00402172–004021D0` | [`src/functions/resource_io/detect_t7g_archive_set.asm`](src/functions/resource_io/detect_t7g_archive_set.asm) |
 | `004021D1` | verified-role | `run_grv_vm` | `FUN_004021d1` | `004021D1–004041DF` | [`src/functions/grv/run_grv_vm.asm`](src/functions/grv/run_grv_vm.asm) |
 | `00404350` | verified-role | `init_game_subsystems` | `FUN_00404350` | `00404350–0040441C` | [`src/functions/runtime/init_game_subsystems.asm`](src/functions/runtime/init_game_subsystems.asm) |
@@ -428,14 +428,14 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `004066A9` | verified-role | `cell_search_ranked_moves` | `FUN_004066a9` | `004066A9–00406808` | [`src/functions/puzzle/cell_search_ranked_moves.asm`](src/functions/puzzle/cell_search_ranked_moves.asm) |
 | `00406809` | verified-role | `cell_run_grv_puzzle_search` | `FUN_00406809` | `00406809–004068AF` | [`src/functions/puzzle/cell_run_grv_puzzle_search.asm`](src/functions/puzzle/cell_run_grv_puzzle_search.asm) |
 | `004068B0` | verified-role | `cell_dispatch_search_strategy` | `FUN_004068b0` | `004068B0–00406992` | [`src/functions/puzzle/cell_dispatch_search_strategy.asm`](src/functions/puzzle/cell_dispatch_search_strategy.asm) |
-| `004069A0` | unidentified | `func_004069a0` | `FUN_004069a0` | `004069A0–004069C6` | [`src/functions/unknown/004069a0_func_004069a0.asm`](src/functions/unknown/004069a0_func_004069a0.asm) |
-| `004069C7` | unidentified | `func_004069c7` | `FUN_004069c7` | `004069C7–004069E4` | [`src/functions/unknown/004069c7_func_004069c7.asm`](src/functions/unknown/004069c7_func_004069c7.asm) |
+| `004069A0` | verified-role | `clear_key_input_queue` | `FUN_004069a0` | `004069A0–004069C6` | [`src/functions/input/clear_key_input_queue.asm`](src/functions/input/clear_key_input_queue.asm) |
+| `004069C7` | verified-role | `has_queued_key_input` | `FUN_004069c7` | `004069C7–004069E4` | [`src/functions/input/has_queued_key_input.asm`](src/functions/input/has_queued_key_input.asm) |
 | `004069E5` | verified-role | `dequeue_key_input` | `FUN_004069e5` | `004069E5–00406A47` | [`src/functions/input/dequeue_key_input.asm`](src/functions/input/dequeue_key_input.asm) |
 | `00406A48` | verified-role | `enqueue_key_input` | `FUN_00406a48` | `00406A48–00406AAE` | [`src/functions/input/enqueue_key_input.asm`](src/functions/input/enqueue_key_input.asm) |
 | `00406AB0` | verified-role | `seed_grv_random_state` | `FUN_00406ab0` | `00406AB0–00406AE8` | [`src/functions/grv/seed_grv_random_state.asm`](src/functions/grv/seed_grv_random_state.asm) |
 | `00406AE9` | verified-role | `read_grv_random_state` | `FUN_00406ae9` | `00406AE9–00406B13` | [`src/functions/grv/read_grv_random_state.asm`](src/functions/grv/read_grv_random_state.asm) |
 | `00406B14` | verified-role | `advance_grv_random_state` | `FUN_00406b14` | `00406B14–00406D15` | [`src/functions/grv/advance_grv_random_state.asm`](src/functions/grv/advance_grv_random_state.asm) |
-| `00406D16` | unidentified | `func_00406d16` | `FUN_00406d16` | `00406D16–00406D39` | [`src/functions/unknown/00406d16_func_00406d16.asm`](src/functions/unknown/00406d16_func_00406d16.asm) |
+| `00406D16` | verified-role | `combine_two_grv_random_words` | `FUN_00406d16` | `00406D16–00406D39` | [`src/functions/grv/combine_two_grv_random_words.asm`](src/functions/grv/combine_two_grv_random_words.asm) |
 | `00406D40` | verified-role | `initialize_vdx_pacing_deadline` | `FUN_00406d40` | `00406D40–00406D8D` | [`src/functions/vdx/initialize_vdx_pacing_deadline.asm`](src/functions/vdx/initialize_vdx_pacing_deadline.asm) |
 | `00406D8E` | verified-role | `append_vdx_pcm_to_ring_buffer` | `FUN_00406d8e` | `00406D8E–00406E27` | [`src/functions/audio/append_vdx_pcm_to_ring_buffer.asm`](src/functions/audio/append_vdx_pcm_to_ring_buffer.asm) |
 | `00406E28` | verified-role | `service_vdx_audio_and_wait_for_pacing` | `FUN_00406e28` | `00406E28–00406FAD` | [`src/functions/vdx/service_vdx_audio_and_wait_for_pacing.asm`](src/functions/vdx/service_vdx_audio_and_wait_for_pacing.asm) |
@@ -508,15 +508,15 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `0040A29F` | verified-role | `evict_least_used_resource_blocks` | `FUN_0040a29f` | `0040A29F–0040A39E` | [`src/functions/resource_io/evict_least_used_resource_blocks.asm`](src/functions/resource_io/evict_least_used_resource_blocks.asm) |
 | `0040A39F` | verified-role | `get_cached_resource_block_and_increment_uses` | `FUN_0040a39f` | `0040A39F–0040A3ED` | [`src/functions/resource_io/get_cached_resource_block_and_increment_uses.asm`](src/functions/resource_io/get_cached_resource_block_and_increment_uses.asm) |
 | `0040A3EE` | verified-role | `seek_to_cached_resource_offset` | `FUN_0040a3ee` | `0040A3EE–0040A420` | [`src/functions/resource_io/seek_to_cached_resource_offset.asm`](src/functions/resource_io/seek_to_cached_resource_offset.asm) |
-| `0040A430` | centered SPHINX.FNT GRV string renderer | `draw_centered_grv_string_0040a430` | `FUN_0040a430` | `0040A430–0040A739` | [`src/functions/grv/draw_centered_grv_string_0040a430.asm`](src/functions/grv/draw_centered_grv_string_0040a430.asm) |
+| `0040A430` | verified-role | `draw_centered_grv_string_0040a430` | `FUN_0040a430` | `0040A430–0040A739` | [`src/functions/grv/draw_centered_grv_string_0040a430.asm`](src/functions/grv/draw_centered_grv_string_0040a430.asm) |
 | `0040A73A` | verified-role | `clear_grv_top_bar` | `FUN_0040a73a` | `0040A73A–0040A785` | [`src/functions/grv/clear_grv_top_bar.asm`](src/functions/grv/clear_grv_top_bar.asm) |
-| `0040A786` | display-band snapshot to saved background | `snapshot_display_band_to_saved_background` | `FUN_0040a786` | `0040A786–0040A7A9` | [`src/functions/vdx/snapshot_display_band_to_saved_background.asm`](src/functions/vdx/snapshot_display_band_to_saved_background.asm) |
-| `0040A7AA` | rectangle VDX background-to-foreground copy | `copy_background_rectangle_to_foreground_0040a7aa` | `FUN_0040a7aa` | `0040A7AA–0040A84A` | [`src/functions/vdx/copy_background_rectangle_to_foreground_0040a7aa.asm`](src/functions/vdx/copy_background_rectangle_to_foreground_0040a7aa.asm) |
+| `0040A786` | verified-role | `snapshot_display_band_to_saved_background` | `FUN_0040a786` | `0040A786–0040A7A9` | [`src/functions/vdx/snapshot_display_band_to_saved_background.asm`](src/functions/vdx/snapshot_display_band_to_saved_background.asm) |
+| `0040A7AA` | verified-role | `copy_background_rectangle_to_foreground_0040a7aa` | `FUN_0040a7aa` | `0040A7AA–0040A84A` | [`src/functions/vdx/copy_background_rectangle_to_foreground_0040a7aa.asm`](src/functions/vdx/copy_background_rectangle_to_foreground_0040a7aa.asm) |
 | `0040A84B` | verified-role | `fade_out_vdx_palette_rgb_and_clear` | `FUN_0040a84b` | `0040A84B–0040AA44` | [`src/functions/vdx/fade_out_vdx_palette_rgb_and_clear.asm`](src/functions/vdx/fade_out_vdx_palette_rgb_and_clear.asm) |
 | `0040AA45` | verified-role | `fade_in_vdx_palette_rgb` | `FUN_0040aa45` | `0040AA45–0040AB83` | [`src/functions/vdx/fade_in_vdx_palette_rgb.asm`](src/functions/vdx/fade_in_vdx_palette_rgb.asm) |
 | `0040AB84` | verified-role | `decode_vdx_bitmap_still` | `FUN_0040ab84` | `0040AB84–0040B197` | [`src/functions/vdx/decode_vdx_bitmap_still.asm`](src/functions/vdx/decode_vdx_bitmap_still.asm) |
 | `0040B198` | verified-role | `decode_vdx_delta_frame` | `FUN_0040b198` | `0040B198–0040BFF3` | [`src/functions/vdx/decode_vdx_delta_frame.asm`](src/functions/vdx/decode_vdx_delta_frame.asm) |
-| `0040BFF4` | unidentified | `func_0040bff4` | `FUN_0040bff4` | `0040BFF4–0040C0BA` | [`src/functions/unknown/0040bff4_func_0040bff4.asm`](src/functions/unknown/0040bff4_func_0040bff4.asm) |
+| `0040BFF4` | verified-role | `initialize_ccc_color_and_mask_tables` | `FUN_0040bff4` | `0040BFF4–0040C0BA` | [`src/functions/vdx/initialize_ccc_color_and_mask_tables.asm`](src/functions/vdx/initialize_ccc_color_and_mask_tables.asm) |
 | `0040C0BB` | verified-role | `decompress_vdx_chunk` | `FUN_0040c0bb` | `0040C0BB–0040C0E6` | [`src/functions/vdx/decompress_vdx_chunk.asm`](src/functions/vdx/decompress_vdx_chunk.asm) |
 | `0040C0E7` | verified-role | `allocate_grv_runtime_buffers` | `FUN_0040c0e7` | `0040C0E7–0040C128` | [`src/functions/grv/allocate_grv_runtime_buffers.asm`](src/functions/grv/allocate_grv_runtime_buffers.asm) |
 | `0040C129` | verified-role | `free_grv_decode_runtime_buffers` | `FUN_0040c129` | `0040C129–0040C172` | [`src/functions/grv/free_grv_decode_runtime_buffers.asm`](src/functions/grv/free_grv_decode_runtime_buffers.asm) |
@@ -528,14 +528,14 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `0040C780` | verified-role | `query_async_key_activity` | `FUN_0040c780` | `0040C780–0040C79B` | [`src/functions/platform/query_async_key_activity.asm`](src/functions/platform/query_async_key_activity.asm) |
 | `0040C79C` | verified-role | `is_primary_mouse_button_down` | `FUN_0040c79c` | `0040C79C–0040C7C2` | [`src/functions/platform/is_primary_mouse_button_down.asm`](src/functions/platform/is_primary_mouse_button_down.asm) |
 | `0040C7C3` | verified-role | `is_secondary_mouse_button_down` | `FUN_0040c7c3` | `0040C7C3–0040C7EB` | [`src/functions/platform/is_secondary_mouse_button_down.asm`](src/functions/platform/is_secondary_mouse_button_down.asm) |
-| `0040C996` | unidentified | `direct_draw_create_import_thunk` | `DirectDrawCreate` | `0040C996–0040C99B` | [`src/functions/platform/direct_draw_create_import_thunk.asm`](src/functions/platform/direct_draw_create_import_thunk.asm) |
+| `0040C996` | verified-role | `direct_draw_create_import_thunk` | `DirectDrawCreate` | `0040C996–0040C99B` | [`src/functions/platform/direct_draw_create_import_thunk.asm`](src/functions/platform/direct_draw_create_import_thunk.asm) |
 | `0040C9A0` | verified-role | `crt_free` | `FUN_0040c9a0` | `0040C9A0–0040CA07` | [`src/functions/runtime/crt_free.asm`](src/functions/runtime/crt_free.asm) |
 | `0040CA10` | verified-role | `copy_memory_overlap_safe` | `FUN_0040ca10` | `0040CA10–0040CA6A`<br>`0040CA6C–0040CA72`<br>`0040CA80–0040CAA8`<br>`0040CAAC–0040CACE`<br>`0040CAD0–0040CAE8`<br>`0040CB0C–0040CB55`<br>`0040CB68–0040CB6E`<br>`0040CB70–0040CB7A`<br>`0040CB7C–0040CB8C`<br>`0040CB90–0040CBA6`<br>`0040CBA8–0040CBCD`<br>`0040CBD0–0040CBD8`<br>`0040CBDC–0040CBFA`<br>`0040CC08–0040CC24`<br>`0040CC28–0040CC4E`<br>`0040CC50–0040CC80`<br>`0040CCA4–0040CCED`<br>`0040CD00–0040CD06`<br>`0040CD08–0040CD14`<br>`0040CD18–0040CD2A`<br>`0040CD2C–0040CD44` | [`src/functions/runtime/copy_memory_overlap_safe.asm`](src/functions/runtime/copy_memory_overlap_safe.asm) |
 | `0040CD50` | verified-role | `crt_sprintf` | `FUN_0040cd50` | `0040CD50–0040CDB7` | [`src/functions/runtime/crt_sprintf.asm`](src/functions/runtime/crt_sprintf.asm) |
 | `0040CDC0` | verified-role | `crt_malloc` | `FUN_0040cdc0` | `0040CDC0–0040CDD3` | [`src/functions/runtime/crt_malloc.asm`](src/functions/runtime/crt_malloc.asm) |
 | `0040CDE0` | verified-role | `crt_allocate_with_new_handler` | `FUN_0040cde0` | `0040CDE0–0040CE23` | [`src/functions/runtime/crt_allocate_with_new_handler.asm`](src/functions/runtime/crt_allocate_with_new_handler.asm) |
 | `0040CE30` | verified-role | `crt_allocate_heap_block` | `FUN_0040ce30` | `0040CE30–0040CE84` | [`src/functions/runtime/crt_allocate_heap_block.asm`](src/functions/runtime/crt_allocate_heap_block.asm) |
-| `0040CE90` | unidentified | `compare_strings_bounded` | `_strncmp` | `0040CE90–0040CEC7` | [`src/functions/runtime/compare_strings_bounded.asm`](src/functions/runtime/compare_strings_bounded.asm) |
+| `0040CE90` | verified-role | `compare_strings_bounded` | `_strncmp` | `0040CE90–0040CEC7` | [`src/functions/runtime/compare_strings_bounded.asm`](src/functions/runtime/compare_strings_bounded.asm) |
 | `0040CED0` | unidentified | `func_0040ced0` | `FUN_0040ced0` | `0040CED0–0040CF0C` | [`src/functions/unknown/0040ced0_func_0040ced0.asm`](src/functions/unknown/0040ced0_func_0040ced0.asm) |
 | `0040CF10` | unidentified | `func_0040cf10` | `FUN_0040cf10` | `0040CF10–0040CF74` | [`src/functions/unknown/0040cf10_func_0040cf10.asm`](src/functions/unknown/0040cf10_func_0040cf10.asm) |
 | `0040CF80` | unidentified | `func_0040cf80` | `FUN_0040cf80` | `0040CF80–0040CFB6` | [`src/functions/unknown/0040cf80_func_0040cf80.asm`](src/functions/unknown/0040cf80_func_0040cf80.asm) |
@@ -547,11 +547,11 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `0040D2F0` | unidentified | `func_0040d2f0` | `FUN_0040d2f0` | `0040D2F0–0040D3BF` | [`src/functions/unknown/0040d2f0_func_0040d2f0.asm`](src/functions/unknown/0040d2f0_func_0040d2f0.asm) |
 | `0040D3C0` | unidentified | `func_0040d3c0` | `FUN_0040d3c0` | `0040D3C0–0040D463` | [`src/functions/unknown/0040d3c0_func_0040d3c0.asm`](src/functions/unknown/0040d3c0_func_0040d3c0.asm) |
 | `0040D470` | verified-role | `fill_memory_bytes` | `_memset` | `0040D470–0040D4C7` | [`src/functions/runtime/fill_memory_bytes.asm`](src/functions/runtime/fill_memory_bytes.asm) |
-| `0040D4D0` | unidentified | `string_length` | `_strlen` | `0040D4D0–0040D54A` | [`src/functions/runtime/string_length.asm`](src/functions/runtime/string_length.asm) |
+| `0040D4D0` | verified-role | `string_length` | `_strlen` | `0040D4D0–0040D54A` | [`src/functions/runtime/string_length.asm`](src/functions/runtime/string_length.asm) |
 | `0040D550` | verified-role | `crt_vsprintf` | `FUN_0040d550` | `0040D550–0040D5B7` | [`src/functions/runtime/crt_vsprintf.asm`](src/functions/runtime/crt_vsprintf.asm) |
 | `0040D5C0` | verified-role | `crt_run_initializers` | `FUN_0040d5c0` | `0040D5C0–0040D5EF` | [`src/functions/runtime/crt_run_initializers.asm`](src/functions/runtime/crt_run_initializers.asm) |
 | `0040D5F0` | verified-role | `crt_exit` | `FUN_0040d5f0` | `0040D5F0–0040D601` | [`src/functions/runtime/crt_exit.asm`](src/functions/runtime/crt_exit.asm) |
-| `0040D610` | unidentified | `crt_quick_exit` | `__exit` | `0040D610–0040D621` | [`src/functions/runtime/crt_quick_exit.asm`](src/functions/runtime/crt_quick_exit.asm) |
+| `0040D610` | verified-role | `crt_quick_exit` | `__exit` | `0040D610–0040D621` | [`src/functions/runtime/crt_quick_exit.asm`](src/functions/runtime/crt_quick_exit.asm) |
 | `0040D650` | verified-role | `crt_exit_common` | `FUN_0040d650` | `0040D650–0040D6FD` | [`src/functions/runtime/crt_exit_common.asm`](src/functions/runtime/crt_exit_common.asm) |
 | `0040D710` | unidentified | `func_0040d710` | `FUN_0040d710` | `0040D710–0040D71A` | [`src/functions/unknown/0040d710_func_0040d710.asm`](src/functions/unknown/0040d710_func_0040d710.asm) |
 | `0040D720` | unidentified | `func_0040d720` | `FUN_0040d720` | `0040D720–0040D72A` | [`src/functions/unknown/0040d720_func_0040d720.asm`](src/functions/unknown/0040d720_func_0040d720.asm) |
@@ -705,7 +705,7 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `00419130` | unidentified | `func_00419130` | `FUN_00419130` | `00419130–0041919E` | [`src/functions/unknown/00419130_func_00419130.asm`](src/functions/unknown/00419130_func_00419130.asm) |
 | `004191A0` | unidentified | `func_004191a0` | `FUN_004191a0` | `004191A0–0041934F` | [`src/functions/unknown/004191a0_func_004191a0.asm`](src/functions/unknown/004191a0_func_004191a0.asm) |
 | `00419350` | unidentified | `func_00419350` | `FUN_00419350` | `00419350–0041939F` | [`src/functions/unknown/00419350_func_00419350.asm`](src/functions/unknown/00419350_func_00419350.asm) |
-| `004194A2` | unidentified | `rtl_unwind_import_thunk` | `RtlUnwind` | `004194A2–004194A7` | [`src/functions/runtime/rtl_unwind_import_thunk.asm`](src/functions/runtime/rtl_unwind_import_thunk.asm) |
+| `004194A2` | verified-role | `rtl_unwind_import_thunk` | `RtlUnwind` | `004194A2–004194A7` | [`src/functions/runtime/rtl_unwind_import_thunk.asm`](src/functions/runtime/rtl_unwind_import_thunk.asm) |
 
 ## Connected semantic recovery pass
 
@@ -795,3 +795,25 @@ The cursor palette fallback reads the green component for both its green and blu
 The named cell neighbor data files cover VA `0041B250–0041B497` (adjacent lists), `0041B498–0041B76F` (distance-two lists), `0041B770–0041B837` (49 absolute dword pointers plus four alignment bytes), and `0041B838–0041B8FB` (49 distance-two pointers). All 49 lists in each table decode to the expected on-board neighbor geometry; Win32 pads the lists whereas DOS packs them. Surrounding initialized bytes remain unidentified.
 
 The evidence manifest includes decoded address/opcode/instruction sequences for each promoted role. Its caller lists contain direct numeric near-call edges only; missing far, symbolic, or indirect callers do not imply that a routine is unused. Full calling conventions and original function boundaries still require the persistent analysis project.
+
+## Current cross-platform recovery status
+
+The original inventory now has 174/336 verified roles (51.8%), with 162
+neutral entries remaining. The address map above includes the four newly
+named Windows routines: `initialize_ccc_color_and_mask_tables` at `0040BFF4`,
+`clear_key_input_queue` at `004069A0`, `has_queued_key_input` at `004069C7`,
+and `combine_two_grv_random_words` at `00406D16`.
+
+The CCC builder's complete 80400h-byte output was checked against the
+original Mac `InitCCCTable`; mask rows differ by an eight-byte half swap.
+The 4096 valid keyboard-index pairs and original random-generator state
+transitions were checked. Existing PCM, CD-selection and timer routines
+were also cross-checked against DOS, preserving platform differences.
+These results add identified Windows roles; DOS's 261/261 entry-role milestone
+does not automatically identify unrelated Windows code.
+
+The canonical PE still rebuilds byte for byte. Across the current DOS,
+Windows and Mac suites, 10,630 isolated machine-code cases pass, with
+explicit external-service fixtures and no claimed gameplay capture.
+
+The identified microscope tables now live in `src/data/puzzle/`. Coverage totals are unchanged. The project’s `build.sh` retains the canonical byte-identity gate; auxiliary engine/toolkit tests have been retired at the maintainer’s request.

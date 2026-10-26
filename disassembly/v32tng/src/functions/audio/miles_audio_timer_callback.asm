@@ -2,6 +2,9 @@
 ; Ghidra working symbol: FUN_004072a1
 ; Verified role: periodic multimedia-timer callback installed by the Miles
 ; initializer. It guards reentry and advances the audio pacing counters.
+; Isolated machine-code verification: grooviev1/verify_miles_timer_division.py
+; checks atomic reentry, counter wrap/rollover, and stdcall stack consumption.
+; Windows imports are mocked; executable bytes remain unchanged.
 ; Generated losslessly; preserve byte identity after edits.
 
 %macro emit_miles_audio_timer_callback_part_00 0

@@ -9,6 +9,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "grv_hotspot.h"
+
 struct GrvHotspot
 {
     uint16_t left = 0;
@@ -57,6 +59,7 @@ struct GrvInputLoop
 struct GrvProgram
 {
     std::filesystem::path sourcePath;
+    GrvHotspotConvention hotspotConvention = GrvHotspotConvention::Dos;
     std::vector<uint8_t> bytes;
     std::vector<GrvInstruction> instructions;
     std::vector<GrvInputLoop> inputLoops;
@@ -65,7 +68,8 @@ struct GrvProgram
 using GrvResourceNames = std::unordered_map<uint16_t, std::string>;
 
 GrvResourceNames loadGrvResourceNames(const std::filesystem::path& root);
-GrvProgram decodeGrv(const std::filesystem::path& path, const GrvResourceNames& names);
+GrvProgram decodeGrv(const std::filesystem::path& path, const GrvResourceNames& names,
+    GrvHotspotConvention convention = GrvHotspotConvention::Dos);
 std::string decompileGrv(const GrvProgram& program);
 std::vector<uint8_t> rebuildGrvAssembly(std::string_view assembly);
 void saveGrvAssembly(const GrvProgram& program, const std::filesystem::path& output);

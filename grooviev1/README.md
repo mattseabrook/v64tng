@@ -1,7 +1,9 @@
 # grooviev1
 
 Standalone Groovie v1 media toolkit for The 7th Guest pipeline. It combines a
-VDX encoder with RL/GJD archive and SPHINX.FNT font utilities.
+VDX encoder with RL/GJD archive, GRV script, Classic Mac resource, and
+SPHINX.FNT font utilities. Windows and native Linux command-line builds share
+the same media implementations. GRV tooling shares the engine decoder.
 
 Current scope:
 - Writes VDX header and chunk stream.
@@ -16,10 +18,15 @@ Current scope:
 - Runs an internal decode/compare validation pass (can be disabled).
 - Lists, extracts, and repacks Groovie `SPHINX.FNT` bitmap font files.
 
-GRV script authoring is not implemented yet.
+GRV scripts can now be disassembled and rebuilt from their authoritative hex
+byte columns. This is a byte-listing assembler, not a compiler for mnemonic
+operands or automatic branch relocation.
 
-The October 7, 2026 platform-recovery changes below are **unbuilt and untested**.
-See [the platform research/evidence report](../docs/PLATFORM_EASTER_EGGS.md).
+The current Windows and Linux tools have been built. Gameplay and mod-content
+acceptance are human work; no automated test harnesses are maintained here.
+The original-engine disassemblies each retain their own `build.sh` byte-identity
+gate. Recovery of all known DOS function roles is not a promise that every
+possible mod or every platform behavior is supported.
 
 ## Build (Linux -> Windows x64)
 
@@ -301,38 +308,33 @@ change the meaning of the preserved audio positions; no automatic audio
 retiming is performed. An extracted VDX remains the source archive for those
 details. `frames.py compare` checks PCM and audio positions as well as pixels.
 
-### Independent decoder and PNG export cross-check
+### Developer integration
 
-```bash
-g++ grooviev1/verify_lossless.cpp src/bitmap.cpp src/delta.cpp src/lzss.cpp src/png_write.cpp \
-  -Iinclude $(pkg-config --cflags --libs libpng) -std=c++23 -O2 \
-  -o grooviev1/build/verify_lossless
-grooviev1/build/verify_lossless test/reencoded.vdx test/frames/raw test/core_png
-python3 grooviev1/check_png_exports.py test/frames/raw test/core_png
-```
+`main.cpp` implements encoding, archive and font commands; `indexed_commands.h`
+implements the IDX/PAL workflow. `frames.py` supplies indexed-PNG conversion
+and media comparison. `mac_resources.py` handles MacBinary resource maps.
+GRV commands link `../src/grv.cpp` and `../src/rl.cpp` with headers in
+`../include`; decoder corrections therefore reach the toolkit and the engine.
+C++23 is required, including standard library `format` and `expected` support.
+On Windows, WIC supplies image loading (`ole32`, `uuid`, `windowscodecs`).
+The native Linux encoder accepts raw RGB24; Pillow in `frames.py` handles the
+portable indexed-PNG workflow. Mac resource operations need only Python's
+standard library. No game engine process is required for media authoring.
 
-This uses v64tng's actual bitmap/delta implementations and production PNG writer,
-then checks indexed, RGB and RGBA PNGs with Pillow (including hidden RGB under
-zero alpha). It does not run the game. See [the f_1bc results](../docs/F_1BC_LOSSLESS.md)
-for the first source-material comparison and assembly references.
-
-### Continued toolkit verification
+Build from the repository root without deployment:
 
 ```sh
-python3 grooviev1/test_toolkit.py
-g++ grooviev1/verify_codec.cpp src/bitmap.cpp src/delta.cpp src/lzss.cpp \
-  -Iinclude -std=c++23 -O2 -o grooviev1/build/verify_codec
-grooviev1/build/verify_codec path/to/asset.vdx path/to/ROOM.RL
+GROOVIEV1_NO_DEPLOY=1 ./grooviev1/build.sh
 ```
 
-The independent verifier checks compression tokens against the previous
-exhaustive search, compares decompressed bytes against v64tng's production
-LZSS decoder and compares pixel indexes and all palette entries against its
-production bitmap/delta decoders. RL arguments inspect resources directly
-inside GJD without extracting thousands of files. ASan/UBSan validation and
-native executable helper checks are recorded in
-[the deep-dive report](../docs/GROOVIEV1_DEEP_DIVE.md).
-# Microscope recovery follow-up
+Use `CXX_NATIVE` to select the native compiler. The cross-build prefers
+`x86_64-w64-mingw32-g++`, then Clang targeting MinGW. Build outputs are
+`grooviev1/build/grooviev1.exe` and `grooviev1/build/grooviev1-native`.
+Without `GROOVIEV1_NO_DEPLOY=1`, the script copies the Windows executable to
+repository-local `T7G/grooviev1.exe`.
+
+## Microscope recovery contracts
+
 
 GRV `GAMELOGIC` (`42h`) takes one strategy **mode** byte (recovered range 0–8),
 reads the 49-cell board at `v[0x19..0x49]`, and returns source/destination
@@ -345,4 +347,129 @@ normalization, ranked-search threshold and tie selection. A no-move search
 returns stored selection coordinates; it does not mean the board was modified.
 Mac/CD-i policy equivalence is not claimed. See the
 [engine integration report](../docs/ENGINE_SEMANTIC_INTEGRATION.md).
-This follow-up was not built, tested or verified.
+The original 98 ordered neighbor lists and seven three-phase strategy rows
+are retained in the engine implementation. Search ordering matters to ties
+and pruning. Modes 0 and 1 use direct search; modes 2–8 select the recovered
+three-phase strategy rows. These are runtime contracts for script authors,
+not an additional puzzle-solving command in the toolkit.
+
+## GRV scripts: inspect, edit, rebuild
+
+Run these examples from the repository root. On Windows substitute the path to
+`grooviev1.exe` for `./grooviev1/build/grooviev1-native`.
+
+```sh
+./grooviev1/build/grooviev1-native grv-disassemble T7G/SCRIPT.GRV script.asm --resources T7G
+# Edit the hex bytes in script.asm, then write a NEW script file:
+./grooviev1/build/grooviev1-native grv-assemble script.asm SCRIPT-mod.GRV
+```
+
+Both commands require input and output paths and refuse an existing output.
+`grv-disassemble` accepts these options:
+
+| Option | Meaning |
+|---|---|
+| `--resources DIR` | Resolve 16-bit resource references against RL files in DIR; omitted references remain numeric |
+| `--hotspots dos` | Default DOS geometry; DOS rectangle bounds are inclusive |
+| `--hotspots windows` | Retain the Windows hotspot model; boundaries are half-open |
+| `--raw` | Emit every input byte without opcode interpretation, including unknown or malformed instructions |
+
+`grv-assemble` takes no options. Each data line starts with its four-digit hex
+byte offset followed by two-digit hex bytes. Whole-line `;` comments are
+ignored. Mnemonics and operand descriptions after the bytes are annotations:
+changing `target=...` alone does not change the output. Edit the corresponding
+little-endian operand bytes. Offsets must be contiguous, starting at `0000`;
+the script cannot exceed the 65,536-byte address space. Unknown-opcode input
+can be represented with `--raw`; the tool does not invent a decoded meaning.
+
+Fixed-size edits preserve subsequent addresses. Inserting/removing bytes
+requires updating subsequent line offsets and all affected absolute branch,
+call, key-action and hotspot targets. There is no symbolic label resolver.
+An unchanged byte column is intended to preserve the complete script bytes;
+a successful assembly does not prove that the control flow or game is valid.
+
+For new scenes, start from a working room script with the desired input-loop
+and video structure, replace its resource operands and hotspot declarations,
+and package matching resources at stable RL indices. Full GRV opcode layouts
+are in the [main README](../README.md#grv-opcode-reference), with original
+handlers in [DOS GRV source](../disassembly/V/src/functions/grv).
+
+## Contracts recovered from the original engines
+
+| Area | Mod-authoring rule |
+|---|---|
+| Resource references | A 16-bit reference is `(archive_index << 10) | entry_index`; keep archive IDs and RL order stable. Renaming a resource alone does not update numeric references. |
+| RL entries | Each entry is 20 bytes: 12-byte name, little-endian 32-bit GJD offset, little-endian 32-bit length. The manifest preserves duplicate names and order. |
+| VDX | Width 640; encoded tile dimensions are multiples of four; height 4–480. `--dos-canonical` chooses 640×320. |
+| Still images | The first indexed frame needs at most two palette indices per 4×4 tile. Use RGB encoding for quantization, or change the indexed art; indexed encoding does not silently discard colours. |
+| Delta images | End every encoded tile row, including the final row, with `61h`. Opcode `60h` carries sixteen explicit tile indices. |
+| Palette | Preserve all 256 RGB entries for an indexed round trip. Palette-only changes are real delta changes. Engine fade/merge commands operate on palette state. |
+| Audio | VDX PCM is unsigned 8-bit mono at 22,050 Hz. Preserve `audio.pcm` and `audio.txt` together; chunk positions refer to visual boundaries. |
+| Compression | Native-compatible parameterized LZSS is optional. Matching decoded pixels/PCM does not imply identical compression tokens. |
+| DOS hotspots | Left x=0–63, right x=576–639, centre x=156–483; scene y=80–399. Explicit rectangles include their right/bottom edges. Opcode `12h` is position-tested across that scene. |
+| Cursor values | DOS left=2, right=1, centre `10h`=3 and centre `11h`=0. The Windows policy retains its own geometry/cursors. |
+| Cropped presentation | v64tng presents y=80–399 as its 640×320 scene. Top/bottom bar-only hotspots stay outside it; its existing top-bar shortcut remains available. |
+| RANDOM `14h` | DOS takes a generated low nibble and retries above the inclusive maximum. This is not uniform modulo arithmetic over arbitrary byte bounds. |
+| GAMELOGIC `42h` | One mode byte, supported recovered modes 0–8; board/selection contracts are described above. |
+| Driver parameter `4Ah` | Two-byte operand. DOS forwards a changed value through command `81h` to its PCM driver handle; the external parameter meaning remains unresolved. Do not label it MIDI volume. |
+| Opcode `1Eh` | The authoring decoder retains the one-byte operand used by the retail corpus/Windows flow. DOS handler consumption differs; preserve working script layout. |
+| Saves | DOS variable payload is `0523h` bytes; Windows is `0400h`. Host companion data, microscope policy, and hotspot policy are independent of the payload convention. |
+| Classic Mac | Resource-map and MacBinary fork handling are explicit. `hdisk.rl` has ten supplied entries; keep credits stills at indices 8 and 9. |
+
+The default engine configuration is `grvHotspotPolicy: "dos"`, selecting
+recovered DOS logical rectangles and cursor values. These feed v64tng’s
+existing responsive window scaling; resizing and the deliberate bar-free crop
+are unchanged. `"windows"` retains the previous logical geometry. The authoring
+decoder’s `--hotspots` option describes original logical coordinates, not
+client-window dimensions. This setting is
+independent of `grvMicroscopePolicy` and save format. It does not turn the
+entire host engine into a platform emulator. In particular modern Ogg/CD
+playback, hardware-driver substitution, input/display, and error handling
+remain host implementations; complete gameplay equivalence is not claimed.
+
+## From original assets to a distributable mod
+
+1. Copy the game into a separate working directory. Keep original EXEs and
+   source archives intact; author replacements outside the disassembly trees.
+2. Unpack the relevant RL/GJD pair into a new directory, keeping
+   `_archive-order.txt`. For a simple replacement keep its resource name and
+   manifest position; for new resources choose indices deliberately.
+3. Extract VDX to indexed PNGs with `frames.py extract`, edit opaque indexed
+   art and its complete palette, then use `frames.py encode`. For new RGB
+   animation use the encoder options documented above. Use font commands for
+   SPHINX.FNT rather than treating it as an image file.
+4. Disassemble the room GRV, edit its hex operands/targets, and assemble to a
+   new GRV. Link new video references to the repacked RL manifest positions.
+5. Pack both the replacement GJD and matching RL. For Mac, use explicit forks,
+   the FF separator policy, and a same-size resource replacement where required.
+6. Place the replacement assets in the working installation and play through
+   the affected room transitions, cursor boundaries, puzzle outcomes, sound,
+   saves and loads. Check the intended DOS/Windows policy. This acceptance
+   step belongs to the mod author.
+7. Distribute your authored content and installation instructions with the
+   required asset names, archive/index changes, target engine, and policy
+   settings. Include both members of every changed RL/GJD pair.
+
+This README covers the shipped commands and their limits. The toolkit does
+not compile mnemonic-only scripts, relocate inserted script code, resize Mac
+resources, generate original hardware drivers, or guarantee every new game's
+behavior. Those remain explicit development work; function-role coverage
+alone does not supply them.
+
+## Earmarked examples — not implemented yet
+
+The next music mod example will replace only the main-menu song with a selected
+MIDI source, using the correct native music representation. It must genuinely
+repack `XMI.GJD` and regenerate `XMI.RL` offsets/lengths as payload sizes change,
+while retaining resource order/references and leaving other song payloads
+intact. Raw MIDI must not simply be renamed XMI: conversion/driver compatibility
+and playback in the original DOS executable are human acceptance requirements.
+
+A later, separate executable-mod example will alter some no-argument diagnostic
+text printed by V.EXE. The canonical disassembly stays byte-identical; changed
+text belongs in the example mod output. Neither example is started by the
+current DOS source recovery pass.
+
+A T7G/v64tng developer wiki is also planned, in the style of a console developer
+wiki. The maintainer will supply the domain and existing HTML/CSS/JS boilerplate;
+the subsequent work will adapt it to T7G engine, format, puzzle and modding topics.

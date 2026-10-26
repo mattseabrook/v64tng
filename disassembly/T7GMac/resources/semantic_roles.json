@@ -65657,9 +65657,9 @@
       "name": "init_ccctable",
       "original_symbol": "InitCCCTable",
       "debug_file": 60608,
-      "status": "recovered-symbol-candidate",
+      "status": "verified-role",
       "subsystem": "vdx",
-      "contract": "Native InitCCCTable routine; the compiler debug trailer supplies its original symbol. Full argument types remain under study.",
+      "contract": "Build 256 repeated-color dwords and 32768 inverse-mask rows; each sixteen-byte row stores the low-byte mask half before the high-byte half.",
       "source": "src/functions/vdx/code_5_init_ccctable.asm",
       "decoded": [
         {
@@ -65872,6 +65872,285 @@
           "size": 2,
           "instruction": "rts "
         }
+      ],
+      "isolated_machine_code_verification": "grooviev1/verify_cache_cd_and_ccc.py",
+      "cross_version_related_entries": [
+        "v32tng:0040BFF4"
+      ],
+      "runtime_verified": false
+    },
+    {
+      "segment": 1,
+      "entry": 470,
+      "file": 77380,
+      "end": 77486,
+      "name": "divide_unsigned_long_core",
+      "original_symbol": null,
+      "status": "verified-role",
+      "subsystem": "runtime",
+      "contract": "Divide unsigned D0 by nonzero unsigned D1, returning quotient D0 and remainder D1; D2/D3/D7 scratch.",
+      "source": "src/functions/runtime/code_1_divide_unsigned_long_core.asm",
+      "decoded": [
+        {
+          "offset": 470,
+          "size": 6,
+          "instruction": "move.l #$ffff, d7"
+        },
+        {
+          "offset": 476,
+          "size": 2,
+          "instruction": "cmp.l d0, d1"
+        },
+        {
+          "offset": 478,
+          "size": 2,
+          "instruction": "bls.b $1e6"
+        },
+        {
+          "offset": 480,
+          "size": 2,
+          "instruction": "move.l d0, d1"
+        },
+        {
+          "offset": 482,
+          "size": 2,
+          "instruction": "moveq #$0, d0"
+        },
+        {
+          "offset": 484,
+          "size": 2,
+          "instruction": "rts "
+        },
+        {
+          "offset": 486,
+          "size": 2,
+          "instruction": "cmp.l d7, d0"
+        },
+        {
+          "offset": 488,
+          "size": 2,
+          "instruction": "bhi.b $1f6"
+        },
+        {
+          "offset": 490,
+          "size": 2,
+          "instruction": "divu.w d1, d0"
+        },
+        {
+          "offset": 492,
+          "size": 2,
+          "instruction": "swap d0"
+        },
+        {
+          "offset": 494,
+          "size": 2,
+          "instruction": "move.w d0, d1"
+        },
+        {
+          "offset": 496,
+          "size": 2,
+          "instruction": "clr.w d0"
+        },
+        {
+          "offset": 498,
+          "size": 2,
+          "instruction": "swap d0"
+        },
+        {
+          "offset": 500,
+          "size": 2,
+          "instruction": "rts "
+        },
+        {
+          "offset": 502,
+          "size": 2,
+          "instruction": "cmp.l d7, d1"
+        },
+        {
+          "offset": 504,
+          "size": 2,
+          "instruction": "bhi.b $214"
+        },
+        {
+          "offset": 506,
+          "size": 2,
+          "instruction": "move.l d0, d7"
+        },
+        {
+          "offset": 508,
+          "size": 2,
+          "instruction": "clr.w d0"
+        },
+        {
+          "offset": 510,
+          "size": 2,
+          "instruction": "swap d0"
+        },
+        {
+          "offset": 512,
+          "size": 2,
+          "instruction": "divu.w d1, d0"
+        },
+        {
+          "offset": 514,
+          "size": 2,
+          "instruction": "swap d0"
+        },
+        {
+          "offset": 516,
+          "size": 2,
+          "instruction": "swap d7"
+        },
+        {
+          "offset": 518,
+          "size": 2,
+          "instruction": "move.w d0, d7"
+        },
+        {
+          "offset": 520,
+          "size": 2,
+          "instruction": "swap d7"
+        },
+        {
+          "offset": 522,
+          "size": 2,
+          "instruction": "divu.w d1, d7"
+        },
+        {
+          "offset": 524,
+          "size": 2,
+          "instruction": "move.w d7, d0"
+        },
+        {
+          "offset": 526,
+          "size": 2,
+          "instruction": "swap d7"
+        },
+        {
+          "offset": 528,
+          "size": 2,
+          "instruction": "move.w d7, d1"
+        },
+        {
+          "offset": 530,
+          "size": 2,
+          "instruction": "rts "
+        },
+        {
+          "offset": 532,
+          "size": 2,
+          "instruction": "move.l d0, d2"
+        },
+        {
+          "offset": 534,
+          "size": 2,
+          "instruction": "move.l d1, d3"
+        },
+        {
+          "offset": 536,
+          "size": 2,
+          "instruction": "lsr.l #$1, d0"
+        },
+        {
+          "offset": 538,
+          "size": 2,
+          "instruction": "lsr.l #$1, d1"
+        },
+        {
+          "offset": 540,
+          "size": 2,
+          "instruction": "cmp.l d7, d1"
+        },
+        {
+          "offset": 542,
+          "size": 2,
+          "instruction": "bhi.b $218"
+        },
+        {
+          "offset": 544,
+          "size": 2,
+          "instruction": "divu.w d1, d0"
+        },
+        {
+          "offset": 546,
+          "size": 2,
+          "instruction": "and.l d7, d0"
+        },
+        {
+          "offset": 548,
+          "size": 2,
+          "instruction": "move.w d3, d1"
+        },
+        {
+          "offset": 550,
+          "size": 2,
+          "instruction": "mulu.w d0, d1"
+        },
+        {
+          "offset": 552,
+          "size": 2,
+          "instruction": "move.l d3, d7"
+        },
+        {
+          "offset": 554,
+          "size": 2,
+          "instruction": "swap d7"
+        },
+        {
+          "offset": 556,
+          "size": 2,
+          "instruction": "mulu.w d0, d7"
+        },
+        {
+          "offset": 558,
+          "size": 2,
+          "instruction": "swap d7"
+        },
+        {
+          "offset": 560,
+          "size": 2,
+          "instruction": "add.l d7, d1"
+        },
+        {
+          "offset": 562,
+          "size": 2,
+          "instruction": "bcs.b $23c"
+        },
+        {
+          "offset": 564,
+          "size": 2,
+          "instruction": "sub.l d2, d1"
+        },
+        {
+          "offset": 566,
+          "size": 2,
+          "instruction": "bhi.b $23c"
+        },
+        {
+          "offset": 568,
+          "size": 2,
+          "instruction": "neg.l d1"
+        },
+        {
+          "offset": 570,
+          "size": 2,
+          "instruction": "rts "
+        },
+        {
+          "offset": 572,
+          "size": 2,
+          "instruction": "subq.w #$1, d0"
+        },
+        {
+          "offset": 574,
+          "size": 2,
+          "instruction": "bra.b $224"
+        }
+      ],
+      "outside_jump_table_inventory": true,
+      "isolated_machine_code_verification": "grooviev1/verify_miles_timer_division.py",
+      "cross_version_related_entries": [
+        "V:07613"
       ]
     }
   ],

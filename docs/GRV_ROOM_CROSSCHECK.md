@@ -51,6 +51,10 @@ hand-authored approximations:
 | `HOTSPOT_CENTER` / `_2` | `(200,80)-(440,400)` | `x=31.25, y=0, w=37.5, h=100` |
 | persistent left/right | 80 pixels across the full 480-pixel screen | not the same region as `HOTSPOT_LEFT/RIGHT` |
 
+The October 24 DOS 1.30 recovery establishes different built-in rectangles
+and cursor indices for that player. The table above must not be applied to
+DOS uniformly; see the [DOS instruction/table evidence](DOS_HOTSPOT_IO_RECOVERY.md).
+
 The repeated `10%` edge regions and approximate `33%` center regions in
 `fh.h` / `dr.h` recover the intent, but not the retail hit boxes.
 

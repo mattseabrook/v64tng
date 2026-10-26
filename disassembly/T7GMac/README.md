@@ -8,8 +8,8 @@ follows the DOS `V` and Win32 `v32tng` projects.
 
 The initial source-emission pass was followed by the requested build and
 resource/archive analysis. Assembly and canonical hash checks succeeded for
-all three outputs below. No emulator, gameplay, unit, or regression tests
-were run. Mechanical reconstruction is complete; native semantic recovery now identifies 55 of the original 80 jump-table
+all three outputs below. That initial pass ran no emulator, gameplay, unit, or regression tests.
+The subsequent isolated machine-code verification is documented below. Mechanical reconstruction is complete; native semantic recovery now identifies 55 of the original 80 jump-table
 entries (68.8%), with 25 still unknown. This is role coverage, not complete
 instruction-level semantic proof.
 
@@ -122,7 +122,7 @@ now include named internal routines while preserving every intervening byte.
 
 The stable coverage denominator is the original **80 jump-table entries**:
 55 now have verified static roles, and 25 remain unknown. The larger inventory
-contains 205 verified-role records, including internal routines, plus 21
+contains 207 verified-role records, including internal routines, plus 20
 unverified symbol candidates. Those additional records do not increase the
 coverage denominator or imply that every byte is executable code.
 
@@ -282,7 +282,7 @@ identified, but icon pixels have not been decoded.
 | `src/functions/unknown/code_<id>_unknown.asm` | Segment manifests |
 | `src/functions/unknown/code_<id>_<offset>_unknown.asm` | Ordered entry wrappers; include named routines and preserve unidentified bytes |
 | `src/functions/{puzzle,cursor,grv,vdx,savegame,audio,resource_io,platform,runtime}/` | Named routines with exact bytes and decoded evidence |
-| `src/data/cell_*_neighbor_*.asm` | Two 49-cell neighbor lists and their big-endian A5-relative pointer tables |
+| `src/data/puzzle/cell_*_neighbor_*.asm` | Two 49-cell neighbor lists and their big-endian A5-relative pointer tables |
 | `src/data/code_*_header_and_unowned_prefix.asm` | Segment length/header and bytes before the first table-backed entry |
 | `src/data/resource_CODE_0.asm` | Original startup/jump-table bytes |
 | `src/data/embedded_*.asm` | Named embedded indexes, scripts, cursor archive, and custom payloads |
@@ -324,8 +324,8 @@ code outside the five `CODE` resources.
 | LINK-pattern native entry candidates | 475 |
 | Verified roles among original jump-table entries | 55 / 80 (68.8%) |
 | Unknown original jump-table entries | 25 |
-| Named verified-role records, including internal routines | 205 |
-| Unverified debug-symbol/body association candidates | 21 |
+| Named verified-role records, including internal routines | 207 |
+| Unverified debug-symbol/body association candidates | 20 |
 | Extracted GRV scripts / total script bytes | 23 / 84,517 |
 | Decoded script instructions | 20,872 |
 | Embedded RL indexes / index entries | 21 / 3,714 |
@@ -367,3 +367,46 @@ native work is reachable control-flow recovery and the GRV/VDX interpreter
 mapping; music-resource routing, custom `lut` semantics, dead paths, exact
 function ends, and original private symbols remain unresolved. Continue using
 the canonical build after source changes.
+
+## Internal unsigned-division core: DOS cross-reference
+
+The DOS Miles timer recovery identifies CODE 1 payload `01D6–023F`
+(file `012E44–012EAD`) as the unsigned long division core already called by
+the table-backed quotient/remainder wrappers. Its 106 bytes and 51 decoded
+68k instructions now have a named source and verified internal record.
+Mac jump-table coverage remains 55/80; verified-role records including
+internal routines increase to 206.
+
+With the explicit M68000 model, 136 valid unsigned input pairs agree with
+the DOS quotient helper and integer arithmetic; the Mac core also returns
+the remainder. Both original Mac wrappers are executed to check saved
+registers and argument consumption. These are part of 469 isolated
+DOS/Windows/Mac cases; they are not gameplay or Mac OS captures. All three
+Mac canonical artifact hashes remain exact.
+
+[Evidence and reproduction](../../docs/DOS_MILES_TIMER_RECOVERY.md).
+Source edits are admissible here when the complete rebuilt artifact remains
+byte for byte identical; different executable output belongs in a separate
+project.
+
+## Current CCC-table verification and coverage
+
+The existing `InitCCCTable` debug-symbol candidate is now a verified role.
+Its original code generated all 256 repeated-color dwords and 32768
+sixteen-byte mask rows in the machine-code check. Every output byte was
+compared with Windows `0040BFF4`: colors match, while each Mac mask row
+swaps its two eight-byte halves relative to Windows. The test uses an
+explicit M68020 model for this routine's addressing modes.
+
+There are now 207 verified records including internal routines, plus 20
+symbol candidates. The fixed jump-table inventory remains 55/80 (68.8%);
+this internal promotion does not inflate that percentage. The internal
+unsigned-division core and original quotient/remainder wrappers also have
+isolated execution checks. DOS entry-role coverage reaching 261/261 does
+not establish Mac routine roles by analogy alone.
+
+All three Mac canonical artifact hashes pass. The current cross-platform
+suites pass 10,630 machine-code cases in total; this is not a Mac OS or
+gameplay capture. No original artifact bytes were changed.
+
+The identified microscope tables now live in `src/data/puzzle/`. Extracted VDX payloads live in `src/data/vdx/`. Coverage totals are unchanged. The project’s `build.sh` retains the canonical byte-identity gate; auxiliary engine/toolkit tests have been retired at the maintainer’s request.

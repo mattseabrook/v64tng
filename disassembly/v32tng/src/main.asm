@@ -65,14 +65,14 @@ bits 32
 %include "src/functions/puzzle/cell_search_ranked_moves.asm"
 %include "src/functions/puzzle/cell_run_grv_puzzle_search.asm"
 %include "src/functions/puzzle/cell_dispatch_search_strategy.asm"
-%include "src/functions/unknown/004069a0_func_004069a0.asm"
-%include "src/functions/unknown/004069c7_func_004069c7.asm"
+%include "src/functions/input/clear_key_input_queue.asm"
+%include "src/functions/input/has_queued_key_input.asm"
 %include "src/functions/input/dequeue_key_input.asm"
 %include "src/functions/input/enqueue_key_input.asm"
 %include "src/functions/grv/seed_grv_random_state.asm"
 %include "src/functions/grv/read_grv_random_state.asm"
 %include "src/functions/grv/advance_grv_random_state.asm"
-%include "src/functions/unknown/00406d16_func_00406d16.asm"
+%include "src/functions/grv/combine_two_grv_random_words.asm"
 %include "src/functions/vdx/initialize_vdx_pacing_deadline.asm"
 %include "src/functions/audio/append_vdx_pcm_to_ring_buffer.asm"
 %include "src/functions/vdx/service_vdx_audio_and_wait_for_pacing.asm"
@@ -153,7 +153,7 @@ bits 32
 %include "src/functions/vdx/fade_in_vdx_palette_rgb.asm"
 %include "src/functions/vdx/decode_vdx_bitmap_still.asm"
 %include "src/functions/vdx/decode_vdx_delta_frame.asm"
-%include "src/functions/unknown/0040bff4_func_0040bff4.asm"
+%include "src/functions/vdx/initialize_ccc_color_and_mask_tables.asm"
 %include "src/functions/vdx/decompress_vdx_chunk.asm"
 %include "src/functions/grv/allocate_grv_runtime_buffers.asm"
 %include "src/functions/grv/free_grv_decode_runtime_buffers.asm"
@@ -579,10 +579,10 @@ bits 32
 %include "src/data/data_0231_0187a0.asm"
 %include "src/data/data_0232_0188a8.asm"
 %include "src/data/unresolved_pre_cell_neighbor_tables.asm"
-%include "src/data/cell_adjacent_neighbor_lists.asm"
-%include "src/data/cell_distance_two_neighbor_lists.asm"
-%include "src/data/cell_adjacent_neighbor_pointers.asm"
-%include "src/data/cell_distance_two_neighbor_pointers.asm"
+%include "src/data/puzzle/cell_adjacent_neighbor_lists.asm"
+%include "src/data/puzzle/cell_distance_two_neighbor_lists.asm"
+%include "src/data/puzzle/cell_adjacent_neighbor_pointers.asm"
+%include "src/data/puzzle/cell_distance_two_neighbor_pointers.asm"
 %include "src/data/unresolved_post_cell_neighbor_tables.asm"
 %include "src/data/data_0234_01a8a8.asm"
 %include "src/data/data_0235_01b8a8.asm"
@@ -988,13 +988,13 @@ emit_file_data_0003_005d93
 %if ($ - $$) != 0x005DA0
     %error "layout drift at raw 005DA0"
 %endif
-emit_func_004069a0_part_00
+emit_clear_key_input_queue_part_00
 
 ; raw 005DC7..005DE5 (function)
 %if ($ - $$) != 0x005DC7
     %error "layout drift at raw 005DC7"
 %endif
-emit_func_004069c7_part_00
+emit_has_queued_key_input_part_00
 
 ; raw 005DE5..005E48 (function)
 %if ($ - $$) != 0x005DE5
@@ -1036,7 +1036,7 @@ emit_advance_grv_random_state_part_00
 %if ($ - $$) != 0x006116
     %error "layout drift at raw 006116"
 %endif
-emit_func_00406d16_part_00
+emit_combine_two_grv_random_words_part_00
 
 ; raw 00613A..006140 (explicit-data)
 %if ($ - $$) != 0x00613A
@@ -1612,7 +1612,7 @@ emit_decode_vdx_delta_frame_part_00
 %if ($ - $$) != 0x00B3F4
     %error "layout drift at raw 00B3F4"
 %endif
-emit_func_0040bff4_part_00
+emit_initialize_ccc_color_and_mask_tables_part_00
 
 ; raw 00B4BB..00B4E7 (function)
 %if ($ - $$) != 0x00B4BB

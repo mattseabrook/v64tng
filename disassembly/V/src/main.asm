@@ -31,16 +31,18 @@ bits 16
 %include "src/functions/vdx/mark_used_background_palette_entries.asm"
 %include "src/functions/vdx/restore_saved_vga_palette_at_retrace.asm"
 %include "src/functions/platform/clear_indexed_display_memory.asm"
-%include "src/functions/unknown/02896_func_02896.asm"
-%include "src/functions/unknown/028ad_func_028ad.asm"
-%include "src/functions/unknown/0293b_func_0293b.asm"
+%include "src/functions/audio/pump_pending_pcm_buffers.asm"
+%include "src/functions/audio/drain_pcm_stream_with_timeout.asm"
+%include "src/functions/audio/wait_for_miles_pcm_buffers_complete.asm"
 %include "src/functions/vdx/stream_media_buffer.asm"
+%include "src/functions/audio/bios_pcm_completion_interrupt.asm"
+%include "src/data/audio/bios_pcm_interrupt_vectors.asm"
 %include "src/functions/runtime/probe_cpu_and_x87_capabilities.asm"
 %include "src/functions/platform/dispatch_video_bank_switch.asm"
 %include "src/functions/platform/synchronize_video_bank_state.asm"
 %include "src/functions/platform/call_scaled_video_bank_handler.asm"
 %include "src/functions/platform/detect_video_hardware.asm"
-%include "src/functions/unknown/033b7_func_033b7.asm"
+%include "src/functions/platform/probe_sequencer_register_six_bank_handler.asm"
 %include "src/functions/platform/probe_video_memory_bank_separation.asm"
 %include "src/functions/platform/test_video_bank_pattern_pair.asm"
 %include "src/functions/platform/probe_indexed_register_writable_bits.asm"
@@ -52,9 +54,9 @@ bits 16
 %include "src/functions/platform/query_xms.asm"
 %include "src/functions/platform/format_memory_diagnostic.asm"
 %include "src/functions/resource_io/open_named_archive_file.asm"
-%include "src/functions/unknown/0376a_func_0376a.asm"
-%include "src/functions/unknown/03774_func_03774.asm"
-%include "src/functions/unknown/0377e_func_0377e.asm"
+%include "src/functions/resource_io/close_song_archive.asm"
+%include "src/functions/resource_io/close_video_archive.asm"
+%include "src/functions/resource_io/close_video_and_song_archives.asm"
 %include "src/functions/resource_io/resolve_named_resource_reference.asm"
 %include "src/functions/resource_io/save_selected_archive_context.asm"
 %include "src/functions/resource_io/restore_selected_archive_context.asm"
@@ -72,7 +74,7 @@ bits 16
 %include "src/functions/grv/grv_return_from_child_script.asm"
 %include "src/functions/savegame/grv_check_valid_saves.asm"
 %include "src/functions/savegame/grv_save_game.asm"
-%include "src/functions/unknown/03f77_func_03f77.asm"
+%include "src/functions/savegame/write_aborted_game_snapshot_to_save_z.asm"
 %include "src/functions/savegame/grv_load_game.asm"
 %include "src/functions/grv/grv_jump_absolute.asm"
 %include "src/functions/grv/grv_store_word_operand_d9fd.asm"
@@ -100,7 +102,7 @@ bits 16
 %include "src/functions/grv/advance_grv_random_state_far.asm"
 %include "src/functions/grv/grv_play_transition_video_ref.asm"
 %include "src/functions/vdx/play_named_vdx_resource.asm"
-%include "src/functions/unknown/043c9_func_043c9.asm"
+%include "src/functions/grv/grv_set_reserved_flag_d9ce.asm"
 %include "src/functions/grv/grv_play_video_name.asm"
 %include "src/functions/grv/grv_play_video_reference.asm"
 %include "src/functions/grv/grv_play_song_reference.asm"
@@ -111,16 +113,16 @@ bits 16
 %include "src/functions/grv/replay_grv_background_song.asm"
 %include "src/functions/cursor/select_cursor_shape_and_palette.asm"
 %include "src/functions/grv/match_grv_key_action.asm"
-%include "src/functions/unknown/04754_func_04754.asm"
-%include "src/functions/unknown/0475e_func_0475e.asm"
-%include "src/functions/unknown/04768_func_04768.asm"
-%include "src/functions/unknown/04772_func_04772.asm"
-%include "src/functions/unknown/0477c_func_0477c.asm"
-%include "src/functions/unknown/0478c_func_0478c.asm"
-%include "src/functions/unknown/0479c_func_0479c.asm"
-%include "src/functions/unknown/047ac_func_047ac.asm"
-%include "src/functions/unknown/047bc_func_047bc.asm"
-%include "src/functions/unknown/047cc_func_047cc.asm"
+%include "src/functions/grv/test_persistent_top_bar_hotspot.asm"
+%include "src/functions/grv/test_persistent_right_hotspot.asm"
+%include "src/functions/grv/test_persistent_left_hotspot.asm"
+%include "src/functions/grv/test_persistent_bottom_bar_hotspot.asm"
+%include "src/functions/grv/grv_test_bottom_bar_hotspot.asm"
+%include "src/functions/grv/grv_test_right_hotspot.asm"
+%include "src/functions/grv/grv_test_left_hotspot.asm"
+%include "src/functions/grv/grv_test_center_hotspot_cursor_zero.asm"
+%include "src/functions/grv/grv_test_center_hotspot_cursor_three.asm"
+%include "src/functions/grv/grv_test_full_width_hotspot.asm"
 %include "src/functions/grv/test_grv_hotspot_rect.asm"
 %include "src/functions/grv/expand_grv_video_filename.asm"
 %include "src/functions/runtime/tokenize_configuration_line.asm"
@@ -151,22 +153,22 @@ bits 16
 %include "src/functions/runtime/configure_midi_driver.asm"
 %include "src/functions/runtime/configure_pcm_driver.asm"
 %include "src/functions/grv/decode_and_draw_grv_string.asm"
-%include "src/functions/unknown/054ad_func_054ad.asm"
-%include "src/functions/unknown/054f9_func_054f9.asm"
+%include "src/functions/savegame/load_and_draw_save_slot_caption.asm"
+%include "src/functions/grv/clear_grv_caption_video_region.asm"
 %include "src/functions/grv/draw_centered_sphinx_font_string.asm"
-%include "src/functions/unknown/055fc_func_055fc.asm"
-%include "src/functions/unknown/05719_func_05719.asm"
-%include "src/functions/unknown/05728_func_05728.asm"
-%include "src/functions/unknown/05729_func_05729.asm"
-%include "src/functions/unknown/0572a_func_0572a.asm"
-%include "src/functions/unknown/05734_func_05734.asm"
-%include "src/functions/unknown/0574a_func_0574a.asm"
-%include "src/functions/unknown/05754_func_05754.asm"
-%include "src/functions/unknown/0575e_func_0575e.asm"
+%include "src/functions/audio/play_mscdex_audio_selection.asm"
+%include "src/functions/audio/stop_mscdex_audio.asm"
+%include "src/functions/audio/mscdex_post_play_no_op.asm"
+%include "src/functions/audio/mscdex_pre_stop_no_op.asm"
+%include "src/functions/audio/get_mscdex_drive_letters.asm"
+%include "src/functions/resource_io/open_driver_or_timbre_file.asm"
+%include "src/functions/resource_io/close_driver_or_timbre_file.asm"
+%include "src/functions/resource_io/read_driver_or_timbre_file.asm"
+%include "src/functions/resource_io/rewind_driver_or_timbre_file.asm"
 %include "src/functions/platform/initialize_subsystems_xms.asm"
 %include "src/functions/audio/wait_for_midi_sequence_completion.asm"
 %include "src/functions/audio/set_midi_sequence_volume_ramp.asm"
-%include "src/functions/audio/set_midi_driver_master_volume.asm"
+%include "src/functions/audio/set_pcm_driver_parameter_81.asm"
 %include "src/functions/audio/load_xmidi_timbre_patches.asm"
 %include "src/functions/audio/load_and_play_selected_xmi.asm"
 %include "src/functions/audio/replace_active_midi_sequence.asm"
@@ -196,100 +198,129 @@ bits 16
 %include "src/functions/puzzle/cell_search_ranked_moves.asm"
 %include "src/functions/puzzle/cell_dispatch_search_strategy.asm"
 %include "src/functions/puzzle/cell_random_byte.asm"
-%include "src/functions/unknown/06e72_func_06e72.asm"
-%include "src/functions/unknown/06eb6_func_06eb6.asm"
-%include "src/functions/unknown/06ed9_func_06ed9.asm"
-%include "src/functions/unknown/06fa9_func_06fa9.asm"
-%include "src/functions/unknown/073e0_func_073e0.asm"
-%include "src/functions/unknown/07418_func_07418.asm"
-%include "src/functions/unknown/07501_func_07501.asm"
-%include "src/functions/unknown/07544_func_07544.asm"
-%include "src/functions/unknown/07590_func_07590.asm"
-%include "src/functions/unknown/075c0_func_075c0.asm"
-%include "src/functions/unknown/075e9_func_075e9.asm"
-%include "src/functions/unknown/07613_func_07613.asm"
-%include "src/functions/unknown/0765e_func_0765e.asm"
-%include "src/functions/unknown/076f3_func_076f3.asm"
-%include "src/functions/unknown/0773e_func_0773e.asm"
-%include "src/functions/unknown/077a3_func_077a3.asm"
-%include "src/functions/unknown/0786e_func_0786e.asm"
-%include "src/functions/unknown/078b7_func_078b7.asm"
-%include "src/functions/unknown/078d5_func_078d5.asm"
-%include "src/functions/unknown/0791b_func_0791b.asm"
-%include "src/functions/unknown/07961_func_07961.asm"
-%include "src/functions/unknown/079b6_func_079b6.asm"
-%include "src/functions/unknown/079f7_func_079f7.asm"
-%include "src/functions/unknown/07a33_func_07a33.asm"
-%include "src/functions/unknown/07a47_func_07a47.asm"
-%include "src/functions/unknown/07b71_func_07b71.asm"
-%include "src/functions/unknown/07b97_func_07b97.asm"
-%include "src/functions/unknown/07b9d_func_07b9d.asm"
-%include "src/functions/unknown/07c4f_func_07c4f.asm"
-%include "src/functions/unknown/07c88_func_07c88.asm"
-%include "src/functions/unknown/07c8e_func_07c8e.asm"
-%include "src/functions/unknown/07c94_func_07c94.asm"
-%include "src/functions/unknown/07cac_func_07cac.asm"
-%include "src/functions/unknown/07cb2_func_07cb2.asm"
-%include "src/functions/unknown/07cc4_func_07cc4.asm"
-%include "src/functions/unknown/07ce2_func_07ce2.asm"
-%include "src/functions/unknown/07ce8_func_07ce8.asm"
-%include "src/functions/unknown/07cee_func_07cee.asm"
-%include "src/functions/unknown/07cf4_func_07cf4.asm"
-%include "src/functions/unknown/07cfa_func_07cfa.asm"
-%include "src/functions/unknown/07d00_func_07d00.asm"
-%include "src/functions/unknown/07d18_func_07d18.asm"
-%include "src/functions/unknown/07d1e_func_07d1e.asm"
-%include "src/functions/unknown/07d2a_func_07d2a.asm"
-%include "src/functions/unknown/07d3c_func_07d3c.asm"
-%include "src/functions/unknown/07d4e_func_07d4e.asm"
-%include "src/functions/unknown/07ea0_func_07ea0.asm"
-%include "src/functions/unknown/07ed7_func_07ed7.asm"
-%include "src/functions/unknown/07f0e_func_07f0e.asm"
-%include "src/functions/unknown/07f55_func_07f55.asm"
-%include "src/functions/unknown/07f64_func_07f64.asm"
-%include "src/functions/unknown/07f7b_func_07f7b.asm"
-%include "src/functions/unknown/07fb6_func_07fb6.asm"
-%include "src/functions/unknown/08069_func_08069.asm"
-%include "src/functions/unknown/080d6_func_080d6.asm"
-%include "src/functions/unknown/0812b_func_0812b.asm"
-%include "src/functions/unknown/08152_func_08152.asm"
-%include "src/functions/unknown/082a9_func_082a9.asm"
-%include "src/functions/unknown/082fc_func_082fc.asm"
-%include "src/functions/unknown/08327_func_08327.asm"
-%include "src/functions/unknown/083fe_func_083fe.asm"
-%include "src/functions/unknown/0847e_func_0847e.asm"
-%include "src/functions/unknown/0848c_func_0848c.asm"
-%include "src/functions/unknown/084f1_func_084f1.asm"
-%include "src/functions/unknown/08524_func_08524.asm"
-%include "src/functions/unknown/0864a_func_0864a.asm"
-%include "src/functions/unknown/086ab_func_086ab.asm"
-%include "src/functions/unknown/086c0_func_086c0.asm"
-%include "src/functions/unknown/08766_func_08766.asm"
-%include "src/functions/unknown/08854_func_08854.asm"
-%include "src/functions/unknown/08891_func_08891.asm"
-%include "src/functions/unknown/088d9_func_088d9.asm"
-%include "src/functions/unknown/0891d_func_0891d.asm"
+%include "src/functions/platform/allocate_xms_still_cache.asm"
+%include "src/functions/platform/release_xms_still_cache.asm"
+%include "src/functions/vdx/transfer_selected_xms_still_cache_block.asm"
+%include "src/functions/vdx/select_xms_still_cache_entry.asm"
+%include "src/functions/audio/miles_find_driver_command.asm"
+%include "src/functions/audio/miles_tail_dispatch_driver_command.asm"
+%include "src/functions/audio/miles_timer_interrupt.asm"
+%include "src/functions/audio/miles_chain_previous_timer_interrupt.asm"
+%include "src/functions/audio/miles_initialize_timer_state.asm"
+%include "src/functions/audio/miles_install_timer_interrupt.asm"
+%include "src/functions/audio/miles_restore_timer_interrupt.asm"
+%include "src/functions/audio/miles_program_pit_channel_zero.asm"
+%include "src/functions/audio/miles_program_pit_from_period.asm"
+%include "src/functions/audio/miles_divide_unsigned_dword.asm"
+%include "src/functions/audio/miles_recompute_minimum_timer_period.asm"
+%include "src/functions/audio/miles_initialize_driver_tables.asm"
+%include "src/functions/audio/miles_shutdown_drivers_and_timers.asm"
+%include "src/functions/audio/miles_register_timer_callback.asm"
+%include "src/functions/audio/miles_release_timer_callback.asm"
+%include "src/functions/audio/miles_release_all_timer_callbacks.asm"
+%include "src/functions/audio/miles_start_timer_callback.asm"
+%include "src/functions/audio/miles_stop_timer_callback.asm"
+%include "src/functions/audio/miles_set_timer_period.asm"
+%include "src/functions/audio/miles_set_timer_frequency.asm"
+%include "src/functions/audio/miles_set_timer_period_from_pit_count.asm"
+%include "src/functions/audio/miles_get_programmed_pit_count.asm"
+%include "src/functions/audio/miles_register_driver_image.asm"
+%include "src/functions/audio/miles_query_driver_descriptor.asm"
+%include "src/functions/audio/miles_dispatch_driver_command_65.asm"
+%include "src/functions/audio/miles_initialize_registered_driver.asm"
+%include "src/functions/audio/miles_shutdown_registered_driver.asm"
+%include "src/functions/audio/miles_dispatch_pcm_command_79.asm"
+%include "src/functions/audio/miles_dispatch_pcm_descriptor_command_86.asm"
+%include "src/functions/audio/miles_query_pcm_buffer_status.asm"
+%include "src/functions/audio/miles_dispatch_pcm_command_7d.asm"
+%include "src/functions/audio/miles_dispatch_pcm_stop_command_7e.asm"
+%include "src/functions/audio/miles_dispatch_driver_command_81.asm"
+%include "src/functions/audio/miles_dispatch_driver_command_97.asm"
+%include "src/functions/audio/miles_dispatch_driver_command_98.asm"
+%include "src/functions/audio/miles_dispatch_driver_command_99.asm"
+%include "src/functions/audio/miles_dispatch_driver_command_9a.asm"
+%include "src/functions/audio/miles_dispatch_driver_command_9b.asm"
+%include "src/functions/audio/miles_dispatch_driver_command_9c.asm"
+%include "src/functions/audio/miles_dispatch_driver_command_aa.asm"
+%include "src/functions/audio/miles_dispatch_driver_command_ab.asm"
+%include "src/functions/audio/miles_dispatch_driver_command_ae.asm"
+%include "src/functions/audio/miles_dispatch_driver_command_b1.asm"
+%include "src/functions/audio/miles_dispatch_driver_command_b4.asm"
+%include "src/functions/audio/digpak_suspend_miles_timer_if_required.asm"
+%include "src/functions/audio/digpak_resume_miles_timer_if_required.asm"
+%include "src/functions/audio/digpak_subtract_far_pointer_addresses.asm"
+%include "src/functions/audio/digpak_read_voc_block_type.asm"
+%include "src/functions/audio/digpak_read_voc_marker.asm"
+%include "src/functions/audio/digpak_rate_from_voc_time_constant.asm"
+%include "src/functions/audio/digpak_submit_pcm_in_32k_chunks.asm"
+%include "src/functions/audio/digpak_set_completion_callback.asm"
+%include "src/functions/audio/digpak_voc_completion_callback.asm"
+%include "src/functions/audio/digpak_buffer_completion_callback.asm"
+%include "src/functions/audio/digpak_advance_voc_block.asm"
+%include "src/functions/audio/digpak_select_ready_pcm_buffer.asm"
+%include "src/functions/audio/digpak_schedule_next_voc_block.asm"
+%include "src/functions/audio/digpak_schedule_pcm_buffer_slot.asm"
+%include "src/functions/audio/digpak_begin_pcm_transfer.asm"
+%include "src/functions/audio/digpak_submit_next_pcm_chunk.asm"
+%include "src/functions/audio/digpak_materialize_driver_descriptor.asm"
+%include "src/functions/audio/digpak_return_driver_probe_success.asm"
+%include "src/functions/audio/digpak_initialize_pcm_driver.asm"
+%include "src/functions/audio/digpak_shutdown_pcm_driver.asm"
+%include "src/functions/audio/digpak_find_voc_sound_block.asm"
+%include "src/functions/audio/digpak_queue_pcm_buffer_descriptor.asm"
+%include "src/functions/audio/digpak_get_pcm_buffer_status.asm"
+%include "src/functions/audio/digpak_select_voc_stream.asm"
+%include "src/functions/audio/digpak_submit_voc_pcm_blocks.asm"
+%include "src/functions/audio/digpak_submit_pcm_descriptor.asm"
+%include "src/functions/audio/digpak_service_pcm_playback.asm"
+%include "src/functions/audio/digpak_stop_pcm_playback.asm"
+%include "src/functions/audio/digpak_get_pcm_playback_state.asm"
 
-%include "src/data/gaps.asm"
+%include "src/functions/platform/write_video_bank_port_3cd_packed_3bit.asm"
+%include "src/functions/platform/unlock_video_and_write_bank_port_3cd_4bit.asm"
+%include "src/functions/platform/select_video_bank_sequencer_0e_xor_02.asm"
+%include "src/functions/platform/select_video_bank_sequencer_f9_f6_misc.asm"
+%include "src/functions/platform/select_video_bank_graphics_09.asm"
+%include "src/functions/platform/select_video_bank_port_3d6_register_10.asm"
+%include "src/functions/platform/select_video_bank_port_1ce_register_b2.asm"
+%include "src/functions/platform/select_video_bank_sequencer_08_misc.asm"
+%include "src/functions/platform/select_video_bank_graphics_00_misc.asm"
+%include "src/functions/platform/select_video_bank_graphics_0d.asm"
+%include "src/functions/platform/select_video_bank_port_3de_register_11.asm"
+%include "src/functions/platform/select_video_bank_sequencer_06.asm"
+%include "src/functions/platform/select_video_bank_sequencer_18_19.asm"
+%include "src/functions/platform/select_video_bank_graphics_45.asm"
+%include "src/functions/platform/call_scaled_video_bank_window_zero.asm"
+%include "src/functions/platform/ignore_video_bank_switch.asm"
+%include "src/functions/platform/probe_write_video_bank_graphics_09.asm"
+%include "src/data/platform/xms_control_entry_pointer.asm"
+%include "src/data/audio/embedded_digpak_table_and_state.asm"
+%include "src/data/layout/gaps.asm"
+%include "src/data/audio/miles_timer_and_driver_state.asm"
 ; Data Segments
 ; Semantically extracted ranges and the initialized ranges still under study.
-%include "src/data/post_code_alignment.asm"
-%include "src/data/zero_initialized_static_workspace_08930_1584f.asm"
-%include "src/data/unresolved_initialized_runtime_data.asm"
-%include "src/data/vdx_delta_tile_map.asm"
-%include "src/data/unresolved_initialized_tables_and_templates.asm"
-%include "src/data/unresolved_pre_configuration_runtime_data.asm"
-%include "src/data/groovie_configuration_strings.asm"
-%include "src/data/unresolved_pre_cell_neighbor_tables.asm"
-%include "src/data/cell_adjacent_neighbor_lists.asm"
-%include "src/data/cell_distance_two_neighbor_lists.asm"
-%include "src/data/cell_adjacent_neighbor_pointers.asm"
-%include "src/data/cell_distance_two_neighbor_pointers.asm"
-%include "src/data/unresolved_post_cell_neighbor_tables.asm"
-%include "src/data/zero_initialized_static_workspace_1724c_17c2d.asm"
-%include "src/data/unresolved_initialized_word.asm"
-%include "src/data/zero_initialized_static_workspace_17c30_18151.asm"
-%include "src/data/runtime_diagnostic_and_configuration_strings.asm"
+%include "src/data/layout/post_code_alignment.asm"
+%include "src/data/runtime/zero_initialized_static_workspace_08930_1584f.asm"
+%include "src/data/vdx/pending_palette_upload.asm"
+%include "src/data/unresolved/unresolved_initialized_runtime_data.asm"
+%include "src/data/vdx/background_xms_move_and_stream_state.asm"
+%include "src/data/vdx/vdx_delta_tile_map.asm"
+%include "src/data/unresolved/unresolved_initialized_tables_and_templates.asm"
+%include "src/data/unresolved/unresolved_pre_configuration_runtime_data.asm"
+%include "src/data/cursor/cursor_shape_and_palette_pointers.asm"
+%include "src/data/grv/grv_builtin_hotspot_rectangles.asm"
+%include "src/data/audio/configured_audio_backend_flags.asm"
+%include "src/data/runtime/groovie_configuration_strings.asm"
+%include "src/data/savegame/empty_slot_caption.asm"
+%include "src/data/unresolved/unresolved_pre_cell_neighbor_tables.asm"
+%include "src/data/puzzle/cell_adjacent_neighbor_lists.asm"
+%include "src/data/puzzle/cell_distance_two_neighbor_lists.asm"
+%include "src/data/puzzle/cell_adjacent_neighbor_pointers.asm"
+%include "src/data/puzzle/cell_distance_two_neighbor_pointers.asm"
+%include "src/data/puzzle/cell_search_state_and_strategies.asm"
+%include "src/data/puzzle/cell_search_workspace.asm"
+%include "src/data/vdx/xms_still_cache_state.asm"
+%include "src/data/runtime/runtime_diagnostic_and_configuration_strings.asm"
 
 
 section .header start=0 vstart=0 align=1
@@ -579,27 +610,35 @@ load_image_start:
     ; 0285D..02895 function
     emit_clear_indexed_display_memory_part_00
     ; 02896..028AC function
-    emit_func_02896_part_00
+    emit_pump_pending_pcm_buffers_part_00
     ; 028AD..028D8 function
-    emit_func_028ad_part_00
+    emit_drain_pcm_stream_with_timeout_part_00
     ; 028D9..028DA gap
     emit_gap_025_028d9
     ; 028DB..0292E function
-    emit_func_028ad_part_01
+    emit_drain_pcm_stream_with_timeout_part_01
     ; 0292F..02930 gap
     emit_gap_026_0292f
     ; 02931..0293A function
-    emit_func_028ad_part_02
+    emit_drain_pcm_stream_with_timeout_part_02
     ; 0293B..02992 function
-    emit_func_0293b_part_00
+    emit_wait_for_miles_pcm_buffers_complete_part_00
     ; 02993..02994 gap
     emit_gap_027_02993
     ; 02995..02996 function
-    emit_func_0293b_part_01
+    emit_wait_for_miles_pcm_buffers_complete_part_01
     ; 02997..02BE7 function
     emit_stream_media_buffer_part_00
-    ; 02BE8..02C31 gap
-    emit_gap_028_02be8
+    ; 02BE8..02BEF mutable INT 15h chain/saved vectors
+    emit_bios_pcm_interrupt_vectors
+    ; 02BF0..02C29 recovered BIOS PCM interrupt body
+    emit_bios_pcm_completion_interrupt_part_00
+    ; 02C2A..02C2B unresolved intervening bytes
+    emit_gap_bios_pcm_02c2a
+    ; 02C2C..02C30 recovered far chain
+    emit_bios_pcm_completion_interrupt_part_01
+    ; 02C31 unresolved trailing byte
+    emit_gap_bios_pcm_02c31
     ; 02C32..02CBF function
     emit_probe_cpu_and_x87_capabilities_part_00
     ; 02CC0..02CE8 gap
@@ -618,22 +657,70 @@ load_image_start:
     emit_gap_032_02d59
     ; 02D5A..02D79 function
     emit_synchronize_video_bank_state_part_00
-    ; 02D7A..02F69 gap
-    emit_gap_033_02d7a
+    ; 02D7A..02D8D recovered selected bank handler
+    emit_write_video_bank_port_3cd_packed_3bit_part_00
+    ; 02D8E..02DAC recovered selected bank handler
+    emit_unlock_video_and_write_bank_port_3cd_4bit_part_00
+    ; 02DAD..02DAD unowned bank-handler padding/stub bytes
+    emit_video_bank_gap_02dad
+    ; 02DAE..02DDC recovered selected bank handler
+    emit_select_video_bank_sequencer_0e_xor_02_part_00
+    ; 02DDD..02DDD unowned bank-handler padding/stub bytes
+    emit_video_bank_gap_02ddd
+    ; 02DDE..02E23 recovered selected bank handler
+    emit_select_video_bank_sequencer_f9_f6_misc_part_00
+    ; 02E24..02E3A recovered selected bank handler
+    emit_select_video_bank_graphics_09_part_00
+    ; 02E3B..02E3B unowned bank-handler padding/stub bytes
+    emit_video_bank_gap_02e3b
+    ; 02E3C..02E63 recovered selected bank handler
+    emit_select_video_bank_port_3d6_register_10_part_00
+    ; 02E64..02E7E recovered selected bank handler
+    emit_select_video_bank_port_1ce_register_b2_part_00
+    ; 02E7F..02E7F unowned bank-handler padding/stub bytes
+    emit_video_bank_gap_02e7f
+    ; 02E80..02EAC recovered selected bank handler
+    emit_select_video_bank_sequencer_08_misc_part_00
+    ; 02EAD..02EAD unowned bank-handler padding/stub bytes
+    emit_video_bank_gap_02ead
+    ; 02EAE..02EDC recovered selected bank handler
+    emit_select_video_bank_graphics_00_misc_part_00
+    ; 02EDD..02EDD unowned bank-handler padding/stub bytes
+    emit_video_bank_gap_02edd
+    ; 02EDE..02EF8 recovered selected bank handler
+    emit_select_video_bank_graphics_0d_part_00
+    ; 02EF9..02EF9 unowned bank-handler padding/stub bytes
+    emit_video_bank_gap_02ef9
+    ; 02EFA..02F0D recovered selected bank handler
+    emit_select_video_bank_port_3de_register_11_part_00
+    ; 02F0E..02F22 recovered selected bank handler
+    emit_select_video_bank_sequencer_06_part_00
+    ; 02F23..02F23 unowned bank-handler padding/stub bytes
+    emit_video_bank_gap_02f23
+    ; 02F24..02F37 recovered selected bank handler
+    emit_select_video_bank_sequencer_18_19_part_00
+    ; 02F38..02F4E recovered selected bank handler
+    emit_select_video_bank_graphics_45_part_00
+    ; 02F4F..02F4F unowned bank-handler padding/stub bytes
+    emit_video_bank_gap_02f4f
+    ; 02F50..02F68 recovered selected bank handler
+    emit_call_scaled_video_bank_window_zero_part_00
+    ; 02F69..02F69 unowned bank-handler padding/stub bytes
+    emit_video_bank_gap_02f69
     ; 02F6A..02F82 function
     emit_call_scaled_video_bank_handler_part_00
-    ; 02F83..02F83 gap
-    emit_gap_034_02f83
+    ; 02F83..02F83 recovered default bank-switch stub
+    emit_ignore_video_bank_switch_part_00
     ; 02F84..033B6 function
     emit_detect_video_hardware_part_00
     ; 033B7..033FE function
-    emit_func_033b7_part_00
+    emit_probe_sequencer_register_six_bank_handler_part_00
     ; 033FF..03419 function
     emit_probe_video_memory_bank_separation_part_00
     ; 0341A..03452 function
     emit_test_video_bank_pattern_pair_part_00
-    ; 03453..0345D gap
-    emit_gap_035_03453
+    ; 03453..0345D recovered indirect graphics-register probe callback
+    emit_probe_write_video_bank_graphics_09_part_00
     ; 0345E..0348B function
     emit_probe_indexed_register_writable_bits_part_00
     ; 0348C..034A4 function
@@ -646,8 +733,8 @@ load_image_start:
     emit_print_hardware_and_memory_diagnostics_part_00
     ; 03671..03687 function
     emit_detect_and_reset_mouse_driver_part_00
-    ; 03688..0368B gap
-    emit_gap_036_03688
+    ; 03688..0368B XMS control far-pointer storage
+    emit_xms_control_entry_pointer
     ; 0368C..036D1 function
     emit_query_xms_part_00
     ; 036D2..03755 function
@@ -655,11 +742,11 @@ load_image_start:
     ; 03756..03769 function
     emit_open_named_archive_file_part_00
     ; 0376A..03773 function
-    emit_func_0376a_part_00
+    emit_close_song_archive_part_00
     ; 03774..0377D function
-    emit_func_03774_part_00
+    emit_close_video_archive_part_00
     ; 0377E..03784 function
-    emit_func_0377e_part_00
+    emit_close_video_and_song_archives_part_00
     ; 03785..0378E gap
     emit_gap_037_03785
     ; 0378F..0382C function
@@ -709,7 +796,7 @@ load_image_start:
     ; 03F23..03F76 function
     emit_grv_save_game_part_00
     ; 03F77..03FC3 function
-    emit_func_03f77_part_00
+    emit_write_aborted_game_snapshot_to_save_z_part_00
     ; 03FC4..04000 function
     emit_grv_load_game_part_00
     ; 04001..04003 function
@@ -765,7 +852,7 @@ load_image_start:
     ; 04375..043C8 function
     emit_play_named_vdx_resource_part_00
     ; 043C9..043D1 function
-    emit_func_043c9_part_00
+    emit_grv_set_reserved_flag_d9ce_part_00
     ; 043D2..04405 function
     emit_grv_play_video_name_part_00
     ; 04406..04439 function
@@ -787,25 +874,25 @@ load_image_start:
     ; 04729..04753 function
     emit_match_grv_key_action_part_00
     ; 04754..0475D function
-    emit_func_04754_part_00
+    emit_test_persistent_top_bar_hotspot_part_00
     ; 0475E..04767 function
-    emit_func_0475e_part_00
+    emit_test_persistent_right_hotspot_part_00
     ; 04768..04771 function
-    emit_func_04768_part_00
+    emit_test_persistent_left_hotspot_part_00
     ; 04772..0477B function
-    emit_func_04772_part_00
+    emit_test_persistent_bottom_bar_hotspot_part_00
     ; 0477C..0478B function
-    emit_func_0477c_part_00
+    emit_grv_test_bottom_bar_hotspot_part_00
     ; 0478C..0479B function
-    emit_func_0478c_part_00
+    emit_grv_test_right_hotspot_part_00
     ; 0479C..047AB function
-    emit_func_0479c_part_00
+    emit_grv_test_left_hotspot_part_00
     ; 047AC..047BB function
-    emit_func_047ac_part_00
+    emit_grv_test_center_hotspot_cursor_zero_part_00
     ; 047BC..047CB function
-    emit_func_047bc_part_00
+    emit_grv_test_center_hotspot_cursor_three_part_00
     ; 047CC..047DB function
-    emit_func_047cc_part_00
+    emit_grv_test_full_width_hotspot_part_00
     ; 047DC..0483D function
     emit_test_grv_hotspot_rect_part_00
     ; 0483E..0483F gap
@@ -929,31 +1016,31 @@ load_image_start:
     ; 05480..054AC function
     emit_decode_and_draw_grv_string_part_00
     ; 054AD..054F8 function
-    emit_func_054ad_part_00
+    emit_load_and_draw_save_slot_caption_part_00
     ; 054F9..05522 function
-    emit_func_054f9_part_00
+    emit_clear_grv_caption_video_region_part_00
     ; 05523..055FB function
     emit_draw_centered_sphinx_font_string_part_00
     ; 055FC..05718 function
-    emit_func_055fc_part_00
+    emit_play_mscdex_audio_selection_part_00
     ; 05719..05727 function
-    emit_func_05719_part_00
+    emit_stop_mscdex_audio_part_00
     ; 05728..05728 function
-    emit_func_05728_part_00
+    emit_mscdex_post_play_no_op_part_00
     ; 05729..05729 function
-    emit_func_05729_part_00
+    emit_mscdex_pre_stop_no_op_part_00
     ; 0572A..05732 function
-    emit_func_0572a_part_00
+    emit_get_mscdex_drive_letters_part_00
     ; 05733..05733 gap
     emit_gap_058_05733
     ; 05734..05749 function
-    emit_func_05734_part_00
+    emit_open_driver_or_timbre_file_part_00
     ; 0574A..05753 function
-    emit_func_0574a_part_00
+    emit_close_driver_or_timbre_file_part_00
     ; 05754..0575D function
-    emit_func_05754_part_00
+    emit_read_driver_or_timbre_file_part_00
     ; 0575E..0576D function
-    emit_func_0575e_part_00
+    emit_rewind_driver_or_timbre_file_part_00
     ; 0576E..05A36 function
     emit_initialize_subsystems_xms_part_00
     ; 05A37..05A4E function
@@ -963,7 +1050,7 @@ load_image_start:
     ; 05A6C..05A8A function
     emit_set_midi_sequence_volume_ramp_part_00
     ; 05A8B..05AAB function
-    emit_set_midi_driver_master_volume_part_00
+    emit_set_pcm_driver_parameter_81_part_00
     ; 05AAC..05BD0 function
     emit_load_xmidi_timbre_patches_part_00
     ; 05BD1..05C05 function
@@ -1123,282 +1210,231 @@ load_image_start:
     ; 06E68..06E71 function
     emit_cell_random_byte_part_00
     ; 06E72..06EB5 function
-    emit_func_06e72_part_00
+    emit_allocate_xms_still_cache_part_00
     ; 06EB6..06ED8 function
-    emit_func_06eb6_part_00
+    emit_release_xms_still_cache_part_00
     ; 06ED9..06FA8 function
-    emit_func_06ed9_part_00
+    emit_transfer_selected_xms_still_cache_block_part_00
     ; 06FA9..07024 function
-    emit_func_06fa9_part_00
-    ; 07025..073DF gap
+    emit_select_xms_still_cache_entry_part_00
+    ; 07025 unresolved byte
     emit_gap_091_07025
+    ; 07026..071C9 Miles timer and driver runtime state
+    emit_miles_timer_and_driver_state
+    ; 071CA..071D5 unresolved scratch fields
+    emit_gap_miles_071ca
+    ; 071D6..073DD timer guard/private stack/saved SS:SP
+    emit_miles_timer_interrupt_stack
+    ; 073DE..073DF unresolved runtime word
+    emit_gap_miles_073de
     ; 073E0..07417 function
-    emit_func_073e0_part_00
+    emit_miles_find_driver_command_part_00
     ; 07418..0742F function
-    emit_func_07418_part_00
-    ; 07430..07500 gap
-    emit_gap_092_07430
-    ; 07501..07532 function
-    emit_func_07501_part_00
-    ; 07533..07533 gap
-    emit_gap_093_07533
-    ; 07534..0753C function
-    emit_func_07501_part_01
-    ; 0753D..07543 gap
-    emit_gap_094_0753d
-    ; 07544..07585 function
-    emit_func_07544_part_00
-    ; 07586..07586 gap
-    emit_gap_095_07586
-    ; 07587..0758F function
-    emit_func_07544_part_01
-    ; 07590..075B5 function
-    emit_func_07590_part_00
-    ; 075B6..075B6 gap
-    emit_gap_096_075b6
-    ; 075B7..075BF function
-    emit_func_07590_part_01
-    ; 075C0..075DD function
-    emit_func_075c0_part_00
-    ; 075DE..075DE gap
-    emit_gap_097_075de
-    ; 075DF..075E8 function
-    emit_func_075c0_part_01
+    emit_miles_tail_dispatch_driver_command_part_00
+    ; 07430..07500 recovered code entry
+    emit_miles_timer_interrupt_part_00
+    ; 07501..0753C function (overlapping IRET included)
+    emit_miles_initialize_timer_state_part_00
+    ; 0753D..07543 recovered code entry
+    emit_miles_chain_previous_timer_interrupt_part_00
+    ; 07544..0758F function (overlapping IRET included)
+    emit_miles_install_timer_interrupt_part_00
+    ; 07590..075BF function (overlapping IRET included)
+    emit_miles_restore_timer_interrupt_part_00
+    ; 075C0..075E8 function (overlapping IRET included)
+    emit_miles_program_pit_channel_zero_part_00
     ; 075E9..07612 function
-    emit_func_075e9_part_00
+    emit_miles_program_pit_from_period_part_00
     ; 07613..0765D function
-    emit_func_07613_part_00
-    ; 0765E..076E8 function
-    emit_func_0765e_part_00
-    ; 076E9..076E9 gap
-    emit_gap_098_076e9
-    ; 076EA..076F2 function
-    emit_func_0765e_part_01
-    ; 076F3..07733 function
-    emit_func_076f3_part_00
-    ; 07734..07734 gap
-    emit_gap_099_07734
-    ; 07735..0773D function
-    emit_func_076f3_part_01
-    ; 0773E..07797 function
-    emit_func_0773e_part_00
-    ; 07798..07798 gap
-    emit_gap_100_07798
-    ; 07799..077A2 function
-    emit_func_0773e_part_01
-    ; 077A3..07862 function
-    emit_func_077a3_part_00
-    ; 07863..07863 gap
-    emit_gap_101_07863
-    ; 07864..0786D function
-    emit_func_077a3_part_01
-    ; 0786E..078AB function
-    emit_func_0786e_part_00
-    ; 078AC..078AC gap
-    emit_gap_102_078ac
-    ; 078AD..078B6 function
-    emit_func_0786e_part_01
-    ; 078B7..078CA function
-    emit_func_078b7_part_00
-    ; 078CB..078CB gap
-    emit_gap_103_078cb
-    ; 078CC..078D4 function
-    emit_func_078b7_part_01
-    ; 078D5..078F1 function
-    emit_func_078d5_part_00
-    ; 078F2..078F2 gap
-    emit_gap_104_078f2
-    ; 078F3..078FC function
-    emit_func_078d5_part_01
+    emit_miles_divide_unsigned_dword_part_00
+    ; 0765E..076F2 function (overlapping IRET included)
+    emit_miles_recompute_minimum_timer_period_part_00
+    ; 076F3..0773D function (overlapping IRET included)
+    emit_miles_initialize_driver_tables_part_00
+    ; 0773E..077A2 function (overlapping IRET included)
+    emit_miles_shutdown_drivers_and_timers_part_00
+    ; 077A3..0786D function (overlapping IRET included)
+    emit_miles_register_timer_callback_part_00
+    ; 0786E..078B6 function (overlapping IRET included)
+    emit_miles_release_timer_callback_part_00
+    ; 078B7..078D4 function (overlapping IRET included)
+    emit_miles_release_all_timer_callbacks_part_00
+    ; 078D5..078FC function (overlapping IRET included)
+    emit_miles_start_timer_callback_part_00
     ; 078FD..0791A gap
     emit_gap_105_078fd
-    ; 0791B..07937 function
-    emit_func_0791b_part_00
-    ; 07938..07938 gap
-    emit_gap_106_07938
-    ; 07939..07942 function
-    emit_func_0791b_part_01
+    ; 0791B..07942 function (overlapping IRET included)
+    emit_miles_stop_timer_callback_part_00
     ; 07943..07960 gap
     emit_gap_107_07943
-    ; 07961..079AA function
-    emit_func_07961_part_00
-    ; 079AB..079AB gap
-    emit_gap_108_079ab
-    ; 079AC..079B5 function
-    emit_func_07961_part_01
-    ; 079B6..079EB function
-    emit_func_079b6_part_00
-    ; 079EC..079EC gap
-    emit_gap_109_079ec
-    ; 079ED..079F6 function
-    emit_func_079b6_part_01
+    ; 07961..079B5 function (overlapping IRET included)
+    emit_miles_set_timer_period_part_00
+    ; 079B6..079F6 function (overlapping IRET included)
+    emit_miles_set_timer_frequency_part_00
     ; 079F7..07A32 function
-    emit_func_079f7_part_00
-    ; 07A33..07A3C function
-    emit_func_07a33_part_00
-    ; 07A3D..07A3D gap
-    emit_gap_110_07a3d
-    ; 07A3E..07A46 function
-    emit_func_07a33_part_01
-    ; 07A47..07ADD function
-    emit_func_07a47_part_00
-    ; 07ADE..07ADE gap
-    emit_gap_111_07ade
-    ; 07ADF..07B29 function
-    emit_func_07a47_part_01
+    emit_miles_set_timer_period_from_pit_count_part_00
+    ; 07A33..07A46 function (overlapping IRET included)
+    emit_miles_get_programmed_pit_count_part_00
+    ; 07A47..07B29 function (overlapping IRET included)
+    emit_miles_register_driver_image_part_00
     ; 07B2A..07B70 gap
     emit_gap_112_07b2a
     ; 07B71..07B96 function
-    emit_func_07b71_part_00
+    emit_miles_query_driver_descriptor_part_00
     ; 07B97..07B9C function
-    emit_func_07b97_part_00
-    ; 07B9D..07C43 function
-    emit_func_07b9d_part_00
-    ; 07C44..07C44 gap
-    emit_gap_113_07c44
-    ; 07C45..07C4E function
-    emit_func_07b9d_part_01
+    emit_miles_dispatch_driver_command_65_part_00
+    ; 07B9D..07C4E function (overlapping IRET included)
+    emit_miles_initialize_registered_driver_part_00
     ; 07C4F..07C81 function
-    emit_func_07c4f_part_00
+    emit_miles_shutdown_registered_driver_part_00
     ; 07C82..07C87 gap
     emit_gap_114_07c82
     ; 07C88..07C8D function
-    emit_func_07c88_part_00
+    emit_miles_dispatch_pcm_command_79_part_00
     ; 07C8E..07C93 function
-    emit_func_07c8e_part_00
+    emit_miles_dispatch_pcm_descriptor_command_86_part_00
     ; 07C94..07C99 function
-    emit_func_07c94_part_00
+    emit_miles_query_pcm_buffer_status_part_00
     ; 07C9A..07CAB gap
     emit_gap_115_07c9a
     ; 07CAC..07CB1 function
-    emit_func_07cac_part_00
+    emit_miles_dispatch_pcm_command_7d_part_00
     ; 07CB2..07CB7 function
-    emit_func_07cb2_part_00
+    emit_miles_dispatch_pcm_stop_command_7e_part_00
     ; 07CB8..07CC3 gap
     emit_gap_116_07cb8
     ; 07CC4..07CC9 function
-    emit_func_07cc4_part_00
+    emit_miles_dispatch_driver_command_81_part_00
     ; 07CCA..07CE1 gap
     emit_gap_117_07cca
     ; 07CE2..07CE7 function
-    emit_func_07ce2_part_00
+    emit_miles_dispatch_driver_command_97_part_00
     ; 07CE8..07CED function
-    emit_func_07ce8_part_00
+    emit_miles_dispatch_driver_command_98_part_00
     ; 07CEE..07CF3 function
-    emit_func_07cee_part_00
+    emit_miles_dispatch_driver_command_99_part_00
     ; 07CF4..07CF9 function
-    emit_func_07cf4_part_00
+    emit_miles_dispatch_driver_command_9a_part_00
     ; 07CFA..07CFF function
-    emit_func_07cfa_part_00
+    emit_miles_dispatch_driver_command_9b_part_00
     ; 07D00..07D05 function
-    emit_func_07d00_part_00
+    emit_miles_dispatch_driver_command_9c_part_00
     ; 07D06..07D17 gap
     emit_gap_118_07d06
     ; 07D18..07D1D function
-    emit_func_07d18_part_00
+    emit_miles_dispatch_driver_command_aa_part_00
     ; 07D1E..07D23 function
-    emit_func_07d1e_part_00
+    emit_miles_dispatch_driver_command_ab_part_00
     ; 07D24..07D29 gap
     emit_gap_119_07d24
     ; 07D2A..07D2F function
-    emit_func_07d2a_part_00
+    emit_miles_dispatch_driver_command_ae_part_00
     ; 07D30..07D3B gap
     emit_gap_120_07d30
     ; 07D3C..07D41 function
-    emit_func_07d3c_part_00
+    emit_miles_dispatch_driver_command_b1_part_00
     ; 07D42..07D4D gap
     emit_gap_121_07d42
     ; 07D4E..07D53 function
-    emit_func_07d4e_part_00
-    ; 07D54..07E9F gap
+    emit_miles_dispatch_driver_command_b4_part_00
+    ; 07D54..07DA1 unowned command thunks; 07DA2..07E9F embedded DIGPAK data
     emit_gap_122_07d54
+    emit_embedded_digpak_command_table
+    emit_embedded_digpak_descriptor_state
     ; 07EA0..07EC8 function
-    emit_func_07ea0_part_00
+    emit_digpak_suspend_miles_timer_if_required_part_00
     ; 07EC9..07ED2 gap
     emit_gap_123_07ec9
     ; 07ED3..07ED6 function
-    emit_func_07ea0_part_01
+    emit_digpak_suspend_miles_timer_if_required_part_01
     ; 07ED7..07F0D function
-    emit_func_07ed7_part_00
+    emit_digpak_resume_miles_timer_if_required_part_00
     ; 07F0E..07F54 function
-    emit_func_07f0e_part_00
+    emit_digpak_subtract_far_pointer_addresses_part_00
     ; 07F55..07F63 function
-    emit_func_07f55_part_00
+    emit_digpak_read_voc_block_type_part_00
     ; 07F64..07F7A function
-    emit_func_07f64_part_00
+    emit_digpak_read_voc_marker_part_00
     ; 07F7B..07FB5 function
-    emit_func_07f7b_part_00
+    emit_digpak_rate_from_voc_time_constant_part_00
     ; 07FB6..08068 function
-    emit_func_07fb6_part_00
+    emit_digpak_submit_pcm_in_32k_chunks_part_00
     ; 08069..08082 function
-    emit_func_08069_part_00
-    ; 08083..080D5 gap
-    emit_gap_124_08083
+    emit_digpak_set_completion_callback_part_00
+    ; 08083..080D5 recovered VOC/buffer completion callbacks
+    emit_digpak_voc_completion_callback_part_00
+    emit_digpak_buffer_completion_callback_part_00
     ; 080D6..0812A function
-    emit_func_080d6_part_00
+    emit_digpak_advance_voc_block_part_00
     ; 0812B..08151 function
-    emit_func_0812b_part_00
+    emit_digpak_select_ready_pcm_buffer_part_00
     ; 08152..082A8 function
-    emit_func_08152_part_00
+    emit_digpak_schedule_next_voc_block_part_00
     ; 082A9..082FB function
-    emit_func_082a9_part_00
+    emit_digpak_schedule_pcm_buffer_slot_part_00
     ; 082FC..08326 function
-    emit_func_082fc_part_00
+    emit_digpak_begin_pcm_transfer_part_00
     ; 08327..083FD function
-    emit_func_08327_part_00
+    emit_digpak_submit_next_pcm_chunk_part_00
     ; 083FE..0847D function
-    emit_func_083fe_part_00
+    emit_digpak_materialize_driver_descriptor_part_00
     ; 0847E..0848B function
-    emit_func_0847e_part_00
+    emit_digpak_return_driver_probe_success_part_00
     ; 0848C..084F0 function
-    emit_func_0848c_part_00
+    emit_digpak_initialize_pcm_driver_part_00
     ; 084F1..08523 function
-    emit_func_084f1_part_00
+    emit_digpak_shutdown_pcm_driver_part_00
     ; 08524..08649 function
-    emit_func_08524_part_00
+    emit_digpak_find_voc_sound_block_part_00
     ; 0864A..086AA function
-    emit_func_0864a_part_00
+    emit_digpak_queue_pcm_buffer_descriptor_part_00
     ; 086AB..086BF function
-    emit_func_086ab_part_00
+    emit_digpak_get_pcm_buffer_status_part_00
     ; 086C0..08765 function
-    emit_func_086c0_part_00
+    emit_digpak_select_voc_stream_part_00
     ; 08766..08853 function
-    emit_func_08766_part_00
+    emit_digpak_submit_voc_pcm_blocks_part_00
     ; 08854..08890 function
-    emit_func_08854_part_00
+    emit_digpak_submit_pcm_descriptor_part_00
     ; 08891..088D8 function
-    emit_func_08891_part_00
+    emit_digpak_service_pcm_playback_part_00
     ; 088D9..0891C function
-    emit_func_088d9_part_00
+    emit_digpak_stop_pcm_playback_part_00
     ; 0891D..0892B function
-    emit_func_0891d_part_00
+    emit_digpak_get_pcm_playback_state_part_00
     ; 0892C..0892F verified alignment
     emit_post_code_alignment
     ; 08930..1584F verified startup DS zero-initialized workspace
     emit_zero_initialized_static_workspace_08930_1584f
     ; 15850..15DBD unresolved initialized runtime data
+    emit_pending_palette_upload
     emit_unresolved_initialized_runtime_data
+    emit_background_xms_move_and_stream_state
     ; 15DBE..15E7D verified VDX delta tile-map table
     emit_vdx_delta_tile_map
     ; 15E7E..1692B unresolved initialized tables and templates
     emit_unresolved_initialized_tables_and_templates
-    ; 1692C..169F7 unresolved initialized runtime data
+    ; 1692C..16986 unresolved initialized runtime data
     emit_unresolved_pre_configuration_runtime_data
+    emit_cursor_shape_and_palette_pointers
+    ; 16987..169F4 mutable built-in hotspot rectangles
+    emit_grv_builtin_hotspot_rectangles
+    ; 169F5..169F7 unresolved initialized bytes
+    emit_configured_audio_backend_flags
     ; 169F8..16A89 verified Groovie configuration strings
     emit_groovie_configuration_strings_169f8_16a89
-    ; 16A8A..1724B unresolved initialized lookup structures
+    ; 16A8A..16DEC mixed unresolved runtime data; followed by verified puzzle tables
+emit_empty_slot_caption
 emit_unresolved_pre_cell_neighbor_tables
 emit_cell_adjacent_neighbor_lists
 emit_cell_distance_two_neighbor_lists
 emit_cell_adjacent_neighbor_pointers
 emit_cell_distance_two_neighbor_pointers
-emit_unresolved_post_cell_neighbor_tables
+emit_cell_search_state_and_strategies
     ; 1724C..17C2D verified zero-initialized static workspace
-    emit_zero_initialized_static_workspace_1724c_17c2d
-    ; 17C2E..17C2F unresolved initialized word (C8 C8)
-    emit_unresolved_initialized_word
-    ; 17C30..18151 verified zero-initialized static workspace
-    emit_zero_initialized_static_workspace_17c30_18151
+    emit_cell_search_workspace
+    ; 17C2E..18151 XMS still-cache descriptor, controls, entries, and unresolved tail
+    emit_xms_still_cache_state
     ; 18152..18CF7 verified diagnostic/configuration string corpus
     emit_runtime_diagnostic_and_configuration_strings
 

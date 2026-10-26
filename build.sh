@@ -708,6 +708,12 @@ else
     )
 fi
 
+# The clang-cl invocation does not emit dependency files. Header edits must
+# invalidate cached objects too. version.h is handled by update_build_version,
+# which touches its direct consumers; excluding it avoids a full rebuild solely
+# for the release stamp on every build.
+mapfile -t project_headers < <(rg --files include -g '*.h' -g '*.hpp' -g '!version.h')
+
 # Function to check if compilation is needed
 needs_compile() {
     local src="$1"
@@ -719,6 +725,11 @@ needs_compile() {
     
     # Source is newer
     [[ "$src" -nt "$obj" ]] && return 0
+
+    local project_header
+    for project_header in "${project_headers[@]}"; do
+        [[ "$project_header" -nt "$obj" ]] && return 0
+    done
 
     # Generated shader headers are included directly by the renderer sources.
     # Recompile their objects when a shader changes, even without a .d file.

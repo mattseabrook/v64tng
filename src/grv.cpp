@@ -32,7 +32,7 @@ constexpr std::array<const char*, 91> kMnemonics{{
     "CHECK_VALID_SAVES", "RESETVARS", "MOD", "LOADSCRIPT", "SET_VIDEO_ORIGIN",
     "SUB", "GAMELOGIC", "RETURNSCRIPT", "SET_HOTSPOT_RIGHT", "SET_HOTSPOT_LEFT",
     "RESOURCE_CONTEXT_SAVE", "RESOURCE_CONTEXT_RESTORE", "SET_VDX_RATE_OVERRIDE",
-    "PALETTE_MERGE_ONCE", "MIDI_DRIVER_PARAM", "SET_VIDEO_MODE", "GETCD", "PLAYCD",
+    "PALETTE_MERGE_ONCE", "PCM_DRIVER_PARAM", "SET_VIDEO_MODE", "GETCD", "PLAYCD",
     "MUSICDELAY", "RESERVED_4F", "RESERVED_50", "SET_VIDEO_SKIP_CANDIDATE",
     "COMMIT_OVERLAY", "HOTSPOT_OUTSIDE_RECT", "NOP_54", "SET_SCRIPT_END_CANDIDATE",
     "RESERVED_SOUND_SHAPE", "MASK_VIDEO_REF32", "MASK_VIDEO_NAME",
@@ -173,13 +173,18 @@ GrvResourceNames loadGrvResourceNames(const std::filesystem::path& root)
     return result;
 }
 
-GrvProgram decodeGrv(const std::filesystem::path& path, const GrvResourceNames& names)
+GrvProgram decodeGrv(const std::filesystem::path& path, const GrvResourceNames& names,
+    GrvHotspotConvention convention)
 {
     GrvProgram program;
     program.sourcePath = path;
+    program.hotspotConvention = convention;
     std::ifstream file(path, std::ios::binary);
     if (!file) throw std::runtime_error("Cannot open " + path.string());
     program.bytes.assign(std::istreambuf_iterator<char>(file), {});
+
+    if (program.bytes.size() > 0x10000)
+        throw std::runtime_error("GRV exceeds the 16-bit script address space");
 
     std::optional<uint16_t> nearestRef;
     std::string nearestName;
@@ -222,8 +227,8 @@ GrvProgram decodeGrv(const std::filesystem::path& path, const GrvResourceNames& 
             if(op==0x12) inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,0,0,640,480,a,0);
         } else if (op==0x15 || op==0x18 || op==0x44 || op==0x45) {
             const auto a=targetOnly();
-            if(op==0x44) { inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,560,0,640,480,a,2); persistentRight=inst.hotspot; }
-            if(op==0x45) { inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,0,0,80,480,a,1); persistentLeft=inst.hotspot; }
+            if(op==0x44) { inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,560,0,640,480,a,2); }
+            if(op==0x45) { inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,0,0,80,480,a,1); }
         } else if (op==0x14) { var("dst"); u8("max"); }
         else if (op==0x16 || op==0x33) { var("dst"); add("values="+readSequence(reader)); }
         else if (op==0x42) u8("mode"); // Recovered microscope strategy, 0..8.
@@ -240,7 +245,6 @@ GrvProgram decodeGrv(const std::filesystem::path& path, const GrvResourceNames& 
             const auto a=targetOnly(); const auto c=u8("cursor");
             inst.hotspot = op==0x2c ? makeHotspot(inst.offset,inst.mnemonic,0,0,640,80,a,c)
                                    : makeHotspot(inst.offset,inst.mnemonic,0,400,640,480,a,c);
-            if(op==0x2c) persistentTop=inst.hotspot; else persistentBottom=inst.hotspot;
         } else if (op==0x30) { const auto a=targetOnly(); inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,0,400,640,480,a,4); }
         else if (op==0x31) { u16("value"); u16("time"); }
         else if (op==0x32) { var("selector"); u16("rhs"); targetOnly(); }
@@ -259,6 +263,22 @@ GrvProgram decodeGrv(const std::filesystem::path& path, const GrvResourceNames& 
         else if (op==0x59) { var("dst");u8("mode"); }
         // Remaining opcodes have no operands.
 
+        // Match DOS records DS:E057..E0C4, retaining an explicit Windows view.
+        // Operand decoding remains the retail corpus dialect (including 1Eh).
+        if (inst.hotspot && convention == GrvHotspotConvention::Dos) {
+            auto& h = *inst.hotspot;
+            if (op == 0x0e || op == 0x45) { h.left=0; h.top=80; h.right=63; h.bottom=399; h.cursor=2; }
+            else if (op == 0x0f || op == 0x44) { h.left=576; h.top=80; h.right=639; h.bottom=399; h.cursor=1; }
+            else if (op == 0x10 || op == 0x11) { h.left=156; h.top=80; h.right=483; h.bottom=399; h.cursor=op==0x10?3:0; }
+            else if (op == 0x12) { h.left=0; h.top=80; h.right=639; h.bottom=399; }
+            else if (op == 0x2c) { h.right=639; h.bottom=79; }
+            else if (op == 0x2d || op == 0x30) { h.right=639; h.bottom=479; }
+        }
+        if (op == 0x2c) persistentTop=inst.hotspot;
+        else if (op == 0x2d) persistentBottom=inst.hotspot;
+        else if (op == 0x44) persistentRight=inst.hotspot;
+        else if (op == 0x45) persistentLeft=inst.hotspot;
+
         if(op==0x15 || op==0x17 || op==0x2a || op==0x43)
             inst.fallsThrough=false;
 
@@ -269,15 +289,15 @@ GrvProgram decodeGrv(const std::filesystem::path& path, const GrvResourceNames& 
         if (inst.videoRef || !inst.videoName.empty()) { nearestRef=inst.videoRef; nearestName=inst.videoName; }
         if (op==0x0b) {
             GrvInputLoop loop{inst.offset,inst.offset,nearestRef,nearestName,{},{}};
-            if(persistentTop)loop.hotspots.push_back(*persistentTop);
-            if(persistentBottom)loop.hotspots.push_back(*persistentBottom);
-            if(persistentLeft)loop.hotspots.push_back(*persistentLeft);
-            if(persistentRight)loop.hotspots.push_back(*persistentRight);
             activeLoops.push_back(std::move(loop));
         } else if(!activeLoops.empty() && inst.hotspot && op!=0x2c && op!=0x2d && op!=0x44 && op!=0x45) {
             activeLoops.back().hotspots.push_back(*inst.hotspot);
         }
         if(!activeLoops.empty() && op==0x13){
+            if(persistentTop)activeLoops.back().hotspots.push_back(*persistentTop);
+            if(persistentBottom)activeLoops.back().hotspots.push_back(*persistentBottom);
+            if(persistentRight)activeLoops.back().hotspots.push_back(*persistentRight);
+            if(persistentLeft)activeLoops.back().hotspots.push_back(*persistentLeft);
             activeLoops.back().end=inst.offset;
             program.inputLoops.push_back(std::move(activeLoops.back()));
             activeLoops.pop_back();
@@ -357,6 +377,7 @@ std::string decompileGrv(const GrvProgram& program)
 {
     std::ostringstream out;
     out << "; " << program.sourcePath.filename().string() << "\r\n";
+    out << "; hotspot_convention=" << (program.hotspotConvention==GrvHotspotConvention::Dos?"dos (inclusive)":"windows (half-open)") << "\r\n";
     out << "; size=" << program.bytes.size() << " instructions=" << program.instructions.size()
         << " input_loops=" << program.inputLoops.size() << "\r\n\r\n";
     for(const auto& inst:program.instructions){
@@ -364,7 +385,13 @@ std::string decompileGrv(const GrvProgram& program)
         for(size_t i=0;i<inst.bytes.size();++i){if(i)raw<<' ';raw<<std::uppercase<<std::hex<<std::setw(2)<<std::setfill('0')<<static_cast<int>(inst.bytes[i]);}
         out<<std::right<<std::uppercase<<std::hex<<std::setw(4)<<std::setfill('0')<<inst.offset<<"  "
            <<std::left<<std::setw(38)<<std::setfill(' ')<<raw.str()<<" "
-           <<std::setw(29)<<inst.mnemonic<<" "<<inst.operands<<"\r\n";
+           <<std::setw(29)<<inst.mnemonic<<" "<<inst.operands;
+        if(inst.hotspot){
+            const auto& h=*inst.hotspot;
+            out << " ; rect=(" << std::dec << h.left << ',' << h.top << ")-("
+                << h.right << ',' << h.bottom << "), cursor=" << static_cast<unsigned>(h.cursor);
+        }
+        out << "\r\n";
     }
     return out.str();
 }
@@ -380,13 +407,16 @@ std::vector<uint8_t> rebuildGrvAssembly(std::string_view assembly)
         std::string offsetText;
         fields>>offsetText;
         size_t listed=0;
-        try{listed=std::stoul(offsetText,nullptr,16);}catch(...){throw std::runtime_error("Invalid assembly offset: "+offsetText);}
+        try{size_t used=0;listed=std::stoul(offsetText,&used,16);if(used!=offsetText.size() || offsetText.size()!=4)throw std::runtime_error("offset");}catch(...){throw std::runtime_error("Invalid assembly offset: "+offsetText);}
         if(listed!=output.size())throw std::runtime_error(std::format("Assembly offset 0x{:04X} does not match output 0x{:04X}",listed,output.size()));
+        const size_t lineStart=output.size();
         std::string token;
         while(fields>>token){
             if(token.size()!=2||!std::isxdigit(static_cast<unsigned char>(token[0]))||!std::isxdigit(static_cast<unsigned char>(token[1])))break;
+            if(output.size()==0x10000)throw std::runtime_error("GRV exceeds the 16-bit script address space");
             output.push_back(static_cast<uint8_t>(std::stoul(token,nullptr,16)));
         }
+        if(output.size()==lineStart)throw std::runtime_error("Assembly line has no byte data: "+offsetText);
     }
     return output;
 }
@@ -396,5 +426,6 @@ void saveGrvAssembly(const GrvProgram& program, const std::filesystem::path& out
     std::ofstream file(output,std::ios::binary);
     if(!file)throw std::runtime_error("Cannot create "+output.string());
     const auto text=decompileGrv(program);
-    file.write(text.data(),static_cast<std::streamsize>(text.size()));
+    if(!file.write(text.data(),static_cast<std::streamsize>(text.size())))
+        throw std::runtime_error("Cannot write "+output.string());
 }

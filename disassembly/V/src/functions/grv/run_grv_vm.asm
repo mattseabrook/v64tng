@@ -1422,7 +1422,7 @@ grv_opcode_video_flag6_on:
     %endif
     times 1 - ($ - %%insn_03d22) db 0
     %%insn_03d23:
-    call set_midi_driver_master_volume ; 03D23 E8651D
+    call set_pcm_driver_parameter_81 ; 03D23 E8651D
     %if ($ - %%insn_03d23) > 3
         %error "LONG_03D23"
     %endif

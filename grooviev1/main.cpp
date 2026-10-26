@@ -25,6 +25,8 @@
 #include <utility>
 #include <vector>
 
+#include "../include/grv.h"
+
 namespace fs = std::filesystem;
 
 struct RGB
@@ -105,6 +107,8 @@ static void printUsage()
     std::cout
         << "grooviev1 - standalone VDX encoder (0x20/0x25/0x00/0x80)\n\n"
         << "Commands:\n"
+        << "  grv-disassemble INPUT.grv OUTPUT.asm [--resources DIR] [--hotspots dos|windows] [--raw]\n"
+        << "  grv-assemble INPUT.asm OUTPUT.grv  Rebuild the listing's hex byte column\n"
         << "  encode         Encode image sequence to VDX (default when no subcommand is given)\n"
         << "  extract-indexed INPUT.vdx OUT_DIR   Export lossless IDX/PAL frames\n"
         << "  encode-indexed INPUT_DIR OUTPUT.vdx Encode lossless indexed sequence\n"
@@ -2657,6 +2661,52 @@ int main(int argc, char **argv)
         if (argc >= 2)
         {
             const std::string command = argv[1];
+            if (command == "grv-disassemble" || command == "grv-assemble") {
+                if (argc < 4) throw std::runtime_error("GRV command requires input and output paths");
+                const fs::path input = argv[2], output = argv[3];
+                if (fs::exists(output)) throw std::runtime_error("GRV output already exists: " + output.string());
+                if (command == "grv-assemble") {
+                    if (argc != 4) throw std::runtime_error("Usage: grv-assemble INPUT.asm OUTPUT.grv");
+                    const auto source = readBinaryFile(input.string());
+                    const auto bytes = rebuildGrvAssembly(std::string_view(
+                        reinterpret_cast<const char*>(source.data()), source.size()));
+                    std::ofstream file(output, std::ios::binary);
+                    if (!file || !file.write(reinterpret_cast<const char*>(bytes.data()), bytes.size()))
+                        throw std::runtime_error("Cannot write " + output.string());
+                } else {
+                    GrvHotspotConvention convention = GrvHotspotConvention::Dos;
+                    GrvResourceNames names;
+                    bool raw = false;
+                    for (int i=4; i<argc; ++i) {
+                        const std::string option = argv[i];
+                        if (option == "--resources" && i+1<argc) names=loadGrvResourceNames(argv[++i]);
+                        else if (option == "--hotspots" && i+1<argc) {
+                            const std::string value=argv[++i];
+                            if (value != "dos" && value != "windows") throw std::runtime_error("--hotspots requires dos or windows");
+                            convention=value=="dos"?GrvHotspotConvention::Dos:GrvHotspotConvention::Windows;
+                        } else if (option == "--raw") raw=true;
+                        else throw std::runtime_error("Unknown GRV option: " + option);
+                    }
+                    if (raw) {
+                        const auto bytes=readBinaryFile(input.string());
+                        if (bytes.size()>0x10000) throw std::runtime_error("GRV exceeds the 16-bit script address space");
+                        std::ofstream file(output, std::ios::binary);
+                        if (!file) throw std::runtime_error("Cannot write " + output.string());
+                        file << "; Raw byte listing: no opcode interpretation\n";
+                        for (size_t offset=0; offset<bytes.size(); offset+=16) {
+                            file << std::uppercase << std::hex << std::setfill('0') << std::setw(4) << offset << "  ";
+                            for (size_t j=offset; j<std::min(offset+16,bytes.size()); ++j)
+                                file << std::setw(2) << static_cast<unsigned>(bytes[j]) << ' ';
+                            file << " RAW\n";
+                        }
+                        if (!file) throw std::runtime_error("Cannot write " + output.string());
+                    } else {
+                        saveGrvAssembly(decodeGrv(input,names,convention),output);
+                    }
+                }
+                std::cout << "Wrote " << output.string() << "\n";
+                return 0;
+            }
             if (command == "extract-indexed" || command == "encode-indexed") {
                 if (argc != 4) throw std::runtime_error("Usage: extract-indexed INPUT.vdx OUTPUT_DIR | encode-indexed INPUT_DIR OUTPUT.vdx");
                 if (command == "extract-indexed") extractIndexed(argv[2], argv[3]);

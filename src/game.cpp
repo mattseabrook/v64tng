@@ -1962,8 +1962,23 @@ bool initializeGrvMainMenu()
 	}
 	consoleLogf("GRV", "microscope policy: {}",
 		microscopeFlavor == CellPuzzle::Flavor::Windows ? "windows" : "dos");
+	// Original logical geometry feeds the unchanged responsive window transform.
+	GrvHotspotConvention hotspotConvention = GrvHotspotConvention::Dos;
+	const auto hotspotPolicy = config.find("grvHotspotPolicy");
+	if (hotspotPolicy != config.end())
+	{
+		if (!hotspotPolicy->is_string() ||
+			(*hotspotPolicy != "dos" && *hotspotPolicy != "windows"))
+		{
+			std::println(stderr, "WARNING: grvHotspotPolicy must be dos or windows");
+			return false;
+		}
+		if (*hotspotPolicy == "windows") hotspotConvention = GrvHotspotConvention::Windows;
+	}
+	consoleLogf("GRV", "hotspot policy: {}",
+		hotspotConvention == GrvHotspotConvention::Windows ? "windows" : "dos");
 	auto runtime = GrvRuntime::load(assetPath("SCRIPT.GRV"), assetRoot(),
-		GrvSaveConvention::Auto, microscopeFlavor);
+		GrvSaveConvention::Auto, microscopeFlavor, hotspotConvention);
 	if (!runtime)
 	{
 		std::println(stderr, "WARNING: {}", runtime.error());
