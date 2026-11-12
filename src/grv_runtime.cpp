@@ -282,101 +282,49 @@ std::string GrvResource::stem() const
 
 uint16_t GrvHotspotView::left() const
 {
-	// DOS mutable rectangle records at DS:E057..E0C4.
-	if (convention_ == GrvHotspotConvention::Dos)
-	{
-		switch (instruction_[0] & 0x7f)
-		{
-		case 0x0f: case 0x44: return 576;
-		case 0x10: case 0x11: return 156;
-		default: break;
-		}
-	}
+	if (const auto builtin = grvBuiltinHotspot(instruction_[0] & 0x7f, convention_))
+		return builtin->left;
 	switch (instruction_[0] & 0x7f)
 	{
-	case 0x0d: return hotspotField(instruction_, 1);
-	case 0x0e: case 0x45: return 0;
-	case 0x0f: return 540;
-	case 0x44: return 560;
-	case 0x10: case 0x11: return 200;
-	case 0x12: case 0x2c: case 0x2d: case 0x30: return 0;
+	case 0x0d: case 0x53: return hotspotField(instruction_, 1);
 	case 0x3b: return hotspotField(instruction_, 2);
-	case 0x53: return hotspotField(instruction_, 1);
 	default: return 0;
 	}
 }
 
 uint16_t GrvHotspotView::top() const
 {
-	// DOS mutable rectangle records at DS:E057..E0C4.
-	if (convention_ == GrvHotspotConvention::Dos)
-	{
-		switch (instruction_[0] & 0x7f)
-		{
-		case 0x0e: case 0x0f: case 0x10: case 0x11:
-		case 0x12: case 0x44: case 0x45: return 80;
-		default: break;
-		}
-	}
+	if (const auto builtin = grvBuiltinHotspot(instruction_[0] & 0x7f, convention_))
+		return builtin->top;
 	switch (instruction_[0] & 0x7f)
 	{
-	case 0x0d: return hotspotField(instruction_, 3);
-	case 0x0e: case 0x0f: case 0x10: case 0x11: return 80;
-	case 0x2d: case 0x30: return 400;
+	case 0x0d: case 0x53: return hotspotField(instruction_, 3);
 	case 0x3b: return hotspotField(instruction_, 4);
-	case 0x53: return hotspotField(instruction_, 3);
 	default: return 0;
 	}
 }
 
 uint16_t GrvHotspotView::right() const
 {
-	// DOS mutable rectangle records at DS:E057..E0C4.
-	if (convention_ == GrvHotspotConvention::Dos)
-	{
-		switch (instruction_[0] & 0x7f)
-		{
-		case 0x0e: case 0x45: return 63;
-		case 0x0f: case 0x44: case 0x12: case 0x2c: case 0x2d: case 0x30: return 639;
-		case 0x10: case 0x11: return 483;
-		default: break;
-		}
-	}
+	if (const auto builtin = grvBuiltinHotspot(instruction_[0] & 0x7f, convention_))
+		return builtin->right;
 	switch (instruction_[0] & 0x7f)
 	{
-	case 0x0d: return hotspotField(instruction_, 5);
-	case 0x0e: return 100;
-	case 0x45: return 80;
-	case 0x0f: case 0x44: case 0x12: case 0x2c: case 0x2d: case 0x30: return 640;
-	case 0x10: case 0x11: return 440;
+	case 0x0d: case 0x53: return hotspotField(instruction_, 5);
 	case 0x3b: return hotspotField(instruction_, 6);
-	case 0x53: return hotspotField(instruction_, 5);
-	default: return 640;
+	default: return 639;
 	}
 }
 
 uint16_t GrvHotspotView::bottom() const
 {
-	// DOS mutable rectangle records at DS:E057..E0C4.
-	if (convention_ == GrvHotspotConvention::Dos)
-	{
-		switch (instruction_[0] & 0x7f)
-		{
-		case 0x0e: case 0x0f: case 0x10: case 0x11:
-		case 0x12: case 0x44: case 0x45: return 399;
-		case 0x2c: return 79;
-		case 0x2d: case 0x30: return 479;
-		default: break;
-		}
-	}
+	if (const auto builtin = grvBuiltinHotspot(instruction_[0] & 0x7f, convention_))
+		return builtin->bottom;
 	switch (instruction_[0] & 0x7f)
 	{
-	case 0x0d: return hotspotField(instruction_, 7);
-	case 0x0e: case 0x0f: case 0x10: case 0x11: return 400;
-	case 0x2c: return 80;
+	case 0x0d: case 0x53: return hotspotField(instruction_, 7);
 	case 0x3b: return hotspotField(instruction_, 8);
-	case 0x53: return hotspotField(instruction_, 7);
-	default: return 480;
+	default: return 479;
 	}
 }
 
@@ -393,35 +341,23 @@ uint16_t GrvHotspotView::target() const
 
 uint8_t GrvHotspotView::cursor() const
 {
-	// DOS mutable rectangle records at DS:E057..E0C4.
-	if (convention_ == GrvHotspotConvention::Dos)
-	{
-		switch (instruction_[0] & 0x7f)
-		{
-		case 0x0e: case 0x45: return 2;
-		case 0x0f: case 0x44: return 1;
-		case 0x10: return 3;
-		default: break;
-		}
-	}
 	switch (instruction_[0] & 0x7f)
 	{
 	case 0x0d: return instruction_[11];
-	case 0x0e: case 0x45: return 1;
-	case 0x0f: case 0x44: return 2;
 	case 0x2c: case 0x2d: return instruction_[3];
-	case 0x30: return 4;
 	case 0x3b: return instruction_[12];
-	default: return 0;
+	default:
+		if (const auto builtin = grvBuiltinHotspot(instruction_[0] & 0x7f, convention_))
+			return builtin->cursor;
+		return 0;
 	}
 }
 
 bool GrvHotspotView::contains(uint16_t x, uint16_t y) const
 {
-	// DOS 047DCh compares unsigned inclusive bounds; Windows uses half-open bounds.
-	const bool inside = convention_ == GrvHotspotConvention::Dos
-		? x >= left() && x <= right() && y >= top() && y <= bottom()
-		: x >= left() && x < right() && y >= top() && y < bottom();
+	// V.EXE 047DC and v32tng 004027C1 include explicit rectangle endpoints.
+	// Built-in strict Windows comparisons are encoded in grvBuiltinHotspot.
+	const bool inside = x >= left() && x <= right() && y >= top() && y <= bottom();
 	return (instruction_[0] & 0x7f) == 0x53 ? !inside : inside;
 }
 
@@ -1064,10 +1000,10 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 				scriptPath_.filename().string(), pc);
 			return false;
 		case 0x2c:
-			persistentHotspots_[0] = static_cast<uint16_t>(pc);
+			setPersistentHotspot(0, pc, next);
 			break;
 		case 0x2d:
-			persistentHotspots_[1] = static_cast<uint16_t>(pc);
+			setPersistentHotspot(1, pc, next);
 			break;
 		case 0x2e:
 		case 0x2f:
@@ -1286,10 +1222,10 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 			continue;
 		}
 		case 0x44:
-			persistentHotspots_[2] = static_cast<uint16_t>(pc);
+			setPersistentHotspot(2, pc, next);
 			break;
 		case 0x45:
-			persistentHotspots_[3] = static_cast<uint16_t>(pc);
+			setPersistentHotspot(3, pc, next);
 			break;
 		case 0x46:
 		case 0x47:
@@ -1431,36 +1367,60 @@ std::expected<GrvTransition, std::string> GrvRuntime::solvePuzzle()
 	return transition;
 }
 
+void GrvRuntime::setPersistentHotspot(size_t index, size_t pc, size_t next)
+{
+	auto &hotspot = persistentHotspots_[index];
+	hotspot.instruction.fill(0);
+	std::copy_n(bytes_.begin() + pc, next - pc, hotspot.instruction.begin());
+	hotspot.offset = static_cast<uint16_t>(pc);
+}
+
+std::optional<size_t> GrvRuntime::inputInstructionNext(size_t pc) const
+{
+	const auto end = instructionEnd(bytes_, pc);
+	if (!end || *end <= pc || *end > bytes_.size())
+		return std::nullopt;
+	const uint8_t raw = bytes_[pc];
+	const uint8_t op = raw & 0x7f;
+	if (op == 0x15)
+		return read16(bytes_, pc + 1);
+	if (op == 0x1a || op == 0x23 || op == 0x34 || op == 0x36)
+	{
+		const size_t varBytes = (raw & 0x80) ? 1 : 2;
+		if (*end < pc + 1 + varBytes + 3)
+			return std::nullopt;
+		const uint16_t variable = varBytes == 1 ? bytes_[pc + 1] : read16(bytes_, pc + 1);
+		const size_t sequence = pc + 1 + varBytes;
+		bool taken = false;
+		switch (op)
+		{
+		case 0x1a: taken = !sequenceEquals(variable, sequence); break;
+		case 0x23: taken = sequenceEquals(variable, sequence); break;
+		case 0x34: taken = sequenceAnyGreater(variable, sequence); break;
+		case 0x36: taken = sequenceAnyLess(variable, sequence); break;
+		}
+		if (taken)
+			return read16(bytes_, *end - 2);
+	}
+	return *end;
+}
+
 std::expected<std::optional<GrvTransition>, std::string>
 GrvRuntime::handleKey(uint8_t key)
 {
 	consoleLogf("GRV", "input key 0x{:02X} ('{}') at loop 0x{:04X}", key,
 		key >= 0x20 && key < 0x7f ? static_cast<char>(key) : '?', activeLoop_);
-	if (!activeLoop_ || activeLoop_ >= bytes_.size())
+	if (!activeLoop_ || activeLoop_ >= bytes_.size() || ended_)
 		return std::optional<GrvTransition>{};
 	size_t pc = activeLoop_ + 1;
-	while (pc < bytes_.size())
+	for (size_t steps = 0; steps < 100000 && pc < bytes_.size(); ++steps)
 	{
-		const uint8_t raw = bytes_[pc];
-		const uint8_t op = raw & 0x7f;
-		const size_t varBytes = (raw & 0x80) ? 1 : 2;
-		const auto endResult = instructionEnd(bytes_, pc);
-		if (!endResult)
+		const uint8_t op = bytes_[pc] & 0x7f;
+		const auto next = inputInstructionNext(pc);
+		if (!next)
 			return std::unexpected(std::format("Truncated input loop at 0x{:04X}", pc));
 		if (op == 0x13)
 			return std::optional<GrvTransition>{};
-		if (op == 0x1a || op == 0x23)
-		{
-			const uint16_t variable = varBytes == 1 ? bytes_[pc + 1] : read16(bytes_, pc + 1);
-			const size_t sequence = pc + 1 + varBytes;
-			const size_t targetAt = skipSequence(bytes_, sequence);
-			const bool equal = sequenceEquals(variable, sequence);
-			if ((op == 0x1a && !equal) || (op == 0x23 && equal))
-			{
-				pc = read16(bytes_, targetAt);
-				continue;
-			}
-		}
 		if (op == 0x0c && bytes_[pc + 1] == key)
 		{
 			auto transition = follow(read16(bytes_, pc + 2));
@@ -1468,128 +1428,69 @@ GrvRuntime::handleKey(uint8_t key)
 				return std::unexpected(transition.error());
 			return std::optional<GrvTransition>{*transition};
 		}
-		pc = *endResult;
+		pc = *next;
 	}
-	return std::optional<GrvTransition>{};
+	return std::unexpected("GRV key scan did not reach INPUTLOOPEND");
 }
 
-std::optional<GrvHotspotView> GrvRuntime::hotspotAtCanonical(uint16_t x, uint16_t y) const
+std::optional<GrvHotspotView> GrvRuntime::persistentHotspotAt(uint16_t x, uint16_t y) const
 {
-	if (!activeLoop_ || activeLoop_ >= bytes_.size())
-		return std::nullopt;
-	size_t pc = activeLoop_ + 1;
-	while (pc < bytes_.size())
+	// V.EXE 04679: top, bottom, right, left after each input instruction.
+	// v32tng 00402C61: top, bottom, left, right at INPUTLOOPEND.
+	const std::array<size_t, 4> order = hotspotConvention_ == GrvHotspotConvention::Dos
+		? std::array<size_t, 4>{0, 1, 2, 3} : std::array<size_t, 4>{0, 1, 3, 2};
+	for (const size_t index : order)
 	{
-		const uint8_t raw = bytes_[pc];
-		const uint8_t op = raw & 0x7f;
-		const size_t varBytes = (raw & 0x80) ? 1 : 2;
-		const auto endResult = instructionEnd(bytes_, pc);
-		if (!endResult)
-			return std::nullopt;
-		const size_t next = *endResult;
-		if (op == 0x13)
-			break;
-		if (op == 0x1a || op == 0x23)
-		{
-			const uint16_t variable = varBytes == 1 ? bytes_[pc + 1] : read16(bytes_, pc + 1);
-			const size_t sequence = pc + 1 + varBytes;
-			const size_t targetAt = skipSequence(bytes_, sequence);
-			const bool equal = sequenceEquals(variable, sequence);
-			if ((op == 0x1a && !equal) || (op == 0x23 && equal))
-			{
-				pc = read16(bytes_, targetAt);
-				continue;
-			}
-		}
-		const bool hotspot = op == 0x0d || (op >= 0x0e && op <= 0x12) ||
-			op == 0x30 || op == 0x3b || op == 0x53;
-		if (hotspot)
-		{
-			GrvHotspotView view(bytes_.subspan(pc, next - pc), static_cast<uint16_t>(pc), hotspotConvention_);
-			// v64tng intentionally discards the two native 80-row bars. Do not
-			// collapse a bar-only hotspot onto an edge of the visible band.
-			if (view.bottom() <= 80 || view.top() >= 400)
-			{
-				pc = next;
-				continue;
-			}
-			if (view.contains(x, y))
-				return view;
-		}
-		pc = next;
-	}
-	// INPUTLOOPEND evaluates the four persistent edge declarations only after
-	// every local declaration in bytecode order.
-	for (const uint16_t offset : persistentHotspots_)
-	{
-		if (!offset)
+		const auto &hotspot = persistentHotspots_[index];
+		// Both native dispatchers test the TARGET, not the declaration offset.
+		// Zero disables this edge, including its hover cursor.
+		if (!read16(hotspot.instruction, 1))
 			continue;
-		const auto end = instructionEnd(bytes_, offset);
-		if (!end)
-			continue;
-		GrvHotspotView view(
-			bytes_.subspan(offset, *end - offset), offset, hotspotConvention_);
-		if (view.bottom() <= 80 || view.top() >= 400)
-			continue;
+		GrvHotspotView view(hotspot.instruction, hotspot.offset, hotspotConvention_);
 		if (view.contains(x, y))
 			return view;
 	}
 	return std::nullopt;
 }
 
-std::optional<uint16_t> GrvRuntime::topBarTarget() const
+std::optional<GrvHotspotView> GrvRuntime::hotspotAtCanonical(uint16_t x, uint16_t y) const
 {
-	if (!activeLoop_ || activeLoop_ >= bytes_.size())
+	if (!activeLoop_ || activeLoop_ >= bytes_.size() || ended_)
 		return std::nullopt;
-
-	// Preserve the retail input-loop ordering and conditional jumps. Local
-	// declarations take precedence over persistent edge declarations.
 	size_t pc = activeLoop_ + 1;
-	while (pc < bytes_.size())
+	for (size_t steps = 0; steps < 100000 && pc < bytes_.size(); ++steps)
 	{
-		const uint8_t raw = bytes_[pc];
-		const uint8_t op = raw & 0x7f;
-		const size_t varBytes = (raw & 0x80) ? 1 : 2;
-		const auto endResult = instructionEnd(bytes_, pc);
-		if (!endResult)
+		const uint8_t op = bytes_[pc] & 0x7f;
+		const auto next = inputInstructionNext(pc);
+		if (!next)
 			return std::nullopt;
-		const size_t next = *endResult;
 		if (op == 0x13)
-			break;
-		if (op == 0x1a || op == 0x23)
-		{
-			const uint16_t variable = varBytes == 1
-				? bytes_[pc + 1] : read16(bytes_, pc + 1);
-			const size_t sequence = pc + 1 + varBytes;
-			const size_t targetAt = skipSequence(bytes_, sequence);
-			const bool equal = sequenceEquals(variable, sequence);
-			if ((op == 0x1a && !equal) || (op == 0x23 && equal))
-			{
-				pc = read16(bytes_, targetAt);
-				continue;
-			}
-		}
+			return persistentHotspotAt(x, y);
 		const bool hotspot = op == 0x0d || (op >= 0x0e && op <= 0x12) ||
 			op == 0x30 || op == 0x3b || op == 0x53;
 		if (hotspot)
 		{
-			GrvHotspotView view(
-				bytes_.subspan(pc, next - pc), static_cast<uint16_t>(pc), hotspotConvention_);
-			if (view.top() < 80 && view.bottom() <= 80)
-				return view.target();
+			GrvHotspotView view(bytes_.subspan(pc, *next - pc),
+				static_cast<uint16_t>(pc), hotspotConvention_);
+			if (view.contains(x, y))
+				return view;
 		}
-		pc = next;
+		if (hotspotConvention_ == GrvHotspotConvention::Dos)
+			if (const auto persistent = persistentHotspotAt(x, y))
+				return persistent;
+		pc = *next;
 	}
+	return std::nullopt;
+}
 
-	const uint16_t topOffset = persistentHotspots_[0];
-	if (!topOffset)
-		return std::nullopt;
-	const auto end = instructionEnd(bytes_, topOffset);
-	if (!end)
-		return std::nullopt;
-	GrvHotspotView top(
-		bytes_.subspan(topOffset, *end - topOffset), topOffset, hotspotConvention_);
-	return top.bottom() <= 80 ? std::optional<uint16_t>{top.target()} : std::nullopt;
+std::optional<uint16_t> GrvRuntime::topBarTarget() const
+{
+	// The cropped top bar is exposed by the menu action at its native center.
+	// Use the same branch traversal, disabled-edge checks and priority as clicks.
+	const auto top = hotspotAtCanonical(320, 0);
+	if (top && top->top() == 0 && top->bottom() < 80)
+		return top->target();
+	return std::nullopt;
 }
 
 std::optional<GrvHotspotView> GrvRuntime::hotspotAt(
@@ -1614,7 +1515,7 @@ uint16_t GrvRuntime::cursorStyleAt(
 	int clientX, int clientY, int clientWidth, int clientHeight) const
 {
 	const auto hotspot = hotspotAt(clientX, clientY, clientWidth, clientHeight);
-	uint16_t style = hotspot ? hotspot->cursor() : 5;
+	uint16_t style = hotspot ? grvDisplayCursor(hotspot->cursor(), hotspotConvention_) : 5;
 	if (variables_[0x91] == 1)
 		style |= 0x8000;
 	return style;

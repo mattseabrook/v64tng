@@ -20,8 +20,8 @@
 #include "grv_random.h"
 #include "grv_hotspot.h"
 
-// A view into one hotspot instruction in the mapped GRV image.  Geometry is
-// decoded on demand; no parallel ClickArea/Hotspot object is constructed.
+// A view into a mapped local instruction or a copied persistent declaration.
+// Geometry is decoded on demand from the native hotspot policy.
 class GrvHotspotView
 {
 public:
@@ -169,6 +169,7 @@ public:
 	using SaveObserver = std::function<std::expected<void, std::string>(bool loading, uint8_t slot,
 		const std::filesystem::path &path, std::span<const uint8_t> payload)>;
 	void setSaveObserver(SaveObserver observer) { saveObserver_ = std::move(observer); }
+	// Returns v64tng display style numbers; GrvHotspotView retains native numbers.
 	[[nodiscard]] uint16_t cursorStyleAt(
 		int clientX, int clientY, int clientWidth, int clientHeight) const;
 
@@ -185,6 +186,9 @@ private:
 
 	std::expected<bool, std::string> executeUntilInputLoop(uint16_t entry);
 	std::optional<GrvHotspotView> hotspotAtCanonical(uint16_t x, uint16_t y) const;
+	std::optional<GrvHotspotView> persistentHotspotAt(uint16_t x, uint16_t y) const;
+	std::optional<size_t> inputInstructionNext(size_t pc) const;
+	void setPersistentHotspot(size_t index, size_t pc, size_t next);
 	std::optional<uint8_t> decodeChar(
 		size_t &encoded, uint8_t &last, bool allowGrid,
 		bool limitValue, bool limitVariable) const;
@@ -229,7 +233,14 @@ private:
 	std::vector<GrvVideoCommand> videoCommands_;
 	std::vector<GrvPresentationCommand> presentationCommands_;
 	bool ended_ = false;
-	std::array<uint16_t, 4> persistentHotspots_{};
+	struct PersistentHotspot
+	{
+		// Native engines copy target/cursor values into global records. Script
+		// offsets alone would be reinterpreted against a different LOADSCRIPT image.
+		std::array<uint8_t, 4> instruction{};
+		uint16_t offset = 0;
+	};
+	std::array<PersistentHotspot, 4> persistentHotspots_{};
 	GrvRandom random_{std::random_device{}() | 1u};
 	CellPuzzle cellPuzzle_;
 	GrvHotspotConvention hotspotConvention_ = GrvHotspotConvention::Dos;

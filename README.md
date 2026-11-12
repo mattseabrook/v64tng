@@ -1,6 +1,6 @@
 # v64tng
 
-Current release: **1.0.20261025.5**
+Current release: **1.0.20261112.1**
 
 [![v64tng build](https://img.shields.io/badge/v64tng%20build-passing-2ea44f?logo=github)](build.sh)
 
@@ -48,6 +48,8 @@ performed by the maintainer.
 ---
 
 **Quick Navigation:**
+
+- **Developer wiki catalogue** → [The 7th Guest Developer Wiki](wiki/index.html)
 
 - **Want to play the new version?** → [Running the Game](#running-the-game)
 - **Building `v64tng.exe` source?** → [Quick Start Guide](#quick-start-guide)

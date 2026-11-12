@@ -221,14 +221,10 @@ GrvProgram decodeGrv(const std::filesystem::path& path, const GrvResourceNames& 
             inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,l,t,r,b,a,c);
         } else if (op>=0x0e && op<=0x12) {
             const auto a=targetOnly();
-            if(op==0x0e) inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,0,80,100,400,a,1);
-            if(op==0x0f) inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,540,80,640,400,a,2);
-            if(op==0x10||op==0x11) inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,200,80,440,400,a,0);
-            if(op==0x12) inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,0,0,640,480,a,0);
+            inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,0,0,0,0,a,0);
         } else if (op==0x15 || op==0x18 || op==0x44 || op==0x45) {
             const auto a=targetOnly();
-            if(op==0x44) { inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,560,0,640,480,a,2); }
-            if(op==0x45) { inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,0,0,80,480,a,1); }
+            if(op==0x44 || op==0x45) inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,0,0,0,0,a,0);
         } else if (op==0x14) { var("dst"); u8("max"); }
         else if (op==0x16 || op==0x33) { var("dst"); add("values="+readSequence(reader)); }
         else if (op==0x42) u8("mode"); // Recovered microscope strategy, 0..8.
@@ -243,9 +239,8 @@ GrvProgram decodeGrv(const std::filesystem::path& path, const GrvResourceNames& 
         else if (op==0x28 || op==0x4a || op==0x4e || op==0x4f || op==0x50 || op==0x51 || op==0x55) u16("value");
         else if (op==0x2c || op==0x2d) {
             const auto a=targetOnly(); const auto c=u8("cursor");
-            inst.hotspot = op==0x2c ? makeHotspot(inst.offset,inst.mnemonic,0,0,640,80,a,c)
-                                   : makeHotspot(inst.offset,inst.mnemonic,0,400,640,480,a,c);
-        } else if (op==0x30) { const auto a=targetOnly(); inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,0,400,640,480,a,4); }
+            inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,0,0,0,0,a,c);
+        } else if (op==0x30) { const auto a=targetOnly(); inst.hotspot=makeHotspot(inst.offset,inst.mnemonic,0,0,0,0,a,0); }
         else if (op==0x31) { u16("value"); u16("time"); }
         else if (op==0x32) { var("selector"); u16("rhs"); targetOnly(); }
         else if (op==0x37) { u16("left");u16("top");u16("right");u16("bottom"); }
@@ -263,21 +258,21 @@ GrvProgram decodeGrv(const std::filesystem::path& path, const GrvResourceNames& 
         else if (op==0x59) { var("dst");u8("mode"); }
         // Remaining opcodes have no operands.
 
-        // Match DOS records DS:E057..E0C4, retaining an explicit Windows view.
-        // Operand decoding remains the retail corpus dialect (including 1Eh).
-        if (inst.hotspot && convention == GrvHotspotConvention::Dos) {
+        // Use the same native accepted extents as the live VM.
+        if (inst.hotspot) {
             auto& h = *inst.hotspot;
-            if (op == 0x0e || op == 0x45) { h.left=0; h.top=80; h.right=63; h.bottom=399; h.cursor=2; }
-            else if (op == 0x0f || op == 0x44) { h.left=576; h.top=80; h.right=639; h.bottom=399; h.cursor=1; }
-            else if (op == 0x10 || op == 0x11) { h.left=156; h.top=80; h.right=483; h.bottom=399; h.cursor=op==0x10?3:0; }
-            else if (op == 0x12) { h.left=0; h.top=80; h.right=639; h.bottom=399; }
-            else if (op == 0x2c) { h.right=639; h.bottom=79; }
-            else if (op == 0x2d || op == 0x30) { h.right=639; h.bottom=479; }
+            if (const auto builtin = grvBuiltinHotspot(op, convention)) {
+                h.left=builtin->left; h.top=builtin->top;
+                h.right=builtin->right; h.bottom=builtin->bottom;
+                if (op != 0x2c && op != 0x2d) h.cursor=builtin->cursor;
+            }
         }
         if (op == 0x2c) persistentTop=inst.hotspot;
         else if (op == 0x2d) persistentBottom=inst.hotspot;
         else if (op == 0x44) persistentRight=inst.hotspot;
         else if (op == 0x45) persistentLeft=inst.hotspot;
+        if ((op==0x2c || op==0x2d || op==0x44 || op==0x45) && inst.hotspot->target==0)
+            inst.branchTargets.clear(); // Disabled edges cannot transfer to script offset zero.
 
         if(op==0x15 || op==0x17 || op==0x2a || op==0x43)
             inst.fallsThrough=false;
@@ -294,10 +289,18 @@ GrvProgram decodeGrv(const std::filesystem::path& path, const GrvResourceNames& 
             activeLoops.back().hotspots.push_back(*inst.hotspot);
         }
         if(!activeLoops.empty() && op==0x13){
-            if(persistentTop)activeLoops.back().hotspots.push_back(*persistentTop);
-            if(persistentBottom)activeLoops.back().hotspots.push_back(*persistentBottom);
-            if(persistentRight)activeLoops.back().hotspots.push_back(*persistentRight);
-            if(persistentLeft)activeLoops.back().hotspots.push_back(*persistentLeft);
+            const auto appendPersistent = [&](const std::optional<GrvHotspot>& hotspot) {
+                if (hotspot && hotspot->target) activeLoops.back().hotspots.push_back(*hotspot);
+            };
+            appendPersistent(persistentTop);
+            appendPersistent(persistentBottom);
+            if (convention == GrvHotspotConvention::Dos) {
+                appendPersistent(persistentRight);
+                appendPersistent(persistentLeft);
+            } else {
+                appendPersistent(persistentLeft);
+                appendPersistent(persistentRight);
+            }
             activeLoops.back().end=inst.offset;
             program.inputLoops.push_back(std::move(activeLoops.back()));
             activeLoops.pop_back();
@@ -377,7 +380,8 @@ std::string decompileGrv(const GrvProgram& program)
 {
     std::ostringstream out;
     out << "; " << program.sourcePath.filename().string() << "\r\n";
-    out << "; hotspot_convention=" << (program.hotspotConvention==GrvHotspotConvention::Dos?"dos (inclusive)":"windows (half-open)") << "\r\n";
+    out << "; hotspot_convention=" << (program.hotspotConvention==GrvHotspotConvention::Dos?"dos":"windows")
+        << " (inclusive accepted pixel extents)\r\n";
     out << "; size=" << program.bytes.size() << " instructions=" << program.instructions.size()
         << " input_loops=" << program.inputLoops.size() << "\r\n\r\n";
     for(const auto& inst:program.instructions){

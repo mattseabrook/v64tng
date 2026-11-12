@@ -468,7 +468,8 @@ void drawPreview(HWND window, HDC target)
         const auto oldBrush = SelectObject(target, brush);
         for (const auto& hotspot : g_program->inputLoops[g_selectedLoop].hotspots) {
             RECT rectangle = scaleRect(canvas, hotspot.left, hotspot.top,
-                hotspot.right, hotspot.bottom);
+                static_cast<uint16_t>((std::min)(static_cast<unsigned>(hotspot.right) + 1, 65535u)),
+                static_cast<uint16_t>((std::min)(static_cast<unsigned>(hotspot.bottom) + 1, 65535u)));
             Rectangle(target, rectangle.left, rectangle.top, rectangle.right, rectangle.bottom);
             const auto label = widen(std::format("{} -> 0x{:04X}",
                 hotspot.kind, hotspot.target));
