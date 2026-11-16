@@ -18,6 +18,7 @@
 #include "version.h"
 #include "window.h"
 #include "game.h"
+#include "update.h"
 
 // Forward declaration of window procedure
 LRESULT CALLBACK SystemInfoWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -570,6 +571,7 @@ bool ShowSystemInfoWindow()
     }
 
     ShowWindow(hwnd, SW_SHOW);
+    completeUpdateStartup();
     UpdateWindow(hwnd);
 
     MSG msg{};

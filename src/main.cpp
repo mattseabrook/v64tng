@@ -34,106 +34,29 @@
  */
 
 #include <print>
+#include <cstdio>
+#include "cli_options.h"
 #include <vector>
 #include <string>
 #include <filesystem>
 #include <fstream>
 #include <algorithm>
-#include <io.h>
+#include "assets.h"
 #include <cctype>
 
 #include "config.h"
 #include "system.h"
 #include "game.h"
-#include "basement.h"
 #include "extract.h"
 #include "lzss.h"
 #include "rl.h"
 #include "gjd.h"
 #include "vdx.h"
 #include "music.h"
-#include "megatexture.h"
 
 #ifdef _WIN32
 #include <windows.h>
-#endif
-
-//
-// Windows-specific console handling
-//
-#ifdef _WIN32
-struct ConsoleGuard
-{
-	bool allocated = false;
-	bool attached = false;
-
-	ConsoleGuard() = default;
-
-	bool setup()
-	{
-		attached = AttachConsole(ATTACH_PARENT_PROCESS);
-		if (!attached)
-		{
-			allocated = AllocConsole();
-			if (!allocated)
-				return false;
-		}
-
-		FILE *dummy;
-		freopen_s(&dummy, "CONOUT$", "w", stdout);
-		freopen_s(&dummy, "CONOUT$", "w", stderr);
-		freopen_s(&dummy, "CONIN$", "r", stdin);
-
-		configureConsole();
-		return true;
-	}
-
-	void configureConsole()
-	{
-		HANDLE hInput = GetStdHandle(STD_INPUT_HANDLE);
-		if (hInput != INVALID_HANDLE_VALUE)
-		{
-			// Disable input and QuickEdit to prevent hangs
-			DWORD mode = 0;
-			GetConsoleMode(hInput, &mode);
-			SetConsoleMode(hInput, mode & ~(ENABLE_QUICK_EDIT_MODE | ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT));
-			FlushConsoleInputBuffer(hInput);
-		}
-
-		HANDLE hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-		if (hOutput != INVALID_HANDLE_VALUE)
-		{
-			DWORD mode = 0;
-			GetConsoleMode(hOutput, &mode);
-			SetConsoleMode(hOutput, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-		}
-	}
-
-	~ConsoleGuard()
-	{
-		fflush(stdout);
-		fflush(stderr);
-
-		if (allocated)
-		{
-			HANDLE hInput = GetStdHandle(STD_INPUT_HANDLE);
-			if (hInput != INVALID_HANDLE_VALUE)
-				FlushConsoleInputBuffer(hInput);
-
-			// Explicitly close streams
-			fclose(stdin);
-			fclose(stdout);
-			fclose(stderr);
-
-			FreeConsole();
-		}
-		else if (attached)
-		{
-			// Detach cleanly if we attached
-			FreeConsole();
-		}
-	}
-};
+#include "update.h"
 #endif
 
 //
@@ -169,8 +92,9 @@ std::vector<std::string> get_args_windows()
 		int length = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, nullptr, 0, nullptr, nullptr);
 		if (length > 0)
 		{
-			std::string arg(length - 1, '\0');
+			std::string arg(length, '\0');
 			WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, arg.data(), length, nullptr, nullptr);
+			arg.pop_back();
 			args.push_back(arg);
 		}
 	}
@@ -180,11 +104,76 @@ std::vector<std::string> get_args_windows()
 }
 #endif
 
+static bool isHelp(std::string_view arg)
+{
+	return cli::isHelp(arg);
+}
+
+static void printUsage()
+{
+	std::println(R"(v64tng
+
+Usage: v64tng.exe COMMAND [arguments]
+
+	(no arguments)              					Open the game launcher/settings window.
+	!                           					Start the game directly.
+	-c, --c, -cursor, --cursor ROB.GJD				Extract retail cursor animations to ./ROB_GJD/*/PNG/.
+	-g, --g, -gjd, --gjd FILE.RL					Extract VDX files from the matching FILE.GJD into FILE/.
+	-r, --r, -rl, --rl FILE.RL						List RL names, offsets and lengths; no GJD is required.
+	-v, --v, -vdx, --vdx FILE.VDX|FILE.GJD			Show VDX header, bitmap geometry and chunk/compression table.
+                              						GJD input inspects each VDX using the matching FILE.RL index.
+	-p, --p, -png, --png FILE.VDX [raw|video]		Export full frames beside the VDX in FILE/; also export WAV audio.
+                              							Default:	indexed PNG where available.
+														raw:		RGB24 .raw files.
+                              							video:		make a silent MKV at the VDX header frame rate using FFmpeg,
+                              										then preview with ffplay. Requires both programs on PATH.
+	-x, --x, -xmi, --xmi SONG [extract|play]		Convert a song from XMI.RL/XMI.GJD to SONG.mid (default),
+                              						or play it with the configured MIDI backend. SONG omits .XMI.
+	-h, --h, -help, --help							Show the command overview.
+)");
+}
+
 //
 // Process command-line arguments
 //
-int process_args(const std::vector<std::string> &args)
+int process_args(const std::vector<std::string> &inputArgs)
 {
+	auto args = inputArgs;
+	if (args.size() > 1) args[1] = cli::engineCommand(args[1]);
+	if (args.size() > 3 && args[1] == "-p")
+		for (size_t i = 3; i < args.size(); ++i) args[i] = cli::exportMode(args[i]);
+	if (args.size() > 3 && args[1] == "-x") args[3] = cli::musicAction(args[3]);
+	if (args.size() < 2) { printUsage(); return 0; }
+	if (std::ranges::any_of(args | std::ranges::views::drop(1), isHelp))
+	{ printUsage(); return 0; }
+	const auto &command = args[1];
+	const bool fileCommand = command == "-c" || command == "-g" || command == "-p" ||
+		command == "-r" || command == "-v" || command == "-x";
+	if (fileCommand && args.size() < 3)
+	{
+		std::println(stderr, "ERROR: {} requires a file or song argument. Use --help for usage.", command);
+		return 1;
+	}
+	const size_t maxArgs = command == "-p" ? 5 :
+		(command == "-x" ? 4 : (fileCommand ? 3 : 2));
+	if (args.size() > maxArgs)
+	{
+		std::println(stderr, "ERROR: Too many arguments for {}. Use --help for usage.", command);
+		return 1;
+	}
+	if (command == "-p")
+	{
+		bool raw = false, video = false;
+		for (size_t i = 3; i < args.size(); ++i)
+		{
+			if (args[i] == "raw") raw = true;
+			else if (args[i] == "video") video = true;
+			else { std::println(stderr, "ERROR: Unsupported -p option: {}. Use --help.", args[i]); return 1; }
+		}
+		if (raw && video) { std::println(stderr, "ERROR: raw and video cannot be combined."); return 1; }
+	}
+	if (command == "-x" && args.size() == 4 && args[3] != "play" && args[3] != "extract")
+	{ std::println(stderr, "ERROR: -x action must be play or extract."); return 1; }
 	//
 	// Extract cursors from the user-specified *.ROB file (ROB.GJD for 7th Guest)
 	//
@@ -197,11 +186,6 @@ int process_args(const std::vector<std::string> &args)
 	//
 	else if (args[1] == "-g" && args.size() >= 3)
 	{
-		if (args.size() < 3)
-		{
-			std::println(stderr, "ERROR: a *.RL file was not specified.\n\nExample: v64tng.exe -g DR.RL");
-			return 1;
-		}
 		extractVDX(args[2]);
 	}
 	//
@@ -209,25 +193,24 @@ int process_args(const std::vector<std::string> &args)
 	//
 	else if (args[1] == "-p" && args.size() >= 3)
 	{
-		if (args.size() < 3)
-		{
-			std::println(stderr, "ERROR: a *.VDX file was not specified.\n\nExample: v64tng.exe -p f_1bb.vdx {{raw}} {{alpha}} {{video}}");
-			return 1;
-		}
 
 		bool raw = std::ranges::any_of(args | std::ranges::views::drop(3), [](const auto &arg)
 									   { return arg == "raw"; });
 		bool video = std::ranges::any_of(args | std::ranges::views::drop(3), [](const auto &arg)
 										 { return arg == "video"; });
 		std::filesystem::path filePath(args[2]);
-		std::string basePath = filePath.parent_path().string();
 		std::string baseName = filePath.stem().string();
 
 		extractPNG(args[2], raw);
 
 		if (video && !raw)
 		{
-			createVideoFromImages(basePath.empty() ? baseName : basePath + "\\" + baseName);
+			std::ifstream source(args[2], std::ios::binary);
+			std::array<uint8_t, 8> header{};
+			if (!source.read(reinterpret_cast<char *>(header.data()), header.size()))
+				throw std::runtime_error("Cannot read VDX frame rate");
+			const unsigned rate = header[6] | (unsigned(header[7]) << 8);
+			createVideoFromImages((filePath.parent_path() / baseName).string(), rate ? rate : 15);
 		}
 	}
 	//
@@ -235,37 +218,31 @@ int process_args(const std::vector<std::string> &args)
 	//
 	else if (args[1] == "-r" && args.size() >= 3)
 	{
-		if (args.size() < 3)
-		{
-			std::println(stderr, "ERROR: a *.RL file was not specified.\n\nExample: v64tng.exe -r DR.RL");
-			return 1;
-		}
 		GJDInfo(args[2]);
 	}
 	//
-	// Output information about how data is packed in the VDX resource file
+	// Inspect a standalone VDX or each indexed VDX in a GJD archive.
 	//
 	else if (args[1] == "-v" && args.size() >= 3)
 	{
-		if (args.size() < 3)
+		std::string extension = std::filesystem::path(args[2]).extension().string();
+		std::transform(extension.begin(), extension.end(), extension.begin(),
+			[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+		if (extension == ".vdx") VDXInfo(args[2]);
+		else if (extension == ".gjd") GJDVInfo(args[2]);
+		else
 		{
-			std::println(stderr, "ERROR: a file was not specified.\n\nExample: v64tng.exe -i f_1bc.vdx/*.GJD");
+			std::println(stderr, "ERROR: -v requires a .VDX file or a .GJD archive with its matching .RL index.");
 			return 1;
 		}
-		VDXInfo(args[2]);
 	}
 	//
 	// Extract or Play a specific XMI file from the XMI.RL file
 	//
 	else if (args[1] == "-x" && args.size() >= 3)
 	{
-		if (args.size() < 3)
-		{
-			std::println(stderr, "ERROR: an action was not specified.\n\nExample: v64tng.exe -x agu16 {{play|extract (xmi)}}");
-			return 1;
-		}
 
-		auto xmiResult = parseRLFile("XMI.RL");
+		auto xmiResult = parseRLFile(assetPath("XMI.RL").string());
 		if (!xmiResult)
 		{
 			std::println(stderr, "{}", xmiResult.error());
@@ -278,7 +255,7 @@ int process_args(const std::vector<std::string> &args)
 		for (auto it = xmiFiles.begin(); it != xmiFiles.end(); ++it)
 		{
 			std::string baseName = it->filename.substr(0, it->filename.find('.'));
-			if (baseName == args[2])
+			if (_stricmp(baseName.c_str(), args[2].c_str()) == 0)
 			{
 				song = it;
 				break;
@@ -291,7 +268,7 @@ int process_args(const std::vector<std::string> &args)
 			std::string baseName = song->filename.substr(0, song->filename.find('.'));
 			if (args.size() > 3 && args[3] == "play")
 			{
-				PlayMIDI(xmiConverter(*song));
+				PlayMIDI(xmiConverter(*song), true);
 			}
 			else
 			{
@@ -304,117 +281,10 @@ int process_args(const std::vector<std::string> &args)
 			return 1;
 		}
 	}
-	else if (args[1] == "-raycast")
-	{
-		// Enable raycasting mode - Development/Testing purposes only
-		state.raycast.enabled = true;
-		state.raycast.map = &basementMap; // From basement.h * make dynamic later
-				state.frameTiming.currentFPS = 60.0;
-		float fovDeg = config.contains("raycastFov") ? static_cast<float>(config["raycastFov"]) : 90.0f;
-		state.raycast.player.fov = deg2rad(fovDeg);
-
-		// Initialize megatexture mapping and load archive for CPU renderer
-		// Note: analyzeMapEdges builds the wall-edge list once from the current map.
-		// loadMTX preloads tiles for fast sampling at runtime.
-		// If the MTX isn't present, the renderer will gracefully fall back to solid walls.
-		analyzeMapEdges(basementMap);
-		// Prefer the game directory path if present, else current working directory
-		if (!loadMTX("C:\\T7G\\megatexture.mtx"))
-		{
-			loadMTX("megatexture.mtx");
-		}
-
-		if (!initializePlayerFromMap(*state.raycast.map, state.raycast.player))
-		{
-			MessageBoxA(nullptr, "No player start position found in the map!", "Error", MB_ICONERROR | MB_OK);
-			save_config("config.json");
-			return -1;
-		}
-
-		// Launch the game engine in raycasting mode
-		init();
-	}
-	else if (args[1] == "-megatexture" || args[1] == "-mt")
-	{
-		MegatextureParams params = getDefaultMegatextureParams();
-		params.perlinOctaves = 2;       // Domain warp octaves
-		params.perlinScale = 1.7f;      // Domain warp frequency
-		params.worleyScale = 2.0f;      // Vein network density (cells per unit)
-		params.worleyStrength = 0.4f;   // Domain warp strength
-		params.mortarWidth = 0.015f;    // Vein thickness (3x thicker for more visible mortar lines)
-		params.mortarGray = 0.30f;      // Dark gray
-		// Wall height:width is fixed at 3:1 and baked into generation; no config override
-		
-		// Check if megatexture/ folder already exists with PNG files
-		bool hasExistingTiles = false;
-		if (std::filesystem::exists("megatexture") && std::filesystem::is_directory("megatexture"))
-		{
-			// Count PNG files in directory
-			int pngCount = 0;
-			for (const auto& entry : std::filesystem::directory_iterator("megatexture"))
-			{
-				if (entry.is_regular_file() && entry.path().extension() == ".png")
-				{
-					pngCount++;
-				}
-			}
-			
-			if (pngCount > 0)
-			{
-				std::println("Found existing megatexture/ folder with {} PNG tiles.", pngCount);
-				std::println("Skipping procedural generation...");
-				hasExistingTiles = true;
-			}
-		}
-		
-		// Generate tiles if needed
-		if (!hasExistingTiles)
-		{
-			std::println("Generating megatexture tiles from basement map...");
-			
-			if (!analyzeMapEdges(basementMap))
-			{
-				std::println(stderr, "ERROR: Failed to analyze map for megatexture generation.");
-				return -1;
-			}
-			
-			if (!generateMegatextureTilesOnly(params, "megatexture"))
-			{
-				std::println(stderr, "ERROR: Failed to generate megatexture tiles.");
-				return -1;
-			}
-		}
-		
-		// Pack into MTX archive (always in current working directory)
-		std::println("\nPacking tiles into MTX archive...");
-		if (!saveMTX("megatexture.mtx", "megatexture", params))
-		{
-			std::println(stderr, "ERROR: Failed to create MTX archive.");
-			return -1;
-		}
-		
-		std::println("\nMegatexture complete.");
-		std::println("Archive: megatexture.mtx");
-		std::println("Source tiles: megatexture/");
-	}
-	else if (args[1] == "-decodemtx" && args.size() >= 3)
-	{
-		// Decode MTX archive back to PNG tiles for validation
-		std::string mtxPath = args[2];
-		std::string outDir = (args.size() >= 4) ? args[3] : "megatexture_decoded";
-		
-		if (!decodeMTX(mtxPath, outDir))
-		{
-			std::println(stderr, "ERROR: Failed to decode MTX archive.");
-			return -1;
-		}
-		
-		std::println("\nDecode complete. Compare with original tiles to verify bit-exactness.");
-	}
 	else
 	{
 		std::println(stderr, "ERROR: Invalid option: {}", args[1]);
-		std::println(stderr, "\nUsage: {} [!|-g|-l|-p|-r|-v|-x|-raycast|-megatexture|-decodemtx] [options...]", args[0]);
+		std::println(stderr, "Use -h, --h, -help or --help for available commands.");
 		return -1;
 	}
 
@@ -424,84 +294,73 @@ int process_args(const std::vector<std::string> &args)
 ////////////////////////////////////////////////////////////////////////
 // MAIN ENTRY POINT
 ////////////////////////////////////////////////////////////////////////
+// A console subsystem executable uses the CRT's normal startup and standard
+// streams. The ! path detaches before opening the Win32/Vulkan UI in this
+// process; ordinary CLI commands retain their original console and streams.
 #ifdef _WIN32
-int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
+int main()
+#else
+int main(int argc, char *argv[])
+#endif
 {
+#ifdef _WIN32
+	bool guiDetached = false;
+#endif
 	try
 	{
+#ifdef _WIN32
+		auto args = get_args_windows();
+		if (const auto updateResult = handleUpdateStartup(args)) return *updateResult;
+#else
+		const std::vector<std::string> args = get_args(argc, argv);
+#endif
+		if (args.empty()) throw std::runtime_error("Cannot read command line");
+		if (std::ranges::any_of(args | std::ranges::views::drop(1), isHelp))
+		{ printUsage(); return 0; }
+
 		load_config("config.json");
-
 		DetectCPUFeatures();
+#ifdef _WIN32
 		SetBestSIMDLevel();
-
-		std::vector<std::string> args = get_args_windows();
-
 		if (args.size() == 1)
 		{
-			if (ShowSystemInfoWindow())
-				init();
+			if (ShowSystemInfoWindow()) init();
 			return 0;
 		}
-		else if (args.size() > 1 && args[1] == "!")
-		{
-			init(); // Start game engine
-			return 0;
-		}
-		else
-		{
-			// For all other cases, set up console and process arguments
-			ConsoleGuard guard;
-			if (!guard.setup())
-			{
-				MessageBoxW(NULL, L"Failed to initialize console.", L"Error", MB_OK | MB_ICONERROR);
-				return 1;
-			}
-
-			int ret = process_args(args);
-			FreeConsole();	  // Close the console
-			ExitProcess(ret); // Exit with the return code from process_args
-		}
-	}
-	catch (const std::exception &e)
-	{
-		MessageBoxA(nullptr, e.what(), "Fatal Error", MB_OK | MB_ICONERROR);
-		return 1;
-	}
-	catch (...)
-	{
-		MessageBoxA(nullptr, "Unknown fatal error", "Fatal Error", MB_OK | MB_ICONERROR);
-		return 1;
-	}
-}
-#else
-// Standard entry point for non-Windows platforms
-int main(int argc, char *argv[])
-{
-	try
-	{
-		load_config("config.json");
-
-		DetectCPUFeatures();
-
-		std::vector<std::string> args = get_args(argc, argv);
-
+#endif
 		if (args.size() > 1 && args[1] == "!")
 		{
-			init(); // Start game engine
+			if (args.size() != 2) throw std::runtime_error("! takes no arguments");
+#ifdef _WIN32
+			// Release this process's console connection before starting the GUI.
+			// A console shared with the calling shell remains owned by that shell.
+			std::fflush(stdout);
+			std::fflush(stderr);
+			if (!FreeConsole())
+				throw std::runtime_error("Failed to detach from the console");
+			guiDetached = true;
+#endif
+			init();
 			return 0;
 		}
-
 		return process_args(args);
 	}
 	catch (const std::exception &e)
 	{
-		std::println(stderr, "Fatal Error: {}", e.what());
+#ifdef _WIN32
+		if (guiDetached) MessageBoxA(nullptr, e.what(), "Fatal Error", MB_OK | MB_ICONERROR);
+		else
+#endif
+		std::println(stderr, "ERROR: {}", e.what());
 		return 1;
 	}
 	catch (...)
 	{
-		std::println(stderr, "Fatal Error: Unknown exception");
+#ifdef _WIN32
+		if (guiDetached) MessageBoxA(nullptr, "Unknown fatal error", "Fatal Error", MB_OK | MB_ICONERROR);
+		else
+#endif
+		std::println(stderr, "ERROR: Unknown fatal error");
 		return 1;
 	}
 }
-#endif

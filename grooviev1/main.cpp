@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "../include/grv.h"
+#include "../include/cli_options.h"
 
 namespace fs = std::filesystem;
 
@@ -105,7 +106,8 @@ static bool isValidGroovieGeometry(int width, int height)
 static void printUsage()
 {
     std::cout
-        << "grooviev1 - standalone VDX encoder (0x20/0x25/0x00/0x80)\n\n"
+        << "grooviev1 - VDX, RL/GJD, FNT and GRV tools\n\n"
+        << "Help: -h, --h, -help, --help (show the command overview; exits successfully)\n\n"
         << "Commands:\n"
         << "  grv-disassemble INPUT.grv OUTPUT.asm [--resources DIR] [--hotspots dos|windows] [--raw]\n"
         << "  grv-assemble INPUT.asm OUTPUT.grv  Rebuild the listing's hex byte column\n"
@@ -127,19 +129,22 @@ static void printUsage()
         << "  --raw                              Treat frames as raw RGB24 files\n"
         << "  --width N                          Required for --raw; must be 640\n"
         << "  --height N                         Required for --raw; max 480, divisible by 4\n"
-        << "  --resize WxH                       Resize before encoding; width 640, max height 480\n"
+        << "  --resize WxH                       Nearest-neighbour resize; width 640, height 4..480 / 4\n"
         << "  --dos-canonical                    Alias for --resize 640x320\n"
-        << "  --fps N                            VDX header frame rate (default: 15)\n"
+        << "  --fps N                            VDX header frame rate, 1..65535 (default: 15)\n"
         << "  --wav PATH                         Optional WAV audio for 0x80 interleave\n"
-        << "  --audio-chunk-bytes N              0x80 chunk payload size (default: 2048)\n"
-        << "  --hold-frames N                    Append N timed 0x00 no-change chunks\n"
-        << "  --lower-intermediate-quality 0..9  Lower quality for frames 1..N-1 only\n"
-        << "  --max-local-palette-updates N      Max per 0x25 local palette edits\n"
+        << "  --audio-chunk-bytes N              Maximum PCM bytes/chunk before compression; default 2048\n"
+        << "  --hold-frames N                    Append 0..65535 timed 0x00 no-change chunks\n"
+        << "  --lower-intermediate-quality 0..9  Quantize frames 1..N-1; 0 lowest, 9 highest\n"
+        << "  --max-local-palette-updates N      0..256 per 0x25 palette edits (default: 32)\n"
         << "  --compress                         Enable native-compatible VDX LZSS compression (off by default)\n"
         << "  --no-compress                      Explicitly write raw chunks (the default)\n"
-        << "  --length-mask N                    LZSS length mask (default: 127)\n"
-        << "  --length-bits N                    LZSS length bits (default: 7)\n"
+        << "  --length-mask N                    Must equal (1 << length-bits) - 1 (default: 127)\n"
+        << "  --length-bits N                    LZSS length bits, 1..8 (default: 7)\n"
         << "  --no-validate                      Skip internal round-trip validation\n\n"
+        << "Image decoding uses Windows WIC; the native helper accepts --raw RGB24.\n"
+        << "RGB encoding quantizes colours and can simplify still tiles; use indexed commands for lossless editing.\n"
+        << "--input-dir cannot be combined with explicit frames; --raw discovers only .raw files.\n\n"
         << "Archive usage:\n"
         << "  grooviev1.exe archive-pack --rl ROOM.RL --gjd ROOM.GJD [--input-dir DIR] [files...]\n"
         << "  grooviev1.exe archive-pack --rl ROOM.RL --gjd ROOM.GJD --manifest DIR/_archive-order.txt\n"
@@ -148,10 +153,28 @@ static void printUsage()
         << "  archive-list/unpack: --macbinary reads the archive's MacBinary data fork\n"
         << "  archive-pack/unpack: --mac-t7gdata retains FF separators outside RL lengths\n"
         << "  Mac T7GM resources: python3 grooviev1/mac_resources.py --help\n\n"
+        << "Archive defaults: matching .GJD beside .RL; unpack requires a new output directory.\n"
+        << "Packing uses manifest order when supplied/found, otherwise explicit order then sorted directory files.\n"
+        << "Indexed commands preserve pixel indices, all 256 palette entries and PCM chunk positions.\n"
+        << "Indexed encoding requires first-frame 4x4 tiles to use at most two palette indices.\n"
+        << "Indexed output directories/files and GRV output files must not exist.\n"
+        << "RGB encoding, font export/packing and archive packing may overwrite output files.\n"
+        << "GRV assembly uses the hex byte column; mnemonic edits do not rewrite bytes.\n\n"
         << "FNT usage:\n"
         << "  grooviev1.exe fnt-list --fnt SPHINX.FNT\n"
         << "  grooviev1.exe fnt-extract --fnt SPHINX.FNT --out-dir ./sphinx_font\n"
         << "  grooviev1.exe fnt-pack --input-dir ./sphinx_font --output SPHINX_NEW.FNT [--charmap ./sphinx_font/charmap.bin] [--glyphs ./sphinx_font/glyphs.csv]\n";
+    std::cout << "\nEvery option accepts single/double dashes and short/full names:\n";
+    std::cout << "  -h, --h, -help, --help\n";
+    for (const auto &option : cli::groovieOptions)
+        std::cout << "  -" << option.shortName << ", --" << option.shortName
+                  << ", -" << option.longName << ", --" << option.longName
+                  << (option.takesValue ? " VALUE\n" : "\n");
+    std::cout << "\nBare subcommands are retained; these prefixed aliases also work:\n";
+    for (const auto &command : cli::groovieCommands)
+        std::cout << "  " << command.longName << ": -" << command.shortName
+                  << ", --" << command.shortName << ", -" << command.longName
+                  << ", --" << command.longName << '\n';
 }
 
 static bool parseInt(const std::string &s, int &out)
@@ -326,9 +349,9 @@ static bool parseOptions(int argc, char **argv, Options &opt)
         {
             opt.validate = false;
         }
-        else if (arg == "--help" || arg == "-h")
+        else if (arg.starts_with("-"))
         {
-            printUsage();
+            std::cerr << "Unknown encode option: " << arg << "\n";
             return false;
         }
         else
@@ -373,7 +396,12 @@ static bool parseOptions(int argc, char **argv, Options &opt)
         return false;
     }
 
-    if (!opt.inputDir.empty() && opt.framePaths.empty())
+    if (!opt.inputDir.empty() && !opt.framePaths.empty())
+    {
+        std::cerr << "--input-dir cannot be combined with explicit frames\n";
+        return false;
+    }
+    if (!opt.inputDir.empty())
     {
         std::vector<std::string> discovered;
         const std::array<std::string, 9> exts = {
@@ -386,7 +414,7 @@ static bool parseOptions(int argc, char **argv, Options &opt)
             const std::string ext = entry.path().extension().string();
             std::string lower = ext;
             std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-            if (std::find(exts.begin(), exts.end(), lower) != exts.end())
+            if (opt.rawInput ? lower == ".raw" : (lower != ".raw" && std::find(exts.begin(), exts.end(), lower) != exts.end()))
                 discovered.push_back(entry.path().string());
         }
         std::sort(discovered.begin(), discovered.end());
@@ -1905,6 +1933,7 @@ static void fntListCommand(int argc, char **argv)
                 throw std::runtime_error("Missing value for --fnt");
             fntPath = argv[++i];
         }
+        else throw std::runtime_error("Unknown font option: " + arg);
     }
     if (fntPath.empty())
         throw std::runtime_error("fnt-list requires --fnt");
@@ -1970,6 +1999,7 @@ static void fntExtractCommand(int argc, char **argv)
                 throw std::runtime_error("Missing value for --out-dir");
             outDir = argv[++i];
         }
+        else throw std::runtime_error("Unknown font option: " + arg);
     }
     if (fntPath.empty() || outDir.empty())
         throw std::runtime_error("fnt-extract requires --fnt and --out-dir");
@@ -2045,6 +2075,7 @@ static void fntPackCommand(int argc, char **argv)
                 throw std::runtime_error("Missing value for --glyphs");
             glyphsPath = argv[++i];
         }
+        else throw std::runtime_error("Unknown font option: " + arg);
     }
 
     if (inputDir.empty() || outputPath.empty())
@@ -2072,6 +2103,7 @@ static void fntPackCommand(int argc, char **argv)
 
     while (std::getline(csv, line))
     {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
         if (line.empty())
             continue;
         const auto fields = splitComma(line);
@@ -2096,8 +2128,8 @@ static void fntPackCommand(int argc, char **argv)
         int w = 0;
         int h = 0;
         std::vector<uint8_t> pixels = readBmpGray(bmpPath.string(), w, h);
-        if (w <= 0 || h <= 0)
-            throw std::runtime_error("Invalid glyph bitmap dimensions: " + bmpPath.string());
+        if (w <= 0 || w > 255 || h <= 0)
+            throw std::runtime_error("Glyph bitmap width must be 1..255 and height positive: " + bmpPath.string());
         if (widthField > 0 && widthField != w)
             throw std::runtime_error("Glyph width mismatch between CSV and BMP: " + bmpPath.string());
         if (heightField > 0 && heightField != h)
@@ -2154,7 +2186,7 @@ static void archivePackCommand(int argc, char **argv)
             manifestPath = needValue("--manifest");
         else if (arg == "--mac-t7gdata")
             macT7gData = true;
-        else if (arg.starts_with("--"))
+        else if (arg.starts_with("-"))
             throw std::runtime_error("Unknown archive-pack option: " + arg);
         else
             files.push_back(arg);
@@ -2658,6 +2690,33 @@ int main(int argc, char **argv)
 {
     try
     {
+        // Normalize only names; consume values verbatim, including paths that
+        // happen to resemble flags. Owned strings keep argv valid for dispatch.
+        std::vector<std::string> arguments(argv, argv + argc);
+        if (argc > 1) arguments[1] = cli::groovieCommand(arguments[1]);
+        const int firstOption = argc > 1 && cli::isGroovieCommand(arguments[1]) ? 2 : 1;
+        for (int i = firstOption; i < argc; ++i)
+        {
+            for (const auto &option : cli::groovieOptions)
+            {
+                if (!cli::matches(arguments[i], option.shortName, option.longName)) continue;
+                arguments[i] = option.canonical;
+                if (option.takesValue && i + 1 < argc) ++i;
+                break;
+            }
+        }
+        std::vector<char *> argumentPointers;
+        argumentPointers.reserve(arguments.size() + 1);
+        for (auto &argument : arguments) argumentPointers.push_back(argument.data());
+        argumentPointers.push_back(nullptr);
+        argv = argumentPointers.data();
+        for (int i = 1; i < argc; ++i)
+        {
+            const std::string_view arg = argv[i];
+            if (cli::isHelp(arg))
+            { printUsage(); return 0; }
+        }
+        if (argc == 1) { printUsage(); return 0; }
         if (argc >= 2)
         {
             const std::string command = argv[1];
@@ -2762,20 +2821,18 @@ int main(int argc, char **argv)
         std::vector<std::vector<uint8_t>> rgbFrames;
         rgbFrames.reserve(opt.framePaths.size());
 
-        int width = opt.width;
-        int height = opt.height;
+        int width = 0;
+        int height = 0;
 
         for (const auto &p : opt.framePaths)
         {
-            int w = width;
-            int h = height;
+            int w = opt.width;
+            int h = opt.height;
             std::vector<uint8_t> rgb;
 
             if (opt.rawInput)
             {
-                rgb = loadRawRGB24(p, width, height);
-                w = width;
-                h = height;
+                rgb = loadRawRGB24(p, opt.width, opt.height);
             }
             else
             {

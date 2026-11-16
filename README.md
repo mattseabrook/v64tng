@@ -1,6 +1,6 @@
 # v64tng
 
-Current release: **1.0.20261112.1**
+Current release: **1.0.20261115.1**
 
 [![v64tng build](https://img.shields.io/badge/v64tng%20build-passing-2ea44f?logo=github)](build.sh)
 
@@ -66,15 +66,19 @@ performed by the maintainer.
 - [Disclaimer](#disclaimer)
 - [Usage](#usage)
   - [Running the Game](#running-the-game)
+    - [GitHub and updates](#github-and-updates)
     - [Win32 Asset Browser and GRV Editor](#win32-asset-browser-and-grv-editor)
   - [Command Line Utilities](#command-line-utilities)
-    - [`-c <FILE>`](#-c-file)
-    - [`-g <RL_FILE>`](#-g-rl_file)
-    - [`-p <VDX_FILE> [raw] [alpha] [video]`](#-p-vdx_file-raw-alpha-video)
-    - [`-r <RL_FILE>`](#-r-rl_file)
-    - [`-v <FILE>`](#-v-file)
-    - [`-x <SONG> [play|extract]`](#-x-song-playextract)
-    - [`-raycast`](#-raycast)
+    - [Equivalent command spellings](#equivalent-command-spellings)
+    - [Command overview](#command-overview)
+    - [Starting the GUI](#starting-the-gui-)
+    - [Cursor extraction](#cursor-extraction--c)
+    - [VDX archive extraction](#vdx-archive-extraction--g)
+    - [Archive index listing](#archive-index-listing--r)
+    - [VDX/GJD inspection](#vdxgjd-inspection--v)
+    - [Frame, audio and video export](#frame-audio-and-video-export--p)
+    - [MIDI conversion/playback](#midi-conversionplayback--x)
+    - [Companion toolkit](#companion-toolkit)
 - [Game Engine Architecture](#game-engine-architecture)
   - [RL](#rl)
   - [GJD](#gjd)
@@ -181,44 +185,10 @@ performed by the maintainer.
     - [Win32 capture alternative](#win32-capture-alternative)
 - [Developers](#developers)
   - [Build System Overview](#build-system-overview)
-    - [Key Features](#key-features)
   - [Prerequisites](#prerequisites)
-    - [Linux Development Environment](#linux-development-environment)
-    - [Third-Party Dependencies](#third-party-dependencies)
-  - [Linux Cross-Compilation Build System](#linux-cross-compilation-build-system)
-    - [Architecture Overview](#architecture-overview)
-    - [Windows SDK Acquisition](#windows-sdk-acquisition)
-      - [Method 1: xwin (Recommended for Linux)](#method-1-xwin-recommended-for-linux)
-      - [Method 2: Native Windows SDK (For Build Validation)](#method-2-native-windows-sdk-for-build-validation)
-    - [Build Process Walkthrough](#build-process-walkthrough)
-      - [1. Windows SDK Setup](#1-windows-sdk-setup)
-      - [2. Resource Compilation](#2-resource-compilation)
-      - [3. Shader Compilation](#3-shader-compilation)
-      - [4. Source File Scanning](#4-source-file-scanning)
-      - [5. Compiler Flags Construction](#5-compiler-flags-construction)
-      - [6. Parallel Compilation](#6-parallel-compilation)
-      - [7. Linking](#7-linking)
-      - [8. Deployment](#8-deployment)
-    - [Build Invocation](#build-invocation)
-  - [Third-Party Library Builder](#third-party-library-builder)
-    - [Architecture](#architecture)
-    - [Toolchain File Generation](#toolchain-file-generation)
-    - [Library Build Processes](#library-build-processes)
-      - [zlib 1.3.1](#zlib-131)
-      - [libpng 1.6.50 (Manual Compilation)](#libpng-1650-manual-compilation)
-      - [libADLMIDI (Latest from Git)](#libadlmidi-latest-from-git)
-    - [Cross-Compilation Testing](#cross-compilation-testing)
-    - [Build Script Usage](#build-script-usage)
     - [Vulkan SDK Installation](#vulkan-sdk-installation)
   - [Quick Start Guide](#quick-start-guide)
-    - [Step 1: Install Prerequisites](#step-1-install-prerequisites)
-    - [Step 2: Download Windows SDK](#step-2-download-windows-sdk)
-    - [Step 3: Build Third-Party Libraries](#step-3-build-third-party-libraries)
-    - [Step 4: Install Vulkan SDK](#step-4-install-vulkan-sdk)
-    - [Step 5: Build the Engine](#step-5-build-the-engine)
-    - [Step 6: Deploy and Test](#step-6-deploy-and-test)
-    - [Advanced Topics](#advanced-topics)
-    - [Build System Architecture](#build-system-architecture)
+    - [Build Script Usage](#build-script-usage)
 
 # Disclaimer
 
@@ -328,79 +298,250 @@ subdirectory. The browser uses only the T7G RL/GJD and VDX decoders; the
 Clandestiny code supplied for UI study did not introduce Groovie 2 resource or
 playback behavior.
 
+### GitHub and updates
+
+The game window's **Help** menu contains **About**, a separator, **GitHub**,
+another separator, and **Check for Updates...**. **GitHub** opens the project
+repository in your default browser.
+
+**Check for Updates...** reads the official public GitHub releases and shows
+the newest release's title, version, publication date, author, complete release
+notes and asset links in a selectable, formatted text box. Headings, emphasis,
+lists and code are formatted locally; images appear as captions and links.
+**View on GitHub** opens the original release page. Checks and downloads run
+in the background, with download progress and cancellation.
+
+Versions are compared numerically using `major.minor.YYYYMMDD.build`, accepting
+bare, `v` and `v.` tag prefixes. Published prereleases are included because the
+project's existing public builds use that channel. Equal or older versions are
+never installed.
+
+When a newer version is available, choose **Download and Restart**. The updater
+downloads that release's `v64tng.exe`, checks its published SHA-256, byte length,
+Windows x64 format and version resource, and prepares a private directory beside
+the installed EXE. The game then shuts down normally. A temporary copy of the
+same EXE waits for shutdown, replaces the executable in place with a backup,
+and restarts with the existing game arguments and working directory. A game
+opened through the launcher reopens directly without another launcher prompt. The backup is
+removed after the replacement's launcher or game window acknowledges startup.
+If replacement or startup fails, it attempts to restore and reopen the previous
+version and reports any recovery failure explicitly. Settings and game assets
+are preserved; an in-progress game is not transferred between processes.
+
+The install directory must permit in-place updates. Permission, network and
+download validation failures are reported rather than bypassed. Windows HTTPS,
+cryptography and Rich Edit APIs are used from C++; no additional installer,
+browser runtime, scripting language or separately distributed helper is needed.
+
 ## Command Line Utilities
 
-The engine includes several command-line utilities for extracting, analyzing, and debugging game assets. These tools are invaluable for developers and researchers studying the game's data formats.
+`v64tng.exe` is one native Windows x64 console executable built with Clang/MSVC.
+CLI commands retain normal stdin/stdout/stderr, shell waiting, redirection and
+exit codes. The `!` command starts the existing Win32/Vulkan GUI in the same
+process after flushing output and calling `FreeConsole()`. A shared terminal
+remains available to its shell; the shell may wait until the game exits.
 
-### `-c <FILE>`
-Extracts all cursor animations from the `ROB.GJD` file. Each cursor is written as a sequence of numbered PNG images, one per animation frame. This is useful for examining the game's cursor artwork or creating custom cursor graphics.
+Run the examples below in Windows CMD. In PowerShell, prefix a local executable
+with `.\` (`.\v64tng.exe -r DR.RL`); in Windows Git Bash use `./v64tng.exe`.
+The Windows engine executable is not a native Linux/macOS application.
 
-```cmd
-v64tng.exe -c CURSORS.ROB
-```
+### Equivalent command spellings
 
-**Output**: Creates a directory structure containing PNG files for each cursor type and frame.
+Each dash-prefixed command accepts its short code or descriptive name with
+**one or two dashes**. All four spellings select the same existing operation:
 
-### `-g <RL_FILE>`
-Extracts every `.VDX` file referenced by the given `.RL` index file. The matching `.GJD` archive must be located alongside the `.RL` file. This batch extraction tool is useful for analyzing entire rooms or asset collections.
+| Operation | Four equivalent spellings |
+| --- | --- |
+| Help/overview | `-h`, `--h`, `-help`, `--help` |
+| Cursor extraction | `-c`, `--c`, `-cursor`, `--cursor` |
+| GJD extraction | `-g`, `--g`, `-gjd`, `--gjd` |
+| RL listing | `-r`, `--r`, `-rl`, `--rl` |
+| VDX/GJD inspection | `-v`, `--v`, `-vdx`, `--vdx` |
+| PNG/frame export | `-p`, `--p`, `-png`, `--png` |
+| XMI conversion/playback | `-x`, `--x`, `-xmi`, `--xmi` |
 
-```cmd
-v64tng.exe -g DR.RL
-```
-
-**Output**: Extracts all VDX files listed in the RL index, preserving their original filenames.
-
-### `-p <VDX_FILE> [raw] [alpha] [video]`
-Extracts frames from a VDX file with various output options:
-- **Default**: Saves frames as PNG images with proper color mapping
-- **`raw`**: Dumps raw pixel data without conversion (useful for analysis)
-- **`alpha`**: Enables a visible magenta transparency key for development/debugging
-- **`video`**: Generates an MKV movie file from the extracted frames at 15 FPS
-
-```cmd
-v64tng.exe -p f_1bb.vdx raw alpha video
-```
-
-**Output**: Frame images and/or video file depending on options specified.
-
-### `-r <RL_FILE>`
-Displays the contents of an RL index file in human-readable format, listing each entry's filename, byte offset, and length within the associated GJD archive. Useful for understanding archive structure and locating specific assets.
+For example, these four invocations all list `DR.RL`:
 
 ```cmd
 v64tng.exe -r DR.RL
+v64tng.exe --r DR.RL
+v64tng.exe -rl DR.RL
+v64tng.exe --rl DR.RL
 ```
 
-**Output**: Console output showing the complete RL index table.
-
-### `-v <FILE>`
-Shows detailed information about a VDX resource or GJD archive:
-- For VDX files: Header details, chunk types, dimensions, frame count, compression info
-- For GJD files (when used with an RL file): Complete archive structure analysis
+The same pattern applies to the other commands:
 
 ```cmd
-v64tng.exe -v f_1bc.vdx
+v64tng.exe --gjd "C:\My Game\DR.RL"
+v64tng.exe -vdx "C:\My Game\f_1bc.vdx"
+v64tng.exe -v "C:\My Game\DR.GJD"
+v64tng.exe --png "C:\My Game\f_1bc.vdx" video
+v64tng.exe --xmi agu50 play
+v64tng.exe --help
 ```
 
-**Output**: Comprehensive technical information about the file's internal structure.
+The bare `!` GUI command is unchanged. Filenames, paths and song names are
+values, so they are not rewritten as command names.
 
-### `-x <SONG> [play|extract]`
-Looks up a song by name inside `XMI.RL` and either plays it using OPL emulation or extracts the raw XMI file to disk. The song name should be given without the `.XMI` extension.
+Existing bare export/music action words remain valid. Their prefixed forms
+are also accepted **in the action's position after the input**:
+
+| Position | Existing word | Four additional spellings |
+| --- | --- | --- |
+| After `-p FILE` | `raw` | `-r`, `--r`, `-raw`, `--raw` |
+| After `-p FILE` | `video` | `-v`, `--v`, `-video`, `--video` |
+| After `-x SONG` | `extract` | `-e`, `--e`, `-extract`, `--extract` |
+| After `-x SONG` | `play` | `-p`, `--p`, `-play`, `--play` |
+
+Thus `v64tng.exe --png clip.vdx --raw` means RAW frame export, while
+`v64tng.exe --rl ROOM.RL` means RL listing. Context determines the action;
+`raw` and `video` remain mutually exclusive. The `-h`/`--h`/`-help`/`--help`
+spellings display the overall usage overview.
+
+### Command overview
+
+| Command | Behavior |
+| --- | --- |
+| No arguments | Open the launcher/settings window. |
+| `!` | Detach the console and start the game directly. |
+| `-c ROB.GJD` | Export retail cursor animations as PNG sequences. |
+| `-g FILE.RL` | Extract VDX payloads from the matching GJD. |
+| `-r FILE.RL` | List RL records, names, offsets and lengths. |
+| `-v FILE.VDX` or `-v FILE.GJD` | Inspect a standalone VDX or each indexed VDX in a GJD using the matching RL file. |
+| `-p FILE.VDX [raw\|video]` | Export frames, separate WAV audio and optionally a silent MKV. |
+| `-x SONG [extract\|play]` | Convert archived XMI to MIDI, or play it. |
+
+Quote paths containing spaces. Relative file paths use the working directory;
+commands accepting a file do not silently search the executable's directory.
+Music uses the shared game asset root: the working directory when it contains
+`SCRIPT.GRV`, otherwise its `T7G` subdirectory when present, otherwise the
+working directory. Configuration is loaded beside the executable.
+
+Extraction can overwrite existing output files. Errors go to stderr
+and return a nonzero exit code. Console reports go to stdout, so they can be
+redirected without mixing in error messages. `-l` is not a command.
+
+### Starting the GUI: `!`
 
 ```cmd
-v64tng.exe -x agu50 play     # Play "Tad's Theme"
-v64tng.exe -x gu39 extract   # Extract title screen music
+v64tng.exe
+v64tng.exe "!"
 ```
 
-**Output**: Real-time playback or extracted XMI file depending on mode.
+No arguments opens the launcher/settings window. `!` bypasses that launcher,
+flushes console output, detaches this process from its console and calls the
+existing GUI initialization. It does not launch a second process. GUI errors
+after detachment use a message box; no console needs to be killed on cleanup.
+The game still requires the original T7G assets and configured graphics/audio.
 
-### `-raycast`
-Starts the engine in development raycasting mode. This is a debug mode used for testing the 3D navigation system and render pipeline independently from game logic.
+### Cursor extraction: `-c`
 
 ```cmd
-v64tng.exe -raycast
+v64tng.exe -c "C:\My Game\ROB.GJD"
 ```
 
-**Output**: Opens a window with real-time raycasting renderer for development testing.
+This command expects the retail `ROB.GJD` cursor/palette layout. It creates
+`ROB_GJD/<offset>/PNG/` in the **working directory**, with a numbered PNG for
+each cursor frame. It is not a general-purpose arbitrary `.ROB` parser.
+
+### VDX archive extraction: `-g`
+
+```cmd
+v64tng.exe -g "C:\My Game\DR.RL"
+```
+
+The matching `DR.GJD` must sit beside `DR.RL`. VDX payloads are copied into
+`C:\My Game\DR\` without decoding/re-encoding their media. Non-VDX resources
+are skipped. For all resource types, safe duplicate-name extraction and later
+repacking, use [Groovie's archive commands](grooviev1/README.md#pack-rlgjd).
+
+### Archive index listing: `-r`
+
+```cmd
+v64tng.exe -r DR.RL
+v64tng.exe -r DR.RL > dr-index.txt
+v64tng.exe -r missing.RL > output.txt 2> errors.txt
+```
+
+Print the byte offset of each RL record, its resource name, its byte offset in
+the GJD, its byte length and the number of records. No GJD is required, so this
+command does not check whether those spans fit the archive; use Groovie's
+`archive-list` for range inspection. Malformed/truncated RL records report an
+error instead of being silently accepted.
+
+### VDX/GJD inspection: `-v`
+
+```cmd
+v64tng.exe -v "C:\My Game\f_1bc.vdx"
+v64tng.exe --vdx "C:\My Game\f_1bc.vdx" > vdx-info.txt
+v64tng.exe -v "C:\My Game\DR.GJD" > dr-vdx-info.txt
+```
+
+Standalone VDX input reports its header identifier, unknown header bytes,
+header frame rate, first bitmap's tile geometry/colour depth and a table of
+chunk types, coding bytes, payload sizes and LZSS parameters. Compressed bitmap
+headers are decoded before their values are displayed.
+
+The four equivalent spellings are `-v`, `--v`, `-vdx` and `--vdx`. The file
+argument selects the operation by its case-insensitive extension:
+
+| File argument | Operation |
+| --- | --- |
+| `FILE.VDX` | Inspect the standalone VDX. |
+| `FILE.GJD` | Inspect every indexed VDX using the matching `FILE.RL` beside the archive; skip non-VDX resources. |
+
+Other extensions report an error. GJD input is not treated as a single raw
+chunk stream. Archive-range, file/header and chunk-boundary failures are
+reported as errors. This command prints metadata; use `-g FILE.RL` to extract
+VDX files from an RL/GJD pair.
+
+### Frame, audio and video export: `-p`
+
+```cmd
+v64tng.exe -p "C:\My Game\f_1bc.vdx"
+v64tng.exe -p "C:\My Game\f_1bc.vdx" raw
+v64tng.exe -p "C:\My Game\f_1bc.vdx" video
+```
+
+Output is the adjacent `f_1bc/` directory. Frames are complete composited
+images named `f_1bc_0001`, `f_1bc_0002`, etc., at the decoded media dimensions.
+
+| Mode | Frame output | Audio/video output |
+| --- | --- | --- |
+| No extra option | PNG; indexed pixels/palettes retained when available. | Audio, if present, is saved separately as `f_1bc.wav`. |
+| `raw` | Headerless RGB24 `.raw` pixels; use the VDX geometry to interpret them. | The same separate WAV. |
+| `video` | The normal PNG sequence. | FFmpeg creates a **silent** `f_1bc.mkv`; audio remains in the separate WAV. Looping ffplay previews the MKV until closed. |
+
+Video mode requires both `ffmpeg` and `ffplay` on PATH. It uses the VDX header
+frame rate, falling back to 15 FPS when the header contains zero, and starts
+from exported frame 0001. Existing files may be overwritten.
+
+`raw` and `video` cannot be combined. The previously documented CLI `alpha`
+argument was never implemented and now reports an explicit error. Use the
+Tools window's **Alpha Mode** for transparent PNG exports. For portable
+lossless indexed PNG editing/re-encoding, use
+[Groovie's indexed workflow](grooviev1/README.md#lossless-source-material-round-trip).
+
+### MIDI conversion/playback: `-x`
+
+```cmd
+v64tng.exe -x agu50
+v64tng.exe -x agu50 extract
+v64tng.exe -x AGU50 play
+```
+
+The song name omits `.XMI` and is matched without case sensitivity against
+`XMI.RL`/`XMI.GJD` at the shared asset root. Default/`extract` converts the
+resource to a standard `.mid` file in the working directory; the output uses
+the archive's song basename. This does not export raw XMI bytes. `play` uses
+the configured MIDI backend and requires working audio. Other action words
+are rejected rather than silently treated as extraction.
+
+### Companion toolkit
+
+[Groovie's README](grooviev1/README.md) covers equivalent short/long argument
+names, Windows/Linux/macOS builds, indexed media, archives, fonts, GRV scripts
+and MacBinary resources.
 
 # Game Engine Architecture
 
@@ -3117,724 +3258,126 @@ until a primary source, build artifact, or original source tree settles them.
 
 # Developers
 
-This project features a sophisticated, production-grade build system designed from scratch to support modern C++23 development with cross-platform Windows targeting. The build infrastructure demonstrates advanced compiler toolchain integration, parallel compilation strategies, and automated dependency management—techniques employed at top-tier software companies.
-
 ## Build System Overview
 
-The v64tng engine uses three custom-built Bash scripts forming a complete build pipeline:
+The supported build host is Arch Linux; the output is a Windows x64 executable.
+A fresh clone can start the release build directly:
 
-1. **`build.sh`**: Primary build system for Linux→Windows cross-compilation using Clang/LLVM
-2. **`build_windows_libs.sh`**: Automated third-party library builder for Windows static libraries
-3. **`build.ps1`**: Native Windows build system using PowerShell (legacy, still maintained)
+```bash
+git clone https://github.com/mattseabrook/v64tng.git
+cd v64tng
+./build.sh --
+```
 
-All build scripts are designed for **zero-configuration builds** on supported platforms. The system automatically detects SDK paths, validates toolchain components, manages dependencies, and produces deployment-ready executables.
+`./build.sh` also selects the release build. Other modes are `debug`, `super`
+(LTO) and `clean`. Cleaning does not bootstrap dependencies.
 
-### Key Features
+The engine runtime is C++ and its build does not require Python. Shader headers
+are embedded with `od`/`awk`, preserving the compiler-produced SPIR-V bytes,
+existing symbols and four-byte alignment. Optional pre-existing Python research
+and disassembly utilities are separate from the engine build.
 
-- **Incremental Compilation**: Dependency tracking with change detection, only rebuilds modified files
-- **Parallel Compilation**: Multi-threaded builds utilizing all available CPU cores
-- **Automatic Shader Compilation**: Vulkan SPIR-V and DirectX HLSL shaders compiled and embedded
-- **Resource Compilation**: Windows resources (icons, manifests) integrated via MinGW windres
-- **Smart Caching**: Object files, shaders, and resources cached to minimize rebuild times
-- **Build Logging**: Warnings and errors logged to `build.log` for post-build analysis
-- **Memory-Mapped I/O**: Library builder uses zero-copy techniques for Windows SDK access
-- **Cross-Platform SDK Detection**: Automatically finds and configures Windows SDK from xwin or native installations
+The build invokes [`scripts/bootstrap_build.sh`](scripts/bootstrap_build.sh)
+before SDK discovery or source compilation. It:
+
+- Installs missing Clang/LLVM, CMake, Ninja, shaderc, resource compiler and
+  supporting host tools through pacman on Arch Linux. Package installation
+  uses a full system upgrade, as required by Arch, with the normal pacman/sudo
+  prompts. A working network connection and permission to install packages
+  are required on the first run when host tools are absent.
+- Obtains the Microsoft C/C++ headers, static CRT and Windows SDK through
+  `xwin` when missing, accepting the Microsoft SDK license through xwin's
+  `--accept-license` option. When xwin is absent, it installs Rust if needed
+  and builds xwin into the per-user dependency cache.
+- Prepares matching Vulkan headers and a Windows loader import library from
+  pinned Khronos release sources when missing. Linux `glslc` comes from shaderc.
+- Builds the required Windows static libraries with tests and example players
+  disabled. Missing files or mismatched version markers trigger rebuilding.
+- Writes detected paths into the ignored `build/dependencies.env`, then builds
+  resources, embedded shaders, source objects and `v64tng.exe`.
+
+Existing compatible `/opt/winsdk`, `/opt/msvc/include`, `/opt/windows-libs`
+and `/opt/VulkanSDK` installations are reused. New installations normally use
+`${XDG_CACHE_HOME:-$HOME/.cache}/v64tng`, so the dependency files do not require
+root-owned `/opt` directories. Both flat xwin and versioned SDK include layouts
+are supported. A compatible already-provisioned build can reuse cached files
+without downloading the dependencies again.
+
+Automatic host-package installation currently supports Arch Linux. Other Linux
+distributions require the equivalent host tools to be installed separately.
+Commercial game data is not downloaded or required to compile the engine;
+provide your own game installation to run it.
 
 ## Prerequisites
 
-### Linux Development Environment
-
-The v64tng engine is built exclusively on Linux, cross-compiling to Windows executables. The recommended distribution is Arch Linux (or derivatives like Manjaro), though any distribution with a modern Clang/LLVM toolchain will work.
-
-```bash
-# Core compilation toolchain
-sudo pacman -S clang lld llvm
-
-# MinGW windres (for Windows resource compilation only - we don't use MinGW's linker/stdlib)
-sudo pacman -S mingw-w64-binutils
-
-# Build utilities
-sudo pacman -S cmake ninja git wget xxd
-
-# Shader compilation
-sudo pacman -S vulkan-tools shaderc
-
-# Rust toolchain for xwin (Windows SDK downloader)
-sudo pacman -S rust cargo
-cargo install xwin
-```
-
-**Note**: For non-Arch distributions, install equivalent packages through your package manager (apt, dnf, zypper, etc.).
-
-### Third-Party Dependencies
-
-The engine requires these third-party libraries and the Vulkan cross-build SDK:
-
-- **zlib 1.3.1**: Compression library (for PNG support)
-- **libpng 1.6.50**: PNG image encoding/decoding
-- **libADLMIDI**: OPL2/OPL3 FM synthesis for MIDI playback
-- **Vulkan SDK 1.4.363.0**: Windows graphics API headers and `vulkan-1.lib` import library, plus Linux `glslc` for shader compilation
-
-The `build_windows_libs.sh` script builds the first three from source. Vulkan is installed separately; the Windows loader remains a runtime DLL import. See [Build Script Usage](#build-script-usage) for details.
-
-## Linux Cross-Compilation Build System
-
-The `build.sh` script implements a complete Linux→Windows cross-compilation pipeline using Clang with Microsoft ABI compatibility. This approach provides the best of both worlds: Linux development speed with Windows binary compatibility.
-
-### Architecture Overview
-
-The build system uses **clang-cl** (Clang's MSVC-compatible driver) targeting `x86_64-pc-windows-msvc`. This produces authentic Windows PE executables with proper MSVC ABI calling conventions, exception handling, and name mangling—fully compatible with Windows SDK libraries.
-
-**Key Design Principles:**
-
-1. **Authentic Windows Binaries**: Uses `clang-cl` + `lld-link` for byte-perfect Windows PE/COFF output
-2. **Zero Host Dependencies**: No MinGW runtime libraries—only MSVC CRT and Windows SDK
-3. **Parallel Everything**: Compilation, shader processing, and resource building run concurrently
-4. **Smart Dependency Tracking**: `.d` files track header dependencies, trigger rebuilds only when needed
-5. **Modular Architecture**: Clean separation between compilation, linking, shader processing, and deployment
-
-### Windows SDK Acquisition
-
-The build system requires the Windows SDK for headers and import libraries. Two acquisition methods are supported:
-
-#### Method 1: xwin (Recommended for Linux)
-
-[xwin](https://github.com/Jake-Shadle/xwin) is a Rust tool that downloads official Microsoft SDK components:
-
-```bash
-# Install xwin
-cargo install xwin
-
-# Download Windows SDK to /opt/winsdk
-sudo mkdir -p /opt/winsdk
-sudo chown $USER:$USER /opt/winsdk
-xwin --accept-license splat --output /opt/winsdk
-```
-
-**What xwin downloads:**
-- Windows SDK headers (ucrt, um, shared, winrt)
-- MSVC CRT headers and static libraries
-- Import libraries for Windows system DLLs
-- Total size: ~500 MB
-
-The build script automatically detects the xwin directory structure:
-```
-/opt/winsdk/
-├── crt/
-│   ├── include/          # MSVC C++ stdlib headers
-│   └── lib/x86_64/       # Static CRT libs (libcmt.lib, etc.)
-└── sdk/
-    ├── include/
-    │   ├── ucrt/         # Universal CRT headers
-    │   ├── um/           # User-mode API headers
-    │   ├── shared/       # Shared headers
-    │   └── winrt/        # WinRT headers
-    └── lib/
-        ├── ucrt/x86_64/  # Universal CRT libs
-        └── um/x86_64/    # SDK import libs
-```
-
-#### Method 2: Native Windows SDK (For Build Validation)
-
-If you have access to a Windows machine, you can copy an existing SDK installation. The build script detects traditional Windows SDK layouts as well.
-
-### Build Process Walkthrough
-
-#### 1. Windows SDK Setup
-
-The `setup_winsdk()` function performs intelligent SDK detection:
-
-```bash
-# Detect SDK structure (xwin vs traditional)
-# Find include directories: ucrt, um, shared, winrt
-# Find library directories: ucrt/x86_64, um/x86_64
-# Detect SDK version (e.g., 10.0.22621.0 or 10.0.26100)
-# Validate critical paths exist
-# Export environment variables for compiler
-```
-
-**Auto-Detection Logic:**
-- Scans `/opt/winsdk` for known structures
-- Tries both flat (xwin) and versioned (traditional) layouts
-- Validates presence of critical headers: `windows.h`, `d3d11.h`, `vulkan.h`
-- Verifies import libraries: `kernel32.lib`, `user32.lib`, `libucrt.lib`
-- Falls back gracefully if paths are missing
-
-**Environment Variables Set:**
-```bash
-export DETECTED_SDK_INCLUDE="/opt/winsdk/sdk/include"
-export DETECTED_SDK_LIB="/opt/winsdk/sdk/lib"
-export DETECTED_CRT_INCLUDE="/opt/winsdk/crt/include"
-export DETECTED_CRT_LIB="/opt/winsdk/crt/lib"
-export DETECTED_SDK_VERSION="10.0.26100"
-export DETECTED_LIB_ARCH="x86_64"
-```
-
-#### 2. Resource Compilation
-
-Windows resources (icons, version info, manifests) are compiled using MinGW's `windres`:
-
-```bash
-x86_64-w64-mingw32-windres \
-    -I "$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/um" \
-    -I "$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/shared" \
-    -o "$BUILD_DIR/resource.res" \
-    "resource.rc"
-```
-
-**Why MinGW windres?**
-- Only MinGW component we use (we don't link against MinGW libraries)
-- LLVM's llvm-rc is not mature enough for complex resource scripts
-- Produces standard COFF `.res` files compatible with any Windows linker
-
-**Resource Caching**: Only recompiled if `resource.rc` is newer than `resource.res`.
-
-#### 3. Shader Compilation
-
-Shaders are compiled into embeddable C++ headers:
-
-**Vulkan (SPIR-V Binary Embedding):**
-```bash
-/opt/VulkanSDK/1.4.363.0/linux/bin/glslc -fshader-stage=compute shaders/vk_raycast.comp -o build/vk_raycast.spv
-xxd -i build/vk_raycast.spv > build/vk_raycast_spv.h
-```
-
-**DirectX (HLSL Source Embedding):**
-```bash
-# Embed HLSL source as raw string literal
-# Compiled at runtime with D3DCompile API
-cat shaders/d3d11_raycast.hlsl | embed_as_cpp > build/d3d11_raycast.h
-```
-
-**Why Different Approaches?**
-- **Vulkan**: SPIR-V is platform-independent binary, compile once at build time
-- **DirectX**: HLSL requires D3DCompiler at runtime (ships with Windows), embed source
-
-**Shader Caching**: Regenerates headers only if source files change.
-
-#### 4. Source File Scanning
-
-The build system discovers all C++ source files and generates corresponding object file paths:
-
-```bash
-SOURCES=($(find src -name "*.cpp" | sort))
-for src in "${SOURCES[@]}"; do
-    obj_name="$(basename "${src%.cpp}").o"
-    OBJECTS+=("$BUILD_DIR/$obj_name")
-done
-```
-
-**Design Note**: Object files use flat naming (basename only) to avoid deep directory structures in the build folder.
-
-#### 5. Compiler Flags Construction
-
-The build system constructs sophisticated compiler flag arrays:
-
-```bash
-SYSTEM_INCLUDES=(
-    "-imsvc$DETECTED_CRT_INCLUDE"
-    "-imsvc$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/ucrt"
-    "-imsvc$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/um"
-    "-imsvc$DETECTED_SDK_INCLUDE/$DETECTED_SDK_VERSION/shared"
-)
-
-USER_INCLUDES=(
-    "-I./include"
-    "-I$BUILD_DIR"
-    "-I/opt/windows-libs/zlib/include"
-    "-I/opt/windows-libs/libpng/include"
-    "-I/opt/windows-libs/ADLMIDI/include"
-    "-I/opt/VulkanSDK/1.4.363.0/Include"
-)
-
-COMMON_FLAGS=(
-    "--target=x86_64-pc-windows-msvc"
-    "-fuse-ld=lld-link"
-    "/std:c++latest"         # C++23 mode
-    "/EHsc"                  # Exception handling
-    "/MT"                    # Static CRT linkage
-    "-msse4.2"               # SSE optimizations
-    "/W4" "-Wextra"          # Warning levels
-    "-fms-compatibility"     # MSVC ABI compat
-)
-```
-
-**MSVC Compatibility Flags:**
-- `/std:c++latest`: Enables C++23 features
-- `/MT`: Links static CRT (libcmt.lib) for standalone executables
-- `-fms-compatibility-version=19.37`: Targets MSVC 19.37 (VS 2022) ABI
-- `-fuse-ld=lld-link`: Uses LLVM's Windows-compatible linker
-
-**Optimization Flags (Release):**
-```bash
--O3                    # Aggressive optimization
--DNDEBUG               # Disable assertions
--fno-rtti              # No RTTI (smaller binary)
-```
-
-**Debug Flags:**
-```bash
--O0                    # No optimization
--g -gcodeview          # CodeView debug info (for Visual Studio debuggers)
-```
-
-#### 6. Parallel Compilation
-
-The `compile_batch()` function implements intelligent parallel compilation:
-
-```bash
-compile_batch() {
-    local batch_sources=("$@")
-    local pids=()
-    
-    for src in "${batch_sources[@]}"; do
-        obj="$BUILD_DIR/$(basename "${src%.cpp}").o"
-        
-        # Skip if up-to-date
-        if needs_compile "$src" "$obj"; then
-            # Compile in background
-            {
-                clang-cl -c "$src" -o "$obj" "${CLANG_FLAGS[@]}" 2>"$temp_out"
-            } &
-            pids+=($!)
-        else
-            echo "  ≡ $(basename "$src") (cached)"
-        fi
-    done
-    
-    # Wait for batch completion
-    for pid in "${pids[@]}"; do
-        wait "$pid"
-    done
-}
-```
-
-**Dependency Detection (`needs_compile()`):**
-1. Check if object file exists
-2. Check if source is newer than object
-3. Parse `.d` dependency file for header changes
-4. Check for zero-byte objects (failed previous builds)
-
-**Batch Processing:**
-- Sources split into batches of size = CPU core count
-- Each batch compiles in parallel
-- Wait for batch completion before starting next batch
-- Prevents system overload while maximizing throughput
-
-**Output Filtering:**
-- Suppresses noise from third-party libraries (nlohmann/json.hpp)
-- Logs all warnings/errors to `build.log`
-- Shows real-time compilation status with Unicode symbols: ✓ (success), ✗ (failure), ≡ (cached)
-
-#### 7. Linking
-
-The linking phase combines object files, libraries, and resources into the final executable:
-
-```bash
-LINKER_ARGS=(
-    "/subsystem:windows"                    # GUI application
-    "/defaultlib:libcmt"                    # Static MSVC CRT
-    "/defaultlib:libucrt"                   # Static Universal CRT
-    "/nodefaultlib:msvcrt.lib"              # Exclude dynamic CRT
-    "/libpath:$ZLIB_DIR/lib"
-    "/libpath:$LIBPNG_DIR/lib"
-    "/libpath:$ADLMIDI_DIR/lib"
-    "/libpath:$VULKAN_DIR/Lib"
-    "/libpath:$DETECTED_SDK_LIB/um/$DETECTED_LIB_ARCH"
-    "/libpath:$DETECTED_SDK_LIB/ucrt/$DETECTED_LIB_ARCH"
-    "/libpath:$DETECTED_CRT_LIB/$DETECTED_LIB_ARCH"
-    "zlib.lib"
-    "libpng.lib"
-    "ADLMIDI.lib"
-    "vulkan-1.lib"
-    "user32.lib"
-    "gdi32.lib"
-    "d2d1.lib"
-    "d3d11.lib"
-    "dxgi.lib"
-    "d3dcompiler.lib"
-    "winmm.lib"
-    "ole32.lib"
-)
-
-clang-cl "${OBJECTS[@]}" "$RESOURCE_RES" -o "$OUTPUT_EXE" /link "${LINKER_ARGS[@]}"
-```
-
-**Static Linking Strategy:**
-- All third-party libraries linked statically (zlib, libpng, ADLMIDI)
-- MSVC CRT linked statically (`/MT` flag)
-- Results in standalone executable with no DLL dependencies (except system DLLs)
-
-**Link Order Matters:**
-1. Object files first
-2. Resource file
-3. Static libraries (third-party)
-4. System import libraries (Windows APIs)
-
-**Debug vs Release Linking:**
-- **Release**: `/opt:ref` (removes unreferenced functions)
-- **Debug**: `/debug:full` (generates PDB symbols for debugging)
-
-#### 8. Deployment
-
-The final step copies the executable to the target directory:
-
-```bash
-mkdir -p /mnt/T7G
-sudo cp v64tng.exe /mnt/T7G/
-```
-
-**Why `sudo`?** The deployment target (`/mnt/T7G`) is the mounted 7th Guest game directory, typically owned by root.
-
-### Build Invocation
-
-```bash
-# Release build (optimized, no debug symbols)
-./build.sh
-
-# Debug build (no optimization, full debug info)
-./build.sh debug
-
-# Clean all build artifacts
-./build.sh clean
-
-# Build without deploying to /mnt/T7G
-V64TNG_NO_DEPLOY=1 ./build.sh
-```
-
-By default, successful builds deploy to `/mnt/T7G`. Set
-`V64TNG_NO_DEPLOY=1` for local validation or when you want to copy the
-executable manually.
-
-Every non-clean build advances the product version in the form
-`1.0.YYYYMMDD.N`, using the US/Eastern calendar date and an incrementing daily
-build number. `build.sh` validates and updates both `include/version.h` and all
-matching README version text before compilation, and refreshes object files so
-the executable and Windows resource metadata cannot retain the previous value.
-`V64TNG_BUILD_DATE=YYYYMMDD` provides a deterministic date override for build
-automation and version-script testing.
-
-**Typical Build Times** (on AMD Ryzen 9 5950X, 16 cores):
-- **Full build**: ~3-5 seconds
-- **Incremental (1 file changed)**: ~0.5 seconds
-- **Clean rebuild**: ~4-6 seconds
-
-## Third-Party Library Builder
-
-The `build_windows_libs.sh` script is a sophisticated automated build system for compiling Windows static libraries from source using Clang cross-compilation. This eliminates the need for prebuilt binaries and ensures ABI compatibility with the main project.
-
-### Architecture
-
-The library builder uses **CMake toolchain files** to configure cross-compilation for each library. The approach is portable and works with any library that uses CMake as its build system.
-
-**Design Goals:**
-1. **Reproducible Builds**: Identical library binaries regardless of build machine
-2. **Static Linking**: All libraries built as `.lib` files (no DLLs)
-3. **MSVC ABI**: Full compatibility with Windows SDK and MSVC libraries
-4. **Zero Manual Configuration**: Automatic SDK detection and path configuration
-5. **Verification**: Built-in symbol checking to detect DLL import issues
-
-### Toolchain File Generation
-
-The `create_toolchain_file()` function generates a CMake toolchain that mirrors the main build system's compiler configuration:
-
-```cmake
-set(CMAKE_SYSTEM_NAME Windows)
-set(CMAKE_SYSTEM_PROCESSOR AMD64)
-
-set(CMAKE_C_COMPILER clang-cl)
-set(CMAKE_CXX_COMPILER clang-cl)
-set(CMAKE_C_COMPILER_TARGET x86_64-pc-windows-msvc)
-set(CMAKE_CXX_COMPILER_TARGET x86_64-pc-windows-msvc)
-
-set(CMAKE_AR llvm-lib)
-set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> /OUT:<TARGET> <OBJECTS>")
-
-set(CMAKE_C_FLAGS_INIT "-fuse-ld=lld-link [includes] /MT -fms-compatibility")
-set(CMAKE_CXX_FLAGS_INIT "-fuse-ld=lld-link [includes] /MT -fms-compatibility")
-
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
-set(CMAKE_EXE_LINKER_FLAGS_INIT "[windows libs] -DEFAULTLIB:libcmt.lib")
-```
-
-**Key Configurations:**
-- `CMAKE_AR llvm-lib`: Uses LLVM's library archiver instead of Microsoft's `lib.exe`
-- `/MT`: Static CRT linkage (essential for standalone libraries)
-- `-fms-compatibility`: Enables MSVC-specific extensions and ABI rules
-- Archive flags use Windows syntax (`/OUT:<TARGET>`) for proper library creation
-
-### Library Build Processes
-
-#### zlib 1.3.1
-
-zlib is the foundation—needed for PNG support. The build is straightforward via CMake:
-
-```bash
-cmake .. \
-    -DCMAKE_TOOLCHAIN_FILE=windows-cross.cmake \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX="/opt/windows-libs/zlib" \
-    -DBUILD_SHARED_LIBS=OFF \
-    -DZLIB_WINAPI=OFF \
-    -DCMAKE_C_FLAGS="-DZLIB_STATIC -D_CRT_DECLARE_NONSTDC_NAMES=0"
-
-make zlibstatic -j$(nproc)
-cp zlibstatic.lib /opt/windows-libs/zlib/lib/zlib.lib
-```
-
-**Critical Flags:**
-- `-DZLIB_STATIC`: Prevents generation of `__declspec(dllimport)` symbols
-- `-D_CRT_DECLARE_NONSTDC_NAMES=0`: Disables POSIX function aliases (fixes link errors)
-- `zlibstatic` target: Builds only static library, skips shared library and examples
-
-#### libpng 1.6.50 (Manual Compilation)
-
-libpng requires special handling because its CMake build system has DLL import issues. The script uses **manual compilation** to ensure pure static library output:
-
-```bash
-# Use pre-built pnglibconf.h from Visual Studio projects
-cp ../projects/vstudio/pnglibconf.h ./
-
-# Compile each source file individually
-for src in png.c pngerror.c pngget.c pngmem.c pngread.c pngwrite.c ...; do
-    clang-cl --target=x86_64-pc-windows-msvc \
-        -fuse-ld=lld-link \
-        /MT \
-        -DPNG_STATIC -DPNG_USE_DLL=0 -DPNG_NO_DLL=1 \
-        -I. -I../. -I/opt/windows-libs/zlib/include \
-        [SDK includes] \
-        -c "$src" -o "${src%.c}.o"
-done
-
-# Archive into static library
-llvm-lib /OUT:libpng_static.lib png.o pngerror.o pngget.o ...
-```
-
-**Why Manual Compilation?**
-- CMake's FindPNG incorrectly generates `__declspec(dllimport)` even when building static
-- Manual compilation gives complete control over preprocessor defines
-- Ensures no DLL linkage symbols leak into the library
-
-**Verification:**
-```bash
-# Check for DLL import symbols (should be ZERO)
-llvm-objdump --syms libpng.lib | grep -i "dllimport\|__imp__"
-# Exit code 1 = good (no matches)
-```
-
-**Key Defines:**
-- `-DPNG_STATIC`: Core define for static linking
-- `-DPNG_USE_DLL=0`, `-DPNG_NO_DLL=1`: Redundant guards to prevent DLL code paths
-- Using pre-built `pnglibconf.h`: Avoids complex configure step, uses battle-tested VS config
-
-#### libADLMIDI (Latest from Git)
-
-ADLMIDI is cloned fresh from GitHub to get the latest OPL emulation improvements:
-
-```bash
-git clone https://github.com/Wohlstand/libADLMIDI.git
-
-cmake .. \
-    -DCMAKE_TOOLCHAIN_FILE=windows-cross.cmake \
-    -DCMAKE_INSTALL_PREFIX="/opt/windows-libs/ADLMIDI" \
-    -DlibADLMIDI_STATIC=ON \
-    -DlibADLMIDI_SHARED=OFF \
-    -DWITH_UNIT_TESTS=OFF \
-    -DWITH_MIDIPLAY=OFF \
-    -DCMAKE_BUILD_TYPE=Release
-
-make ADLMIDI_static -j$(nproc)
-```
-
-**Configuration:**
-- Disables shared library builds entirely
-- Skips unit tests and example player (not needed)
-- Builds only the core static library target
-
-### Cross-Compilation Testing
-
-The `test_cross_compilation()` function validates the toolchain before building libraries:
-
-```bash
-# Create test program
-cat > test_cross.c << 'EOF'
-#include <windows.h>
-#include <stdio.h>
-
-int main() {
-    printf("Hello from Windows cross-compilation!\n");
-    return 0;
-}
-EOF
-
-# Compile and link
-clang-cl --target=x86_64-pc-windows-msvc \
-    -fuse-ld=lld-link \
-    /MT \
-    [includes] \
-    test_cross.c -o test_cross.exe \
-    /link [lib paths] \
-    kernel32.lib user32.lib libucrt.lib libcmt.lib
-```
-
-**Success Criteria:**
-- Produces valid Windows PE executable
-- Links against static CRT (no MSVCRT.DLL dependency)
-- Uses correct Windows subsystem
-
-### Build Script Usage
-
-```bash
-# Setup Windows SDK (run once)
-./build_windows_libs.sh setup
-
-# Test cross-compilation toolchain
-./build_windows_libs.sh test
-
-# Build individual libraries
-./build_windows_libs.sh zlib
-./build_windows_libs.sh libpng
-./build_windows_libs.sh adlmidi
-
-# Build everything
-./build_windows_libs.sh all
-```
-
-**Output Locations:**
-```
-/opt/windows-libs/
-├── zlib/
-│   ├── include/
-│   │   ├── zlib.h
-│   │   └── zconf.h
-│   └── lib/
-│       └── zlib.lib
-├── libpng/
-│   ├── include/
-│   │   ├── png.h
-│   │   ├── pngconf.h
-│   │   └── pnglibconf.h
-│   └── lib/
-│       └── libpng.lib
-└── ADLMIDI/
-    ├── include/
-    │   └── adlmidi.h
-    └── lib/
-        └── ADLMIDI.lib
-```
+Stable dependency versions are maintained in
+[`scripts/dependency_versions.sh`](scripts/dependency_versions.sh):
+
+| Dependency | Version | Role |
+| --- | --- | --- |
+| Vulkan SDK release headers/import definition | 1.4.363.0 | Windows Vulkan API and loader linkage |
+| zlib | 1.4 | PNG compression/decompression |
+| libpng | 1.6.59 | PNG import/export |
+| libADLMIDI | 1.6.2.1 | OPL MIDI synthesis |
+| libogg | 1.3.6 | Ogg container parsing |
+| libvorbis | 1.3.7 | Vorbis music decoding |
+| nlohmann/json | 3.12.0 | Vendored configuration/metadata handling |
+| TinySoundFont | 0.9 | Vendored SoundFont synthesis |
+
+[`build_windows_libs.sh`](build_windows_libs.sh) rebuilds the five external
+Windows libraries. It supports `all`, `zlib`, `libpng`, `libogg`, `vorbis`,
+`adlmidi` and `setup`. The compiler uses the MSVC ABI and static CRT (`/MT`);
+Windows system APIs and the Vulkan driver remain runtime dependencies.
 
 ### Vulkan SDK Installation
 
-The Windows cross-build uses LunarG's **Windows SDK 1.4.363.0**, not Arch's
-installed Vulkan headers or Linux loader. Download the Windows and Linux SDKs
-of that version from the [official LunarG SDK page](https://vulkan.lunarg.com/sdk/home).
-Install the Windows SDK on Windows, then copy its `Include/` directory and
-`Lib/vulkan-1.lib` to `/opt/VulkanSDK/1.4.363.0/` on the Arch build host.
-Extract `x86_64/bin/glslc` from the Linux SDK to
-`/opt/VulkanSDK/1.4.363.0/linux/bin/glslc`. The import library links the
-executable to the `vulkan-1.dll` supplied on the Windows runtime system.
+No manual Windows installer copy is necessary. If a complete matching SDK is
+not present, bootstrap downloads Vulkan-Headers at the pinned SDK tag and
+Khronos's matching `vulkan-1.def`, then generates `vulkan-1.lib` with
+`llvm-dlltool`. This is an import archive for the Windows `vulkan-1.dll` loader;
+it does not embed a GPU driver. Players need a Vulkan-capable graphics driver.
+
+Shaders are compiled ahead of time with `glslc -O --target-env=vulkan1.0` and
+embedded as aligned SPIR-V arrays. The engine keeps its existing Vulkan 1.0
+API compatibility floor. Installing current headers does not by itself require
+players to have a Vulkan 1.4 GPU.
+
+See [Vulkan resource and synchronization design](docs/VULKAN_RENDERER.md).
 
 ## Quick Start Guide
 
-This guide will get you from a fresh Linux system to a working build in under 10 minutes. Each step links to detailed documentation if you want to understand what's happening under the hood.
-
-### Step 1: Install Prerequisites
-
 ```bash
-# Install core toolchain (Arch Linux - adjust for your distro)
-sudo pacman -S clang lld llvm mingw-w64-binutils cmake ninja git wget xxd vulkan-tools shaderc
-
-# Install Rust toolchain for xwin
-sudo pacman -S rust cargo
-cargo install xwin
+./build.sh --                       # Release executable; deploy to /mnt/T7G
+./build.sh debug                    # Debug executable; deploy to /mnt/T7G
+./build.sh super                    # Release with LTO; deploy to /mnt/T7G
+./build.sh clean                    # Remove project build artifacts
 ```
 
-**What this does**: Installs the Clang/LLVM cross-compiler, build tools, and xwin for downloading the Windows SDK.  
-**More info**: [Prerequisites](#prerequisites)
+### Build Script Usage
 
-### Step 2: Download Windows SDK
+Optional environment settings:
 
-```bash
-# Install Windows SDK via xwin (~500 MB download)
-sudo mkdir -p /opt/winsdk
-sudo chown $USER:$USER /opt/winsdk
-xwin --accept-license splat --output /opt/winsdk
-```
+| Setting | Purpose |
+| --- | --- |
+| `V64TNG_DEPS_CACHE` | Dependency source/tool cache root. |
+| `WINSDK_BASE` | Microsoft SDK/CRT installation root. |
+| `MSVC_INCLUDE` | MSVC C++ include directory; defaults to the detected CRT includes. |
+| `V64TNG_MSVC_INCLUDE` | Override the separate `/opt/msvc/include` selection on existing hosts. |
+| `WINDOWS_LIBS_DIR` | Installation prefix for the five Windows static libraries. |
+| `WINDOWS_LIBS_BUILD_DIR` | Source/build directory used by the static-library builder. |
+| `VULKAN_DIR` | Vulkan headers and Windows import-library root (`Include/`, `Lib/`). |
+| `GLSLC` | Native Linux shader compiler executable. |
+| `V64TNG_JOBS` | Number of parallel compiler jobs. |
 
-**What this does**: Downloads official Microsoft Windows SDK headers and libraries needed for Windows API calls.  
-**More info**: [Windows SDK Acquisition](#windows-sdk-acquisition)
+Every successful link is followed by deployment to the fixed `/mnt/T7G`
+directory. Deployment is always enabled; there is no environment switch or
+destination override. The executable also remains in the checkout. The script
+creates the destination if needed and uses `sudo` when destination permissions
+require it. It copies only the selected output and leaves other executables intact.
+Deployment failure prints a red error in color-capable terminals, records details
+in `build/deploy.log` and `build.log`, and exits with a nonzero status before the
+Build Complete banner. The `clean` command only removes local build artifacts.
 
-### Step 3: Build Third-Party Libraries
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/v64tng.git
-cd v64tng
-
-# Build all required libraries (takes ~5 minutes)
-./build_windows_libs.sh all
-```
-
-**What this does**: Compiles zlib, libpng, and libADLMIDI as Windows static libraries.  
-**More info**: [Third-Party Library Builder](#third-party-library-builder)
-
-### Step 4: Install Vulkan SDK
-
-Copy the Windows SDK 1.4.363.0 headers and `vulkan-1.lib`, plus Linux `glslc`, as described in
-[Vulkan SDK Installation](#vulkan-sdk-installation).
-
-**What this does**: Supplies current Windows Vulkan headers and the loader import library to the cross-build.
-**More info**: [Vulkan SDK Installation](#vulkan-sdk-installation)
-
-### Step 5: Build the Engine
-
-```bash
-# Build release version
-./build.sh
-
-# Or build debug version with symbols
-./build.sh debug
-
-# Validate locally without changing the game directory
-V64TNG_NO_DEPLOY=1 ./build.sh
-```
-
-**What this does**: Compiles all source files, links libraries, embeds shaders, and produces `v64tng.exe`.  
-**Build time**: 3-5 seconds on modern hardware (incremental builds ~0.5s)  
-**More info**: [Build Process Walkthrough](#build-process-walkthrough)
-
-### Step 6: Deploy and Test
-
-```bash
-# Copy to your 7th Guest installation directory
-# (Adjust path to your game installation)
-sudo cp v64tng.exe /mnt/T7G/
-
-# Test the executable
-cd /mnt/T7G
-./v64tng.exe !
-```
-
-**What this does**: Copies the executable to your game directory and launches it.
-
-### Advanced Topics
-
-For deeper understanding of the build system internals:
-
-- **Detailed build process**: [Build Process Walkthrough](#build-process-walkthrough)
-- **Library compilation details**: [Library Build Processes](#library-build-processes)
-- **Compiler flag explanations**: [Compiler Flags Construction](#5-compiler-flags-construction)
-- **Parallel compilation strategy**: [Parallel Compilation](#6-parallel-compilation)
-- **SDK detection logic**: [Windows SDK Setup](#1-windows-sdk-setup)
-
-### Build System Architecture
-
-The build system demonstrates enterprise-grade practices:
-
-- **Modularity**: Independent build phases (compilation, linking, shader processing)
-- **Reproducibility**: Identical inputs produce identical outputs across machines
-- **Scalability**: Efficiently handles hundreds of source files
-- **Zero-Configuration**: Automatic detection and validation of all dependencies
-- **Maintainability**: Clear separation of concerns with extensive inline documentation
-
-These techniques mirror those used in AAA game studios and major software companies for maintaining rapid iteration on large codebases.
+Run the Windows executable on Windows. `v64tng.exe --help` lists the asset tools;
+`v64tng.exe !` detaches its console and starts the Win32/Vulkan game in the same
+process. Normal CLI commands retain standard console behavior.

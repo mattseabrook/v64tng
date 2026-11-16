@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Lossless indexed-PNG front end for grooviev1 (requires Pillow)."""
+"""Lossless indexed-PNG front end for grooviev1 (Pillow is required for extract/encode)."""
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
 import shutil
-from PIL import Image
 
 
 def run(tool, *args):
@@ -15,6 +15,8 @@ def run(tool, *args):
 
 
 def extract(tool, source, output):
+    from PIL import Image
+
     output.mkdir(parents=True, exist_ok=False)
     raw = output / 'raw'
     run(tool, 'extract-indexed', source, raw)
@@ -44,6 +46,8 @@ def extract(tool, source, output):
 
 
 def encode(tool, source, output):
+    from PIL import Image
+
     meta = json.loads((source / 'sequence.json').read_text())
     if meta['format'] != 'grooviev1.indexed-png' or meta['version'] != 1:
         raise ValueError('Unsupported sequence metadata')
@@ -116,15 +120,18 @@ def compare(tool, source, output, report):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--tool', type=Path, default=Path(__file__).parent / 'build' / 'grooviev1-native')
+    parser = argparse.ArgumentParser(description=__doc__, add_help=False)
+    parser.add_argument("-h", "--h", "-help", "--help", action="help", help="show this help message and exit")
+    parser.add_argument('-t', '--t', '-tool', '--tool', dest='tool', type=Path, default=Path(__file__).parent / 'build' / ('grooviev1.exe' if os.name == 'nt' else 'grooviev1-native'),
+                        help='grooviev1 executable; defaults to the native build for this OS')
     sub = parser.add_subparsers(dest='command', required=True)
     for name in ('extract', 'encode', 'compare'):
-        command = sub.add_parser(name)
+        command = sub.add_parser(name, add_help=False)
+        command.add_argument("-h", "--h", "-help", "--help", action="help", help="show this help message and exit")
         command.add_argument('source', type=Path)
         command.add_argument('output', type=Path)
         if name == 'compare':
-            command.add_argument('--report', type=Path, required=True)
+            command.add_argument('-r', '--r', '-report', '--report', dest='report', type=Path, required=True)
     args = parser.parse_args()
     if args.command == 'compare':
         compare(args.tool, args.source, args.output, args.report)

@@ -4,6 +4,7 @@
 # Requires: clang, lld, mingw-w64-binutils (for windres only)
 
 set -e  # Exit on any error
+cd "$(dirname "${BASH_SOURCE[0]}")"
 
 # --- Color & Emoji Support ------------------------------------------------
 # Check if terminal supports colors
@@ -54,9 +55,9 @@ fi
 TARGET_TRIPLE="x86_64-pc-windows-msvc"
 BUILD_DIR="build"
 TARGET_DIR="/mnt/T7G"
-WINSDK_BASE="/opt/winsdk"
-VULKAN_DIR="/opt/VulkanSDK/1.4.363.0"
-GLSLC="$VULKAN_DIR/linux/bin/glslc"
+WINSDK_BASE="${WINSDK_BASE:-/opt/winsdk}"
+VULKAN_DIR="${VULKAN_DIR:-}"
+GLSLC="${GLSLC:-}"
 
 # Third-party library paths (these will be built for Windows target)
 ZLIB_DIR="/opt/windows-libs/zlib"
@@ -66,7 +67,7 @@ OGG_DIR="/opt/windows-libs/libogg"
 VORBIS_DIR="/opt/windows-libs/libvorbis"
 
 # Parallel compilation settings
-MAX_JOBS=$(nproc)
+MAX_JOBS=${V64TNG_JOBS:-$(nproc)}
 COMPILE_JOBS=$MAX_JOBS
 
 # Build logging
@@ -201,170 +202,24 @@ update_build_version() {
 
 # Setup Windows SDK
 setup_winsdk() {
-    banner "${EMOJI_WRENCH} Setting up Windows SDK"
-    
-    if [[ ! -d "$WINSDK_BASE" ]]; then
-        echo "Windows SDK not found at $WINSDK_BASE"
-        echo ""
-        echo "Installing Windows SDK using xwin..."
-        
-        # Check if xwin is installed
-        if ! command -v xwin &> /dev/null; then
-            echo "Installing xwin..."
-            cargo install xwin
-        fi
-        
-        # Create the directory and install SDK
-        sudo mkdir -p "$WINSDK_BASE"
-        sudo chown $USER:$USER "$WINSDK_BASE"
-        
-        xwin --accept-license splat --output "$WINSDK_BASE"
-        
-        if [[ $? -ne 0 ]]; then
-            echo "ERROR: Failed to install Windows SDK with xwin"
+    export DETECTED_SDK_INCLUDE="$WINSDK_BASE/sdk/include"
+    export DETECTED_SDK_LIB="$WINSDK_BASE/sdk/lib"
+    export DETECTED_CRT_INCLUDE="$WINSDK_BASE/crt/include"
+    export DETECTED_CRT_LIB="$WINSDK_BASE/crt/lib"
+    export DETECTED_SDK_VERSION=""
+    if [[ ! -d "$DETECTED_SDK_INCLUDE/um" ]]; then
+        DETECTED_SDK_VERSION=$(find "$DETECTED_SDK_INCLUDE" -mindepth 1 -maxdepth 1 -type d -name '10.*' -printf '%f\n' | sort -V | tail -1)
+        if [[ -z "$DETECTED_SDK_VERSION" ]]; then
+            echo "ERROR: Windows SDK headers are missing from $DETECTED_SDK_INCLUDE" >&2
             exit 1
         fi
     fi
-    
-    # Verify the SDK structure and detect actual layout
-    echo "Detecting Windows SDK structure..."
-    echo "Contents of $WINSDK_BASE:"
-    ls -la "$WINSDK_BASE/"
-    
-    # xwin creates different structure - let's detect it
-    local sdk_include_base=""
-    local sdk_lib_base=""
-    local ucrt_include_base=""
-    local ucrt_lib_base=""
-    
-    # Look for SDK includes
-    if [[ -d "$WINSDK_BASE/sdk/include" ]]; then
-        sdk_include_base="$WINSDK_BASE/sdk/include"
-    elif [[ -d "$WINSDK_BASE/Include" ]]; then
-        sdk_include_base="$WINSDK_BASE/Include"
+    export DETECTED_LIB_ARCH=x86_64
+    if [[ ! -d "$DETECTED_CRT_LIB/$DETECTED_LIB_ARCH" ]]; then DETECTED_LIB_ARCH=x64; fi
+    if [[ ! -d "$DETECTED_SDK_LIB/um/$DETECTED_LIB_ARCH" && -n "$DETECTED_SDK_VERSION" ]]; then
+        DETECTED_SDK_LIB="$DETECTED_SDK_LIB/$DETECTED_SDK_VERSION"
     fi
-    
-    # Look for SDK libs  
-    if [[ -d "$WINSDK_BASE/sdk/lib" ]]; then
-        sdk_lib_base="$WINSDK_BASE/sdk/lib"
-    elif [[ -d "$WINSDK_BASE/Lib" ]]; then
-        sdk_lib_base="$WINSDK_BASE/Lib"
-    fi
-    
-    # Look for CRT includes
-    if [[ -d "$WINSDK_BASE/crt/include" ]]; then
-        ucrt_include_base="$WINSDK_BASE/crt/include"
-    fi
-    
-    # Look for CRT libs
-    if [[ -d "$WINSDK_BASE/crt/lib" ]]; then
-        ucrt_lib_base="$WINSDK_BASE/crt/lib"
-    fi
-    
-    echo "Detected paths:"
-    echo "  SDK includes: $sdk_include_base"
-    echo "  SDK libs: $sdk_lib_base"  
-    echo "  CRT includes: $ucrt_include_base"
-    echo "  CRT libs: $ucrt_lib_base"
-    
-    # Find SDK version
-    local actual_sdk_version=""
-    if [[ -d "$sdk_include_base" ]]; then
-        # Look for version directories
-        for version_dir in "$sdk_include_base"/*/; do
-            if [[ -d "$version_dir" ]]; then
-                actual_sdk_version=$(basename "$version_dir")
-                echo "Found SDK version: $actual_sdk_version"
-                break
-            fi
-        done
-    fi
-    
-    # Update global variables with detected paths
-    if [[ -n "$actual_sdk_version" ]]; then
-        export DETECTED_SDK_VERSION="$actual_sdk_version"
-    else
-        export DETECTED_SDK_VERSION="10.0.26100"  # Fallback to known version
-    fi
-    
-    # Export detected paths
-    export DETECTED_SDK_INCLUDE="$sdk_include_base"
-    export DETECTED_SDK_LIB="$sdk_lib_base"
-    export DETECTED_CRT_INCLUDE="$ucrt_include_base"
-    export DETECTED_CRT_LIB="$ucrt_lib_base"
-    
-    # Verify critical paths exist with detected structure
-    local critical_paths=()
-    
-    # For includes, try both versioned and non-versioned paths
-    if [[ -n "$sdk_include_base" ]]; then
-        if [[ -n "$DETECTED_SDK_VERSION" && -d "$sdk_include_base/$DETECTED_SDK_VERSION" ]]; then
-            # Traditional Windows SDK structure
-            critical_paths+=(
-                "$sdk_include_base/$DETECTED_SDK_VERSION/um"
-                "$sdk_include_base/$DETECTED_SDK_VERSION/shared"
-            )
-        else
-            # xwin structure (flat)
-            critical_paths+=(
-                "$sdk_include_base/um"
-                "$sdk_include_base/shared"
-                "$sdk_include_base/ucrt"
-            )
-        fi
-    fi
-    
-    if [[ -n "$ucrt_include_base" ]]; then
-        critical_paths+=("$ucrt_include_base")
-    fi
-    
-    # For libraries, detect xwin vs traditional structure
-    if [[ -n "$sdk_lib_base" ]]; then
-        if [[ -d "$sdk_lib_base/um/x86_64" ]]; then
-            # xwin structure
-            critical_paths+=(
-                "$sdk_lib_base/um/x86_64"
-                "$sdk_lib_base/ucrt/x86_64"
-            )
-        elif [[ -n "$DETECTED_SDK_VERSION" && -d "$sdk_lib_base/$DETECTED_SDK_VERSION/um/x64" ]]; then
-            # Traditional structure
-            critical_paths+=("$sdk_lib_base/$DETECTED_SDK_VERSION/um/x64")
-        fi
-    fi
-    
-    if [[ -n "$ucrt_lib_base" ]]; then
-        if [[ -d "$ucrt_lib_base/x86_64" ]]; then
-            # xwin structure
-            critical_paths+=("$ucrt_lib_base/x86_64")
-        elif [[ -d "$ucrt_lib_base/x64" ]]; then
-            # Traditional structure
-            critical_paths+=("$ucrt_lib_base/x64")
-        fi
-    fi
-    
-    echo "Verifying critical paths..."
-    for path in "${critical_paths[@]}"; do
-        if [[ ! -d "$path" ]]; then
-            echo -e "${COLOR_RED}${EMOJI_FAILED} ERROR: Critical SDK path missing: $path${COLOR_RESET}"
-            exit 1
-        else
-            echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Found: $path${COLOR_RESET}"
-        fi
-    done
-    
-    # Detect library architecture
-    local detected_lib_arch=""
-    if [[ -d "$ucrt_lib_base/x86_64" ]] || [[ -d "$sdk_lib_base/um/x86_64" ]]; then
-        detected_lib_arch="x86_64"
-    elif [[ -d "$ucrt_lib_base/x64" ]] || [[ -d "$sdk_lib_base/$DETECTED_SDK_VERSION/um/x64" ]]; then
-        detected_lib_arch="x64"
-    fi
-    
-    export DETECTED_LIB_ARCH="$detected_lib_arch"
-    
-    echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} SDK version: $DETECTED_SDK_VERSION${COLOR_RESET}"
-    echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Library arch: $detected_lib_arch${COLOR_RESET}"
-    echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} All critical paths verified${COLOR_RESET}"
+    echo "Windows SDK: $WINSDK_BASE (${DETECTED_SDK_VERSION:-flat xwin layout}, $DETECTED_LIB_ARCH)"
 }
 
 #===============================================================================
@@ -390,7 +245,15 @@ clean() {
 # Initialize build log
 init_log
 
-# Call setups
+if [[ "${1:-}" == "clean" ]]; then
+    clean
+    exit 0
+fi
+
+# Bootstrap before SDK discovery or compiling any project source.
+mkdir -p "$BUILD_DIR"
+bash scripts/bootstrap_build.sh "$BUILD_DIR/dependencies.env"
+source "$BUILD_DIR/dependencies.env"
 setup_winsdk
 
 if [[ ! -f "$VULKAN_DIR/Include/vulkan/vulkan_core.h" ||
@@ -493,13 +356,27 @@ compile_vulkan_shader() {
     
     if [[ "$regen" == true ]]; then
         echo -e "${COLOR_CYAN}${EMOJI_WRENCH} Compiling Vulkan shader: $shader_name...${COLOR_RESET}"
-        "$GLSLC" -fshader-stage=compute "$shader_src" -o "$spv_out"
-        if command -v xxd >/dev/null 2>&1; then
-            xxd -i "$spv_out" > "$header_out"
-        else
-            echo -e "${COLOR_RED}${EMOJI_FAILED} ERROR: xxd not found (often provided by vim-common). Please install it.${COLOR_RESET}"
-            exit 1
-        fi
+        "$GLSLC" -O --target-env=vulkan1.0 -fshader-stage=compute "$shader_src" -o "$spv_out"
+        # Embed the compiler's bytes verbatim. Keep the existing symbols,
+        # unsigned-byte representation and SPIR-V's four-byte alignment.
+        local symbol byte_count
+        symbol=$(printf '%s' "$spv_out" | sed 's/[^a-zA-Z0-9_]/_/g')
+        byte_count=$(wc -c < "$spv_out")
+        (
+            set -o pipefail
+            printf 'alignas(4) const unsigned char %s[] = {\n' "$symbol"
+            od -An -v -t x1 "$spv_out" | awk '{
+                for (i = 1; i <= NF; ++i) {
+                    if (column == 0) printf "    ";
+                    printf "0x%s,", $i;
+                    column++;
+                    if (column == 12) { printf "\n"; column = 0; }
+                    else printf " ";
+                }
+            } END { if (column != 0) printf "\n"; }'
+            printf '};\nconst unsigned int %s_len = %s;\n' "$symbol" "$byte_count"
+        ) > "${header_out}.tmp"
+        mv "${header_out}.tmp" "$header_out"
         echo -e "${COLOR_DIM}  Generated: $header_out${COLOR_RESET}"
     else
         echo -e "${COLOR_DIM}${EMOJI_CACHED} Vulkan shader cached: $shader_name${COLOR_RESET}"
@@ -593,7 +470,7 @@ for src in "${SOURCES[@]}"; do
 done
 
 SYSTEM_INCLUDES=(
-    "-imsvc/opt/msvc/include"
+    "-imsvc$MSVC_INCLUDE"
 )
 
 # Add CRT include (for stdlib.h, etc.)
@@ -906,7 +783,7 @@ COMPILER_ARGS=(
 
 # Linker arguments (passed after /link)
 LINKER_ARGS=(
-"/subsystem:windows"
+"/subsystem:console"
     "/defaultlib:libcmt"
     "/defaultlib:libucrt"
     "/nodefaultlib:msvcrt.lib"
@@ -943,6 +820,11 @@ LINKER_ARGS=(
     "avrt.lib"
     "comdlg32.lib"
     "comctl32.lib"
+    # Native HTTPS, SHA-256, private staging ACLs and executable version data.
+    "winhttp.lib"
+    "bcrypt.lib"
+    "advapi32.lib"
+    "version.lib"
 )
 
 if [[ "$BUILD_TYPE" == "Debug" ]]; then
@@ -960,7 +842,7 @@ LINK_LOG="$BUILD_DIR/link.log"
 
 echo -e "${COLOR_MAGENTA}Linking ${OUTPUT_EXE}...${COLOR_RESET}"
 echo -e "${COLOR_DIM}Linker:   clang-cl${COLOR_RESET}"
-echo -e "${COLOR_DIM}Subsystem: Windows${COLOR_RESET}"
+echo -e "${COLOR_DIM}Subsystem: Console${COLOR_RESET}"
 if [[ "$BUILD_TYPE" == "Debug" ]]; then
     echo -e "${COLOR_DIM}Debug:    Full symbols${COLOR_RESET}"
 elif [[ "$BUILD_TYPE" == "SuperRelease" ]]; then
@@ -1000,17 +882,32 @@ fi
 # Deployment
 #===============================================================================
 
-if [[ "${V64TNG_NO_DEPLOY:-0}" != "1" ]]; then
-    banner "${EMOJI_ROCKET} Deployment"
+banner "${EMOJI_ROCKET} Deployment"
 
-    mkdir -p "$TARGET_DIR"
-    sudo rm -f "$TARGET_DIR"/v64tng*.exe "$TARGET_DIR"/v64tng*.pdb
-    sudo cp "$OUTPUT_EXE" "$TARGET_DIR/"
-
-    echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Deployed to $TARGET_DIR${COLOR_RESET}"
-else
-    echo -e "${COLOR_DIM}Deployment skipped (V64TNG_NO_DEPLOY=1)${COLOR_RESET}"
+DEPLOY_LOG="$BUILD_DIR/deploy.log"
+DEPLOY_COMMAND=()
+# Keep normal user permissions where possible; retain the original privileged
+# deployment behavior when the fixed destination needs it.
+if [[ ! -d "$TARGET_DIR" || ! -w "$TARGET_DIR" ]] ||
+   [[ -e "$TARGET_DIR/$OUTPUT_EXE" && ! -w "$TARGET_DIR/$OUTPUT_EXE" ]]; then
+    DEPLOY_COMMAND=(sudo)
 fi
+
+echo -e "${COLOR_DIM}Installing $OUTPUT_EXE to $TARGET_DIR/$OUTPUT_EXE${COLOR_RESET}"
+if ! "${DEPLOY_COMMAND[@]}" install -D -m 0755 -- "$OUTPUT_EXE" "$TARGET_DIR/$OUTPUT_EXE" 2>"$DEPLOY_LOG"; then
+    {
+        printf '%b%s ERROR: Deployment failed: %s -> %s/%s\n' "$COLOR_RED" "$EMOJI_FAILED" "$OUTPUT_EXE" "$TARGET_DIR" "$OUTPUT_EXE"
+        cat "$DEPLOY_LOG" || true
+        printf 'Build failed: executable linked but deployment did not complete. See %s and %s.%b\n' "$DEPLOY_LOG" "$BUILD_LOG" "$COLOR_RESET"
+    } >&2
+    {
+        printf '%s\n' "ERROR: Deployment failed: $OUTPUT_EXE -> $TARGET_DIR/$OUTPUT_EXE"
+        cat "$DEPLOY_LOG"
+    } >> "$BUILD_LOG" || true
+    exit 1
+fi
+
+echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Deployed to $TARGET_DIR/$OUTPUT_EXE${COLOR_RESET}"
 
 #===============================================================================
 # Build Complete

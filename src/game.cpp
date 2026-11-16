@@ -35,6 +35,7 @@
 #include "console.h"
 
 #ifdef _WIN32
+#include "update.h"
 #endif
 
 // Global game state
@@ -2344,6 +2345,9 @@ void init()
 
 		state.previous_room = state.current_room;
 		state.ui.enabled = true;
+	#ifdef _WIN32
+		completeUpdateStartup();
+	#endif
 
 		bool running = true;
 		while (running)

@@ -1,949 +1,156 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Build only the Windows static libraries actually linked by v64tng.
+set -euo pipefail
 
-# Build Windows static libraries using clang cross-compilation
-# This builds the static third-party libraries for the Windows target on Linux.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CACHE_ROOT="${V64TNG_DEPS_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/v64tng}"
+INSTALL_PREFIX="${WINDOWS_LIBS_DIR:-/opt/windows-libs}"
+WINSDK_BASE="${WINSDK_BASE:-/opt/winsdk}"
+BUILD_DIR="${WINDOWS_LIBS_BUILD_DIR:-$CACHE_ROOT/windows-libs-build}"
+JOBS="${V64TNG_JOBS:-$(nproc)}"
 
-set -e
+source "$SCRIPT_DIR/scripts/dependency_versions.sh"
 
-TARGET_TRIPLE="x86_64-pc-windows-msvc"
-INSTALL_PREFIX="/opt/windows-libs"
-WINSDK_BASE="/opt/winsdk"
-WINSDK_VERSION="10.0.22621.0"
-BUILD_DIR="/tmp/windows-libs-build"
-LIBOGG_VERSION="1.3.6"
-LIBOGG_XZ_SHA256="5c8253428e181840cd20d41f3ca16557a9cc04bad4a3d04cce84808677fa1061"
-LIBVORBIS_VERSION="1.3.7"
-LIBVORBIS_XZ_SHA256="b33cc4934322bcbf6efcbacf49e3ca01aadbea4114ec9589d1b1e9d20f72954b"
+# xwin places the MSVC C/C++ headers in crt/include. Existing installations may
+# also have a separate, newer MSVC include tree.
+if [[ -z "${MSVC_INCLUDE:-}" ]]; then
+    MSVC_INCLUDE="$WINSDK_BASE/crt/include"
+    if [[ -d /opt/msvc/include && "$WINSDK_BASE" == /opt/winsdk ]]; then
+        MSVC_INCLUDE="${V64TNG_MSVC_INCLUDE:-/opt/msvc/include}"
+    fi
+fi
+SDK_INCLUDE="$WINSDK_BASE/sdk/include"
+SDK_LIB="$WINSDK_BASE/sdk/lib"
+CRT_INCLUDE="$WINSDK_BASE/crt/include"
+CRT_LIB="$WINSDK_BASE/crt/lib"
+SDK_VERSION=""
+if [[ ! -d "$SDK_INCLUDE/um" ]]; then
+    SDK_VERSION="$(find "$SDK_INCLUDE" -mindepth 1 -maxdepth 1 -type d -name '10.*' -printf '%f\n' | sort -V | tail -1)"
+    SDK_INCLUDE="$SDK_INCLUDE/$SDK_VERSION"
+fi
+LIB_ARCH=x86_64
+if [[ ! -d "$CRT_LIB/$LIB_ARCH" ]]; then LIB_ARCH=x64; fi
+if [[ ! -d "$SDK_LIB/um/$LIB_ARCH" ]]; then SDK_LIB="$SDK_LIB/$SDK_VERSION"; fi
+mkdir -p "$BUILD_DIR" "$INSTALL_PREFIX"
 
-# Ensure we have the directories
-mkdir -p "$INSTALL_PREFIX"
-mkdir -p "$BUILD_DIR"
-
-# Common CMake toolchain settings
-create_toolchain_file() {
-    local sdk_include="${DETECTED_SDK_INCLUDE:-$WINSDK_BASE/sdk/include}"
-    local sdk_lib="${DETECTED_SDK_LIB:-$WINSDK_BASE/sdk/lib}"
-    local crt_include="${DETECTED_CRT_INCLUDE:-$WINSDK_BASE/crt/include}"
-    local crt_lib="${DETECTED_CRT_LIB:-$WINSDK_BASE/crt/lib}"
-    local sdk_version="${DETECTED_SDK_VERSION:-$WINSDK_VERSION}"
-    
-    # Build the actual include and lib flags as literal strings for CMake
-    local cmake_include_flags=""
-    [[ -d "$crt_include" ]] && cmake_include_flags+="-imsvc ${crt_include} "
-    [[ -d "$sdk_include/$sdk_version/um" ]] && cmake_include_flags+="-imsvc ${sdk_include}/${sdk_version}/um "
-    [[ -d "$sdk_include/$sdk_version/shared" ]] && cmake_include_flags+="-imsvc ${sdk_include}/${sdk_version}/shared "
-    [[ -d "$sdk_include/$sdk_version/ucrt" ]] && cmake_include_flags+="-imsvc ${sdk_include}/${sdk_version}/ucrt "
-    
-    local cmake_lib_flags=""
-    [[ -d "$crt_lib/x86_64" ]] && cmake_lib_flags+="-libpath:${crt_lib}/x86_64 "
-    [[ -d "$sdk_lib/um/x86_64" ]] && cmake_lib_flags+="-libpath:${sdk_lib}/um/x86_64 "
-    [[ -d "$sdk_lib/ucrt/x86_64" ]] && cmake_lib_flags+="-libpath:${sdk_lib}/ucrt/x86_64 "
-    
-    local cmake_windows_libs="${cmake_lib_flags}"
-    [[ -f "$sdk_lib/um/x86_64/kernel32.lib" ]] && cmake_windows_libs+="${sdk_lib}/um/x86_64/kernel32.lib "
-    [[ -f "$sdk_lib/um/x86_64/user32.lib" ]] && cmake_windows_libs+="${sdk_lib}/um/x86_64/user32.lib "
-    [[ -f "$crt_lib/x86_64/libcmt.lib" ]] && cmake_windows_libs+="${crt_lib}/x86_64/libcmt.lib "
-    [[ -f "$sdk_lib/ucrt/x86_64/libucrt.lib" ]] && cmake_windows_libs+="${sdk_lib}/ucrt/x86_64/libucrt.lib "
-    
-    cat > windows-cross.cmake << EOF
+TOOLCHAIN="$BUILD_DIR/windows-cross.cmake"
+cat > "$TOOLCHAIN" <<EOF
 set(CMAKE_SYSTEM_NAME Windows)
 set(CMAKE_SYSTEM_PROCESSOR AMD64)
-
-# Make CMAKE_MSVC_RUNTIME_LIBRARY authoritative for clang-cl. Without CMP0091,
-# CMake's legacy flags append /MD after our /MT setting and the resulting static
-# archives retain imports from the dynamic CRT.
 set(CMAKE_POLICY_DEFAULT_CMP0091 NEW)
-
 set(CMAKE_C_COMPILER clang-cl)
 set(CMAKE_CXX_COMPILER clang-cl)
-
 set(CMAKE_C_COMPILER_TARGET x86_64-pc-windows-msvc)
 set(CMAKE_CXX_COMPILER_TARGET x86_64-pc-windows-msvc)
-
-set(CMAKE_C_COMPILER_WORKS 1)
-set(CMAKE_CXX_COMPILER_WORKS 1)
-set(CMAKE_DETERMINE_C_ABI_COMPILED 1)
-set(CMAKE_DETERMINE_CXX_ABI_COMPILED 1)
-
 set(CMAKE_AR llvm-lib)
-set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> /OUT:<TARGET> <OBJECTS>")
-set(CMAKE_C_ARCHIVE_FINISH "")
-set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> /OUT:<TARGET> <OBJECTS>")
-set(CMAKE_CXX_ARCHIVE_FINISH "")
-
-set(CMAKE_C_FLAGS_INIT "-fuse-ld=lld-link $cmake_include_flags /MT -D_WIN32 -D_WIN64 -fms-compatibility -fms-compatibility-version=19.37")
-set(CMAKE_CXX_FLAGS_INIT "-fuse-ld=lld-link $cmake_include_flags /MT -D_WIN32 -D_WIN64 -fms-compatibility -fms-compatibility-version=19.37")
-
-set(CMAKE_C_FLAGS_RELEASE_INIT "-O2 -DNDEBUG -D_MT")
-set(CMAKE_CXX_FLAGS_RELEASE_INIT "-O2 -DNDEBUG -D_MT")
-set(CMAKE_C_FLAGS_DEBUG_INIT "-O0 -D_MT")
-set(CMAKE_CXX_FLAGS_DEBUG_INIT "-O0 -D_MT")
-
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
-set(CMAKE_C_FLAGS_DEBUG "")
-set(CMAKE_CXX_FLAGS_DEBUG "")
-
-set(CMAKE_EXE_LINKER_FLAGS_INIT "$cmake_windows_libs -DEFAULTLIB:libcmt.lib -NODEFAULTLIB:msvcrt.lib")
-set(CMAKE_SHARED_LINKER_FLAGS_INIT "$cmake_windows_libs -DEFAULTLIB:libcmt.lib -NODEFAULTLIB:msvcrt.lib")
-set(CMAKE_MODULE_LINKER_FLAGS_INIT "$cmake_windows_libs -DEFAULTLIB:libcmt.lib -NODEFAULTLIB:msvcrt.lib")
-
-set(CMAKE_C_STANDARD_LIBRARIES "$cmake_windows_libs")
-set(CMAKE_CXX_STANDARD_LIBRARIES "$cmake_windows_libs")
-
+set(CMAKE_LINKER lld-link)
+set(CMAKE_RC_COMPILER x86_64-w64-mingw32-windres)
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreaded)
+set(CMAKE_C_FLAGS_INIT "-imsvc$MSVC_INCLUDE -imsvc$CRT_INCLUDE -imsvc$SDK_INCLUDE/ucrt -imsvc$SDK_INCLUDE/um -imsvc$SDK_INCLUDE/shared /D_CRT_SECURE_NO_WARNINGS")
+set(CMAKE_CXX_FLAGS_INIT "-imsvc$MSVC_INCLUDE -imsvc$CRT_INCLUDE -imsvc$SDK_INCLUDE/ucrt -imsvc$SDK_INCLUDE/um -imsvc$SDK_INCLUDE/shared /D_CRT_SECURE_NO_WARNINGS")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "/libpath:$CRT_LIB/$LIB_ARCH /libpath:$SDK_LIB/ucrt/$LIB_ARCH /libpath:$SDK_LIB/um/$LIB_ARCH")
 set(CMAKE_FIND_ROOT_PATH "$WINSDK_BASE" "$INSTALL_PREFIX")
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 EOF
+
+fetch_source() {
+    local directory="$1" archive="$2" url="$3"
+    if [[ ! -d "$BUILD_DIR/$directory" ]]; then
+        if [[ ! -f "$BUILD_DIR/$archive" ]]; then
+            curl --fail --location --retry 3 "$url" -o "$BUILD_DIR/$archive.partial"
+            mv "$BUILD_DIR/$archive.partial" "$BUILD_DIR/$archive"
+        fi
+        tar -xf "$BUILD_DIR/$archive" -C "$BUILD_DIR"
+    fi
+}
+
+configure() {
+    local source="$1" build="$2" prefix="$3"
+    shift 3
+    cmake -S "$source" -B "$build" -G Ninja \
+        -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.15 \
+        -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" \
+        -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded \
+        -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF "$@"
+}
+
+record_version() {
+    printf '%s\n' "$2" > "$INSTALL_PREFIX/$1/.v64tng-version"
 }
 
 build_zlib() {
-    echo "=== Building zlib ==="
-    
-    cd "$BUILD_DIR"
-    
-    if [[ ! -d "zlib-1.3.1" ]]; then
-        wget https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
-        tar -xzf zlib-1.3.1.tar.gz
-    fi
-    
-    cd zlib-1.3.1
-    
-    # Clean previous build
-    rm -rf build_windows
-    mkdir build_windows
-    cd build_windows
-    
-    # Set environment variables for clang-cl to find headers
-    local sdk_include="${DETECTED_SDK_INCLUDE:-$WINSDK_BASE/sdk/include}"
-    local sdk_lib="${DETECTED_SDK_LIB:-$WINSDK_BASE/sdk/lib}"
-    local crt_include="${DETECTED_CRT_INCLUDE:-$WINSDK_BASE/crt/include}"
-    local crt_lib="${DETECTED_CRT_LIB:-$WINSDK_BASE/crt/lib}"
-    local sdk_version="${DETECTED_SDK_VERSION:-$WINSDK_VERSION}"
-    
-    # Build include path for INCLUDE environment variable
-    local include_paths=""
-    [[ -d "$crt_include" ]] && include_paths+="$crt_include;"
-    [[ -d "$sdk_include/$sdk_version/um" ]] && include_paths+="$sdk_include/$sdk_version/um;"
-    [[ -d "$sdk_include/$sdk_version/shared" ]] && include_paths+="$sdk_include/$sdk_version/shared;"
-    [[ -d "$sdk_include/$sdk_version/ucrt" ]] && include_paths+="$sdk_include/$sdk_version/ucrt;"
-    
-    # Build lib path for LIB environment variable
-    local lib_paths=""
-    [[ -d "$crt_lib/x86_64" ]] && lib_paths+="$crt_lib/x86_64;"
-    [[ -d "$sdk_lib/um/x86_64" ]] && lib_paths+="$sdk_lib/um/x86_64;"
-    [[ -d "$sdk_lib/ucrt/x86_64" ]] && lib_paths+="$sdk_lib/ucrt/x86_64;"
-    
-    export INCLUDE="$include_paths"
-    export LIB="$lib_paths"
-    
-    echo "Set INCLUDE=$INCLUDE"
-    echo "Set LIB=$LIB"
-    
-    create_toolchain_file
-    
-    cmake .. \
-        -DCMAKE_TOOLCHAIN_FILE=windows-cross.cmake \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX/zlib" \
-        -DBUILD_SHARED_LIBS=OFF \
-        -DZLIB_BUILD_EXAMPLES=OFF \
-        -DCMAKE_POSITION_INDEPENDENT_CODE=OFF \
-        -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded \
-        -DZLIB_WINAPI=OFF \
-        -DHAVE_SYS_TYPES_H=OFF \
-        -DHAVE_UNISTD_H=OFF \
-        -DHAVE_STDARG_H=ON \
-        -DCMAKE_C_FLAGS="-DZLIB_STATIC -D_CRT_DECLARE_NONSTDC_NAMES=0 -DWIN32_LEAN_AND_MEAN"
-    
-    # Only build the static library target to avoid shared library issues
-    make zlibstatic -j$(nproc)
-    
-    # Install just the static library and headers manually
-    mkdir -p "$INSTALL_PREFIX/zlib/lib"
-    mkdir -p "$INSTALL_PREFIX/zlib/include"
-    
-    # Copy the static library
-    cp zlibstatic.lib "$INSTALL_PREFIX/zlib/lib/zlib.lib"
-    
-    # Copy the headers
-    cp ../zlib.h "$INSTALL_PREFIX/zlib/include/"
-    cp zconf.h "$INSTALL_PREFIX/zlib/include/"
-    
-    echo "zlib build complete"
+    local name="zlib-$ZLIB_VERSION" build="$BUILD_DIR/zlib-windows-$ZLIB_VERSION"
+    fetch_source "$name" "$name.tar.gz" "https://github.com/madler/zlib/releases/download/v$ZLIB_VERSION/$name.tar.gz"
+    configure "$BUILD_DIR/$name" "$build" "$INSTALL_PREFIX/zlib" \
+        -DZLIB_BUILD_SHARED=OFF -DZLIB_BUILD_STATIC=ON -DZLIB_BUILD_TESTING=OFF
+    cmake --build "$build" --target zlibstatic --parallel "$JOBS"
+    cmake --install "$build"
+    # Keep the link name stable across zlib's MSVC archive naming changes.
+    cp "$build/libzs.lib" "$INSTALL_PREFIX/zlib/lib/zlib.lib"
+    record_version zlib "$ZLIB_VERSION"
 }
 
 build_libpng() {
-    echo "=== Building libpng (Manual Compilation) ==="
-    cd "$BUILD_DIR"
-    
-    # Use latest libpng version 1.6.50
-    if [[ ! -d "libpng-1.6.50" ]]; then
-        echo "Downloading libpng 1.6.50..."
-        wget https://download.sourceforge.net/libpng/libpng-1.6.50.tar.gz
-        tar -xzf libpng-1.6.50.tar.gz
-    fi
-    
-    cd libpng-1.6.50
-    
-    # Clean previous build
-    rm -rf manual_build
-    mkdir manual_build
-    cd manual_build
-    
-    # Set up environment paths
-    local sdk_include="${DETECTED_SDK_INCLUDE:-$WINSDK_BASE/sdk/include}"
-    local sdk_lib="${DETECTED_SDK_LIB:-$WINSDK_BASE/sdk/lib}"
-    local crt_include="${DETECTED_CRT_INCLUDE:-$WINSDK_BASE/crt/include}"
-    local crt_lib="${DETECTED_CRT_LIB:-$WINSDK_BASE/crt/lib}"
-    local sdk_version="${DETECTED_SDK_VERSION:-$WINSDK_VERSION}"
-    
-    # Build include/lib paths for environment variables
-    local include_paths=""
-    [[ -d "$crt_include" ]] && include_paths+="$crt_include;"
-    [[ -d "$sdk_include/$sdk_version/um" ]] && include_paths+="$sdk_include/$sdk_version/um;"
-    [[ -d "$sdk_include/$sdk_version/shared" ]] && include_paths+="$sdk_include/$sdk_version/shared;"
-    [[ -d "$sdk_include/$sdk_version/ucrt" ]] && include_paths+="$sdk_include/$sdk_version/ucrt;"
-    
-    local lib_paths=""
-    [[ -d "$crt_lib/x86_64" ]] && lib_paths+="$crt_lib/x86_64;"
-    [[ -d "$sdk_lib/um/x86_64" ]] && lib_paths+="$sdk_lib/um/x86_64;"
-    [[ -d "$sdk_lib/ucrt/x86_64" ]] && lib_paths+="$sdk_lib/ucrt/x86_64;"
-    
-    export INCLUDE="$include_paths"
-    export LIB="$lib_paths"
-    
-    echo "Set INCLUDE=$INCLUDE"
-    echo "Set LIB=$LIB"
-    
-    # Use the pre-built pnglibconf.h from Visual Studio projects (much simpler!)
-    echo "Using pre-built pnglibconf.h from Visual Studio projects..."
-    if [[ -f "../projects/vstudio/pnglibconf.h" ]]; then
-        cp "../projects/vstudio/pnglibconf.h" ./
-        echo "✓ Copied pnglibconf.h from vstudio projects"
-    else
-        echo "WARNING: vstudio pnglibconf.h not found, using scripts version..."
-        # Fallback to scripts directory if vstudio version doesn't exist
-        if [[ -f "../scripts/pnglibconf.h.prebuilt" ]]; then
-            cp "../scripts/pnglibconf.h.prebuilt" ./pnglibconf.h
-            echo "✓ Used prebuilt pnglibconf.h from scripts"
-        else
-            echo "ERROR: No pnglibconf.h found in expected locations"
-            exit 1
-        fi
-    fi
-    
-    # Manual compilation flags - FORCE static linking, bypass CMake entirely
-    local compile_flags=(
-        "--target=x86_64-pc-windows-msvc"
-        "-fuse-ld=lld-link"
-        "/MT"
-        "-DPNG_STATIC"
-        "-DPNG_USE_DLL=0"
-        "-DPNG_NO_DLL=1"
-        "-D_CRT_DECLARE_NONSTDC_NAMES=0"
-        "-DWIN32_LEAN_AND_MEAN"
-        "-D_MT"
-        "-DNDEBUG"
-        "-O2"
-        "-I../."
-        "-I."
-        "-I$INSTALL_PREFIX/zlib/include"
-        "-imsvc$crt_include"
-        "-imsvc$sdk_include/$sdk_version/ucrt"
-        "-imsvc$sdk_include/$sdk_version/um"
-        "-imsvc$sdk_include/$sdk_version/shared"
-        "-c"
-    )
-    
-    echo "Manual compilation with static linking flags..."
-    echo "Compile flags: ${compile_flags[*]}"
-    
-    # Get all PNG source files
-    local png_sources=(
-        "../png.c"
-        "../pngerror.c"
-        "../pngget.c"
-        "../pngmem.c"
-        "../pngpread.c"
-        "../pngread.c"
-        "../pngrio.c"
-        "../pngrtran.c"
-        "../pngrutil.c" 
-        "../pngset.c"
-        "../pngtrans.c"
-        "../pngwio.c"
-        "../pngwrite.c"
-        "../pngwtran.c"
-        "../pngwutil.c"
-    )
-    
-    local object_files=()
-    
-    # Compile each source file individually
-    for src in "${png_sources[@]}"; do
-        if [[ -f "$src" ]]; then
-            obj_name="$(basename "${src%.c}").obj"
-            object_files+=("$obj_name")
-            
-            echo "Compiling $(basename "$src")..."
-            clang-cl "${compile_flags[@]}" "$src" -o "$obj_name"
-            
-            if [[ $? -ne 0 ]]; then
-                echo "ERROR: Failed to compile $src"
-                exit 1
-            fi
-            
-            if [[ ! -f "$obj_name" ]] || [[ ! -s "$obj_name" ]]; then
-                echo "ERROR: Object file $obj_name was not created or is empty"
-                exit 1
-            fi
-            
-            echo "✓ Compiled $(basename "$src") -> $obj_name ($(stat -c%s "$obj_name") bytes)"
-        else
-            echo "WARNING: Source file $src not found"
-        fi
-    done
-    
-    echo "Compiled ${#object_files[@]} object files"
-    
-    # Create static library using llvm-lib
-    echo "Creating static library with llvm-lib..."
-    llvm-lib "/OUT:libpng_static.lib" "${object_files[@]}"
-    
-    if [[ $? -ne 0 ]] || [[ ! -f "libpng_static.lib" ]]; then
-        echo "ERROR: Failed to create static library"
-        exit 1
-    fi
-    
-    echo "✓ Created libpng_static.lib ($(stat -c%s libpng_static.lib) bytes)"
-    
-    # Install library and headers
-    mkdir -p "$INSTALL_PREFIX/libpng/lib"
-    mkdir -p "$INSTALL_PREFIX/libpng/include"
-    
-    cp libpng_static.lib "$INSTALL_PREFIX/libpng/lib/libpng.lib"
-    cp ../png.h "$INSTALL_PREFIX/libpng/include/"
-    cp ../pngconf.h "$INSTALL_PREFIX/libpng/include/"
-    cp pnglibconf.h "$INSTALL_PREFIX/libpng/include/"  # Copy the pre-built one we used
-    
-    echo "libpng manual build complete"
-    
-    # Comprehensive verification
-    echo "Verifying libpng static library..."
-    
-    # Check for dllimport symbols (should be NONE)
-    if llvm-objdump --syms "$INSTALL_PREFIX/libpng/lib/libpng.lib" 2>/dev/null | grep -i "dllimport\|__imp__"; then
-        echo "ERROR: libpng contains dllimport symbols! This will cause linking failures."
-        echo "Found symbols:"
-        llvm-objdump --syms "$INSTALL_PREFIX/libpng/lib/libpng.lib" | grep -i "dllimport\|__imp__" | head -10
-        exit 1
-    fi
-    
-    # Check for expected PNG symbols
-    local expected_symbols=("png_create_write_struct" "png_create_read_struct" "png_write_image" "png_read_image")
-    for sym in "${expected_symbols[@]}"; do
-        if llvm-objdump --syms "$INSTALL_PREFIX/libpng/lib/libpng.lib" 2>/dev/null | grep -q "$sym"; then
-            echo "✓ Found symbol: $sym"
-        else
-            echo "⚠ Warning: Expected symbol $sym not found"
-        fi
-    done
-    
-    echo "✓ libpng 1.6.50 built successfully with manual compilation"
-    echo "✓ No dllimport symbols detected - ready for static linking"
-    echo "✓ Library size: $(stat -c%s "$INSTALL_PREFIX/libpng/lib/libpng.lib") bytes"
+    local name="libpng-$LIBPNG_VERSION" build="$BUILD_DIR/libpng-windows-$LIBPNG_VERSION"
+    fetch_source "$name" "$name.tar.gz" "https://github.com/pnggroup/libpng/archive/refs/tags/v$LIBPNG_VERSION.tar.gz"
+    configure "$BUILD_DIR/$name" "$build" "$INSTALL_PREFIX/libpng" \
+        -DPNG_SHARED=OFF -DPNG_STATIC=ON -DPNG_TESTS=OFF -DPNG_TOOLS=OFF \
+        -DZLIB_INCLUDE_DIR="$INSTALL_PREFIX/zlib/include" \
+        -DZLIB_LIBRARY="$INSTALL_PREFIX/zlib/lib/zlib.lib"
+    cmake --build "$build" --parallel "$JOBS"
+    # Upstream Windows installs can request Unix .pc files that are not generated.
+    # v64tng needs only the static archive and these public/generated headers.
+    mkdir -p "$INSTALL_PREFIX/libpng/lib" "$INSTALL_PREFIX/libpng/include"
+    cp "$build/libpng16_static.lib" "$INSTALL_PREFIX/libpng/lib/libpng.lib"
+    cp "$BUILD_DIR/$name/png.h" "$BUILD_DIR/$name/pngconf.h" "$build/pnglibconf.h" "$INSTALL_PREFIX/libpng/include/"
+    record_version libpng "$LIBPNG_VERSION"
 }
 
 build_libogg() {
-    echo "=== Building static libogg $LIBOGG_VERSION ==="
-    cd "$BUILD_DIR"
-
-    local archive="libogg-$LIBOGG_VERSION.tar.xz"
-    if [[ ! -f "$archive" ]]; then
-        wget "https://downloads.xiph.org/releases/ogg/$archive"
-    fi
-    echo "$LIBOGG_XZ_SHA256  $archive" | sha256sum -c -
-    if [[ ! -d "libogg-$LIBOGG_VERSION" ]]; then
-        tar -xf "$archive"
-    fi
-
-    cd "libogg-$LIBOGG_VERSION"
-    rm -rf build_windows
-    mkdir build_windows
-    cd build_windows
-    create_toolchain_file
-
-    cmake .. \
-        -DCMAKE_TOOLCHAIN_FILE="$PWD/windows-cross.cmake" \
-        -DCMAKE_POLICY_VERSION_MINIMUM=3.15 \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX/libogg" \
-        -DBUILD_SHARED_LIBS=OFF \
-        -DBUILD_TESTING=OFF \
-        -DINSTALL_DOCS=OFF \
-        -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
-    cmake --build . --config Release --parallel "$(nproc)"
-    cmake --install . --config Release
-    test -f "$INSTALL_PREFIX/libogg/lib/ogg.lib"
-    echo "static libogg build complete"
+    local name="libogg-$LIBOGG_VERSION" build="$BUILD_DIR/libogg-windows-$LIBOGG_VERSION"
+    fetch_source "$name" "$name.tar.xz" "https://downloads.xiph.org/releases/ogg/$name.tar.xz"
+    configure "$BUILD_DIR/$name" "$build" "$INSTALL_PREFIX/libogg" -DINSTALL_DOCS=OFF
+    cmake --build "$build" --target ogg --parallel "$JOBS"
+    cmake --install "$build"
+    record_version libogg "$LIBOGG_VERSION"
 }
 
 build_libvorbis() {
-    echo "=== Building static libvorbis $LIBVORBIS_VERSION ==="
-    if [[ ! -f "$INSTALL_PREFIX/libogg/lib/ogg.lib" ]]; then
-        build_libogg
-    fi
-    cd "$BUILD_DIR"
-
-    local archive="libvorbis-$LIBVORBIS_VERSION.tar.xz"
-    if [[ ! -f "$archive" ]]; then
-        wget "https://downloads.xiph.org/releases/vorbis/$archive"
-    fi
-    echo "$LIBVORBIS_XZ_SHA256  $archive" | sha256sum -c -
-    if [[ ! -d "libvorbis-$LIBVORBIS_VERSION" ]]; then
-        tar -xf "$archive"
-    fi
-
-    cd "libvorbis-$LIBVORBIS_VERSION"
-    rm -rf build_windows
-    mkdir build_windows
-    cd build_windows
-    create_toolchain_file
-
-    cmake .. \
-        -DCMAKE_TOOLCHAIN_FILE="$PWD/windows-cross.cmake" \
-        -DCMAKE_POLICY_VERSION_MINIMUM=3.15 \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX/libvorbis" \
-        -DCMAKE_PREFIX_PATH="$INSTALL_PREFIX/libogg" \
-        -DOGG_ROOT="$INSTALL_PREFIX/libogg" \
-        -DBUILD_SHARED_LIBS=OFF \
-        -DBUILD_TESTING=OFF \
-        -DBUILD_EXAMPLES=OFF \
-        -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
-    cmake --build . --config Release --parallel "$(nproc)"
-    cmake --install . --config Release
-    test -f "$INSTALL_PREFIX/libvorbis/lib/vorbis.lib"
-    test -f "$INSTALL_PREFIX/libvorbis/lib/vorbisfile.lib"
-    echo "static libvorbis/vorbisfile build complete"
+    local name="libvorbis-$LIBVORBIS_VERSION" build="$BUILD_DIR/libvorbis-windows-$LIBVORBIS_VERSION"
+    fetch_source "$name" "$name.tar.xz" "https://downloads.xiph.org/releases/vorbis/$name.tar.xz"
+    configure "$BUILD_DIR/$name" "$build" "$INSTALL_PREFIX/libvorbis" \
+        -DCMAKE_PREFIX_PATH="$INSTALL_PREFIX/libogg" -DOGG_ROOT="$INSTALL_PREFIX/libogg" \
+        -DOGG_INCLUDE_DIR="$INSTALL_PREFIX/libogg/include" -DOGG_LIBRARY="$INSTALL_PREFIX/libogg/lib/ogg.lib" \
+        -DBUILD_EXAMPLES=OFF
+    cmake --build "$build" --parallel "$JOBS"
+    cmake --install "$build"
+    record_version libvorbis "$LIBVORBIS_VERSION"
 }
 
 build_adlmidi() {
-    echo "=== Building libADLMIDI ==="
-    
-    cd "$BUILD_DIR"
-    
-    if [[ ! -d "libADLMIDI" ]]; then
-        git clone https://github.com/Wohlstand/libADLMIDI.git
-    fi
-    
-    cd libADLMIDI
-    
-    # Clean previous build
-    rm -rf build_windows
-    mkdir build_windows
-    cd build_windows
-    
-    create_toolchain_file
-
-build_glslang() {
-    echo "=== Building glslang ==="
-    cd "$BUILD_DIR"
-
-    if [[ ! -d "glslang" ]]; then
-        git clone https://github.com/KhronosGroup/glslang.git
-    fi
-
-    cd glslang
-    git submodule update --init --recursive
-
-    rm -rf build_windows
-    mkdir build_windows
-    cd build_windows
-
-    create_toolchain_file
-
-    cmake .. \
-        -DCMAKE_TOOLCHAIN_FILE=windows-cross.cmake \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX/glslang" \
-        -DBUILD_SHARED_LIBS=OFF \
-        -DENABLE_SPVREMAPPER=ON \
-        -DENABLE_GLSLANG_BINARIES=OFF \
-        -DENABLE_HLSL=ON
-
-    cmake --build . --config Release -j"$(nproc)"
-    cmake --install .
-
-    echo "glslang build complete"
+    local name="libADLMIDI-$ADLMIDI_VERSION" build="$BUILD_DIR/adlmidi-windows-$ADLMIDI_VERSION"
+    fetch_source "$name" "$name.tar.gz" "https://github.com/Wohlstand/libADLMIDI/archive/refs/tags/v$ADLMIDI_VERSION.tar.gz"
+    configure "$BUILD_DIR/$name" "$build" "$INSTALL_PREFIX/ADLMIDI" \
+        -DlibADLMIDI_STATIC=ON -DlibADLMIDI_SHARED=OFF \
+        -DWITH_MIDIPLAY=OFF -DWITH_OLD_UTILS=OFF -DWITH_VLC_PLUGIN=OFF \
+        -DWITH_UNIT_TESTS=OFF -DWITH_GENADLDATA=OFF
+    cmake --build "$build" --target ADLMIDI_static --parallel "$JOBS"
+    cmake --install "$build"
+    record_version ADLMIDI "$ADLMIDI_VERSION"
 }
 
-build_spirv_cross() {
-    echo "=== Building SPIRV-Cross ==="
-    cd "$BUILD_DIR"
-
-    if [[ ! -d "SPIRV-Cross" ]]; then
-        git clone https://github.com/KhronosGroup/SPIRV-Cross.git
-    fi
-
-    cd SPIRV-Cross
-
-    rm -rf build_windows
-    mkdir build_windows
-    cd build_windows
-
-    create_toolchain_file
-
-    cmake .. \
-        -DCMAKE_TOOLCHAIN_FILE=windows-cross.cmake \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX/spirv-cross" \
-        -DBUILD_SHARED_LIBS=OFF \
-        -DSPIRV_CROSS_STATIC=ON \
-        -DSPIRV_CROSS_SHARED=OFF \
-        -DSPIRV_CROSS_CLI=OFF \
-        -DSPIRV_CROSS_ENABLE_TESTS=OFF
-
-    cmake --build . --config Release -j"$(nproc)"
-    cmake --install .
-
-    echo "SPIRV-Cross build complete"
-}
-
-cmake .. \
-  -DCMAKE_TOOLCHAIN_FILE=windows-cross.cmake \
-  -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX/ADLMIDI" \
-  -DBUILD_SHARED_LIBS=OFF \
-  -DlibADLMIDI_STATIC=ON \
-  -DlibADLMIDI_SHARED=OFF \
-  -DWITH_UNIT_TESTS=OFF -DWITH_MIDIPLAY=OFF -DWITH_VLC_PLUGIN=OFF \
-  -DWITH_OLD_UTILS=OFF -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_C_FLAGS_RELEASE="-D_MT -DNDEBUG -O2" \
-  -DCMAKE_CXX_FLAGS_RELEASE="-D_MT -DNDEBUG -O2" \
-  -DCMAKE_C_FLAGS_DEBUG="-D_MT -O0 -g" \
-  -DCMAKE_CXX_FLAGS_DEBUG="-D_MT -O0 -g"
-    
-    # Build only static library target to avoid potential issues
-    make ADLMIDI_static -j$(nproc)
-    
-    # Install manually to avoid shared library issues
-    mkdir -p "$INSTALL_PREFIX/ADLMIDI/lib"
-    mkdir -p "$INSTALL_PREFIX/ADLMIDI/include"
-    
-    # Copy the static library with standard name
-    cp *ADLMIDI*.lib "$INSTALL_PREFIX/ADLMIDI/lib/ADLMIDI.lib" 2>/dev/null || cp lib*ADLMIDI*.lib "$INSTALL_PREFIX/ADLMIDI/lib/ADLMIDI.lib"
-    
-    # Copy the headers
-    cp ../include/adlmidi.h "$INSTALL_PREFIX/ADLMIDI/include/"
-    
-    echo "libADLMIDI build complete"
-}
-
-# Test cross-compilation setup
-test_cross_compilation() {
-    echo "=== Testing cross-compilation setup ==="
-    
-    # Use detected paths
-    local sdk_include="${DETECTED_SDK_INCLUDE:-$WINSDK_BASE/sdk/include}"
-    local sdk_lib="${DETECTED_SDK_LIB:-$WINSDK_BASE/sdk/lib}"
-    local crt_include="${DETECTED_CRT_INCLUDE:-$WINSDK_BASE/crt/include}"
-    local crt_lib="${DETECTED_CRT_LIB:-$WINSDK_BASE/crt/lib}"
-    local sdk_version="${DETECTED_SDK_VERSION:-$WINSDK_VERSION}"
-    
-    # Create a simple test program
-    cat > test_cross.c << 'EOF'
-#include <windows.h>
-#include <stdio.h>
-
-int main() {
-    printf("Hello from Windows cross-compilation!\n");
-    return 0;
-}
-EOF
-    
-    echo "Compiling test program with detected paths..."
-    echo "SDK Include: $sdk_include"
-    echo "SDK Lib: $sdk_lib"
-    echo "CRT Include: $crt_include"
-    echo "CRT Lib: $crt_lib"
-    echo "SDK Version: $sdk_version"
-    
-    # Build include flags (combined as single strings)
-    local include_flags=()
-    [[ -d "$crt_include" ]] && include_flags+=("-I${crt_include}")
-    [[ -d "$sdk_include/$sdk_version/um" ]] && include_flags+=("-I${sdk_include}/${sdk_version}/um")
-    [[ -d "$sdk_include/$sdk_version/shared" ]] && include_flags+=("-I${sdk_include}/${sdk_version}/shared")
-    [[ -d "$sdk_include/$sdk_version/ucrt" ]] && include_flags+=("-I${sdk_include}/${sdk_version}/ucrt")
-    [[ -d "$sdk_include/ucrt" ]] && include_flags+=("-I${sdk_include}/ucrt")
-    
-    # Build library flags (combined as single strings)
-    local lib_flags=()
-    [[ -d "$crt_lib/x86_64" ]] && lib_flags+=("-L${crt_lib}/x86_64")
-    [[ -d "$sdk_lib/um/x86_64" ]] && lib_flags+=("-L${sdk_lib}/um/x86_64")
-    [[ -d "$sdk_lib/ucrt/x86_64" ]] && lib_flags+=("-L${sdk_lib}/ucrt/x86_64")
-    
-    echo "Using include flags: ${include_flags[@]}"
-    echo "Using library flags: ${lib_flags[@]}"
-    
-    # Convert flags to Windows format
-    local win_include_flags=()
-    local win_lib_flags=()
-    for flag in "${include_flags[@]}"; do
-        win_include_flags+=("/I${flag#-I}")
-    done
-    for flag in "${lib_flags[@]}"; do
-        win_lib_flags+=("/libpath:${flag#-L}")
-    done
-
-    echo "Converted include flags: ${win_include_flags[@]}"
-    echo "Converted library flags: ${win_lib_flags[@]}"
-
-    # Explicit library paths for static linking
-    local kernel32_lib="$sdk_lib/um/x86_64/kernel32.lib"
-    local user32_lib="$sdk_lib/um/x86_64/user32.lib"
-    local libucrt_lib="$sdk_lib/ucrt/x86_64/libucrt.lib"
-    local libcmt_lib="$crt_lib/x86_64/libcmt.lib"
-
-    clang-cl --target=x86_64-pc-windows-msvc \
-        -fuse-ld=lld-link \
-        /MT \
-        "${win_include_flags[@]}" \
-        test_cross.c -o test_cross.exe \
-        /link \
-        "${win_lib_flags[@]}" \
-        "$kernel32_lib" \
-        "$user32_lib" \
-        "$libucrt_lib" \
-        "$libcmt_lib" \
-        /NODEFAULTLIB:msvcrt.lib
-    
-    if [[ $? -eq 0 ]] && [[ -f "test_cross.exe" ]]; then
-        echo "✓ Cross-compilation test successful!"
-        echo "Generated: test_cross.exe ($(stat -c%s test_cross.exe) bytes)"
-        rm -f test_cross.c test_cross.exe
-        return 0
-    else
-        echo "✗ Cross-compilation test failed!"
-        echo "Trying again with verbose output..."
-        clang-cl --target=x86_64-pc-windows-msvc \
-            -fuse-ld=lld-link \
-            -v \
-            /MT \
-            "${win_include_flags[@]}" \
-            test_cross.c -o test_cross.exe \
-            /link \
-            "${win_lib_flags[@]}" \
-            "$kernel32_lib" \
-            "$user32_lib" \
-            "$libucrt_lib" \
-            "$libcmt_lib" \
-            /NODEFAULTLIB:msvcrt.lib
-        rm -f test_cross.c test_cross.exe
-        return 1
-    fi
-}
-
-# Setup Windows SDK (you'll need to get this separately)
-setup_winsdk() {
-    echo "=== Setting up Windows SDK ==="
-    
-    if [[ ! -d "$WINSDK_BASE" ]]; then
-        echo "Windows SDK not found at $WINSDK_BASE"
-        echo ""
-        echo "Installing Windows SDK using xwin..."
-        
-        # Check if xwin is installed
-        if ! command -v xwin &> /dev/null; then
-            echo "Installing xwin..."
-            cargo install xwin
-        fi
-        
-        # Create the directory and install SDK
-        sudo mkdir -p "$WINSDK_BASE"
-        sudo chown $USER:$USER "$WINSDK_BASE"
-        
-        xwin --accept-license splat --output "$WINSDK_BASE"
-        
-        if [[ $? -ne 0 ]]; then
-            echo "ERROR: Failed to install Windows SDK with xwin"
-            exit 1
-        fi
-    fi
-    
-    # Verify the SDK structure and detect actual layout
-    echo "Detecting Windows SDK structure..."
-    echo "Contents of $WINSDK_BASE:"
-    ls -la "$WINSDK_BASE/"
-    
-    # xwin creates different structure - let's detect it
-    local sdk_include_base=""
-    local sdk_lib_base=""
-    local ucrt_include_base=""
-    local ucrt_lib_base=""
-    
-    # Look for SDK includes
-    if [[ -d "$WINSDK_BASE/sdk/include" ]]; then
-        sdk_include_base="$WINSDK_BASE/sdk/include"
-    elif [[ -d "$WINSDK_BASE/Include" ]]; then
-        sdk_include_base="$WINSDK_BASE/Include"
-    fi
-    
-    # Look for SDK libs  
-    if [[ -d "$WINSDK_BASE/sdk/lib" ]]; then
-        sdk_lib_base="$WINSDK_BASE/sdk/lib"
-    elif [[ -d "$WINSDK_BASE/Lib" ]]; then
-        sdk_lib_base="$WINSDK_BASE/Lib"
-    fi
-    
-    # Look for CRT includes
-    if [[ -d "$WINSDK_BASE/crt/include" ]]; then
-        ucrt_include_base="$WINSDK_BASE/crt/include"
-    fi
-    
-    # Look for CRT libs
-    if [[ -d "$WINSDK_BASE/crt/lib" ]]; then
-        ucrt_lib_base="$WINSDK_BASE/crt/lib"
-    fi
-    
-    echo "Detected paths:"
-    echo "  SDK includes: $sdk_include_base"
-    echo "  SDK libs: $sdk_lib_base"  
-    echo "  CRT includes: $ucrt_include_base"
-    echo "  CRT libs: $ucrt_lib_base"
-    
-    # Find SDK version
-    local actual_sdk_version=""
-    if [[ -d "$sdk_include_base" ]]; then
-        # Look for version directories
-        for version_dir in "$sdk_include_base"/*/; do
-            if [[ -d "$version_dir" ]]; then
-                actual_sdk_version=$(basename "$version_dir")
-                echo "Found SDK version: $actual_sdk_version"
-                break
-            fi
-        done
-    fi
-    
-    # Update global variables with detected paths
-    if [[ -n "$actual_sdk_version" ]]; then
-        WINSDK_VERSION="$actual_sdk_version"
-    fi
-    
-    # Export detected paths for use in toolchain
-    export DETECTED_SDK_INCLUDE="$sdk_include_base"
-    export DETECTED_SDK_LIB="$sdk_lib_base"
-    export DETECTED_CRT_INCLUDE="$ucrt_include_base"
-    export DETECTED_CRT_LIB="$ucrt_lib_base"
-    export DETECTED_SDK_VERSION="$actual_sdk_version"
-    
-    # Verify critical paths exist with detected structure
-    local critical_paths=()
-    
-    # For includes, try both versioned and non-versioned paths
-    if [[ -n "$sdk_include_base" ]]; then
-        if [[ -n "$actual_sdk_version" && -d "$sdk_include_base/$actual_sdk_version" ]]; then
-            # Traditional Windows SDK structure
-            critical_paths+=(
-                "$sdk_include_base/$actual_sdk_version/um"
-                "$sdk_include_base/$actual_sdk_version/shared"
-            )
-        else
-            # xwin structure (flat)
-            critical_paths+=(
-                "$sdk_include_base/um"
-                "$sdk_include_base/shared"
-                "$sdk_include_base/ucrt"
-            )
-        fi
-    fi
-    
-    if [[ -n "$ucrt_include_base" ]]; then
-        critical_paths+=("$ucrt_include_base")
-    fi
-    
-    # For libraries, detect xwin vs traditional structure
-    if [[ -n "$sdk_lib_base" ]]; then
-        if [[ -d "$sdk_lib_base/um/x86_64" ]]; then
-            # xwin structure
-            critical_paths+=(
-                "$sdk_lib_base/um/x86_64"
-                "$sdk_lib_base/ucrt/x86_64"
-            )
-        elif [[ -n "$actual_sdk_version" && -d "$sdk_lib_base/$actual_sdk_version/um/x64" ]]; then
-            # Traditional structure
-            critical_paths+=("$sdk_lib_base/$actual_sdk_version/um/x64")
-        fi
-    fi
-    
-    if [[ -n "$ucrt_lib_base" ]]; then
-        if [[ -d "$ucrt_lib_base/x86_64" ]]; then
-            # xwin structure
-            critical_paths+=("$ucrt_lib_base/x86_64")
-        elif [[ -d "$ucrt_lib_base/x64" ]]; then
-            # Traditional structure
-            critical_paths+=("$ucrt_lib_base/x64")
-        fi
-    fi
-    
-    echo "Verifying critical paths..."
-    for path in "${critical_paths[@]}"; do
-        if [[ ! -d "$path" ]]; then
-            echo "ERROR: Critical SDK path missing: $path"
-            # But let's continue and see what we actually have
-        else
-            echo "✓ Found: $path"
-        fi
-    done
-    
-    # Check for essential libraries with detected paths
-    local essential_libs=()
-    
-    # Try different library structures
-    if [[ -n "$sdk_lib_base" ]]; then
-        if [[ -d "$sdk_lib_base/um/x86_64" ]]; then
-            # xwin structure
-            essential_libs+=(
-                "$sdk_lib_base/um/x86_64/kernel32.lib"
-                "$sdk_lib_base/um/x86_64/user32.lib"
-            )
-        elif [[ -n "$actual_sdk_version" && -d "$sdk_lib_base/$actual_sdk_version/um/x64" ]]; then
-            # Traditional structure
-            essential_libs+=(
-                "$sdk_lib_base/$actual_sdk_version/um/x64/kernel32.lib"
-                "$sdk_lib_base/$actual_sdk_version/um/x64/user32.lib"
-            )
-        fi
-    fi
-    
-    # Look for CRT libraries in different locations
-    if [[ -n "$ucrt_lib_base" ]]; then
-        if [[ -d "$ucrt_lib_base/x86_64" ]]; then
-            # xwin structure - check for different CRT lib names
-            for crt_name in libucrt.lib ucrt.lib msvcrt.lib libcmt.lib; do
-                if [[ -f "$ucrt_lib_base/x86_64/$crt_name" ]]; then
-                    essential_libs+=("$ucrt_lib_base/x86_64/$crt_name")
-                    break
-                fi
-            done
-        elif [[ -d "$ucrt_lib_base/x64" ]]; then
-            # Traditional structure
-            for crt_name in libucrt.lib ucrt.lib; do
-                if [[ -f "$ucrt_lib_base/x64/$crt_name" ]]; then
-                    essential_libs+=("$ucrt_lib_base/x64/$crt_name")
-                    break
-                fi
-            done
-        fi
-    fi
-    
-    # Also check for UCRT in SDK lib directory (xwin puts it there)
-    if [[ -n "$sdk_lib_base" && -d "$sdk_lib_base/ucrt/x86_64" ]]; then
-        for crt_name in libucrt.lib ucrt.lib; do
-            if [[ -f "$sdk_lib_base/ucrt/x86_64/$crt_name" ]]; then
-                essential_libs+=("$sdk_lib_base/ucrt/x86_64/$crt_name")
-                break
-            fi
-        done
-    fi
-    
-    echo "Checking for essential libraries..."
-    for lib in "${essential_libs[@]}"; do
-        if [[ ! -f "$lib" ]]; then
-            echo "⚠ Essential library missing: $lib"
-            # Let's see what's actually in the directory
-            echo "Contents of $(dirname "$lib"):"
-            ls -la "$(dirname "$lib")" 2>/dev/null || echo "Directory doesn't exist"
-        else
-            echo "✓ Found: $lib"
-        fi
-    done
-    
-    echo "Windows SDK structure detection complete!"
-    echo "Detected SDK Version: $actual_sdk_version"
-    
-    # Detect and export the actual library architectures used
-    local detected_lib_arch=""
-    if [[ -d "$ucrt_lib_base/x86_64" ]] || [[ -d "$sdk_lib_base/um/x86_64" ]]; then
-        detected_lib_arch="x86_64"
-    elif [[ -d "$ucrt_lib_base/x64" ]] || [[ -d "$sdk_lib_base/$actual_sdk_version/um/x64" ]]; then
-        detected_lib_arch="x64"
-    fi
-    
-    export DETECTED_LIB_ARCH="$detected_lib_arch"
-    
-    echo "Detected library architecture: $detected_lib_arch"
-    echo ""
-    echo "Final detected paths:"
-    echo "  SDK_INCLUDE: $DETECTED_SDK_INCLUDE"
-    echo "  SDK_LIB: $DETECTED_SDK_LIB"
-    echo "  CRT_INCLUDE: $DETECTED_CRT_INCLUDE"
-    echo "  CRT_LIB: $DETECTED_CRT_LIB"
-    echo "  SDK_VERSION: $DETECTED_SDK_VERSION"
-    echo "  LIB_ARCH: $DETECTED_LIB_ARCH"
-}
-
-# Main execution
-case "$1" in
-    "setup")
-        setup_winsdk
-        ;;
-    "test")
-        setup_winsdk
-        test_cross_compilation
-        ;;
-    "zlib")
-        setup_winsdk
-        build_zlib
-        ;;
-    "libpng")
-        setup_winsdk
-        build_libpng
-        ;;
-    "adlmidi")
-        setup_winsdk
-        build_adlmidi
-        ;;
-    "libogg")
-        setup_winsdk
-        build_libogg
-        ;;
-    "vorbis")
-        setup_winsdk
-        build_libogg
-        build_libvorbis
-        ;;
-    "glslang")
-        setup_winsdk
-        build_glslang
-        ;;
-    "spirv-cross")
-        setup_winsdk
-        build_spirv_cross
-        ;;
-    "all")
-        setup_winsdk
-        test_cross_compilation || exit 1
-        build_zlib
-        build_libpng
-        build_libogg
-        build_libvorbis
-        build_glslang
-        build_spirv_cross
-        build_adlmidi
-        echo "=== All libraries built successfully ==="
-        ;;
-    *)
-        echo "Usage: $0 {setup|test|zlib|libpng|libogg|vorbis|adlmidi|all}"
-        echo ""
-        echo "  setup   - Check/setup Windows SDK"
-        echo "  test    - Test cross-compilation setup"
-        echo "  zlib    - Build zlib only" 
-        echo "  libpng  - Build libpng only"
-        echo "  libogg  - Build static libogg only"
-        echo "  vorbis  - Build static libogg + libvorbis/vorbisfile"
-        echo "  adlmidi - Build libADLMIDI only"
-        echo "  all     - Build all libraries"
-        exit 1
-        ;;
+case "${1:-all}" in
+    setup) printf 'Windows SDK: %s\nStatic libraries: %s\n' "$WINSDK_BASE" "$INSTALL_PREFIX" ;;
+    zlib) build_zlib ;;
+    libpng) build_zlib; build_libpng ;;
+    libogg) build_libogg ;;
+    vorbis) build_libogg; build_libvorbis ;;
+    adlmidi) build_adlmidi ;;
+    all) build_zlib; build_libpng; build_libogg; build_libvorbis; build_adlmidi ;;
+    *) printf 'Usage: %s {setup|zlib|libpng|libogg|vorbis|adlmidi|all}\n' "$0" >&2; exit 1 ;;
 esac

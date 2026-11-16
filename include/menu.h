@@ -13,7 +13,9 @@ enum class MenuCommands
     MC_TOOLS_WINDOW,
     MC_GRV_EDITOR,
     MC_EDIT_SETTINGS,
-    MC_HELP_ABOUT
+    MC_HELP_ABOUT,
+    MC_HELP_GITHUB,
+    MC_HELP_UPDATES
 };
 
 //=============================================================================

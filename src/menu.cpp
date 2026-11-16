@@ -10,6 +10,7 @@
 #include "audio.h"
 #include "tools.h"
 #include "grv_editor.h"
+#include "update.h"
 
 #include <commctrl.h>
 #include <algorithm>
@@ -57,6 +58,10 @@ void initMenu(HWND hwnd)
     AppendMenu(hToolsMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_GRV_EDITOR), L"GRV Editor...");
     DBG_LOG("Adding Help menu items...");
     AppendMenu(hHelpMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_HELP_ABOUT), L"About");
+    AppendMenu(hHelpMenu, MF_SEPARATOR, 0, nullptr);
+    AppendMenu(hHelpMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_HELP_GITHUB), L"GitHub");
+    AppendMenu(hHelpMenu, MF_SEPARATOR, 0, nullptr);
+    AppendMenu(hHelpMenu, MF_STRING, static_cast<UINT>(MenuCommands::MC_HELP_UPDATES), L"Check for Updates...");
 
     DBG_LOG("Appending menus to menu bar...");
     AppendMenu(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hFileMenu), L"File");
@@ -398,6 +403,15 @@ LRESULT HandleMenuCommand(HWND hwnd, WPARAM wParam)
         break;
     case static_cast<int>(MenuCommands::MC_HELP_ABOUT):
         DialogBox(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDD_ABOUT_DIALOG), hwnd, AboutDialogProc);
+        break;
+    case static_cast<int>(MenuCommands::MC_HELP_GITHUB):
+        openProjectGitHub(hwnd);
+        break;
+    case static_cast<int>(MenuCommands::MC_HELP_UPDATES):
+        g_menuActive = true;
+        KillTimer(hwnd, 0x7C0B);
+        showUpdateDialog(hwnd);
+        g_menuActive = false;
         break;
     }
     return 0;

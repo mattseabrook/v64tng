@@ -18,6 +18,38 @@
 #include "cursor.h"
 #include "bitmap.h"
 #include "audio.h"
+#include "lzss.h"
+
+namespace
+{
+void validateVDX(std::span<const uint8_t> bytes)
+{
+	if (bytes.size() < 8 || bytes[0] != 0x67 || bytes[1] != 0x92)
+		throw std::runtime_error("Invalid or truncated VDX header");
+	for (size_t offset = 8; offset < bytes.size();)
+	{
+		if (bytes.size() - offset < 8) throw std::runtime_error("Truncated VDX chunk header");
+		const size_t length = uint32_t(bytes[offset + 2]) | (uint32_t(bytes[offset + 3]) << 8) |
+			(uint32_t(bytes[offset + 4]) << 16) | (uint32_t(bytes[offset + 5]) << 24);
+		if (length > bytes.size() - offset - 8) throw std::runtime_error("Truncated VDX chunk payload");
+		offset += 8 + length;
+	}
+}
+
+std::vector<uint8_t> readVDX(const std::string &filename)
+{
+	std::ifstream file(filename, std::ios::binary | std::ios::ate);
+	if (!file) throw std::runtime_error("Cannot open VDX: " + filename);
+	const auto size = file.tellg();
+	if (size < 0) throw std::runtime_error("Cannot read VDX size: " + filename);
+	std::vector<uint8_t> bytes(static_cast<size_t>(size));
+	file.seekg(0);
+	if (!file.read(reinterpret_cast<char *>(bytes.data()), bytes.size()))
+		throw std::runtime_error("Cannot read VDX: " + filename);
+	validateVDX(bytes);
+	return bytes;
+}
+}
 
 /*
 ===============================================================================
@@ -35,8 +67,7 @@ void GJDInfo(const std::string_view &filename)
 	auto result = parseRLFile(filename.data());
 	if (!result)
 	{
-		std::println(stderr, "{}", result.error());
-		return;
+		throw std::runtime_error(result.error());
 	}
 	auto vdxFiles = std::move(*result);
 	int RLOffset = 0;
@@ -64,77 +95,31 @@ void GJDInfo(const std::string_view &filename)
 		RLOffset += 20; // Increment RL Offset by 20 for the next entry
 	}
 
-	std::println("Number of VDX Files: {}", vdxFiles.size());
+	std::println("Number of archive entries: {}", vdxFiles.size());
 }
 
 /*
 ===============================================================================
-Function Name: VDXInfo
+Function Name: printVDXInfo
 
 Description:
 	- Outputs the VDX header information and details of each chunk in a VDX file.
-	  Can parse standalone VDX files or GJD files assumed to contain VDX data directly.
+	  Shared by standalone VDXInfo and indexed GJDVInfo inspection.
 
 Parameters:
-	- filename: The filename of the VDX or GJD file to analyze
+	- filename: The name of the individual VDX resource being analyzed
+	- buffer: The individual VDX payload
 
 Notes:
 	- Assumes the file starts with a VDX header (identifier 0x9267).
-	- Does not rely on RL files, treating the input as raw VDX data.
+	- Receives an individual validated VDX payload.
 ===============================================================================
 */
-void VDXInfo(const std::string &filename)
+static void printVDXInfo(const std::string &filename, std::span<const uint8_t> buffer)
 {
-	std::ifstream file(filename, std::ios::binary);
-	if (!file)
-	{
-		std::println(stderr, "ERROR: Can't open file: {}", filename);
-		return;
-	}
-
-	// Read entire file into buffer
-	file.seekg(0, std::ios::end);
-	size_t fileSize = file.tellg();
-	file.seekg(0, std::ios::beg);
-	std::vector<uint8_t> buffer(fileSize);
-	file.read(reinterpret_cast<char *>(buffer.data()), fileSize);
-	file.close();
-
-	VDXFile vdx;
-	bool isGJD = (filename.find(".GJD") != std::string::npos ||
-				  filename.find(".gjd") != std::string::npos);
-
-	if (!isGJD)
-	{
-		// Normal VDX parsing
-		vdx = parseVDXFile(filename, buffer);
-	}
-	else
-	{
-		// Parse raw chunks without VDX header
-		vdx.filename = filename;
-		vdx.rawData = std::move(buffer); // Store raw data for span references
-		std::span<const uint8_t> rawSpan{vdx.rawData};
-		
-		size_t offset = 0;
-		while (offset < rawSpan.size())
-		{
-			VDXChunk chunk;
-			chunk.chunkType = rawSpan[offset];
-			chunk.coding = rawSpan[offset + 1];
-			chunk.dataSize = *reinterpret_cast<const uint32_t *>(&rawSpan[offset + 2]);
-			chunk.lengthMask = rawSpan[offset + 6];
-			chunk.lengthBits = rawSpan[offset + 7];
-			offset += 8;
-			// Create span directly into rawData instead of copying
-			chunk.data = rawSpan.subspan(offset, chunk.dataSize);
-			offset += chunk.dataSize;
-			vdx.chunks.push_back(std::move(chunk));
-		}
-	}
-
-	// Output header (only for VDX files)
-	if (!isGJD)
+	validateVDX(buffer);
+	VDXFile vdx = parseVDXFile(filename, buffer);
+	std::println("File: {}", filename);
 	{
 		std::println("VDX Header:");
 		std::println("  Identifier: 0x{:04X}", vdx.identifier);
@@ -149,7 +134,7 @@ void VDXInfo(const std::string &filename)
 	// Output 0x20 Bitmap table
 	std::println("\n0x20 Bitmap\n");
 	const int nameWidth = 15;  // Fits "colourDepth" and "palette"
-	const int typeWidth = 16;  // Fits "RGBColor[768]"
+	const int typeWidth = 16;  // Fits "RGBColor[256]"
 	const int valueWidth = 20; // Fits values like "160 (0xa0)"
 	const int descWidth = 60;  // Description column width
 
@@ -158,11 +143,21 @@ void VDXInfo(const std::string &filename)
 	bool found0x20 = false;
 	for (const auto &chunk : vdx.chunks)
 	{
-		if (chunk.chunkType == 0x20 && chunk.data.size() >= 6)
+		if (chunk.chunkType == 0x20)
 		{
-			numXTiles = readLittleEndian16(chunk.data.subspan(0, 2));
-			numYTiles = readLittleEndian16(chunk.data.subspan(2, 2));
-			colourDepth = readLittleEndian16(chunk.data.subspan(4, 2));
+			std::vector<uint8_t> decoded;
+			auto data = chunk.data;
+			if (vdxChunkIsCompressed(chunk))
+			{
+				auto result = lzssDecompressChecked(data, chunk.lengthMask, chunk.lengthBits);
+				if (!result) throw std::runtime_error(result.error());
+				decoded = std::move(*result);
+				data = decoded;
+			}
+			if (data.size() < 6) throw std::runtime_error("Truncated VDX bitmap header");
+			numXTiles = readLittleEndian16(data.subspan(0, 2));
+			numYTiles = readLittleEndian16(data.subspan(2, 2));
+			colourDepth = readLittleEndian16(data.subspan(4, 2));
 			found0x20 = true;
 			break;
 		}
@@ -202,7 +197,8 @@ void VDXInfo(const std::string &filename)
 	}
 
 	std::println("{:<{}}\t{:<{}}\t{:<{}}\tRGB values required for a palette implied by colourDepth.",
-		"palette", nameWidth, "RGBColor[768]", typeWidth, "768 bytes", valueWidth);
+		"palette", nameWidth, "RGBColor[]", typeWidth,
+		found0x20 && colourDepth <= 8 ? std::format("{} bytes", (size_t{1} << colourDepth) * 3) : "N/A", valueWidth);
 
 	std::println("{:<{}}\t{:<{}}\t{:<{}}\tSequence of structures describing the image.",
 		"image", nameWidth, "uint8_t[]", typeWidth, "Variable length", valueWidth);
@@ -242,6 +238,23 @@ void VDXInfo(const std::string &filename)
 	std::println("\nNumber of Chunks: {}", vdx.chunks.size());
 }
 
+void VDXInfo(const std::string &filename)
+{
+	printVDXInfo(filename, readVDX(filename));
+}
+
+void GJDVInfo(const std::string &filename)
+{
+	auto path = std::filesystem::path(filename);
+	path.replace_extension(".RL");
+	const auto files = parseGJDFile(path.string());
+	for (const auto &vdx : files)
+	{
+		if (vdx.identifier == 0x9267) printVDXInfo(vdx.filename, vdx.rawView);
+		else std::println("Skipping non-VDX resource: {}", vdx.filename);
+	}
+}
+
 /*
 ===============================================================================
 Function Name: extractXMI
@@ -256,9 +269,12 @@ Parameters:
 */
 void extractXMI(const std::vector<uint8_t> &midiData, std::string name)
 {
-	std::ofstream midiFileOut(name + ".mid", std::ios::binary);
+	std::ofstream midiFileOut;
+	midiFileOut.exceptions(std::ios::failbit | std::ios::badbit);
+	midiFileOut.open(name + ".mid", std::ios::binary);
 	midiFileOut.write(reinterpret_cast<const char *>(midiData.data()), midiData.size());
 	midiFileOut.close();
+	std::println("Wrote: {}.mid", name);
 }
 
 /*
@@ -274,43 +290,28 @@ Parameters:
 */
 void extractVDX(const std::string_view &filename)
 {
-	std::string dirName(filename.data());
-	dirName.erase(dirName.find_last_of('.'));
-	std::filesystem::create_directory(dirName);
-
-	std::println("Extracting GJD...");
-
-	std::vector<VDXFile> VDXFiles = parseGJDFile(filename.data());
-
-	for (const auto &vdxFile : VDXFiles)
+	const auto files = parseGJDFile(filename);
+	const auto dir = std::filesystem::path(filename).replace_extension();
+	std::filesystem::create_directories(dir);
+	size_t count = 0;
+	for (const auto &vdx : files)
 	{
-		std::string vdxFileName = dirName + "/" + vdxFile.filename + ".vdx";
-		std::println("filename: {}", vdxFileName);
-
-		std::ofstream vdxFileOut(vdxFileName, std::ios::binary);
-		vdxFileOut.write(reinterpret_cast<const char *>(&vdxFile.identifier), sizeof(vdxFile.identifier));
-		vdxFileOut.write(
-			reinterpret_cast<const char *>(vdxFile.unknown.data()),
-			vdxFile.unknown.size());
-		vdxFileOut.write(
-			reinterpret_cast<const char *>(&vdxFile.frameRate),
-			sizeof(vdxFile.frameRate));
-
-		for (const auto &chunk : vdxFile.chunks)
-		{
-			// Write chunk header
-			vdxFileOut.write(reinterpret_cast<const char *>(&chunk.chunkType), sizeof(chunk.chunkType));
-			vdxFileOut.write(reinterpret_cast<const char *>(&chunk.coding), sizeof(chunk.coding));
-			vdxFileOut.write(reinterpret_cast<const char *>(&chunk.dataSize), sizeof(chunk.dataSize));
-			vdxFileOut.write(reinterpret_cast<const char *>(&chunk.lengthMask), sizeof(chunk.lengthMask));
-			vdxFileOut.write(reinterpret_cast<const char *>(&chunk.lengthBits), sizeof(chunk.lengthBits));
-
-			// Write chunk data
-			vdxFileOut.write(reinterpret_cast<const char *>(chunk.data.data()), chunk.data.size());
-		}
-
-		vdxFileOut.close();
+		if (vdx.identifier != 0x9267)
+		{ std::println("Skipping non-VDX resource: {}", vdx.filename); continue; }
+		validateVDX(vdx.rawView);
+		if (vdx.filename.empty() || vdx.filename == "." || vdx.filename == ".." ||
+			vdx.filename.find_first_of("/\\:") != std::string::npos)
+			throw std::runtime_error("Invalid archive resource filename");
+		const auto output = dir / (vdx.filename + ".vdx");
+		std::ofstream file;
+		file.exceptions(std::ios::failbit | std::ios::badbit);
+		file.open(output, std::ios::binary);
+		file.write(reinterpret_cast<const char *>(vdx.rawView.data()), vdx.rawView.size());
+		file.close();
+		std::println("Wrote: {}", output.string());
+		++count;
 	}
+	std::println("Extracted {} VDX files.", count);
 }
 
 /*
@@ -333,8 +334,7 @@ void extractCursors(const std::string_view &robFilename)
 	std::ifstream file{robFilename.data(), std::ios::binary | std::ios::ate};
 	if (!file)
 	{
-		std::println(stderr, "ERROR: Can't open {}", robFilename);
-		return;
+		throw std::runtime_error("Cannot open cursor archive: " + std::string(robFilename));
 	}
 
 	// Load entire file into memory
@@ -344,9 +344,7 @@ void extractCursors(const std::string_view &robFilename)
 	// Verify file size for palettes
 	if (buffer.size() < ::CursorPaletteSizeBytes * ::NumCursorPalettes)
 	{
-		std::println(stderr, "ERROR: ROB.GJD too small ({} bytes) to contain {} palettes of {} bytes each",
-			buffer.size(), static_cast<int>(::NumCursorPalettes), ::CursorPaletteSizeBytes);
-		return;
+		throw std::runtime_error("ROB.GJD is too small to contain the cursor palettes");
 	}
 
 	// Calculate palette block offset
@@ -356,6 +354,7 @@ void extractCursors(const std::string_view &robFilename)
 	std::filesystem::path rootDir = std::filesystem::path(robFilename).stem().string() + "_GJD";
 	std::filesystem::create_directories(rootDir);
 
+	bool failed = false;
 	// Process each cursor blob
 	for (size_t i = 0; i < ::CursorBlobs.size(); ++i)
 	{
@@ -399,8 +398,10 @@ void extractCursors(const std::string_view &robFilename)
 		catch (const std::exception &e)
 		{
 			std::println(stderr, "FAILED: {}", e.what());
+			failed = true;
 		}
 	}
+	if (failed) throw std::runtime_error("One or more cursor extractions failed");
 }
 
 /*
@@ -419,16 +420,7 @@ Parameters:
 */
 void extractPNG(std::string_view filename, bool raw)
 {
-	std::ifstream vdxFile{filename.data(), std::ios::binary | std::ios::ate};
-	if (!vdxFile) {
-		std::println(stderr, "ERROR: Can't open VDX: {}", filename);
-		return;
-	}
-
-	std::vector<uint8_t> vdxData(static_cast<std::size_t>(vdxFile.tellg()));
-	vdxFile.seekg(0).read(reinterpret_cast<char *>(vdxData.data()), vdxData.size());
-
-	VDXFile vdx = parseVDXFile(filename, vdxData);
+	VDXFile vdx = parseVDXFile(filename, readVDX(std::string(filename)));
 	parseVDXChunks(vdx);
 
 	std::string dirName = std::filesystem::path{filename}.stem().string();
@@ -452,7 +444,9 @@ void extractPNG(std::string_view filename, bool raw)
 
 		if (raw)
 		{
-			std::ofstream outFile{outPath.replace_extension(".raw"), std::ios::binary};
+			std::ofstream outFile;
+			outFile.exceptions(std::ios::failbit | std::ios::badbit);
+			outFile.open(outPath.replace_extension(".raw"), std::ios::binary);
 			if (outFile)
 			{
 				std::println("Writing: {}", outPath.string());
@@ -483,13 +477,12 @@ Parameters:
 	- filenameParam: The filename of the VDX file to be extracted
 ===============================================================================
 */
-void createVideoFromImages(const std::string &filenameParam)
+void createVideoFromImages(const std::string &filenameParam, double frameRate)
 {
 	// Check if FFmpeg is installed
 	if (std::system("ffmpeg -version") != 0)
 	{
-		std::println(stderr, "FFmpeg is not installed or not in the system PATH.");
-		return;
+		throw std::runtime_error("FFmpeg is not installed or not in PATH");
 	}
 
 	// Get current working directory
@@ -497,18 +490,16 @@ void createVideoFromImages(const std::string &filenameParam)
 	std::filesystem::path filepath = std::filesystem::path(filenameParam).lexically_normal();
 
 	// Process paths
-	std::filesystem::path baseDirectory = filepath.parent_path();
-	std::string filenameWithoutExtension = filepath.stem().string(); // Base filename without extension
+	std::string filenameWithoutExtension = filepath.filename().string(); // Already a frame directory
 
 	// Construct PNG directory name
-	std::filesystem::path pngDirPath = workingDirectory / baseDirectory / filenameWithoutExtension;
+	std::filesystem::path pngDirPath = workingDirectory / filepath;
 	pngDirPath = pngDirPath.lexically_normal();
 
 	// Validate PNG directory
 	if (!std::filesystem::exists(pngDirPath) || !std::filesystem::is_directory(pngDirPath))
 	{
-		std::println(stderr, "PNG directory does not exist: {}", pngDirPath.string());
-		return;
+		throw std::runtime_error("PNG directory does not exist: " + pngDirPath.string());
 	}
 
 	// Verify that the directory contains PNG files matching the expected pattern
@@ -523,14 +514,13 @@ void createVideoFromImages(const std::string &filenameParam)
 	}
 	if (!foundMatchingFiles)
 	{
-		std::println(stderr, "No PNG files found in directory: {}", pngDirPath.string());
-		return;
+		throw std::runtime_error("No PNG files found in directory: " + pngDirPath.string());
 	}
 
 	// Build FFmpeg command
 	std::string inputFilePattern = filenameWithoutExtension + "_%04d.png";
 	std::string outputFilePath = (pngDirPath / (filenameWithoutExtension + ".mkv")).string();
-	std::string ffmpegCommand = "ffmpeg -framerate 30 -i \"" +
+	std::string ffmpegCommand = "ffmpeg -nostdin -y -framerate " + std::to_string(frameRate) + " -start_number 1 -i \"" +
 								(pngDirPath / inputFilePattern).string() +
 								"\" -c:v libx265 -crf 0 -pix_fmt rgb24 \"" +
 								outputFilePath + "\"";
@@ -539,13 +529,13 @@ void createVideoFromImages(const std::string &filenameParam)
 	int ffmpegResult = std::system(ffmpegCommand.c_str());
 	if (ffmpegResult != 0)
 	{
-		std::println(stderr, "FFmpeg command failed.");
-		return;
+		throw std::runtime_error("FFmpeg command failed");
 	}
 
 	// Optional: Play the generated video using ffplay
 	std::string ffplayCommand = "ffplay -loop 0 \"" + outputFilePath + "\"";
-	std::system(ffplayCommand.c_str());
+	if (std::system(ffplayCommand.c_str()) != 0)
+		throw std::runtime_error("ffplay preview failed; MKV was created at " + outputFilePath);
 }
 
 /*
@@ -670,9 +660,9 @@ void saveWAV(const std::string &filename, const std::vector<uint8_t> &audioData)
 	header.subchunk2Size = static_cast<uint32_t>(audioData.size());
 	header.chunkSize = 36 + header.subchunk2Size;
 
-	std::ofstream outFile(filename, std::ios::binary);
-	if (!outFile)
-		throw std::runtime_error("Failed to open " + filename);
+	std::ofstream outFile;
+	outFile.exceptions(std::ios::failbit | std::ios::badbit);
+	outFile.open(filename, std::ios::binary);
 
 	outFile.write(reinterpret_cast<const char *>(&header), sizeof(header));
 	outFile.write(reinterpret_cast<const char *>(audioData.data()), audioData.size());

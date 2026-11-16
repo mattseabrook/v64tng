@@ -2,7 +2,7 @@
 
 Standalone Groovie v1 media toolkit for The 7th Guest pipeline. It combines a
 VDX encoder with RL/GJD archive, GRV script, Classic Mac resource, and
-SPHINX.FNT font utilities. Windows and native Linux command-line builds share
+SPHINX.FNT font utilities. Windows, Linux and macOS command-line builds share
 the same media implementations. GRV tooling shares the engine decoder.
 
 Current scope:
@@ -22,28 +22,288 @@ GRV scripts can now be disassembled and rebuilt from their authoritative hex
 byte columns. This is a byte-listing assembler, not a compiler for mnemonic
 operands or automatic branch relocation.
 
-The current Windows and Linux tools have been built. Gameplay and mod-content
-acceptance are human work; no automated test harnesses are maintained here.
+Gameplay and mod-content acceptance are human work; no automated test harnesses
+are maintained here. The platform build changes have not been built or tested.
 The original-engine disassemblies each retain their own `build.sh` byte-identity
 gate. Recovery of all known DOS function roles is not a promise that every
 possible mod or every platform behavior is supported.
 
-## Build (Linux -> Windows x64)
+## Build
+
+Run `build.sh` with no argument to build for its host, or select a target:
 
 ```bash
 cd grooviev1
-chmod +x build.sh
-./build.sh
+./build.sh           # Auto-detect Linux, macOS or Windows/Git Bash
+./build.sh windows   # Native Windows x64 PE/COFF executable
+./build.sh linux     # Linux executable
+./build.sh macos     # macOS executable
 ```
 
-Output:
-- `grooviev1/build/grooviev1.exe`
-- The Windows executable is also copied to the repository-local
-  `../T7G/grooviev1.exe`; `/mnt/T7G` is never used by this build.
-- A native Linux command-line build is written to
-  `grooviev1/build/grooviev1-native` for raw-frame validation and automation.
+| Target | Compiler/toolchain | Output |
+| --- | --- | --- |
+| Windows | `clang-cl`, `lld-link`, Microsoft SDK/STL, static Microsoft CRT (`/MT`), `x86_64-pc-windows-msvc` | `build/grooviev1.exe` |
+| Linux | Native Clang++ when available, otherwise GCC; C++23 standard library required | `build/grooviev1-linux` |
+| macOS | Apple Clang/libc++ from Xcode Command Line Tools by default; C++23 required | `build/grooviev1-macos` |
+
+Windows C++ compilation and linking use the MSVC ABI with Clang/LLVM, matching
+the engine's Windows toolchain. There is no GCC/MinGW compiler fallback, GNU
+Windows runtime, Wine invocation or emulation step. On Windows, use Git Bash,
+MSYS2 or Cygwin with LLVM and the Microsoft C++ Build Tools/SDK installed; an
+x64 developer environment can supply `INCLUDE`/`LIB`.
+
+For cross-Windows builds, existing `/opt/winsdk`, `/opt/msvc/include` and the
+shared v64tng dependency cache are detected. Set `WINSDK_BASE`/`MSVC_INCLUDE`
+for custom paths. If SDK files are missing, the script uses installed `xwin`
+to acquire them, accepting the Microsoft SDK license. Install LLVM and xwin
+first, or provision them through the repository's main build bootstrap.
+
+Linux and macOS targets are native builds on their corresponding hosts. To
+cross-build macOS from Linux, supply osxcross, an explicit `CXX_MACOS` cross
+compiler, or an Apple SDK in `SDKROOT` with Clang and `ld64.lld`. Apple SDKs
+are not downloaded automatically. To cross-build Linux from another OS,
+set `CXX_LINUX` to a configured Linux cross compiler; `LINUX_SYSROOT` optionally
+supplies its sysroot. Selecting a target does not run an emulator.
+
+Compiler overrides are `CXX_LINUX`, `CXX_NATIVE`/`CXX` for Linux and `CXX_MACOS`
+for macOS. `SDKROOT` and `MACOSX_DEPLOYMENT_TARGET` configure Apple SDK use.
+Native Linux/macOS builds create `build/grooviev1-native` and `build/grooviev1`
+aliases, retaining the path used by `frames.py`.
+
+Only Windows builds deploy into the repository-local `../T7G` directory.
+`GROOVIEV1_NO_DEPLOY=1` disables this; `GROOVIEV1_DEPLOY_DIR` selects another
+destination. No target deploys to `/mnt/T7G` implicitly.
+
+The checked-in executable from the old GCC build has been removed. Generate
+platform artifacts with the commands above. Native Linux/macOS RGB authoring
+retains the existing `--raw` RGB24 input requirement; Windows uses WIC for
+image loading. The indexed-PNG workflow remains available through `frames.py`
+and Pillow. Archive, font, GRV and indexed-byte commands share their portable
+implementations across the targets.
+
+### Platform prerequisites and examples
+
+All targets compile the same three C++ source files and require a C++23
+standard library providing `<format>` and `<expected>`. The standalone toolkit
+does not link the engine's Vulkan or audio libraries.
+
+**Arch Linux, native Linux build:** install a current native C++ toolchain,
+then choose the Linux target. Clang can use the native GNU/Linux standard
+library headers installed with GCC; these are unrelated to Windows runtimes.
+
+```bash
+sudo pacman -Syu --needed clang gcc
+./grooviev1/build.sh linux
+./grooviev1/build/grooviev1-native --help
+```
+
+**Arch Linux, cross-build Windows x64:** use LLVM plus the Microsoft SDK/CRT.
+If an existing installation is unavailable, install xwin so the script can
+obtain the Microsoft files. If Cargo is already available, omit the Rust
+installation command.
+
+```bash
+sudo pacman -Syu --needed clang lld llvm
+# Only when Rust/Cargo is absent:
+sudo pacman -Syu --needed rust
+cargo install --locked xwin
+export PATH="$HOME/.cargo/bin:$PATH"
+GROOVIEV1_NO_DEPLOY=1 ./grooviev1/build.sh windows
+```
+
+The script reuses complete Microsoft installations at `/opt/winsdk` plus an
+optional `/opt/msvc/include`, or the shared per-user v64tng cache. `xwin`
+downloads only when the required SDK installation is absent. It accepts the
+Microsoft SDK license through `--accept-license`. The resulting PE/COFF
+executable runs on Windows; the cross-build does not run it on Linux.
+
+**Native Windows:** install Visual Studio C++ Build Tools with a Windows SDK
+and LLVM/Clang. Launch Git Bash/MSYS2/Cygwin with `clang-cl` and `lld-link` on
+PATH; an x64 developer shell can supply the Microsoft `INCLUDE`/`LIB`
+environment. From the repository root:
+
+```bash
+GROOVIEV1_NO_DEPLOY=1 ./grooviev1/build.sh windows
+./grooviev1/build/grooviev1.exe --help
+```
+
+**Native macOS:** install current Xcode Command Line Tools when missing.
+The script uses `xcrun` to locate Apple Clang and the macOS SDK.
+
+```bash
+xcode-select --install  # Only when Command Line Tools are absent
+./grooviev1/build.sh macos
+./grooviev1/build/grooviev1-native --help
+```
+
+Older Xcode/libc++ releases lacking C++23 `<format>`/`<expected>` need upgrading
+or a compatible compiler selected through `CXX_MACOS`.
+
+**Cross-macOS from Linux:** supply a configured Apple cross toolchain and its
+licensed SDK/C++ standard library; those files cannot be inferred from Linux
+headers. For example:
+
+```bash
+CXX_MACOS=/opt/osxcross/bin/o64-clang++ ./grooviev1/build.sh macos
+```
+
+The script also detects `o64-clang++` on PATH, or accepts `SDKROOT` with a
+compatible Clang/Darwin libc++ installation and `ld64.lld`. It does not download
+Apple SDKs or run the output through an emulator.
+
+**Cross-Linux from another OS:** set `CXX_LINUX` to a configured Linux cross
+compiler; optionally supply `LINUX_SYSROOT`. Merely choosing `linux` cannot
+substitute a macOS/Windows SDK for a Linux sysroot.
+
+### Build settings
+
+| Setting | Meaning |
+| --- | --- |
+| `WINSDK_BASE` | Microsoft SDK/CRT root for Windows cross-compilation. |
+| `MSVC_INCLUDE` | Explicit Microsoft C++ header directory. |
+| `V64TNG_MSVC_INCLUDE` | Override the separate `/opt/msvc/include` selection. |
+| `V64TNG_DEPS_CACHE` | Shared SDK/dependency cache root. |
+| `CXX_LINUX` | Native or configured cross compiler for the Linux target. |
+| `CXX_NATIVE`, `CXX` | Linux compiler fallbacks; `CXX` also participates in native macOS selection. |
+| `LINUX_SYSROOT` | Optional Linux sysroot passed to the selected compiler. |
+| `CXX_MACOS` | Explicit Apple/macOS compiler or cross-toolchain wrapper. |
+| `SDKROOT` | Apple SDK root. |
+| `MACOSX_DEPLOYMENT_TARGET` | Requested minimum macOS deployment version. |
+| `GROOVIEV1_MACOS_ARCH` | Architecture for the plain-Clang cross-macOS path; default `x86_64`. |
+| `GROOVIEV1_NO_DEPLOY=1` | Skip copying the Windows output into a game directory. |
+| `GROOVIEV1_DEPLOY_DIR` | Override the Windows deployment directory. |
+
+Windows compilation is always `clang-cl --target=x86_64-pc-windows-msvc`
+with `lld-link`, Microsoft headers/import libraries and static CRT. No `CXX`
+setting selects a GCC/MinGW Windows fallback. A default build compiles one
+host target; it does not build all three operating systems in one invocation.
 
 ## Usage
+
+- [Equivalent command and option spellings](#equivalent-command-and-option-spellings)
+- [File and output rules](#file-and-output-rules)
+- [Encode VDX](#encode-vdx)
+- [Archive options](#archive-option-reference), [pack](#pack-rlgjd), [list](#list-rlgjd), [unpack](#unpack-rlgjd)
+- [Classic Mac embedded files](#classic-mac-embedded-files-and-t7gdata)
+- [Lossless indexed PNG workflow](#lossless-source-material-round-trip)
+- [Python helper command reference](#python-helper-command-reference)
+- [GRV scripts](#grv-scripts-inspect-edit-rebuild)
+
+
+Examples below run from the repository root. `grooviev1.exe` denotes the
+Windows executable in `grooviev1/build/`; use
+`./grooviev1/build/grooviev1-native` or the platform-specific output on Linux
+and macOS. The Python helpers require Python 3. `frames.py extract`/`encode`
+also require Pillow; help and `frames.py compare` do not.
+
+### Equivalent command and option spellings
+
+Every dash-prefixed option accepts its short code or full name with **one or
+two dashes**. These are equivalent argument names, not separate help commands.
+For example, each of these lists the same archive:
+
+```cmd
+grooviev1.exe archive-list -r ROOM.RL -g ROOM.GJD
+grooviev1.exe archive-list --r ROOM.RL --g ROOM.GJD
+grooviev1.exe archive-list -rl ROOM.RL -gjd ROOM.GJD
+grooviev1.exe archive-list --rl ROOM.RL --gjd ROOM.GJD
+```
+
+Every row below expands to four spellings. For example, `o` / `output` means
+`-o`, `--o`, `-output`, `--output`. Canonical long spellings remain valid.
+Option values and paths following value-taking options are preserved verbatim.
+
+| Short code | Full name | Meaning |
+| --- | --- | --- |
+| `h` | `help` | Overall help/usage overview. |
+| `o` | `output` | Output VDX or FNT file. |
+| `i` | `input-dir` | Input frame/font/resource directory. |
+| `a` | `wav` | WAV input for audio interleave. |
+| `w` | `width` | RAW input width. |
+| `ht` | `height` | RAW input height; `h` is reserved for help. |
+| `rs` | `resize` | Nearest-neighbour output geometry. |
+| `dc` | `dos-canonical` | Resize to 640x320. |
+| `f` | `fps` | VDX header frame rate. |
+| `q` | `lower-intermediate-quality` | Intermediate-frame quantization. |
+| `ac` | `audio-chunk-bytes` | Maximum PCM bytes per chunk before compression. |
+| `hf` | `hold-frames` | Append unchanged frames. |
+| `pu` | `max-local-palette-updates` | Palette update limit per delta. |
+| `rw` | `raw` | RAW RGB24 input, or uninterpreted GRV bytes in `grv-disassemble`. |
+| `c` | `compress` | Enable LZSS. |
+| `nc` | `no-compress` | Disable LZSS. |
+| `lm` | `length-mask` | LZSS mask. |
+| `lb` | `length-bits` | LZSS bit count. |
+| `nv` | `no-validate` | Skip internal encoder validation. |
+| `r` | `rl` | RL index path. |
+| `g` | `gjd` | GJD archive path. |
+| `m` | `manifest` | Archive order/name manifest. |
+| `od` | `out-dir` | Font/archive extraction directory. |
+| `mb` | `macbinary` | Read an archive's MacBinary data fork. |
+| `mt` | `mac-t7gdata` | Mac FF-separator policy. |
+| `fn` | `fnt` | Font input path. |
+| `cm` | `charmap` | Font character-map override. |
+| `gl` | `glyphs` | Glyph CSV override. |
+| `res` | `resources` | RL directory for GRV reference names. |
+| `hs` | `hotspots` | DOS/Windows GRV geometry convention. |
+
+Bare subcommands are retained. They also accept the same four-name pattern:
+`ap` / `archive-pack` means `-ap`, `--ap`, `-archive-pack`, `--archive-pack`.
+
+| Short code | Existing bare command/full name |
+| --- | --- |
+| `e` | `encode` |
+| `xi` | `extract-indexed` |
+| `ei` | `encode-indexed` |
+| `ap` | `archive-pack` |
+| `al` | `archive-list` |
+| `au` | `archive-unpack` |
+| `fl` | `fnt-list` |
+| `fe` | `fnt-extract` |
+| `fp` | `fnt-pack` |
+| `gd` | `grv-disassemble` |
+| `ga` | `grv-assemble` |
+
+```cmd
+grooviev1.exe --al --r ROOM.RL --g ROOM.GJD
+grooviev1.exe -fe -fn SPHINX.FNT -od sphinx_font
+grooviev1.exe --e --o out.vdx --rw --w 640 --ht 320 frame.raw
+grooviev1.exe --gd SCRIPT.GRV script.asm --res assets --hs dos
+```
+
+Python helpers retain their bare subcommands and support four spellings for
+their named options too:
+
+| Helper | Short code / full option name |
+| --- | --- |
+| `frames.py` | `h` / `help`, `t` / `tool`, `r` / `report` |
+| `mac_resources.py` | `h` / `help`, `t` / `type`, `i` / `id`, `od` / `out-dir`, `r` / `replacement`, `o` / `output` |
+
+```bash
+python3 grooviev1/frames.py -t grooviev1/build/grooviev1-native compare input.vdx rebuilt.vdx -r report.json
+python3 grooviev1/mac_resources.py extract T7GMac.bin -t T7GM -od mac-assets
+```
+
+`-h`, `--h`, `-help`, `--help` remain equivalent spellings of the help option.
+There is no new command-specific help system in the C++ tools.
+
+### File and output rules
+
+- RGB encoding, archive packing and font extraction/packing may overwrite files.
+- `archive-unpack` and `extract-indexed` require new output directories.
+- `encode-indexed` and both GRV commands require new output files.
+- Python indexed-PNG extraction/encoding require new output locations; Mac
+  resource extraction/replacement also require new output locations.
+- Indexed encoding preserves decoded indices/palettes/timing/PCM, not identical
+  compressed VDX bytes or arbitrary unknown header/chunk content.
+- Archive repacking preserves resource payloads, names and manifest order,
+  while recomputing physical offsets and omitting arbitrary unindexed padding.
+
+The retail font spelling is **SPHINX.FNT**:
+
+```cmd
+grooviev1.exe fnt-list --fnt SPHINX.FNT
+grooviev1.exe fnt-extract --fnt SPHINX.FNT --out-dir sphinx_font
+```
 
 ### Encode VDX
 
@@ -59,26 +319,48 @@ grooviev1.exe --output out.vdx --input-dir frames [options]
 
 Options:
 - `--output PATH` output VDX path (required)
-- `--input-dir DIR` discover input frames from directory (sorted lexicographically)
+- `--input-dir DIR` discover input frames from directory (sorted lexicographically); cannot be combined with explicit frames; RAW mode discovers only `.raw` files
 - `--raw` treat input frames as raw RGB24 files
 - `--width N` width in pixels (required for `--raw`; must be `640`)
-- `--height N` height in pixels (required for `--raw`; maximum `480`)
-- `--resize WxH` resize all frames before encoding (width `640`, height at most `480`)
+- `--height N` height in pixels (required for `--raw`; `4..480`, divisible by `4`)
+- `--resize WxH` resize all frames before encoding (width `640`, height `4..480`, divisible by `4`; nearest-neighbour)
 - `--dos-canonical` shorthand for `--resize 640x320`
-- `--fps N` VDX header frame rate (default: `15`)
+- `--fps N` VDX header frame rate, `1..65535` (default: `15`)
 - `--wav PATH` optional WAV source for `0x80` interleave
-- `--audio-chunk-bytes N` audio bytes per `0x80` chunk (default: `2048`)
-- `--hold-frames N` append `N` timed `0x00` no-change chunks after the final
+- `--audio-chunk-bytes N` maximum PCM bytes per `0x80` chunk before compression, greater than zero (default: `2048`)
+- `--hold-frames N` append `0..65535` timed `0x00` no-change chunks after the final
   input frame
-- `--lower-intermediate-quality 0..9` lower quality for frames `1..N-1` only (off by default)
-- `--max-local-palette-updates N` max palette edits per `0x25` (default: `32`)
+- `--lower-intermediate-quality 0..9` quantize frames `1..N-1` only (`0` lowest quality, `9` highest; off by default)
+- `--max-local-palette-updates N` max palette edits per `0x25`, `0..256` (default: `32`)
 - `--compress` apply native-compatible parameterized LZSS (`0x77`); off by default
 - `--no-compress` explicitly select raw `0x67` chunks (the default)
-- `--length-mask N` LZSS length mask (default: `127`)
-- `--length-bits N` LZSS length bits (default: `7`)
+- `--length-mask N` LZSS length mask; must equal `(1 << length-bits) - 1` (default: `127`)
+- `--length-bits N` LZSS length bits, `1..8` (default: `7`)
 - `--no-validate` skip internal round-trip validation
 
+### Archive option reference
+
+| Option | Applies to | Meaning |
+| --- | --- | --- |
+| `--rl PATH` | Pack, list, unpack | Required index input/output. |
+| `--gjd PATH` | Pack, list, unpack | Required pack destination; list/unpack default to the matching `.GJD` beside the RL. |
+| `--input-dir DIR` | Pack | Discover sorted files, or use its `_archive-order.txt` automatically when present. |
+| `--manifest PATH` | Pack | Explicit order/name manifest; sources are relative to it. Cannot combine with explicit file arguments. |
+| `--out-dir DIR` | Unpack | Required new extraction directory. |
+| `--macbinary` | List, unpack | Read the specified archive's MacBinary data fork. RL offsets remain relative to that fork. |
+| `--mac-t7gdata` | Pack, unpack | Emit/check contiguous payloads with FF separators outside indexed lengths. Unpacking records this policy in the manifest. |
+
+Without a manifest, explicit file order is followed by sorted directory input.
+Names must fit the 12-byte RL name field. Listing reads the GJD to mark
+out-of-range records; it is not an RL-only listing. Existing pack outputs may
+be overwritten; an unpack destination must not already exist.
+
 ### Pack RL/GJD
+
+Packing recomputes offsets and writes canonical names and concatenated resource
+payloads. Unpacking/repacking preserves manifest resource order, names and
+payload bytes; arbitrary unindexed gaps and unused bytes after a filename's NUL
+terminator are not preserved. `--mac-t7gdata` explicitly retains FF separators.
 
 ```bash
 grooviev1.exe archive-pack --rl ROOM.RL --gjd ROOM.GJD --input-dir ./vdx
@@ -265,7 +547,8 @@ For extracted game frames, use the indexed route below. The ordinary RGB/WIC
 encoder rebuilds palettes; it cannot preserve original palette-slot identities.
 This route encodes independently from PNG indices and palettes, without the
 original VDX, original opcodes or compression tokens. PNGs must remain opaque
-indexed images with all 256 palette entries. Pillow is required for `frames.py`.
+indexed images with all 256 palette entries. Pillow is required for `frames.py extract` and `frames.py encode`; help and
+`frames.py compare` do not import Pillow.
 
 From the repository root, after building:
 
@@ -308,6 +591,77 @@ change the meaning of the preserved audio positions; no automatic audio
 retiming is performed. An extracted VDX remains the source archive for those
 details. `frames.py compare` checks PCM and audio positions as well as pixels.
 
+## Python helper command reference
+
+### Indexed PNG workflow: `frames.py`
+
+`frames.py` defaults to `build/grooviev1.exe` on Windows and
+`build/grooviev1-native` on Linux/macOS. `--tool PATH` overrides that choice and
+must appear **before** the subcommand. The selected executable must be runnable
+on the host; a Linux process cannot execute a cross-built Windows/macOS binary
+as a native Linux tool.
+
+Only image extraction/encoding need Pillow. A virtual environment avoids
+modifying a system-managed Python installation:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install Pillow
+.venv/bin/python grooviev1/frames.py extract input.vdx frames
+.venv/bin/python grooviev1/frames.py encode frames rebuilt.vdx
+.venv/bin/python grooviev1/frames.py compare input.vdx rebuilt.vdx --report comparison.json
+```
+
+Windows equivalents:
+
+```cmd
+py -3 -m venv .venv
+.venv\Scripts\python.exe -m pip install Pillow
+.venv\Scripts\python.exe grooviev1\frames.py --tool grooviev1\build\grooviev1.exe extract input.vdx frames
+.venv\Scripts\python.exe grooviev1\frames.py --tool grooviev1\build\grooviev1.exe encode frames rebuilt.vdx
+.venv\Scripts\python.exe grooviev1\frames.py --tool grooviev1\build\grooviev1.exe compare input.vdx rebuilt.vdx --report comparison.json
+```
+
+| Command | Required arguments/options | Result |
+| --- | --- | --- |
+| `extract SOURCE.vdx NEW_DIR` | Source VDX and new output directory. | Opaque indexed PNGs, full palettes, `sequence.json`, raw sidecars and any PCM sidecars. |
+| `encode INPUT_DIR NEW_OUTPUT.vdx` | Existing PNG sequence directory and new VDX destination. | Rebuilt indexed VDX; reads PNGs/metadata/audio, not the original VDX or extracted opcode bytes. |
+| `compare SOURCE.vdx ENCODED.vdx --report FILE.json` | Two existing VDX files and the required report path. | Compares decoded timing/geometry/frame count, indices, palettes, RGB, PCM and audio chunk positions. A mismatch returns nonzero. The JSON report may be overwritten. |
+
+The helper's help option accepts `-h`, `--h`, `-help` and `--help`.
+Help requires neither Pillow nor the selected C++ executable.
+Changing frame counts/rates does not automatically retime preserved audio.
+Indexed encoding may reject edited first-frame tiles with more than two
+palette indices; it does not silently approximate them.
+
+### MacBinary resources: `mac_resources.py`
+
+This helper uses Python's standard library and does not require the C++ tool,
+Pillow or a Mac host. Inputs are **MacBinary containers**, not arbitrary raw
+files or bare resource forks.
+
+| Command | Syntax | Result |
+| --- | --- | --- |
+| `list` | `list INPUT [--type FOURCC] [--id ID]` | Print matching resource metadata as JSON. With no filters, list all resources. |
+| `extract` | `extract INPUT --out-dir NEW_DIR [--type FOURCC] [--id ID]` | Export matching payloads plus `resources.json`, preserving safe unique names and assigning fallback filenames where needed. |
+| `replace` | `replace INPUT --type FOURCC --id ID --replacement FILE --output NEW_FILE` | Replace exactly one selected resource with an equal-size payload, retaining the container layout. |
+
+`--type` matches the exact four-character resource type; `--id` accepts signed
+resource IDs. Extraction requires a new directory. Replacement requires a new
+output file and a payload of exactly the selected resource's byte length;
+resource resizing is not implemented. The original input is never opened for
+writing.
+
+```bash
+python3 grooviev1/mac_resources.py list disassembly/T7GMac/T7GMac.bin --type T7GM
+python3 grooviev1/mac_resources.py extract disassembly/T7GMac/T7GMac.bin --type T7GM --out-dir mac-assets
+python3 grooviev1/mac_resources.py replace disassembly/T7GMac/T7GMac.bin --type T7GM --id 32309 --replacement hdisk-new.rl --output T7GMac-mod.bin
+```
+
+The helper's help option accepts `-h`, `--h`, `-help` and `--help`;
+`--type`, `--id`, `--out-dir`, `--replacement` and `--output` also have the
+short/long spellings listed above.
+
 ### Developer integration
 
 `main.cpp` implements encoding, archive and font commands; `indexed_commands.h`
@@ -317,21 +671,23 @@ GRV commands link `../src/grv.cpp` and `../src/rl.cpp` with headers in
 `../include`; decoder corrections therefore reach the toolkit and the engine.
 C++23 is required, including standard library `format` and `expected` support.
 On Windows, WIC supplies image loading (`ole32`, `uuid`, `windowscodecs`).
-The native Linux encoder accepts raw RGB24; Pillow in `frames.py` handles the
+The native Linux/macOS encoder accepts raw RGB24; Pillow in `frames.py` handles the
 portable indexed-PNG workflow. Mac resource operations need only Python's
 standard library. No game engine process is required for media authoring.
 
 Build from the repository root without deployment:
 
 ```sh
-GROOVIEV1_NO_DEPLOY=1 ./grooviev1/build.sh
+GROOVIEV1_NO_DEPLOY=1 ./grooviev1/build.sh windows
+./grooviev1/build.sh linux
+# On macOS, or with a configured Apple cross toolchain:
+./grooviev1/build.sh macos
 ```
 
-Use `CXX_NATIVE` to select the native compiler. The cross-build prefers
-`x86_64-w64-mingw32-g++`, then Clang targeting MinGW. Build outputs are
-`grooviev1/build/grooviev1.exe` and `grooviev1/build/grooviev1-native`.
-Without `GROOVIEV1_NO_DEPLOY=1`, the script copies the Windows executable to
-repository-local `T7G/grooviev1.exe`.
+Windows always uses Clang/MSVC x64. `CXX_LINUX`/`CXX_NATIVE` select a Linux
+compiler; `CXX_MACOS` selects a macOS compiler. Outputs are described in
+[Build](#build). Only Windows builds deploy to repository-local
+`T7G/grooviev1.exe`, unless disabled with `GROOVIEV1_NO_DEPLOY=1`.
 
 ## Microscope recovery contracts
 

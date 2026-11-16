@@ -88,7 +88,6 @@ namespace {
 HMIDISTRM g_midiStream = nullptr;
 bool g_midiStreamReady = false;
 tsf* g_soundfont = nullptr;
-bool g_soundfontReady = false;
 bool g_musicEnabled = true;
 HANDLE g_midiDoneEvent = nullptr;
 HANDLE g_musicStopEvent = nullptr;
@@ -1121,7 +1120,6 @@ bool ensureWavetableEngine()
 	if (!g_soundfont)
 	{
 		g_soundfont = loadConfiguredSoundfont(state.soundfont_path);
-		g_soundfontReady = g_soundfont != nullptr;
 	}
 	if (!g_soundfont)
 		return false;
@@ -1783,7 +1781,6 @@ void musicShutdown()
 	{
 		tsf_close(g_soundfont);
 		g_soundfont = nullptr;
-		g_soundfontReady = false;
 	}
 	g_midiCache.clear();
 #endif
@@ -3395,7 +3392,6 @@ void applyMusicRuntimeSettings()
 		if (g_soundfont)
 			tsf_close(g_soundfont);
 		g_soundfont = loadConfiguredSoundfont(state.soundfont_path);
-		g_soundfontReady = g_soundfont != nullptr;
 		if (g_soundfont)
 			ensureWavetableEngine();
 	}

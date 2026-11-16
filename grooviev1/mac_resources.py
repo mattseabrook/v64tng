@@ -56,14 +56,15 @@ def resources(path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, add_help=False)
+    parser.add_argument("-h", "--h", "-help", "--help", action="help", help="show this help message and exit")
     parser.add_argument('command', choices=('list', 'extract', 'replace'))
     parser.add_argument('input', type=Path)
-    parser.add_argument('--type', dest='kind', help='Exact four-character resource type, e.g. T7GM')
-    parser.add_argument('--id', type=int, help='Signed resource ID')
-    parser.add_argument('--out-dir', type=Path)
-    parser.add_argument('--replacement', type=Path)
-    parser.add_argument('--output', type=Path)
+    parser.add_argument('-t', '--t', '-type', '--type', dest='kind', help='Exact four-character resource type, e.g. T7GM')
+    parser.add_argument('-i', '--i', '-id', '--id', dest='id', type=int, help='Signed resource ID')
+    parser.add_argument('-od', '--od', '-out-dir', '--out-dir', dest='out_dir', type=Path)
+    parser.add_argument('-r', '--r', '-replacement', '--replacement', dest='replacement', type=Path)
+    parser.add_argument('-o', '--o', '-output', '--output', dest='output', type=Path)
     args = parser.parse_args()
     data, rows = resources(args.input)
     selected = [r for r in rows if (args.kind is None or r['type'] == args.kind)

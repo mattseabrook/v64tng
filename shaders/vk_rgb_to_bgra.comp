@@ -29,6 +29,6 @@ void main()
     float r = float(loadByte(base + 0u)) / 255.0;
     float g = float(loadByte(base + 1u)) / 255.0;
     float b = float(loadByte(base + 2u)) / 255.0;
-    // Write logical RGBA; bound image is BGRA8, driver will map channels
+    // The bound storage image is VK_FORMAT_R8G8B8A8_UNORM.
     imageStore(outImage, ivec2(gid), vec4(r, g, b, 1.0));
 }

@@ -23,6 +23,7 @@
 
 void GJDInfo(const std::string_view &filename);
 void VDXInfo(const std::string &filename);
+void GJDVInfo(const std::string &filename);
 void extractXMI(const std::vector<uint8_t> &midiData, std::string name);
 void extractVDX(const std::string_view &filename);
 void extractCursors(const std::string_view &robFilename);
@@ -31,6 +32,6 @@ void savePNG(const std::string &filename, const std::vector<uint8_t> &imageData,
 void savePNG(const std::string &filename, const std::vector<uint8_t> &imageData, int width, int height, bool hasAlpha, std::span<const RGBColor> palette);
 std::vector<uint8_t> loadPNG(const std::string& filename, int& width, int& height);
 void saveWAV(const std::string &filename, const std::vector<uint8_t> &audioData);
-void createVideoFromImages(const std::string &filenameParam);
+void createVideoFromImages(const std::string &filenameParam, double frameRate);
 
 #endif // EXTRACT_H
