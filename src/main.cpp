@@ -55,6 +55,7 @@
 #include "music.h"
 
 #ifdef _WIN32
+#include <io.h>
 #include <windows.h>
 #include "update.h"
 #endif
@@ -101,6 +102,20 @@ std::vector<std::string> get_args_windows()
 
 	LocalFree(wargv);
 	return args;
+}
+
+static void prepareDetachedOutput(FILE *stream)
+{
+	const int fd = _fileno(stream);
+	const DWORD type = fd >= 0
+		? GetFileType(reinterpret_cast<HANDLE>(_get_osfhandle(fd))) : FILE_TYPE_UNKNOWN;
+	// Console handles stop working after FreeConsole. Files and pipes survive it.
+	if (type == FILE_TYPE_DISK || type == FILE_TYPE_PIPE)
+		return;
+
+	FILE *sink = nullptr;
+	if (freopen_s(&sink, "NUL", "w", stream) != 0)
+		throw std::runtime_error("Failed to prepare output for detached game launch");
 }
 #endif
 
@@ -242,7 +257,7 @@ int process_args(const std::vector<std::string> &inputArgs)
 	else if (args[1] == "-x" && args.size() >= 3)
 	{
 
-		auto xmiResult = parseRLFile(assetPath("XMI.RL").string());
+		auto xmiResult = parseRLFile(assetPath("XMI.RL"));
 		if (!xmiResult)
 		{
 			std::println(stderr, "{}", xmiResult.error());
@@ -304,7 +319,7 @@ int main(int argc, char *argv[])
 #endif
 {
 #ifdef _WIN32
-	bool guiDetached = false;
+	bool directGameLaunch = false;
 #endif
 	try
 	{
@@ -334,11 +349,13 @@ int main(int argc, char *argv[])
 #ifdef _WIN32
 			// Release this process's console connection before starting the GUI.
 			// A console shared with the calling shell remains owned by that shell.
+			directGameLaunch = true;
 			std::fflush(stdout);
 			std::fflush(stderr);
+			prepareDetachedOutput(stdout);
+			prepareDetachedOutput(stderr);
 			if (!FreeConsole())
 				throw std::runtime_error("Failed to detach from the console");
-			guiDetached = true;
 #endif
 			init();
 			return 0;
@@ -348,7 +365,7 @@ int main(int argc, char *argv[])
 	catch (const std::exception &e)
 	{
 #ifdef _WIN32
-		if (guiDetached) MessageBoxA(nullptr, e.what(), "Fatal Error", MB_OK | MB_ICONERROR);
+		if (directGameLaunch) MessageBoxA(nullptr, e.what(), "Fatal Error", MB_OK | MB_ICONERROR);
 		else
 #endif
 		std::println(stderr, "ERROR: {}", e.what());
@@ -357,7 +374,7 @@ int main(int argc, char *argv[])
 	catch (...)
 	{
 #ifdef _WIN32
-		if (guiDetached) MessageBoxA(nullptr, "Unknown fatal error", "Fatal Error", MB_OK | MB_ICONERROR);
+		if (directGameLaunch) MessageBoxA(nullptr, "Unknown fatal error", "Fatal Error", MB_OK | MB_ICONERROR);
 		else
 #endif
 		std::println(stderr, "ERROR: Unknown fatal error");

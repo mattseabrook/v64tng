@@ -1,10 +1,8 @@
 // gjd.cpp
 
-#include <fstream>
 #include <vector>
 #include <string>
 #include <stdexcept>
-#include <filesystem>
 #include <memory>
 
 #ifdef _WIN32
@@ -20,26 +18,75 @@
 #include "gjd.h"
 #include "vdx.h"
 
-/*
-===============================================================================
-Function Name: parseGJDFile
+std::expected<std::pair<std::shared_ptr<const uint8_t>, size_t>, std::string> mapFileReadOnly(const std::filesystem::path &path)
+{
+#ifdef _WIN32
+    HANDLE hFile = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+                               OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (hFile == INVALID_HANDLE_VALUE)
+    {
+        return std::unexpected("Cannot open " + path.string());
+    }
 
-Description:
-    - Parses a GJD file using memory mapping for zero-copy access
+    LARGE_INTEGER sizeLi{};
+    if (!GetFileSizeEx(hFile, &sizeLi) || sizeLi.QuadPart <= 0)
+    {
+        CloseHandle(hFile);
+        return std::unexpected("Cannot size " + path.string());
+    }
+    const size_t fileSize = static_cast<size_t>(sizeLi.QuadPart);
 
-Parameters:
-    - rlFilename: the 7th Guest RL file to parse
+    HANDLE hMapFile = CreateFileMappingW(hFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
+    if (hMapFile == nullptr)
+    {
+        CloseHandle(hFile);
+        return std::unexpected("Cannot map " + path.string());
+    }
 
-Return:
-    - Vector of VDXFile objects parsed from the GJD data
+    const uint8_t *fileData = static_cast<const uint8_t *>(MapViewOfFile(hMapFile, FILE_MAP_READ, 0, 0, 0));
+    if (fileData == nullptr)
+    {
+        CloseHandle(hMapFile);
+        CloseHandle(hFile);
+        return std::unexpected("Cannot view " + path.string());
+    }
 
-Notes:
-    - Uses memory mapping to avoid copying large chunks of data
-===============================================================================
-*/
+    std::shared_ptr<const uint8_t> owner(fileData, [hMapFile, hFile](const uint8_t *p) {
+        UnmapViewOfFile(p);
+        CloseHandle(hMapFile);
+        CloseHandle(hFile);
+    });
+    return std::pair{std::move(owner), fileSize};
+#else
+    const int fd = open(path.c_str(), O_RDONLY);
+    if (fd == -1)
+    {
+        return std::unexpected("Cannot open " + path.string());
+    }
+
+    struct stat st {};
+    if (fstat(fd, &st) != 0 || st.st_size <= 0)
+    {
+        close(fd);
+        return std::unexpected("Cannot size " + path.string());
+    }
+    const size_t fileSize = static_cast<size_t>(st.st_size);
+
+    const uint8_t *fileData = static_cast<const uint8_t *>(mmap(nullptr, fileSize, PROT_READ, MAP_PRIVATE, fd, 0));
+    close(fd);
+    if (fileData == MAP_FAILED)
+        return std::unexpected("Cannot map " + path.string());
+
+    std::shared_ptr<const uint8_t> owner(fileData, [fileSize](const uint8_t *p) {
+        munmap(const_cast<uint8_t *>(p), fileSize);
+    });
+    return std::pair{std::move(owner), fileSize};
+#endif
+}
+
 std::vector<VDXFile> parseGJDFile(std::string_view rlFilename)
 {
-    auto rlResult = parseRLFile(rlFilename);
+    auto rlResult = parseRLFile(std::filesystem::path(rlFilename));
     if (!rlResult)
     {
         throw std::runtime_error(rlResult.error());
@@ -52,56 +99,10 @@ std::vector<VDXFile> parseGJDFile(std::string_view rlFilename)
 
     std::string gjdFilename = std::string(rlFilename.substr(0, rlFilename.find_last_of('.'))) + ".GJD";
 
-    if (!std::filesystem::exists(gjdFilename))
-    {
-        throw std::runtime_error("GJD file not found or is empty: " + gjdFilename);
-    }
-    const auto fileSize = std::filesystem::file_size(gjdFilename);
-    if (fileSize == 0)
-    {
-        throw std::runtime_error("GJD file not found or is empty: " + gjdFilename);
-    }
-
-#ifdef _WIN32
-    // Windows memory mapping
-    HANDLE hFile = CreateFileA(gjdFilename.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
-                               OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (hFile == INVALID_HANDLE_VALUE)
-    {
-        throw std::runtime_error("Failed to open GJD file: " + gjdFilename);
-    }
-
-    HANDLE hMapFile = CreateFileMapping(hFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
-    if (hMapFile == nullptr)
-    {
-        CloseHandle(hFile);
-        throw std::runtime_error("Failed to create file mapping for: " + gjdFilename);
-    }
-
-    const uint8_t *fileData = static_cast<const uint8_t *>(
-        MapViewOfFile(hMapFile, FILE_MAP_READ, 0, 0, 0));
-    if (fileData == nullptr)
-    {
-        CloseHandle(hMapFile);
-        CloseHandle(hFile);
-        throw std::runtime_error("Failed to map view of file: " + gjdFilename);
-    }
-
-    // Keep map + view alive while returned VDXFile objects still reference mapped bytes.
-    std::shared_ptr<const uint8_t> owner(fileData, [hMapFile, hFile](const uint8_t *p)
-                                         {
-                                             if (p)
-                                             {
-                                                 UnmapViewOfFile(p);
-                                             }
-                                             if (hMapFile)
-                                             {
-                                                 CloseHandle(hMapFile);
-                                             }
-                                             if (hFile != INVALID_HANDLE_VALUE)
-                                             {
-                                                 CloseHandle(hFile);
-                                             } });
+    auto mapped = mapFileReadOnly(gjdFilename);
+    if (!mapped)
+        throw std::runtime_error(mapped.error());
+    const auto &[owner, fileSize] = *mapped;
 
     std::vector<VDXFile> gjdData;
     gjdData.reserve(rlEntries.size());
@@ -112,52 +113,8 @@ std::vector<VDXFile> parseGJDFile(std::string_view rlFilename)
         {
             throw std::runtime_error("Entry extends beyond file size for: " + entry.filename);
         }
-        std::span<const uint8_t> vdxSpan{fileData + entry.offset, entry.length};
+        std::span<const uint8_t> vdxSpan{owner.get() + entry.offset, entry.length};
         gjdData.push_back(parseVDXFileBorrowed(entry.filename, vdxSpan, owner));
     }
-
-#else
-    // Unix memory mapping
-    int fd = open(gjdFilename.c_str(), O_RDONLY);
-    if (fd == -1)
-    {
-        throw std::runtime_error("Failed to open GJD file: " + gjdFilename);
-    }
-
-    const uint8_t *fileData = static_cast<const uint8_t *>(
-        mmap(nullptr, fileSize, PROT_READ, MAP_PRIVATE, fd, 0));
-    if (fileData == MAP_FAILED)
-    {
-        close(fd);
-        throw std::runtime_error("Failed to memory map file: " + gjdFilename);
-    }
-
-    // Keep map + fd alive while returned VDXFile objects still reference mapped bytes.
-    std::shared_ptr<const uint8_t> owner(fileData, [fileSize, fd](const uint8_t *p)
-                                         {
-                                             if (p && p != MAP_FAILED)
-                                             {
-                                                 munmap(const_cast<uint8_t *>(p), fileSize);
-                                             }
-                                             if (fd != -1)
-                                             {
-                                                 close(fd);
-                                             } });
-
-    std::vector<VDXFile> gjdData;
-    gjdData.reserve(rlEntries.size());
-
-    for (const auto &entry : rlEntries)
-    {
-        if (entry.offset > fileSize || entry.length > fileSize - entry.offset)
-        {
-            throw std::runtime_error("Entry extends beyond file size for: " + entry.filename);
-        }
-        // Zero-copy: create span directly from memory mapped data
-        std::span<const uint8_t> vdxSpan{fileData + entry.offset, entry.length};
-        gjdData.push_back(parseVDXFileBorrowed(entry.filename, vdxSpan, owner));
-    }
-#endif
-
     return gjdData;
 }

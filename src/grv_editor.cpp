@@ -43,11 +43,6 @@ enum ControlId : int {
     ID_DECOMPILE_CONTEXT
 };
 
-constexpr std::array<const char*, 21> kArchives{{
-    "AT", "B", "CH", "D", "DR", "FH", "GA", "HDISK", "HTBD", "INTRO", "JHEK",
-    "K", "LA", "LI", "MB", "MC", "MU", "N", "P", "XMI", "GAMWAV"
-}};
-
 HWND g_window = nullptr;
 HWND g_list = nullptr;
 HWND g_edit = nullptr;
@@ -127,10 +122,10 @@ std::optional<VDXFile> loadVDXByRef(uint16_t ref)
 {
     const size_t archive = ref >> 10;
     const size_t index = ref & 0x3ff;
-    if (archive >= kArchives.size())
+    if (archive >= grvArchives.size())
         return std::nullopt;
-    const auto rlPath = assetPath(std::string(kArchives[archive]) + ".RL");
-    const auto entries = parseRLFile(rlPath.string());
+    const auto rlPath = assetPath(std::string(grvArchives[archive]) + ".RL");
+    const auto entries = parseRLFile(rlPath);
     if (!entries || index >= entries->size())
         return std::nullopt;
     auto bytes = readArchiveEntry(rlPath, (*entries)[index]);
@@ -146,15 +141,15 @@ std::optional<VDXFile> loadVDXByName(std::string name)
     name = lower(name);
     if (!name.ends_with(".vdx"))
         name += ".vdx";
-    for (const char* archive : kArchives) {
+    for (std::string_view archive : grvArchives) {
         const auto rlPath = assetPath(std::string(archive) + ".RL");
         if (!std::filesystem::exists(rlPath))
             continue;
-        const auto entries = parseRLFile(rlPath.string());
+        const auto entries = parseRLFile(rlPath);
         if (!entries)
             continue;
         for (const auto& entry : *entries) {
-            std::string candidate = entry.filename.substr(0, entry.filename.find('\0'));
+            const auto &candidate = entry.filename;
             if (lower(candidate) != name)
                 continue;
             auto bytes = readArchiveEntry(rlPath, entry);

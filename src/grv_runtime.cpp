@@ -7,22 +7,16 @@
 #include <format>
 
 #include "console.h"
+#include "gjd.h"
+#include "grv.h"
+#include "rl.h"
 
 #ifdef _WIN32
 #include <windows.h>
-#else
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #endif
 
 namespace
 {
-constexpr std::array<std::string_view, 21> kArchives{{
-	"AT", "B", "CH", "D", "DR", "FH", "GA", "HDISK", "HTBD", "INTRO", "JHEK",
-	"K", "LA", "LI", "MB", "MC", "MU", "N", "P", "XMI", "GAMWAV"}};
-
 constexpr uint16_t read16(std::span<const uint8_t> bytes, size_t offset)
 {
 	return static_cast<uint16_t>(bytes[offset] | bytes[offset + 1] << 8);
@@ -185,73 +179,6 @@ std::optional<size_t> instructionEnd(std::span<const uint8_t> bytes, size_t offs
 	return p;
 }
 
-std::expected<std::pair<std::shared_ptr<const uint8_t>, size_t>, std::string>
-mapReadOnly(const std::filesystem::path &path)
-{
-#ifdef _WIN32
-	const HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
-		OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-	if (file == INVALID_HANDLE_VALUE)
-		return std::unexpected("Cannot open " + path.string());
-	LARGE_INTEGER size{};
-	if (!GetFileSizeEx(file, &size) || size.QuadPart <= 0)
-	{
-		CloseHandle(file);
-		return std::unexpected("Cannot size " + path.string());
-	}
-	const HANDLE mapping = CreateFileMappingW(file, nullptr, PAGE_READONLY, 0, 0, nullptr);
-	if (!mapping)
-	{
-		CloseHandle(file);
-		return std::unexpected("Cannot map " + path.string());
-	}
-	const auto data = static_cast<const uint8_t *>(
-		MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, 0));
-	if (!data)
-	{
-		CloseHandle(mapping);
-		CloseHandle(file);
-		return std::unexpected("Cannot view " + path.string());
-	}
-	std::shared_ptr<const uint8_t> owner(data, [mapping, file](const uint8_t *p)
-	{
-		if (p) UnmapViewOfFile(p);
-		CloseHandle(mapping);
-		CloseHandle(file);
-	});
-	return std::pair{std::move(owner), static_cast<size_t>(size.QuadPart)};
-#else
-	const int fd = open(path.c_str(), O_RDONLY);
-	if (fd < 0)
-		return std::unexpected("Cannot open " + path.string());
-	struct stat info{};
-	if (fstat(fd, &info) != 0 || info.st_size <= 0)
-	{
-		close(fd);
-		return std::unexpected("Cannot size " + path.string());
-	}
-	const size_t size = static_cast<size_t>(info.st_size);
-	const auto data = static_cast<const uint8_t *>(
-		mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0));
-	if (data == MAP_FAILED)
-	{
-		close(fd);
-		return std::unexpected("Cannot map " + path.string());
-	}
-	std::shared_ptr<const uint8_t> owner(data, [size, fd](const uint8_t *p)
-	{
-		if (p && p != MAP_FAILED) munmap(const_cast<uint8_t *>(p), size);
-		close(fd);
-	});
-	return std::pair{std::move(owner), size};
-#endif
-}
-
-uint16_t hotspotField(std::span<const uint8_t> bytes, size_t offset)
-{
-	return read16(bytes, offset);
-}
-
 std::string hexBytes(std::span<const uint8_t> bytes)
 {
 	std::string result;
@@ -286,8 +213,8 @@ uint16_t GrvHotspotView::left() const
 		return builtin->left;
 	switch (instruction_[0] & 0x7f)
 	{
-	case 0x0d: case 0x53: return hotspotField(instruction_, 1);
-	case 0x3b: return hotspotField(instruction_, 2);
+	case 0x0d: case 0x53: return read16(instruction_, 1);
+	case 0x3b: return read16(instruction_, 2);
 	default: return 0;
 	}
 }
@@ -298,8 +225,8 @@ uint16_t GrvHotspotView::top() const
 		return builtin->top;
 	switch (instruction_[0] & 0x7f)
 	{
-	case 0x0d: case 0x53: return hotspotField(instruction_, 3);
-	case 0x3b: return hotspotField(instruction_, 4);
+	case 0x0d: case 0x53: return read16(instruction_, 3);
+	case 0x3b: return read16(instruction_, 4);
 	default: return 0;
 	}
 }
@@ -310,8 +237,8 @@ uint16_t GrvHotspotView::right() const
 		return builtin->right;
 	switch (instruction_[0] & 0x7f)
 	{
-	case 0x0d: case 0x53: return hotspotField(instruction_, 5);
-	case 0x3b: return hotspotField(instruction_, 6);
+	case 0x0d: case 0x53: return read16(instruction_, 5);
+	case 0x3b: return read16(instruction_, 6);
 	default: return 639;
 	}
 }
@@ -322,8 +249,8 @@ uint16_t GrvHotspotView::bottom() const
 		return builtin->bottom;
 	switch (instruction_[0] & 0x7f)
 	{
-	case 0x0d: case 0x53: return hotspotField(instruction_, 7);
-	case 0x3b: return hotspotField(instruction_, 8);
+	case 0x0d: case 0x53: return read16(instruction_, 7);
+	case 0x3b: return read16(instruction_, 8);
 	default: return 479;
 	}
 }
@@ -332,10 +259,10 @@ uint16_t GrvHotspotView::target() const
 {
 	switch (instruction_[0] & 0x7f)
 	{
-	case 0x0d: return hotspotField(instruction_, 9);
-	case 0x3b: return hotspotField(instruction_, 10);
-	case 0x53: return hotspotField(instruction_, 9);
-	default: return hotspotField(instruction_, 1);
+	case 0x0d: return read16(instruction_, 9);
+	case 0x3b: return read16(instruction_, 10);
+	case 0x53: return read16(instruction_, 9);
+	default: return read16(instruction_, 1);
 	}
 }
 
@@ -368,7 +295,7 @@ std::expected<GrvRuntime, std::string> GrvRuntime::load(
 	CellPuzzle::Flavor microscopeFlavor,
 	GrvHotspotConvention hotspotConvention)
 {
-	auto mapping = mapReadOnly(scriptPath);
+	auto mapping = mapFileReadOnly(scriptPath);
 	if (!mapping)
 		return std::unexpected(mapping.error());
 	GrvRuntime runtime;
@@ -674,20 +601,18 @@ GrvRuntime::resolveVideoName(std::string_view name) const
 	std::vector<uint16_t> matches;
 	std::optional<uint16_t> contextMatch;
 	const std::string context = asciiLower(scriptPath_.stem().string());
-	for (size_t archiveIndex = 0; archiveIndex < kArchives.size(); ++archiveIndex)
+	for (size_t archiveIndex = 0; archiveIndex < grvArchives.size(); ++archiveIndex)
 	{
 		auto rlPath = findCaseInsensitive(
-			assetRoot_, std::string(kArchives[archiveIndex]) + ".RL");
+			assetRoot_, std::string(grvArchives[archiveIndex]) + ".RL");
 		if (!rlPath)
 			continue;
-		std::ifstream file(*rlPath, std::ios::binary);
-		for (size_t entryIndex = 0; entryIndex < 0x400; ++entryIndex)
+		const auto entries = parseRLFile(*rlPath, false);
+		if (!entries)
+			continue;
+		for (size_t entryIndex = 0; entryIndex < entries->size() && entryIndex < 0x400; ++entryIndex)
 		{
-			std::array<char, 20> record{};
-			if (!file.read(record.data(), record.size()))
-				break;
-			const auto end = std::find(record.begin(), record.begin() + 12, '\0');
-			std::string_view filename(record.data(), static_cast<size_t>(end - record.begin()));
+			const std::string_view filename = (*entries)[entryIndex].filename;
 			if (filename.empty())
 				continue;
 			const auto dot = filename.find('.');
@@ -696,7 +621,7 @@ GrvRuntime::resolveVideoName(std::string_view name) const
 				continue;
 			const auto ref = static_cast<uint16_t>((archiveIndex << 10) | entryIndex);
 			matches.push_back(ref);
-			if (asciiLower(kArchives[archiveIndex]) == context)
+			if (asciiLower(grvArchives[archiveIndex]) == context)
 				contextMatch = ref;
 		}
 	}
@@ -1164,7 +1089,7 @@ std::expected<bool, std::string> GrvRuntime::executeUntilInputLoop(uint16_t entr
 			auto path = findCaseInsensitive(assetRoot_, filename);
 			if (!path)
 				return std::unexpected("Cannot find GRV child script " + filename);
-			auto mapping = mapReadOnly(*path);
+			auto mapping = mapFileReadOnly(*path);
 			if (!mapping)
 				return std::unexpected(mapping.error());
 			ParentScript parent;
@@ -1543,9 +1468,9 @@ std::optional<GrvResource> GrvRuntime::resolve(uint16_t ref) const
 {
 	const size_t archiveIndex = ref >> 10;
 	const size_t entryIndex = ref & 0x3ff;
-	if (archiveIndex >= kArchives.size())
+	if (archiveIndex >= grvArchives.size())
 		return std::nullopt;
-	const auto archive = kArchives[archiveIndex];
+	const auto archive = grvArchives[archiveIndex];
 	std::filesystem::path path = assetRoot_ / (std::string(archive) + ".RL");
 	if (!std::filesystem::exists(path))
 	{

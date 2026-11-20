@@ -39,11 +39,6 @@ constexpr std::array<const char*, 91> kMnemonics{{
     "CHECK_SOUND_OVERLAY_SHAPE", "UNSUPPORTED_T7G"
 }};
 
-constexpr std::array<const char*, 21> kArchives{{
-    "AT", "B", "CH", "D", "DR", "FH", "GA", "HDISK", "HTBD", "INTRO", "JHEK",
-    "K", "LA", "LI", "MB", "MC", "MU", "N", "P", "XMI", "GAMWAV"
-}};
-
 class Reader
 {
 public:
@@ -62,18 +57,13 @@ private:
     size_t pos_;
 };
 
-std::string trimName(const std::string& name)
-{
-    return name.substr(0, name.find('\0'));
-}
-
 std::string resourceName(uint16_t ref, const GrvResourceNames& names)
 {
     if (const auto found = names.find(ref); found != names.end())
         return std::format("0x{:04X} ({})", ref, found->second);
     const size_t archive = ref >> 10;
     return std::format("0x{:04X} ({}[{}]=?)", ref,
-        archive < kArchives.size() ? kArchives[archive] : "UNKNOWN", ref & 0x3ff);
+        archive < grvArchives.size() ? grvArchives[archive] : "UNKNOWN", ref & 0x3ff);
 }
 
 std::string readChar(Reader& reader, bool allowGrid, uint8_t* last = nullptr)
@@ -142,14 +132,14 @@ GrvHotspot makeHotspot(uint16_t offset, std::string kind, uint16_t l, uint16_t t
 GrvResourceNames loadGrvResourceNames(const std::filesystem::path& root)
 {
     GrvResourceNames result;
-    for (size_t archive = 0; archive < kArchives.size(); ++archive) {
-        auto path = root / (std::string(kArchives[archive]) + ".RL");
+    for (size_t archive = 0; archive < grvArchives.size(); ++archive) {
+        auto path = root / (std::string(grvArchives[archive]) + ".RL");
         if (!std::filesystem::exists(path)) {
             path.replace_extension(".rl");
             if (!std::filesystem::exists(path)) {
                 // Classic Mac T7GM resources retain lowercase basenames.
                 // Resolve the complete filename, not only the extension.
-                const auto wanted = std::string(kArchives[archive]) + ".RL";
+                const auto wanted = std::string(grvArchives[archive]) + ".RL";
                 std::vector<std::filesystem::path> matches;
                 for (const auto& entry : std::filesystem::directory_iterator(root)) {
                     if (!entry.is_regular_file()) continue;
@@ -164,11 +154,11 @@ GrvResourceNames loadGrvResourceNames(const std::filesystem::path& root)
                 path = matches.front();
             }
         }
-        const auto entries = parseRLFile(path.string());
+        const auto entries = parseRLFile(path);
         if (!entries) continue;
         for (size_t index = 0; index < entries->size() && index < 1024; ++index)
             result[static_cast<uint16_t>((archive << 10) | index)] =
-                std::format("{}[{}]={}", kArchives[archive], index, trimName((*entries)[index].filename));
+                std::format("{}[{}]={}", grvArchives[archive], index, (*entries)[index].filename);
     }
     return result;
 }

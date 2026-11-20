@@ -125,17 +125,20 @@ build_windows() {
         "${WINDOWS_INCLUDES[@]}" "-I$(windows_path "$REPO_DIR/include")"
     )
     local objects=() source object
-    for source in "$ROOT_DIR/main.cpp" "$REPO_DIR/src/grv.cpp" "$REPO_DIR/src/rl.cpp"; do
+    for source in "${SOURCES[@]}"; do
         object="$objects_dir/$(basename "${source%.cpp}").obj"
-        clang-cl /c "$(windows_path "$source")" -o "$(windows_path "$object")" "${flags[@]}"
-        objects+=("$(windows_path "$object")")
+        clang-cl /c -o "$(windows_path "$object")" "${flags[@]}" -- "$(windows_path "$source")"
+        objects+=("windows-x64/$(basename "$object")")
     done
-    clang-cl --target=x86_64-pc-windows-msvc -fuse-ld=lld-link \
-        "${objects[@]}" -o "$(windows_path "$OUT_DIR/grooviev1.exe")" /link \
-        /machine:x64 /subsystem:console /incremental:no /opt:ref /opt:icf /Brepro \
-        /defaultlib:libcmt /defaultlib:libcpmt /defaultlib:libucrt \
-        /nodefaultlib:msvcrt.lib /nodefaultlib:ucrt.lib \
-        "${WINDOWS_LIBPATHS[@]}" kernel32.lib ole32.lib uuid.lib windowscodecs.lib
+    (
+        cd "$OUT_DIR"
+        clang-cl --target=x86_64-pc-windows-msvc -fuse-ld=lld-link \
+            "${objects[@]}" -o grooviev1.exe /link \
+            /machine:x64 /subsystem:console /incremental:no /opt:ref /opt:icf /Brepro \
+            /defaultlib:libcmt /defaultlib:libcpmt /defaultlib:libucrt \
+            /nodefaultlib:msvcrt.lib /nodefaultlib:ucrt.lib \
+            "${WINDOWS_LIBPATHS[@]}" kernel32.lib ole32.lib uuid.lib windowscodecs.lib
+    )
     echo "Built native Windows x64 executable with Clang/MSVC: $OUT_DIR/grooviev1.exe"
     if [[ "${GROOVIEV1_NO_DEPLOY:-0}" != 1 ]]; then
         local destination="${GROOVIEV1_DEPLOY_DIR:-$REPO_DIR/T7G}"
@@ -190,7 +193,7 @@ build_macos() {
 }
 
 mkdir -p "$OUT_DIR"
-SOURCES=("$ROOT_DIR/main.cpp" "$REPO_DIR/src/grv.cpp" "$REPO_DIR/src/rl.cpp")
+SOURCES=("$ROOT_DIR/main.cpp" "$REPO_DIR"/src/{bitmap,delta,grv,lzss,rl}.cpp)
 case "$TARGET_OS" in
     windows) build_windows ;;
     linux) build_linux ;;

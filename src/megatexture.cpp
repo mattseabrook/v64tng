@@ -40,7 +40,7 @@
     NOTE: Megatexture is conceptually one seamless 1024×W strip.
     We generate and write 3072×1024 tiles (3× longer than taller), streaming,
     to avoid huge memory.
-    Seamlessness is guaranteed because generatePixelVeins(u,v) uses global (u,v).
+    Seamlessness is guaranteed because mortar coverage uses global (u,v).
     No preview/combined PNG by design.
 
 ===============================================================================
@@ -233,31 +233,6 @@ static float mortarShapeAt(float x, float y, const MegatextureParams &params)
     return shape;
 }
 
-[[maybe_unused]] static uint32_t generatePixelVeins(
-    int u, int v, const MegatextureParams &params)
-{
-    // Convert pixel coordinates to world units with anisotropy:
-    // 1024 px width = 3 world units (horizontal), 1024 px height = 1 world unit (vertical)
-    static constexpr float pixelsPerUnitY = 1024.0f;
-    static constexpr float unitsPerTileX = 3.0f; // world units per 1024 px horizontally
-
-    // Single center sample - at 1024px resolution, supersampling is unnecessary
-    // The Worley noise has sufficient high-frequency detail
-    float x = ((static_cast<float>(u) + 0.5f) / 1024.0f) * unitsPerTileX;
-    float y = (static_cast<float>(v) + 0.5f) / pixelsPerUnitY;
-    float coverage = mortarShapeAt(x, y, params);
-
-    // Convert to alpha; enforce a tiny floor to keep lines continuous at 4K/2K
-    float aFloat = std::clamp(coverage, 0.0f, 1.0f);
-    const float minVisible = 8.0f / 255.0f; // ensures faint segments don't disappear entirely
-    if (aFloat > 0.0f && aFloat < minVisible) aFloat = minVisible;
-    uint8_t a = (uint8_t)std::round(aFloat * 255.0f);
-    if (a == 0) return 0u;
-
-    uint8_t g = (uint8_t)std::round(std::clamp(params.mortarGray, 0.0f, 1.0f) * 255.0f);
-    return ((uint32_t)g << 0) | ((uint32_t)g << 8) | ((uint32_t)g << 16) | ((uint32_t)a << 24);
-}
-
 // Apply baked corner ambient occlusion
 // localU: [0..1] position along edge
 // v: [0..1] position vertically
@@ -272,37 +247,18 @@ static inline float cornerAO(float localU, float v, bool cornerU0, bool cornerU1
     constexpr float AO_STRENGTH = 0.7f;    // Maximum darkening (70%)
     constexpr float AO_V_FALLOFF = 0.4f;   // Vertical falloff start (40% from edges)
     
-    if (cornerU0)
+    if (cornerU0 || cornerU1)
     {
-        // Distance from U=0 edge
-        float distU = localU / AO_RADIUS;
-        distU = std::clamp(distU, 0.0f, 1.0f);
-        
-        // Vertical factor: AO extends full height but fades toward center
-        float vCenter = std::abs(v - 0.5f) * 2.0f;  // 0 at center, 1 at edges
-        float vFactor = smoothstep01(1.0f - vCenter / AO_V_FALLOFF);  // stronger near floor/ceiling
-        vFactor = 0.5f + 0.5f * vFactor;  // minimum 50% even at center
-        
-        // AO intensity - smoothstep falloff from corner
-        float intensity = (1.0f - smoothstep01(distU)) * vFactor;
-        ao -= intensity * AO_STRENGTH;
+        const float vCenter = std::abs(v - 0.5f) * 2.0f;
+        const float vFactor = 0.5f + 0.5f * smoothstep01(1.0f - vCenter / AO_V_FALLOFF);
+        const auto darken = [vFactor](float distance) {
+            const float distU = std::clamp(distance / AO_RADIUS, 0.0f, 1.0f);
+            return ((1.0f - smoothstep01(distU)) * vFactor) * AO_STRENGTH;
+        };
+        if (cornerU0) ao -= darken(localU);
+        if (cornerU1) ao -= darken(1.0f - localU);
     }
-    
-    if (cornerU1)
-    {
-        // Distance from U=1 edge
-        float distU = (1.0f - localU) / AO_RADIUS;
-        distU = std::clamp(distU, 0.0f, 1.0f);
-        
-        // Vertical factor
-        float vCenter = std::abs(v - 0.5f) * 2.0f;
-        float vFactor = smoothstep01(1.0f - vCenter / AO_V_FALLOFF);
-        vFactor = 0.5f + 0.5f * vFactor;
-        
-        float intensity = (1.0f - smoothstep01(distU)) * vFactor;
-        ao -= intensity * AO_STRENGTH;
-    }
-    
+
     return std::clamp(ao, 0.0f, 1.0f);
 }
 
@@ -906,34 +862,85 @@ static size_t compressRGBA(const std::vector<uint8_t>& rgba, std::vector<uint8_t
     return compressedSize;
 }
 
-// Decompress DEFLATE data back to raw RGBA
-static bool decompressRGBA(const uint8_t* compressedData, size_t compressedSize,
-                          std::vector<uint8_t>& outRGBA, int width, int height)
+struct MTXIndex
 {
-    const size_t expectedSize = static_cast<size_t>(width) * height * 4;
-    outRGBA.resize(expectedSize);
+    MTXHeader header{};
+    int width = 0, height = 0;
+    uint64_t fileSize = 0;
+    std::vector<uint64_t> offsets;
+};
 
-    uLongf uncompressedSize = static_cast<uLong>(expectedSize);
-    int result = uncompress(
-        outRGBA.data(),
-        &uncompressedSize,
-        compressedData,
-        static_cast<uLong>(compressedSize)
-    );
-
-    if (result != Z_OK)
+static bool readMTXIndex(std::ifstream &file, const std::string &path, MTXIndex &index)
+{
+    if (!file)
     {
-        std::println(stderr, "ERROR: zlib decompression failed with code {}", result);
+        std::println(stderr, "ERROR: Failed to open MTX file: {}", path);
         return false;
     }
-
-    if (uncompressedSize != expectedSize)
+    auto &header = index.header;
+    if (!file.read(reinterpret_cast<char*>(&header), sizeof(header)) ||
+        std::memcmp(header.magic, "MTX1", 4) != 0)
     {
-        std::println(stderr, "ERROR: Decompressed size mismatch - expected {} bytes, got {}", expectedSize, uncompressedSize);
+        std::println(stderr, "ERROR: Invalid MTX header");
         return false;
     }
+    if (header.version != 1 && header.version != 2)
+    {
+        std::println(stderr, "ERROR: Unsupported MTX version: {}", header.version);
+        return false;
+    }
+    const auto width = header.version == 1 ? 1024u : header.tileWidth;
+    const auto height = header.version == 1 ? 1024u : header.tileHeight;
+    if (!width || !height || width > 16384 || height > 16384)
+    {
+        std::println(stderr, "ERROR: Invalid MTX tile dimensions");
+        return false;
+    }
+    index.width = static_cast<int>(width);
+    index.height = static_cast<int>(height);
 
+    file.seekg(0, std::ios::end);
+    const auto end = file.tellg();
+    const uint64_t tableBytes = uint64_t(header.tileCount) * sizeof(uint64_t);
+    if (end < 0 || uint64_t(end) < sizeof(header) + tableBytes)
+    {
+        std::println(stderr, "ERROR: Invalid MTX offset-table size");
+        return false;
+    }
+    index.fileSize = static_cast<uint64_t>(end);
+    file.seekg(sizeof(header));
+    index.offsets.resize(header.tileCount);
+    if (!file.read(reinterpret_cast<char*>(index.offsets.data()), tableBytes))
+    {
+        std::println(stderr, "ERROR: Failed to read MTX offset table");
+        return false;
+    }
+    for (const uint64_t offset : index.offsets)
+    {
+        if (offset > index.fileSize || index.fileSize - offset < sizeof(uint32_t))
+        {
+            std::println(stderr, "ERROR: Invalid MTX tile offset");
+            return false;
+        }
+    }
     return true;
+}
+
+static bool readMTXTile(std::ifstream &file, const MTXIndex &index, size_t tile,
+                        std::vector<uint8_t> &compressed, std::vector<uint8_t> &rgba)
+{
+    const uint64_t offset = index.offsets[tile];
+    file.seekg(static_cast<std::streamoff>(offset));
+    uint32_t size = 0;
+    if (!file.read(reinterpret_cast<char*>(&size), sizeof(size)) || !size ||
+        size > index.fileSize - offset - sizeof(size))
+        return false;
+    compressed.resize(size);
+    if (!file.read(reinterpret_cast<char*>(compressed.data()), size))
+        return false;
+    uLongf decodedSize = static_cast<uLongf>(rgba.size());
+    return uncompress(rgba.data(), &decodedSize, compressed.data(), size) == Z_OK &&
+        decodedSize == rgba.size();
 }
 
 bool saveMTX(const std::string& mtxPath, const std::string& tilesDir, const MegatextureParams& params)
@@ -1089,42 +1096,15 @@ bool decodeMTX(const std::string& mtxPath, const std::string& outDir)
     std::println("Input: {}", mtxPath);
     std::println("Output: {}/", outDir);
 
-    // Open MTX file
     std::ifstream mtxFile(mtxPath, std::ios::binary);
-    if (!mtxFile)
-    {
-        std::println(stderr, "ERROR: Failed to open MTX file: {}", mtxPath);
+    MTXIndex index;
+    if (!readMTXIndex(mtxFile, mtxPath, index))
         return false;
-    }
-
-    // Read header
-    MTXHeader header;
-    mtxFile.read(reinterpret_cast<char*>(&header), sizeof(MTXHeader));
-
-    // Validate header
-    if (std::strncmp(header.magic, "MTX1", 4) != 0)
-    {
-        std::println(stderr, "ERROR: Invalid MTX file (bad magic)");
-        return false;
-    }
-
-    if (header.version != 1 && header.version != 2)
-    {
-        std::println(stderr, "ERROR: Unsupported MTX version: {}", header.version);
-        return false;
-    }
-
+    const auto &header = index.header;
     std::println("Tiles: {}", header.tileCount);
-    if (header.version == 1)
-        std::println("Tile size: 1024×1024");
-    else
-        std::println("Tile size: {}×{}", header.tileWidth, header.tileHeight);
+    std::println("Tile size: {}×{}", index.width, index.height);
     std::println("Mortar RGB: ({}, {}, {})", (int)header.mortarRGB[0], (int)header.mortarRGB[1], (int)header.mortarRGB[2]);
     std::println("Seed: {}\n", header.seed);
-
-    // Read offset table
-    std::vector<uint64_t> tileOffsets(header.tileCount);
-    mtxFile.read(reinterpret_cast<char*>(tileOffsets.data()), sizeof(uint64_t) * header.tileCount);
 
     // Create output directory
     try {
@@ -1135,25 +1115,11 @@ bool decodeMTX(const std::string& mtxPath, const std::string& outDir)
         return false;
     }
 
-    // Decode each tile
+    std::vector<uint8_t> compressed;
+    std::vector<uint8_t> rgba(size_t(index.width) * index.height * 4);
     for (uint32_t i = 0; i < header.tileCount; ++i)
     {
-        // Seek to tile data
-        mtxFile.seekg(tileOffsets[i]);
-
-        // Read compressed size
-        uint32_t compressedSize = 0;
-        mtxFile.read(reinterpret_cast<char*>(&compressedSize), sizeof(uint32_t));
-
-        // Read DEFLATE-compressed data
-        std::vector<uint8_t> compressedData(compressedSize);
-        mtxFile.read(reinterpret_cast<char*>(compressedData.data()), compressedSize);
-
-        // Decompress to RGBA
-        std::vector<uint8_t> rgba;
-        const int w = (header.version == 1) ? 1024 : (int)header.tileWidth;
-        const int h = (header.version == 1) ? 1024 : (int)header.tileHeight;
-        if (!decompressRGBA(compressedData.data(), compressedData.size(), rgba, w, h))
+        if (!readMTXTile(mtxFile, index, i, compressed, rgba))
         {
             std::println(stderr, "ERROR: Failed to decompress tile {}", i);
             return false;
@@ -1164,9 +1130,7 @@ bool decodeMTX(const std::string& mtxPath, const std::string& outDir)
         filename << outDir << "/tile_" << std::setw(5) << std::setfill('0') << i << ".png";
 
         try {
-            const int wOut = (header.version == 1) ? 1024 : (int)header.tileWidth;
-            const int hOut = (header.version == 1) ? 1024 : (int)header.tileHeight;
-            savePNG(filename.str(), rgba, wOut, hOut, true);
+            savePNG(filename.str(), rgba, index.width, index.height, true);
         }
         catch (const std::exception& e) {
             std::println(stderr, "ERROR: Failed to write tile {}: {}", i, e.what());
@@ -1190,64 +1154,20 @@ bool loadMTX(const std::string& mtxPath)
     std::println("\n=== Loading MTX Megatexture ===");
     std::println("Reading: {}", mtxPath);
 
-    // Open MTX file
     std::ifstream mtxFile(mtxPath, std::ios::binary);
-    if (!mtxFile)
+    MTXIndex index;
+    if (!readMTXIndex(mtxFile, mtxPath, index))
+        return false;
+    mtxFile.close();
+    const auto &header = index.header;
+    if (!header.tileCount)
     {
-        std::println(stderr, "ERROR: Failed to open MTX file: {}", mtxPath);
+        std::println(stderr, "ERROR: Invalid MTX tile count");
         return false;
     }
-
-    // Read header
-    MTXHeader header;
-    mtxFile.read(reinterpret_cast<char*>(&header), sizeof(MTXHeader));
-
-    // Validate
-    if (std::strncmp(header.magic, "MTX1", 4) != 0)
-    {
-        std::println(stderr, "ERROR: Invalid MTX file (bad magic)");
-        return false;
-    }
-
-    if (header.version != 1 && header.version != 2)
-    {
-        std::println(
-            stderr, "ERROR: Unsupported MTX version: {}", header.version);
-        return false;
-    }
-
-    const int archiveTileWidth =
-        header.version == 1 ? 1024 : static_cast<int>(header.tileWidth);
-    const int archiveTileHeight =
-        header.version == 1 ? 1024 : static_cast<int>(header.tileHeight);
-    if (archiveTileWidth <= 0 || archiveTileHeight <= 0 ||
-        archiveTileWidth > 16384 || archiveTileHeight > 16384 ||
-        header.tileCount == 0)
-    {
-        std::println(stderr, "ERROR: Invalid MTX dimensions or tile count");
-        return false;
-    }
-
-    std::error_code fileSizeError;
-    const uintmax_t fileSize =
-        std::filesystem::file_size(mtxPath, fileSizeError);
-    const uintmax_t offsetTableBytes =
-        static_cast<uintmax_t>(header.tileCount) * sizeof(uint64_t);
-    if (fileSizeError || fileSize < sizeof(MTXHeader) ||
-        offsetTableBytes > fileSize - sizeof(MTXHeader))
-    {
-        std::println(stderr, "ERROR: Invalid MTX offset-table size");
-        return false;
-    }
-
-    const size_t archiveBytesPerTile =
-        static_cast<size_t>(archiveTileWidth) *
-        static_cast<size_t>(archiveTileHeight) * 4ull;
-    if (archiveBytesPerTile > std::numeric_limits<uLong>::max())
-    {
-        std::println(stderr, "ERROR: MTX tile is too large for zlib");
-        return false;
-    }
+    const int archiveTileWidth = index.width;
+    const int archiveTileHeight = index.height;
+    const size_t archiveBytesPerTile = size_t(archiveTileWidth) * archiveTileHeight * 4;
 
     int residentHeight = 256;
     if (config.contains("raycastMegatextureResidentHeight") &&
@@ -1283,26 +1203,6 @@ bool loadMTX(const std::string& mtxPath)
     std::println("Tiles: {}", header.tileCount);
     std::println("Parallel decompression with {} threads...", numThreads);
 
-    // Read offset table
-    std::vector<uint64_t> tileOffsets(header.tileCount);
-    mtxFile.read(reinterpret_cast<char*>(tileOffsets.data()), sizeof(uint64_t) * header.tileCount);
-    if (!mtxFile)
-    {
-        std::println(stderr, "ERROR: Failed to read MTX offset table");
-        return false;
-    }
-    mtxFile.close();
-
-    for (uint64_t offset : tileOffsets)
-    {
-        if (offset > fileSize ||
-            fileSize - offset < sizeof(uint32_t))
-        {
-            std::println(stderr, "ERROR: Invalid MTX tile offset");
-            return false;
-        }
-    }
-
     const size_t totalBytes =
         residentBytesPerTile * static_cast<size_t>(header.tileCount);
     std::vector<uint8_t> newTileData(totalBytes);
@@ -1312,7 +1212,6 @@ bool loadMTX(const std::string& mtxPath)
     // This avoids keeping an archive-sized compressed collection beside the
     // resident cache at peak memory.
     std::atomic<uint32_t> nextTile{0};
-    std::atomic<uint32_t> completedTiles{0};
     std::atomic<bool> hasError{false};
     
     auto decompressWorker = [&]()
@@ -1332,40 +1231,7 @@ bool loadMTX(const std::string& mtxPath)
             if (tileIdx >= header.tileCount)
                 break;
 
-            workerFile.clear();
-            workerFile.seekg(
-                static_cast<std::streamoff>(tileOffsets[tileIdx]));
-            uint32_t compressedSize = 0;
-            workerFile.read(
-                reinterpret_cast<char*>(&compressedSize),
-                sizeof(compressedSize));
-            if (!workerFile || compressedSize == 0 ||
-                static_cast<uint64_t>(compressedSize) >
-                    fileSize - tileOffsets[tileIdx] - sizeof(compressedSize))
-            {
-                hasError.store(true, std::memory_order_relaxed);
-                return;
-            }
-
-            compressedData.resize(compressedSize);
-            workerFile.read(
-                reinterpret_cast<char*>(compressedData.data()),
-                compressedSize);
-            if (!workerFile)
-            {
-                hasError.store(true, std::memory_order_relaxed);
-                return;
-            }
-
-            uLongf uncompressedSize =
-                static_cast<uLong>(archiveBytesPerTile);
-            int result = uncompress(
-                decodedTile.data(),
-                &uncompressedSize,
-                compressedData.data(),
-                static_cast<uLong>(compressedData.size()));
-            if (result != Z_OK ||
-                uncompressedSize != archiveBytesPerTile)
+            if (!readMTXTile(workerFile, index, tileIdx, compressedData, decodedTile))
             {
                 hasError.store(true, std::memory_order_relaxed);
                 return;
@@ -1427,12 +1293,6 @@ bool loadMTX(const std::string& mtxPath)
                             decodedTile.data() + best, 4);
                     }
                 }
-            }
-            
-            uint32_t completed = completedTiles.fetch_add(1, std::memory_order_relaxed) + 1;
-            if (completed % 500 == 0 || completed == header.tileCount)
-            {
-                // Progress output (safe from any thread since it's just stdout)
             }
         }
     };

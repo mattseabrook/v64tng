@@ -507,6 +507,44 @@ struct WasapiSession {
 	}
 };
 
+// Keep the endpoint active with silence until it can accept the first
+// music buffer without advancing either synth's cursor during warm-up.
+template<class Render>
+bool queueFirstSynthBuffer(WasapiSession &session, const HANDLE (&events)[3],
+                           bool &shuttingDown, bool &replaceTrack, Render render)
+{
+    const auto deadline = std::chrono::steady_clock::now() +
+        std::chrono::milliseconds(kSynthEndpointWarmupMs);
+    for (;;)
+    {
+        const DWORD wait = WaitForMultipleObjects(3, events, FALSE, INFINITE);
+        if (wait == WAIT_OBJECT_0 || wait == WAIT_OBJECT_0 + 1u)
+        {
+            shuttingDown = wait == WAIT_OBJECT_0;
+            replaceTrack = !shuttingDown;
+            return false;
+        }
+        UINT32 padding = 0;
+        if (FAILED(session.audioClient->GetCurrentPadding(&padding)))
+            return false;
+        const UINT32 available = session.bufferFrameCount - padding;
+        if (!available)
+            continue;
+        BYTE *buffer = nullptr;
+        if (FAILED(session.renderClient->GetBuffer(available, &buffer)))
+            return false;
+        const bool ready = std::chrono::steady_clock::now() >= deadline;
+        if (ready)
+            render(buffer, available);
+        if (FAILED(session.renderClient->ReleaseBuffer(
+                available, ready ? 0 : AUDCLNT_BUFFERFLAGS_SILENT)))
+            return false;
+        if (ready)
+            return true;
+    }
+}
+
+
 //----------------------------------------------------------------------
 // Persistent low-latency wavetable engine
 //----------------------------------------------------------------------
@@ -994,49 +1032,10 @@ void wavetableWorker()
 				session.bufferEvent};
 			if (firstStart && request.deferStart)
 			{
-				const auto warmupEnd = std::chrono::steady_clock::now() +
-					std::chrono::milliseconds(kSynthEndpointWarmupMs);
-				bool firstMusicQueued = false;
-				while (!firstMusicQueued)
-				{
-					const DWORD wait = WaitForMultipleObjects(
-						3, playbackHandles, FALSE, INFINITE);
-					if (wait == WAIT_OBJECT_0)
-					{
-						shuttingDown = true;
-						break;
-					}
-					if (wait == WAIT_OBJECT_0 + 1u)
-					{
-						replaceTrack = true;
-						break;
-					}
-					UINT32 padding = 0;
-					if (FAILED(session.audioClient->GetCurrentPadding(&padding)))
-						break;
-					const UINT32 available = session.bufferFrameCount - padding;
-					if (available == 0)
-						continue;
-					if (FAILED(session.renderClient->GetBuffer(
-							available, &buffer)))
-						break;
-					if (std::chrono::steady_clock::now() < warmupEnd)
-					{
-						// Refill with silence so the endpoint stays continuously active.
-						// Do not call cursor.render(): sample zero remains untouched.
-						if (FAILED(session.renderClient->ReleaseBuffer(
-								available, AUDCLNT_BUFFERFLAGS_SILENT)))
-							break;
-						continue;
-					}
-					trackAlive = cursor.render(
-						reinterpret_cast<float *>(buffer), available);
-					if (FAILED(session.renderClient->ReleaseBuffer(
-							available, 0)))
-						break;
-					firstMusicQueued = true;
-				}
-				if (!firstMusicQueued || replaceTrack || shuttingDown)
+				if (!queueFirstSynthBuffer(session, playbackHandles, shuttingDown, replaceTrack,
+                    [&](BYTE *output, UINT32 frames) {
+                        trackAlive = cursor.render(reinterpret_cast<float *>(output), frames);
+                    }))
 				{
 					acknowledgeWavetableStarted(request.generation);
 					tsf_reset(synth);
@@ -1422,49 +1421,10 @@ void oplWorker()
 				g_oplShutdownEvent, g_oplCommandEvent, session.bufferEvent};
 			if (firstStart && request.deferStart)
 			{
-				const auto warmupEnd = std::chrono::steady_clock::now() +
-					std::chrono::milliseconds(kSynthEndpointWarmupMs);
-				bool firstMusicQueued = false;
-				while (!firstMusicQueued)
-				{
-					const DWORD wait = WaitForMultipleObjects(
-						3, playbackHandles, FALSE, INFINITE);
-					if (wait == WAIT_OBJECT_0)
-					{
-						shuttingDown = true;
-						break;
-					}
-					if (wait == WAIT_OBJECT_0 + 1u)
-					{
-						replaceTrack = true;
-						break;
-					}
-					UINT32 padding = 0;
-					if (FAILED(session.audioClient->GetCurrentPadding(&padding)))
-						break;
-					const UINT32 available = session.bufferFrameCount - padding;
-					if (available == 0)
-						continue;
-					if (FAILED(session.renderClient->GetBuffer(
-							available, &rawBuffer)))
-						break;
-					if (std::chrono::steady_clock::now() < warmupEnd)
-					{
-						// Keep the endpoint hot without asking libADLMIDI for a sample.
-						if (FAILED(session.renderClient->ReleaseBuffer(
-								available, AUDCLNT_BUFFERFLAGS_SILENT)))
-							break;
-						continue;
-					}
-					samples = renderOplBuffer(player,
-						reinterpret_cast<short *>(rawBuffer),
-						available);
-					if (FAILED(session.renderClient->ReleaseBuffer(
-							available, 0)))
-						break;
-					firstMusicQueued = true;
-				}
-				if (!firstMusicQueued || replaceTrack || shuttingDown)
+				if (!queueFirstSynthBuffer(session, playbackHandles, shuttingDown, replaceTrack,
+                    [&](BYTE *output, UINT32 frames) {
+                        samples = renderOplBuffer(player, reinterpret_cast<short *>(output), frames);
+                    }))
 				{
 					acknowledgeOplStarted(request.generation);
 					adl_panic(player);
@@ -1963,12 +1923,11 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 	{
 		if (*it < 0x80)
 		{
-			// Delta time
+			// XMIDI delay bytes add up until the next status byte.
 			uint32_t delay = 0;
-			while (it != eventEnd && *it == 0x7F)
+			while (it != eventEnd && *it < 0x80)
 				delay += *it++;
 			require(it != eventEnd, "Truncated XMI delay");
-			delay += *it++;
 
 			// Handle pending note-offs
 			while (!noteOffs.empty() && delay > noteOffs.front().delta)
@@ -2022,6 +1981,15 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 				require(static_cast<size_t>(eventEnd - it) >= textlen, "XMI meta event exceeds EVNT chunk");
 				decodeIt = std::copy_n(it, textlen, decodeIt);
 				it += textlen;
+			}
+			else if (*it == 0xF0 || *it == 0xF7)
+			{
+				*decodeIt++ = *it++;
+				const uint32_t length = read_varlen(it, eventEnd);
+				require(static_cast<size_t>(eventEnd - it) >= length, "XMI SysEx event exceeds EVNT chunk");
+				decodeIt = write_varlen(decodeIt, length);
+				decodeIt = std::copy_n(it, length, decodeIt);
+				it += length;
 			}
 			else if ((*it & 0xF0) == 0x80)
 			{ // Note Off
@@ -2096,41 +2064,14 @@ std::vector<uint8_t> xmiConverter(const RLEntry &song)
 		delta = static_cast<uint32_t>(static_cast<double>(delta) * factor + 0.5);
 		write_varlen(writeIt, delta);
 
-		// Event handling
-		if ((*readIt & 0xF0) == 0x80) // Note Off
+		require(readIt != midiDecode.end(), "Truncated decoded MIDI event");
+		const uint8_t status = *readIt;
+		if (status >= 0x80 && status < 0xf0)
 		{
-			writeIt = std::copy_n(readIt, 3, writeIt);
-			readIt += 3;
-		}
-		else if ((*readIt & 0xF0) == 0x90) // Note On
-		{
-			writeIt = std::copy_n(readIt, 3, writeIt);
-			readIt += 3;
-		}
-		else if ((*readIt & 0xF0) == 0xA0) // Key Pressure
-		{
-			writeIt = std::copy_n(readIt, 3, writeIt);
-			readIt += 3;
-		}
-		else if ((*readIt & 0xF0) == 0xB0) // Control Change
-		{
-			writeIt = std::copy_n(readIt, 3, writeIt);
-			readIt += 3;
-		}
-		else if ((*readIt & 0xF0) == 0xC0) // Program Change
-		{
-			writeIt = std::copy_n(readIt, 2, writeIt);
-			readIt += 2;
-		}
-		else if ((*readIt & 0xF0) == 0xD0) // Channel Pressure
-		{
-			writeIt = std::copy_n(readIt, 2, writeIt);
-			readIt += 2;
-		}
-		else if ((*readIt & 0xF0) == 0xE0) // Pitch Bend
-		{
-			writeIt = std::copy_n(readIt, 3, writeIt);
-			readIt += 3;
+			const size_t size = status >= 0xc0 && status < 0xe0 ? 2 : 3;
+			require(static_cast<size_t>(midiDecode.end() - readIt) >= size, "Truncated decoded MIDI channel event");
+			writeIt = std::copy_n(readIt, size, writeIt);
+			readIt += size;
 		}
 		else if (*readIt == 0xF0 || *readIt == 0xF7) // Sysex
 		{
@@ -2190,19 +2131,14 @@ namespace
 {
 std::string xmiStem(const RLEntry &entry)
 {
-	std::string stem = entry.filename;
-	if (const auto nul = stem.find('\0'); nul != std::string::npos)
-		stem.resize(nul);
-	if (const auto dot = stem.find('.'); dot != std::string::npos)
-		stem.resize(dot);
-	return stem;
+	return entry.filename.substr(0, entry.filename.find('.'));
 }
 
 CachedMidi cacheMidiSong(std::string_view songName)
 {
 	if (const CachedMidi alreadyCached = cachedMidi(songName))
 		return alreadyCached;
-	const auto entries = parseRLFile(assetPath("XMI.RL").string());
+	const auto entries = parseRLFile(assetPath("XMI.RL"));
 	if (!entries)
 	{
 		std::println(stderr, "ERROR: Cannot read XMI index: {}", entries.error());
@@ -2233,7 +2169,7 @@ void preloadMidiCache()
 {
 	if (!g_midiCache.empty())
 		return;
-	const auto entries = parseRLFile(assetPath("XMI.RL").string());
+	const auto entries = parseRLFile(assetPath("XMI.RL"));
 	if (!entries)
 	{
 		std::println(stderr, "ERROR: Cannot preload XMI cache: {}", entries.error());

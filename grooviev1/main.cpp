@@ -26,16 +26,14 @@
 #include <vector>
 
 #include "../include/grv.h"
+#include "../include/delta.h"
+#include "../include/lzss.h"
+#include "../include/rl.h"
 #include "../include/cli_options.h"
 
 namespace fs = std::filesystem;
 
-struct RGB
-{
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
-};
+using RGB = RGBColor;
 
 struct Options
 {
@@ -64,23 +62,6 @@ struct Block
     uint8_t type = 0;
     std::vector<uint8_t> data;
 };
-
-// Canonical table: DOS V.EXE DS:D48E and Win32 v32tng.exe VA 0041A088.
-// The two independently compiled decoder tables are byte-for-byte identical.
-// Verified 192-byte SHA-256: 16c066d8cf21fa1b07d1ede81e4fdd2e7f91b91752c8c9c644472ada6943439c.
-static constexpr std::array<uint8_t, 192> kMapField = {
-    0x00, 0xc8, 0x80, 0xec, 0xc8, 0xfe, 0xec, 0xff, 0xfe, 0xff, 0x00, 0x31, 0x10, 0x73, 0x31, 0xf7,
-    0x73, 0xff, 0xf7, 0xff, 0x80, 0x6c, 0xc8, 0x36, 0x6c, 0x13, 0x10, 0x63, 0x31, 0xc6, 0x63, 0x8c,
-    0x00, 0xf0, 0x00, 0xff, 0xf0, 0xff, 0x11, 0x11, 0x33, 0x33, 0x77, 0x77, 0x66, 0x66, 0xcc, 0xcc,
-    0xf0, 0x0f, 0xff, 0x00, 0xcc, 0xff, 0x76, 0x07, 0x33, 0xff, 0xe6, 0x0e, 0xff, 0xcc, 0x70, 0x67,
-    0xff, 0x33, 0xe0, 0x6e, 0x00, 0x48, 0x80, 0x24, 0x48, 0x12, 0x24, 0x01, 0x12, 0x00, 0x00, 0x21,
-    0x10, 0x42, 0x21, 0x84, 0x42, 0x08, 0x84, 0x00, 0x88, 0xf8, 0x44, 0x07, 0x32, 0x00, 0x1f, 0x11,
-    0xe0, 0x22, 0x00, 0x4c, 0x8f, 0x88, 0x70, 0x44, 0x00, 0x23, 0x11, 0xf1, 0x22, 0x0e, 0xc4, 0x00,
-    0x3f, 0xf3, 0xcf, 0xfc, 0x99, 0xff, 0xff, 0x99, 0x44, 0x44, 0x22, 0x22, 0xee, 0xcc, 0x33, 0x77,
-    0xf8, 0x01, 0xf1, 0x08, 0xbb, 0x09, 0xdd, 0x0c, 0x0f, 0x0f, 0x88, 0x0f, 0xf1, 0x13, 0xb3, 0x19,
-    0x80, 0x1f, 0x6f, 0x22, 0xec, 0x27, 0x77, 0x30, 0x67, 0x32, 0xe4, 0x37, 0xe3, 0x38, 0x90, 0x3f,
-    0xcf, 0x44, 0xd9, 0x4c, 0x99, 0x4c, 0x55, 0x55, 0x3f, 0x60, 0x77, 0x60, 0x37, 0x62, 0xc9, 0x64,
-    0xcd, 0x64, 0xd9, 0x6c, 0xef, 0x70, 0x00, 0x0f, 0xf0, 0x00, 0x00, 0x00, 0x44, 0x44, 0x22, 0x22};
 
 struct EncodeStats
 {
@@ -496,28 +477,6 @@ private:
     T *p_ = nullptr;
 };
 
-static std::vector<uint8_t> resizeNearestRGB(const std::vector<uint8_t> &src, int sw, int sh, int dw, int dh)
-{
-    if (sw == dw && sh == dh)
-        return src;
-
-    std::vector<uint8_t> out(static_cast<size_t>(dw) * static_cast<size_t>(dh) * 3);
-    for (int y = 0; y < dh; ++y)
-    {
-        const int sy = (y * sh) / dh;
-        for (int x = 0; x < dw; ++x)
-        {
-            const int sx = (x * sw) / dw;
-            const size_t s = (static_cast<size_t>(sy) * static_cast<size_t>(sw) + static_cast<size_t>(sx)) * 3;
-            const size_t d = (static_cast<size_t>(y) * static_cast<size_t>(dw) + static_cast<size_t>(x)) * 3;
-            out[d + 0] = src[s + 0];
-            out[d + 1] = src[s + 1];
-            out[d + 2] = src[s + 2];
-        }
-    }
-    return out;
-}
-
 static std::vector<uint8_t> loadImageWicRGB24(const std::string &path, int &width, int &height)
 {
     ComPtr<IWICImagingFactory> factory;
@@ -565,6 +524,18 @@ static std::vector<uint8_t> loadImageWicRGB24(const std::string &path, int &widt
     return rgb;
 }
 #else
+class ComInit
+{
+public:
+    ComInit() = default;
+};
+
+static std::vector<uint8_t> loadImageWicRGB24(const std::string &path, int &, int &)
+{
+    throw std::runtime_error("Native grooviev1 builds require --raw input; Windows builds use WIC for " + path);
+}
+#endif
+
 static std::vector<uint8_t> resizeNearestRGB(const std::vector<uint8_t> &src, int sw, int sh, int dw, int dh)
 {
     if (sw == dw && sh == dh)
@@ -586,18 +557,6 @@ static std::vector<uint8_t> resizeNearestRGB(const std::vector<uint8_t> &src, in
     }
     return out;
 }
-
-class ComInit
-{
-public:
-    ComInit() = default;
-};
-
-static std::vector<uint8_t> loadImageWicRGB24(const std::string &path, int &, int &)
-{
-    throw std::runtime_error("Native grooviev1 builds require --raw input; Windows builds use WIC for " + path);
-}
-#endif
 
 static std::vector<uint8_t> loadRawRGB24(const std::string &path, int width, int height)
 {
@@ -742,6 +701,20 @@ static inline void writeLE16(std::vector<uint8_t> &out, uint16_t v)
     out.push_back(static_cast<uint8_t>((v >> 8) & 0xFF));
 }
 
+static void writeLE16Ptr(uint8_t *p, uint16_t v)
+{
+    p[0] = static_cast<uint8_t>(v & 0xFF);
+    p[1] = static_cast<uint8_t>((v >> 8) & 0xFF);
+}
+
+static void writeLE32Ptr(uint8_t *p, uint32_t v)
+{
+    p[0] = static_cast<uint8_t>(v & 0xFF);
+    p[1] = static_cast<uint8_t>((v >> 8) & 0xFF);
+    p[2] = static_cast<uint8_t>((v >> 16) & 0xFF);
+    p[3] = static_cast<uint8_t>((v >> 24) & 0xFF);
+}
+
 static std::vector<uint8_t> lzssCompress(const std::vector<uint8_t> &inputData, uint8_t lengthMask, uint8_t lengthBits)
 {
     const size_t maxDistance = 0xFFFFu >> lengthBits;
@@ -826,57 +799,13 @@ static std::vector<uint8_t> lzssCompress(const std::vector<uint8_t> &inputData, 
     return compressedData;
 }
 
-static std::vector<uint8_t> lzssDecompressForValidation(const std::vector<uint8_t> &encoded,
-                                                        uint8_t lengthMask,
-                                                        uint8_t lengthBits)
+static std::vector<uint8_t> lzssDecompressForValidation(std::span<const uint8_t> encoded,
+                                                        uint8_t lengthMask, uint8_t lengthBits)
 {
-    if (!lengthBits || lengthBits > 8)
-        throw std::runtime_error("LZSS validation: invalid length bits");
-    constexpr size_t maximumOutput = 16 * 1024 * 1024;
-    std::vector<uint8_t> history(size_t{1} << (16 - lengthBits), 0);
-    const size_t wrap = history.size() - 1;
-    size_t cursor = history.size() - (size_t{1} << lengthBits);
-    std::vector<uint8_t> decoded;
-    auto emit = [&](uint8_t value) {
-        if (decoded.size() == maximumOutput)
-            throw std::runtime_error("LZSS validation: output exceeds 16 MiB");
-        decoded.push_back(value);
-        history[cursor] = value;
-        cursor = (cursor + 1) & wrap;
-    };
-    size_t source = 0;
-
-    for (;;)
-    {
-        if (source >= encoded.size())
-            throw std::runtime_error("LZSS validation: missing control byte");
-        const uint8_t flags = encoded[source++];
-
-        for (int bit = 0; bit < 8; ++bit)
-        {
-            if ((flags & (1u << bit)) != 0)
-            {
-                if (source >= encoded.size())
-                    throw std::runtime_error("LZSS validation: truncated literal");
-                emit(encoded[source++]);
-                continue;
-            }
-
-            if (source + 2 > encoded.size())
-                throw std::runtime_error("LZSS validation: truncated match token");
-            const uint16_t token = static_cast<uint16_t>(encoded[source]) |
-                                   (static_cast<uint16_t>(encoded[source + 1]) << 8);
-            source += 2;
-            if (token == 0)
-                return decoded;
-
-            const size_t distance = token >> lengthBits;
-            const size_t length = (token & lengthMask) + 3u;
-            const size_t origin = (cursor - distance) & wrap;
-            for (size_t i = 0; i < length; ++i)
-                emit(history[(origin + i) & wrap]);
-        }
-    }
+    auto decoded = lzssDecompressChecked(encoded, lengthMask, lengthBits, 16 * 1024 * 1024);
+    if (!decoded)
+        throw std::runtime_error(decoded.error());
+    return std::move(*decoded);
 }
 
 static std::vector<uint8_t> encodeStill0x20(const std::vector<uint8_t> &indexed,
@@ -1013,18 +942,10 @@ static void readTile(const std::vector<uint8_t> &frame,
 }
 
 static void emitGeneric2Color(std::vector<uint8_t> &out,
-                              const std::array<uint8_t, 16> &tile,
+                              uint16_t map,
                               uint8_t c0,
                               uint8_t c1)
 {
-    uint16_t map = 0;
-    for (int i = 0; i < 16; ++i)
-    {
-        map <<= 1;
-        if (tile[i] == c1)
-            map |= 1;
-    }
-
     // Generic maps are recognized by a first byte >= 0x80. Complementing
     // the map and swapping colours preserves every pixel while disambiguating.
     if ((map & 0x80) == 0) {
@@ -1084,7 +1005,7 @@ static void emitTile(std::vector<uint8_t> &out,
             return;
         }
 
-        emitGeneric2Color(out, tile, c0, c1);
+        emitGeneric2Color(out, map, c0, c1);
         stats.opGeneric++;
         return;
     }
@@ -1109,7 +1030,7 @@ static std::vector<uint8_t> encodeDeltaImageOps(const std::vector<uint8_t> &prev
     mapToOpcode.reserve(128);
     for (int op = 0; op <= 0x5F; ++op)
     {
-        const uint16_t map = readLE16(&kMapField[static_cast<size_t>(op) * 2]);
+        const uint16_t map = vdxTileMap(static_cast<uint8_t>(op));
         if (mapToOpcode.find(map) == mapToOpcode.end())
             mapToOpcode.emplace(map, static_cast<uint8_t>(op));
     }
@@ -1491,26 +1412,24 @@ static void writeVDX(const std::string &path,
         throw std::runtime_error("Failed to open output: " + path);
     out.exceptions(std::ios::badbit | std::ios::failbit);
 
-    const uint16_t id = 0x9267;
-    const uint8_t unknown[4] = {0, 0, 0, 0};
-    const uint16_t frameRate = static_cast<uint16_t>(fps);
-
-    out.write(reinterpret_cast<const char *>(&id), sizeof(id));
-    out.write(reinterpret_cast<const char *>(unknown), sizeof(unknown));
-    out.write(reinterpret_cast<const char *>(&frameRate), sizeof(frameRate));
+    std::array<uint8_t, 8> header{0x67, 0x92};
+    writeLE16Ptr(header.data() + 6, static_cast<uint16_t>(fps));
+    out.write(reinterpret_cast<const char *>(header.data()), header.size());
 
     for (const auto &b : blocks)
     {
-        std::vector<uint8_t> payload = b.data;
+        std::vector<uint8_t> compressed;
+        std::span<const uint8_t> payload = b.data;
         uint8_t coding = 0x67;
         uint8_t lm = 0;
         uint8_t lb = 0;
 
         if (compress && !payload.empty())
         {
-            payload = lzssCompress(b.data, lengthMask, lengthBits);
-            if (lzssDecompressForValidation(payload, lengthMask, lengthBits) != b.data)
+            compressed = lzssCompress(b.data, lengthMask, lengthBits);
+            if (lzssDecompressForValidation(compressed, lengthMask, lengthBits) != b.data)
                 throw std::runtime_error("Internal LZSS round-trip validation failed");
+            payload = compressed;
             coding = 0x77;
             lm = lengthMask;
             lb = lengthBits;
@@ -1518,12 +1437,9 @@ static void writeVDX(const std::string &path,
 
         if (payload.size() > std::numeric_limits<uint32_t>::max())
             throw std::runtime_error("VDX chunk exceeds 32-bit size field");
-        const uint32_t size = static_cast<uint32_t>(payload.size());
-        out.put(static_cast<char>(b.type));
-        out.put(static_cast<char>(coding));
-        out.write(reinterpret_cast<const char *>(&size), sizeof(size));
-        out.put(static_cast<char>(lm));
-        out.put(static_cast<char>(lb));
+        std::array<uint8_t, 8> chunkHeader{b.type, coding, 0, 0, 0, 0, lm, lb};
+        writeLE32Ptr(chunkHeader.data() + 2, static_cast<uint32_t>(payload.size()));
+        out.write(reinterpret_cast<const char *>(chunkHeader.data()), chunkHeader.size());
         if (!payload.empty())
             out.write(reinterpret_cast<const char *>(payload.data()), static_cast<std::streamsize>(payload.size()));
     }
@@ -1543,16 +1459,6 @@ static std::vector<uint8_t> readBinaryFile(const std::string &path)
     if (size > 0)
         in.read(reinterpret_cast<char *>(data.data()), static_cast<std::streamsize>(size));
     return data;
-}
-
-static std::string trimRlName(std::string s)
-{
-    const size_t nul = s.find('\0');
-    if (nul != std::string::npos)
-        s.resize(nul);
-    while (!s.empty() && s.back() == '\0')
-        s.pop_back();
-    return s;
 }
 
 static std::string checkedRlName(const std::string &name)
@@ -1587,32 +1493,17 @@ static std::vector<uint8_t> readArchivePayload(const std::string &path, bool mac
     return std::vector<uint8_t>(bytes.begin() + start, bytes.begin() + start + length);
 }
 
-static std::vector<std::pair<std::string, std::vector<uint8_t>>> parseRlGjd(const std::string &rlPath, const std::string &gjdPath, bool macbinary = false)
+static std::vector<RLEntry> readArchiveIndex(const std::string &path)
 {
-    const std::vector<uint8_t> rl = readBinaryFile(rlPath);
-    const std::vector<uint8_t> gjd = readArchivePayload(gjdPath, macbinary);
-    if ((rl.size() % 20u) != 0)
-        throw std::runtime_error("RL file size is not divisible by 20 bytes");
+    auto entries = parseRLFile(path, false);
+    if (!entries)
+        throw std::runtime_error(entries.error());
+    return std::move(*entries);
+}
 
-    std::vector<std::pair<std::string, std::vector<uint8_t>>> entries;
-    entries.reserve(rl.size() / 20u);
-
-    for (size_t off = 0; off < rl.size(); off += 20)
-    {
-        std::string name(reinterpret_cast<const char *>(rl.data() + off), 12);
-        name = trimRlName(name);
-        checkedRlName(name);
-        const uint32_t dataOff = readLE32At(rl, off + 12);
-        const uint32_t dataLen = readLE32At(rl, off + 16);
-        if (static_cast<size_t>(dataOff) > gjd.size() || static_cast<size_t>(dataLen) > gjd.size() - static_cast<size_t>(dataOff))
-            throw std::runtime_error("RL entry extends beyond GJD: " + name);
-
-        std::vector<uint8_t> blob(gjd.begin() + static_cast<std::ptrdiff_t>(dataOff),
-                                  gjd.begin() + static_cast<std::ptrdiff_t>(size_t(dataOff) + dataLen));
-        entries.push_back({name, std::move(blob)});
-    }
-
-    return entries;
+static bool archiveEntryInRange(const RLEntry &entry, size_t archiveSize)
+{
+    return entry.offset <= archiveSize && entry.length <= archiveSize - entry.offset;
 }
 
 static std::string defaultGjdPathFromRl(const std::string &rlPath)
@@ -1659,20 +1550,6 @@ static uint32_t readLE32Ptr(const uint8_t *p)
            (static_cast<uint32_t>(p[1]) << 8) |
            (static_cast<uint32_t>(p[2]) << 16) |
            (static_cast<uint32_t>(p[3]) << 24);
-}
-
-static void writeLE16Ptr(uint8_t *p, uint16_t v)
-{
-    p[0] = static_cast<uint8_t>(v & 0xFF);
-    p[1] = static_cast<uint8_t>((v >> 8) & 0xFF);
-}
-
-static void writeLE32Ptr(uint8_t *p, uint32_t v)
-{
-    p[0] = static_cast<uint8_t>(v & 0xFF);
-    p[1] = static_cast<uint8_t>((v >> 8) & 0xFF);
-    p[2] = static_cast<uint8_t>((v >> 16) & 0xFF);
-    p[3] = static_cast<uint8_t>((v >> 24) & 0xFF);
 }
 
 static std::vector<uint8_t> readBinaryRequired(const std::string &path)
@@ -1797,7 +1674,7 @@ static std::vector<uint8_t> buildGroovieFntBytes(const FntFile &fnt)
     return out;
 }
 
-static void writeBinaryFile(const std::string &path, const std::vector<uint8_t> &data)
+static void writeBinaryFile(const std::string &path, std::span<const uint8_t> data)
 {
     std::ofstream out(path, std::ios::binary);
     if (!out)
@@ -2263,9 +2140,6 @@ static void archivePackCommand(int argc, char **argv)
     uint32_t offset = 0;
     for (const auto &[name, file] : sources)
     {
-        if (name.empty() || name.size() > 12)
-            throw std::runtime_error("RL/GJD names must fit in 12 bytes: " + name);
-
         std::array<char, 12> nameField{};
         std::copy(name.begin(), name.end(), nameField.begin());
 
@@ -2273,8 +2147,10 @@ static void archivePackCommand(int argc, char **argv)
         const uint32_t length = static_cast<uint32_t>(data.size());
 
         rlOut.write(nameField.data(), static_cast<std::streamsize>(nameField.size()));
-        rlOut.write(reinterpret_cast<const char *>(&offset), sizeof(offset));
-        rlOut.write(reinterpret_cast<const char *>(&length), sizeof(length));
+        std::array<uint8_t, 8> range{};
+        writeLE32Ptr(range.data(), offset);
+        writeLE32Ptr(range.data() + 4, length);
+        rlOut.write(reinterpret_cast<const char *>(range.data()), range.size());
 
         if (!data.empty())
             gjdOut.write(reinterpret_cast<const char *>(data.data()), static_cast<std::streamsize>(data.size()));
@@ -2320,22 +2196,15 @@ static void archiveListCommand(int argc, char **argv)
     if (gjdPath.empty())
         gjdPath = defaultGjdPathFromRl(rlPath);
 
-    const std::vector<uint8_t> rl = readBinaryFile(rlPath);
-    const std::vector<uint8_t> gjd = readArchivePayload(gjdPath, macbinary);
-    if ((rl.size() % 20u) != 0)
-        throw std::runtime_error("RL file size is not divisible by 20 bytes");
-
-    std::cout << "RL: " << rlPath << "\n";
-    std::cout << "GJD: " << gjdPath << "\n";
-    std::cout << "Entries:\n";
-    for (size_t off = 0; off < rl.size(); off += 20)
+    const auto entries = readArchiveIndex(rlPath);
+    const auto gjd = readArchivePayload(gjdPath, macbinary);
+    std::cout << "RL: " << rlPath << "\nGJD: " << gjdPath << "\nEntries:\n";
+    for (size_t i = 0; i < entries.size(); ++i)
     {
-        std::string name(reinterpret_cast<const char *>(rl.data() + off), 12);
-        name = trimRlName(name);
-        const uint32_t dataOff = readLE32At(rl, off + 12);
-        const uint32_t dataLen = readLE32At(rl, off + 16);
-        const bool inRange = static_cast<size_t>(dataOff) <= gjd.size() && static_cast<size_t>(dataLen) <= gjd.size() - std::min(static_cast<size_t>(dataOff), gjd.size());
-        std::cout << "  index=" << off / 20 << ' ' << name << " offset=" << dataOff << " length=" << dataLen << (inRange ? "" : " [OUT-OF-RANGE]") << "\n";
+        const auto &entry = entries[i];
+        std::cout << "  index=" << i << ' ' << entry.filename << " offset=" << entry.offset
+                  << " length=" << entry.length
+                  << (archiveEntryInRange(entry, gjd.size()) ? "" : " [OUT-OF-RANGE]") << '\n';
     }
 }
 
@@ -2376,29 +2245,29 @@ static void archiveUnpackCommand(int argc, char **argv)
     if (gjdPath.empty())
         gjdPath = defaultGjdPathFromRl(rlPath);
 
-    const auto entries = parseRlGjd(rlPath, gjdPath, macbinary);
-    if (macT7gData) {
-        const auto rl = readBinaryFile(rlPath);
-        const auto data = readArchivePayload(gjdPath, macbinary);
-        size_t next = 0;
-        for (size_t off = 0; off < rl.size(); off += 20) {
-            const size_t start = readLE32At(rl, off + 12);
-            const size_t length = readLE32At(rl, off + 16);
-            if (start != next || length >= data.size() - start || data[start + length] != 0xff)
-                throw std::runtime_error("Mac T7GData requires contiguous RL spans with FF separators");
-            next = start + length + 1;
-        }
-        if (next != data.size()) throw std::runtime_error("Unindexed Mac T7GData bytes");
-    }
+    const auto entries = readArchiveIndex(rlPath);
+    const auto data = readArchivePayload(gjdPath, macbinary);
     std::map<std::string, size_t> names;
-    for (const auto &[name, data] : entries)
-        ++names[checkedRlName(name)];
+    size_t next = 0;
+    for (const auto &entry : entries) {
+        ++names[checkedRlName(entry.filename)];
+        if (!archiveEntryInRange(entry, data.size()))
+            throw std::runtime_error("RL entry extends beyond GJD: " + entry.filename);
+        if (macT7gData) {
+            const size_t end = entry.offset + entry.length;
+            if (entry.offset != next || end == data.size() || data[end] != 0xff)
+                throw std::runtime_error("Mac T7GData requires contiguous RL spans with FF separators");
+            next = end + 1;
+        }
+    }
+    if (macT7gData && next != data.size())
+        throw std::runtime_error("Unindexed Mac T7GData bytes");
+
+    // Reserve original filenames before generating names for duplicate entries.
     std::set<std::string> extractionNames;
-    // Reserve ordinary names first: a generated duplicate-entry filename may
-    // otherwise overwrite an actual archive resource with that same name.
-    for (const auto &[name, data] : entries)
-        if (names.at(checkedRlName(name)) == 1)
-            extractionNames.insert(checkedRlName(name));
+    for (const auto &[name, count] : names)
+        if (count == 1)
+            extractionNames.insert(name);
     if (fs::exists(outDir)) throw std::runtime_error("Extraction directory already exists: " + outDir);
     fs::create_directories(outDir);
     std::ofstream manifest(fs::path(outDir) / "_archive-order.txt", std::ios::binary);
@@ -2406,7 +2275,7 @@ static void archiveUnpackCommand(int argc, char **argv)
     manifest << (macT7gData ? "grooviev1.archive/mac-t7gdata/1\n" : "grooviev1.archive/1\n");
     for (size_t i = 0; i < entries.size(); ++i)
     {
-        const auto &[name, data] = entries[i];
+        const auto &[name, offset, length] = entries[i];
         // Duplicate names are legal retail RL entries. Keep one file per index
         // and preserve their original names through the archive manifest.
         std::string file = name;
@@ -2421,7 +2290,7 @@ static void archiveUnpackCommand(int argc, char **argv)
             }
         }
         const fs::path outPath = fs::path(outDir) / file;
-        writeBinaryFile(outPath.string(), data);
+        writeBinaryFile(outPath.string(), std::span(data).subspan(offset, length));
         manifest << std::quoted(name) << ' ' << std::quoted(file) << '\n';
     }
     manifest.close();
@@ -2449,183 +2318,19 @@ static void decodeStill0x20(const std::vector<uint8_t> &data,
         throw std::runtime_error("Validation: invalid still depth or payload size");
 
     palette.resize(256);
-    size_t off = 6;
-    for (int i = 0; i < 256; ++i)
-    {
-        palette[static_cast<size_t>(i)] = RGB{data[off], data[off + 1], data[off + 2]};
-        off += 3;
-    }
-
-    frame.assign(static_cast<size_t>(width) * static_cast<size_t>(height), 0);
-
-    size_t imgOff = 6 + 768;
-    for (int ty = 0; ty < tilesY; ++ty)
-        for (int tx = 0; tx < tilesX; ++tx)
-        {
-            if (imgOff + 4 > data.size())
-                throw std::runtime_error("Validation: 0x20 tile data truncated");
-            const uint8_t c1 = data[imgOff + 0];
-            const uint8_t c0 = data[imgOff + 1];
-            const uint16_t map = readLE16(data.data() + imgOff + 2);
-            imgOff += 4;
-
-            for (int i = 0; i < 16; ++i)
-            {
-                const int x = tx * 4 + (i % 4);
-                const int y = ty * 4 + (i / 4);
-                const size_t p = static_cast<size_t>(y) * static_cast<size_t>(width) + static_cast<size_t>(x);
-                frame[p] = (map & (0x8000u >> i)) ? c1 : c0;
-            }
-        }
+    frame.resize(size_t(width) * height);
+    if (!getBitmapDataChecked(data, palette, {}, frame))
+        throw std::runtime_error("Validation: invalid 0x20 chunk");
 }
 
 static void applyDelta0x25(const std::vector<uint8_t> &data,
                            std::vector<RGB> &palette,
                            std::vector<uint8_t> &frame,
-                           int width,
-                           int height,
+                           int width, int height,
                            bool requireFinalRowAdvance = false)
 {
-    if (data.size() < 2)
-        throw std::runtime_error("Validation: truncated 0x25 chunk");
-
-    const uint16_t localPaletteSize = readLE16(data.data());
-    size_t off = 2;
-
-    if (localPaletteSize > 0)
-    {
-        if (localPaletteSize < 32 || data.size() < off + 32 || data.size() < 2u + localPaletteSize)
-            throw std::runtime_error("Validation: invalid local palette size");
-
-        size_t entryOff = off + 32;
-        for (int group = 0; group < 16; ++group)
-        {
-            const uint16_t bits = readLE16(data.data() + off + static_cast<size_t>(group * 2));
-            for (int bit = 0; bit < 16; ++bit)
-            {
-                if ((bits & (0x8000u >> bit)) == 0)
-                    continue;
-                if (entryOff + 3 > 2u + localPaletteSize)
-                    throw std::runtime_error("Validation: truncated local palette entries");
-                const int idx = group * 16 + bit;
-                palette[static_cast<size_t>(idx)] = RGB{data[entryOff], data[entryOff + 1], data[entryOff + 2]};
-                entryOff += 3;
-            }
-        }
-        if (entryOff != 2u + localPaletteSize)
-            throw std::runtime_error("Validation: local palette map/size mismatch");
-        off = 2u + localPaletteSize;
-    }
-
-    const int tilesX = width / 4;
-    const int tilesY = height / 4;
-    int xTile = 0;
-    int yTile = 0;
-
-    auto writeTileFromMap = [&](uint16_t map, uint8_t c1, uint8_t c0) {
-        if (xTile >= tilesX || yTile >= tilesY)
-            throw std::runtime_error("Validation: delta tile outside frame");
-        for (int i = 0; i < 16; ++i)
-        {
-            const int x = xTile * 4 + (i % 4);
-            const int y = yTile * 4 + (i / 4);
-            if (x >= width || y >= height)
-                continue;
-            const size_t p = static_cast<size_t>(y) * static_cast<size_t>(width) + static_cast<size_t>(x);
-            frame[p] = (map & (0x8000u >> i)) ? c1 : c0;
-        }
-        ++xTile;
-    };
-
-    while (off < data.size())
-    {
-        const uint8_t opcode = data[off++];
-        if (opcode <= 0x5F)
-        {
-            if (off + 2 > data.size())
-                throw std::runtime_error("Validation: truncated map opcode");
-            const uint16_t map = readLE16(&kMapField[static_cast<size_t>(opcode) * 2]);
-            const uint8_t c1 = data[off++];
-            const uint8_t c0 = data[off++];
-            writeTileFromMap(map, c1, c0);
-            continue;
-        }
-
-        if (opcode == 0x60)
-        {
-            if (xTile >= tilesX || yTile >= tilesY)
-                throw std::runtime_error("Validation: delta tile outside frame");
-            if (off + 16 > data.size())
-                throw std::runtime_error("Validation: truncated opcode 0x60");
-            for (int i = 0; i < 16; ++i)
-            {
-                const int x = xTile * 4 + (i % 4);
-                const int y = yTile * 4 + (i / 4);
-                if (x < width && y < height)
-                {
-                    const size_t p = static_cast<size_t>(y) * static_cast<size_t>(width) + static_cast<size_t>(x);
-                    frame[p] = data[off + static_cast<size_t>(i)];
-                }
-            }
-            off += 16;
-            ++xTile;
-            continue;
-        }
-
-        if (opcode == 0x61)
-        {
-            if (yTile >= tilesY)
-                throw std::runtime_error("Validation: delta row outside frame");
-            ++yTile;
-            xTile = 0;
-            continue;
-        }
-
-        if (opcode >= 0x62 && opcode <= 0x6B)
-        {
-            xTile += static_cast<int>(opcode) - 0x62;
-            if (xTile > tilesX || yTile >= tilesY)
-                throw std::runtime_error("Validation: delta skip outside frame");
-            continue;
-        }
-
-        if (opcode >= 0x6C && opcode <= 0x75)
-        {
-            if (off >= data.size())
-                throw std::runtime_error("Validation: truncated opcode 0x6C..0x75");
-            const uint8_t c = data[off++];
-            const int run = static_cast<int>(opcode) - 0x6B;
-            for (int r = 0; r < run; ++r)
-                writeTileFromMap(0xFFFF, c, c);
-            continue;
-        }
-
-        if (opcode >= 0x76 && opcode <= 0x7F)
-        {
-            const int run = static_cast<int>(opcode) - 0x75;
-            if (off + static_cast<size_t>(run) > data.size())
-                throw std::runtime_error("Validation: truncated opcode 0x76..0x7F");
-            for (int r = 0; r < run; ++r)
-            {
-                const uint8_t c = data[off++];
-                writeTileFromMap(0xFFFF, c, c);
-            }
-            continue;
-        }
-
-        if (off + 3 > data.size())
-            throw std::runtime_error("Validation: truncated generic map opcode");
-        const uint16_t map = static_cast<uint16_t>(opcode) | (static_cast<uint16_t>(data[off]) << 8);
-        const uint8_t c1 = data[off + 1];
-        const uint8_t c0 = data[off + 2];
-        off += 3;
-        writeTileFromMap(map, c1, c0);
-    }
-
-    if (yTile > tilesY)
-        throw std::runtime_error("Validation: delta decode overflow");
-    if (requireFinalRowAdvance && (yTile != tilesY || xTile != 0))
-        throw std::runtime_error("Validation: delta missing final 0x61 row advance required by DOS V.EXE");
+    if (!decodeIndexedVdxDelta(data, palette, frame, width, height, requireFinalRowAdvance))
+        throw std::runtime_error("Validation: invalid 0x25 delta or row advance");
 }
 
 static void validateVisualBlocks(const std::vector<Block> &visualBlocks,

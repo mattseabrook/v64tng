@@ -244,13 +244,6 @@ void setOverlayVisible(bool visible)
 	}
 }
 
-std::string cleanRlFilename(std::string value)
-{
-	if (const auto nul = value.find('\0'); nul != std::string::npos)
-		value.resize(nul);
-	return value;
-}
-
 void commandList(std::string archive)
 {
 	archive = upper(trim(std::move(archive)));
@@ -260,7 +253,7 @@ void commandList(std::string archive)
 		return;
 	}
 	const auto rlPath = assetPath(archive + ".RL");
-	const auto entries = parseRLFile(rlPath.string());
+	const auto entries = parseRLFile(rlPath);
 	if (!entries)
 	{
 		consoleLogf("CONSOLE", "list {} failed: {}", archive, entries.error());
@@ -269,7 +262,7 @@ void commandList(std::string archive)
 	std::vector<std::string> names;
 	for (const auto &entry : *entries)
 	{
-		const std::string filename = cleanRlFilename(entry.filename);
+		const auto &filename = entry.filename;
 		const std::string extension = filename.size() >= 4
 			? upper(filename.substr(filename.size() - 4)) : std::string{};
 		if (extension == ".VDX")

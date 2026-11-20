@@ -56,7 +56,7 @@ func_00414f60:
     %endif
     times 1 - ($ - %%insn_00414f75) db 0
     %%insn_00414f76:
-    call 0x40d9f0 ; 00414F76 E8758AFFFF
+    call crt_strrchr ; 00414F76 E8758AFFFF
     %if ($ - %%insn_00414f76) > 5
         %error "LONG_00414F76"
     %endif

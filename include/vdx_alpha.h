@@ -3,6 +3,7 @@
 #include <algorithm>
 #include "delta.h"
 #include "lzss.h"
+#include "vdx.h"
 #include <stdexcept>
 
 // Background 0 is RGBA transparency; 1..3 are opaque chroma colors.

@@ -1,6 +1,9 @@
 ; PE virtual entry 00408A80
 ; Ghidra working symbol: FUN_00408a80
 ; Verified parameterized VDX LZSS decoder: LSB-first flags, zero-word terminator, length=(token&mask)+3, and overlapping output-distance copies.
+; cdecl arguments are source, destination, length mask, length bit count.
+; EAX returns the number of bytes written. Match copies read from the
+; live output cursor minus the decoded distance, allowing overlap.
 ; Generated losslessly; preserve byte identity after edits.
 
 %macro emit_decompress_vdx_lzss_part_00 0
@@ -37,6 +40,7 @@ decompress_vdx_lzss:
         %error "LONG_00408A91"
     %endif
     times 4 - ($ - %%insn_00408a91) db 0
+    %%next_token:
     %%insn_00408a95:
     mov al,[ebp-0x14] ; 00408A95 8A45EC
     %if ($ - %%insn_00408a95) > 3
@@ -74,7 +78,7 @@ decompress_vdx_lzss:
     %endif
     times 2 - ($ - %%insn_00408aa6) db 0
     %%insn_00408aa8:
-    jnz short 0x408abf ; 00408AA8 7515
+    jnz short %%decode_flag ; 00408AA8 7515
     %if ($ - %%insn_00408aa8) > 2
         %error "LONG_00408AA8"
     %endif
@@ -121,6 +125,7 @@ decompress_vdx_lzss:
         %error "LONG_00408ABB"
     %endif
     times 4 - ($ - %%insn_00408abb) db 0
+    %%decode_flag:
     %%insn_00408abf:
     mov edx,[ebp-0x4] ; 00408ABF 8B55FC
     %if ($ - %%insn_00408abf) > 3
@@ -146,7 +151,7 @@ decompress_vdx_lzss:
     %endif
     times 2 - ($ - %%insn_00408acb) db 0
     %%insn_00408acd:
-    jz short 0x408af9 ; 00408ACD 742A
+    jz short %%back_reference ; 00408ACD 742A
     %if ($ - %%insn_00408acd) > 2
         %error "LONG_00408ACD"
     %endif
@@ -230,11 +235,12 @@ decompress_vdx_lzss:
     %endif
     times 3 - ($ - %%insn_00408af1) db 0
     %%insn_00408af4:
-    jmp 0x408ba0 ; 00408AF4 E9A7000000
+    jmp %%advance_flag ; 00408AF4 E9A7000000
     %if ($ - %%insn_00408af4) > 5
         %error "LONG_00408AF4"
     %endif
     times 5 - ($ - %%insn_00408af4) db 0
+    %%back_reference:
     %%insn_00408af9:
     mov eax,[ebp+0x8] ; 00408AF9 8B4508
     %if ($ - %%insn_00408af9) > 3
@@ -346,7 +352,7 @@ decompress_vdx_lzss:
     %endif
     times 2 - ($ - %%insn_00408b36) db 0
     %%insn_00408b38:
-    jmp short 0x408bad ; 00408B38 EB73
+    jmp short %%finished ; 00408B38 EB73
     %if ($ - %%insn_00408b38) > 2
         %error "LONG_00408B38"
     %endif
@@ -432,11 +438,12 @@ decompress_vdx_lzss:
     %endif
     times 3 - ($ - %%insn_00408b6c) db 0
     %%insn_00408b6f:
-    jmp short 0x408b86 ; 00408B6F EB15
+    jmp short %%test_match_remaining ; 00408B6F EB15
     %if ($ - %%insn_00408b6f) > 2
         %error "LONG_00408B6F"
     %endif
     times 2 - ($ - %%insn_00408b6f) db 0
+    %%advance_match:
     %%insn_00408b71:
     mov dx,[ebp-0x18] ; 00408B71 668B55E8
     %if ($ - %%insn_00408b71) > 4
@@ -473,6 +480,7 @@ decompress_vdx_lzss:
         %error "LONG_00408B83"
     %endif
     times 3 - ($ - %%insn_00408b83) db 0
+    %%test_match_remaining:
     %%insn_00408b86:
     movsx ecx,word [ebp-0x18] ; 00408B86 0FBF4DE8
     %if ($ - %%insn_00408b86) > 4
@@ -486,7 +494,7 @@ decompress_vdx_lzss:
     %endif
     times 2 - ($ - %%insn_00408b8a) db 0
     %%insn_00408b8c:
-    jng short 0x408ba0 ; 00408B8C 7E12
+    jng short %%advance_flag ; 00408B8C 7E12
     %if ($ - %%insn_00408b8c) > 2
         %error "LONG_00408B8C"
     %endif
@@ -523,11 +531,12 @@ decompress_vdx_lzss:
     %endif
     times 2 - ($ - %%insn_00408b9c) db 0
     %%insn_00408b9e:
-    jmp short 0x408b71 ; 00408B9E EBD1
+    jmp short %%advance_match ; 00408B9E EBD1
     %if ($ - %%insn_00408b9e) > 2
         %error "LONG_00408B9E"
     %endif
     times 2 - ($ - %%insn_00408b9e) db 0
+    %%advance_flag:
     %%insn_00408ba0:
     mov al,[ebp-0x4] ; 00408BA0 8A45FC
     %if ($ - %%insn_00408ba0) > 3
@@ -547,11 +556,12 @@ decompress_vdx_lzss:
     %endif
     times 3 - ($ - %%insn_00408ba5) db 0
     %%insn_00408ba8:
-    jmp 0x408a95 ; 00408BA8 E9E8FEFFFF
+    jmp %%next_token ; 00408BA8 E9E8FEFFFF
     %if ($ - %%insn_00408ba8) > 5
         %error "LONG_00408BA8"
     %endif
     times 5 - ($ - %%insn_00408ba8) db 0
+    %%finished:
     %%insn_00408bad:
     mov eax,[ebp-0xc] ; 00408BAD 8B45F4
     %if ($ - %%insn_00408bad) > 3

@@ -232,7 +232,7 @@ setup_window_and_runtime:
     %endif
     times 1 - ($ - %%insn_004098dd) db 0
     %%insn_004098de:
-    call 0x40d9f0 ; 004098DE E80D410000
+    call crt_strrchr ; 004098DE E80D410000
     %if ($ - %%insn_004098de) > 5
         %error "LONG_004098DE"
     %endif

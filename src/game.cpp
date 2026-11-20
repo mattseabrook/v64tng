@@ -377,21 +377,29 @@ static_assert([]
 		(letter & (1u << 7)) != 0 && !previousForegroundStill;
 }(), "a foreground still must mask the immediately following animation");
 
-void materializeIndexedFrame(
-	std::span<const uint8_t> indices,
-	std::span<const RGBColor> palette,
-	std::vector<uint8_t> &frame)
+void resizeAndMaterializeFrame(std::span<const uint8_t> indices,
+                               std::span<const RGBColor> palette,
+                               std::vector<uint8_t> &frame)
 {
-	if (palette.size() < 256)
-		return;
-	frame.resize(indices.size() * kPixelBytes);
-	for (size_t pixel = 0; pixel < indices.size(); ++pixel)
+    frame.resize(indices.size() * kPixelBytes);
+    materializeIndexedFrame(indices, palette, frame);
+}
+
+// Rebuild the indexed foreground and retain the decoded RGB video band.
+void presentGrvForegroundOverBackground()
+{
+	resizeAndMaterializeFrame(
+		state.grvForegroundIndices, state.grvPalette, state.grvForegroundFrame);
+	if (state.grvBackgroundFrame.size() ==
+		kCanvasWidth * kVideoHeight * kPixelBytes)
 	{
-		const RGBColor colour = palette[indices[pixel]];
-		frame[pixel * kPixelBytes] = colour.r;
-		frame[pixel * kPixelBytes + 1] = colour.g;
-		frame[pixel * kPixelBytes + 2] = colour.b;
+		std::memcpy(
+			state.grvForegroundFrame.data() +
+				kVideoTop * kCanvasWidth * kPixelBytes,
+			state.grvBackgroundFrame.data(), state.grvBackgroundFrame.size());
 	}
+	state.grvForegroundActive = true;
+	state.frameTiming.dirtyFrame = true;
 }
 
 void composeGrvForegroundFromBackground()
@@ -405,21 +413,7 @@ void composeGrvForegroundFromBackground()
 			state.grvForegroundIndices.data() + kVideoTop * kCanvasWidth,
 			state.grvBackgroundIndices.data(), state.grvBackgroundIndices.size());
 	}
-	materializeIndexedFrame(
-		state.grvForegroundIndices, state.grvPalette, state.grvForegroundFrame);
-	// Keep the already decoded RGB background authoritative as well. This is
-	// required when a native overlay inherited pixels that have no standalone
-	// indexed representation in the current VDX.
-	if (state.grvBackgroundFrame.size() ==
-		kCanvasWidth * kVideoHeight * kPixelBytes)
-	{
-		std::memcpy(
-			state.grvForegroundFrame.data() +
-				kVideoTop * kCanvasWidth * kPixelBytes,
-			state.grvBackgroundFrame.data(), state.grvBackgroundFrame.size());
-	}
-	state.grvForegroundActive = true;
-	state.frameTiming.dirtyFrame = true;
+	presentGrvForegroundOverBackground();
 }
 
 // Opcode 22h saves the visible 640x320 band; its historical name reverses
@@ -468,7 +462,7 @@ void copyGrvBackgroundRectangleToForeground(const GrvCopyRectCommand &rectangle)
 		std::memcpy(state.grvForegroundIndices.data() + destination,
 			state.grvBackgroundIndices.data() + source, rowBytes);
 	}
-	materializeIndexedFrame(
+	resizeAndMaterializeFrame(
 		state.grvForegroundIndices, state.grvPalette, state.grvForegroundFrame);
 	state.grvForegroundActive = true;
 	state.frameTiming.dirtyFrame = true;
@@ -532,22 +526,8 @@ void printGrvString(const GrvPrintCommand &command)
 		}
 		x += width + 1;
 	}
-	materializeIndexedFrame(
-		state.grvForegroundIndices, state.grvPalette, state.grvForegroundFrame);
-	// PRINTSTRING draws only in the discarded 80-row top bar. Keep the retained
-	// puzzle matte in its indexed surface, but present the current background in
-	// the visible game band. Re-materializing the old matte with the menu palette
-	// is what produced the corrupted telescope image on the save-name screen.
-	if (state.grvBackgroundFrame.size() ==
-		kCanvasWidth * kVideoHeight * kPixelBytes)
-	{
-		std::memcpy(
-			state.grvForegroundFrame.data() +
-				kVideoTop * kCanvasWidth * kPixelBytes,
-			state.grvBackgroundFrame.data(), state.grvBackgroundFrame.size());
-	}
-	state.grvForegroundActive = true;
-	state.frameTiming.dirtyFrame = true;
+	// PRINTSTRING draws in the top bar. Preserve the visible RGB video underneath.
+	presentGrvForegroundOverBackground();
 }
 
 std::span<const uint8_t> applyGrvPresentationLevel(
@@ -820,7 +800,7 @@ static PreparedGrvVideos preloadGrvTransition(
 					decodeState.foregroundBandIndices.size() == kVideoHeight * kCanvasWidth)
 				{
 					decodeState.backgroundIndices = decodeState.foregroundBandIndices;
-					materializeIndexedFrame(decodeState.backgroundIndices,
+					resizeAndMaterializeFrame(decodeState.backgroundIndices,
 						decodeState.palette, decodeState.backgroundFrame);
 				}
 			}
@@ -1462,7 +1442,7 @@ static bool playGrvVideo(
 					state.grvForegroundIndices.data() + kVideoTop * kCanvasWidth,
 					loaded->frameIndices.front()->data(),
 					loaded->frameIndices.front()->size());
-				materializeIndexedFrame(state.grvForegroundIndices,
+				resizeAndMaterializeFrame(state.grvForegroundIndices,
 					state.grvPalette, state.grvForegroundFrame);
 			}
 			return true;

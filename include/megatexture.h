@@ -18,7 +18,7 @@
     NOTE: Megatexture is conceptually one seamless 1024×W strip.
     Tiles are 3× longer than taller (3072×1024), streamed and packed without
     allocating the full strip.
-    Seamlessness is guaranteed because generatePixelVeins(u,v) uses global (u,v).
+    Seamlessness is guaranteed because mortar coverage uses global (u,v).
     No preview/combined PNG by design.
 
 ===============================================================================

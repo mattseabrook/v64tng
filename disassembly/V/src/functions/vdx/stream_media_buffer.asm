@@ -72,13 +72,13 @@ stream_media_buffer:
     %endif
     times 3 - ($ - %%insn_029ab) db 0
     %%insn_029ae:
-    mov [cs:0x2383],ah ; 029AE 2E88268323
+    mov [cs:vdx_lzss_length_bits_immediate],ah ; 029AE 2E88268323
     %if ($ - %%insn_029ae) > 5
         %error "LONG_029AE"
     %endif
     times 5 - ($ - %%insn_029ae) db 0
     %%insn_029b3:
-    mov [cs:0x2386],al ; 029B3 2EA28623
+    mov [cs:vdx_lzss_length_mask_immediate],al ; 029B3 2EA28623
     %if ($ - %%insn_029b3) > 4
         %error "LONG_029B3"
     %endif
@@ -121,7 +121,7 @@ stream_media_buffer:
     %endif
     times 4 - ($ - %%insn_029ca) db 0
     %%insn_029ce:
-    call 0x236a ; 029CE E899F9
+    call decompress_vdx_lzss ; 029CE E899F9
     %if ($ - %%insn_029ce) > 3
         %error "LONG_029CE"
     %endif

@@ -1,11 +1,12 @@
 ; PE virtual entry 0040D9F0
 ; Ghidra working symbol: _strrchr
-; Role not yet verified; analyzer boundary is provisional.
+; Verified CRT strrchr. Locate the terminating NUL, then scan backward
+; for the requested byte. The setup routine uses this to find the final path separator.
 ; Generated losslessly; preserve byte identity after edits.
 
-%macro emit_func_0040d9f0_part_00 0
+%macro emit_crt_strrchr_part_00 0
     %%fragment_start:
-func_0040d9f0:
+crt_strrchr:
     %%insn_0040d9f0:
     push ebp ; 0040D9F0 55
     %if ($ - %%insn_0040d9f0) > 1

@@ -73,7 +73,6 @@ static std::vector<uint8_t> g_bitmapData;  // RGB pixel data (current frame for 
 static int g_bitmapWidth = 0;
 static int g_bitmapHeight = 0;
 
-static std::vector<RGBColor> g_currentPalette(256);
 
 // Current VDX for delta processing
 static VDXFile g_currentVDX;
@@ -178,7 +177,6 @@ struct VDXChunkData {
     bool lzssCompressed;
 };
 static std::vector<VDXChunkData> g_vdxChunks;
-static std::string g_currentVDXFile;
 
 // Forward declarations
 static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -474,10 +472,8 @@ static void PrepareVDXPlayback(std::string_view filename, std::span<const uint8_
     g_maskDirty.clear();
     g_maskSaveErrorShown = false;
     g_alphaStroke = false;
-    g_playbackVDX = {};
-    g_playbackVDX = parseVDXFile(filename, bytes);
+    g_playbackVDX = parseVDXFileBorrowed(filename, bytes, {});
     parseVDXChunks(g_playbackVDX);
-    g_frameChunks.clear();
     // parseVDXChunks releases its source chunks and bytes after decoding.
     // The inspector retains the original VDX separately for row selection
     // and alpha extraction; its chunk spans remain backed by owned rawData.
@@ -809,7 +805,7 @@ static void LoadAssetCatalog(const std::filesystem::path& folder)
             if (gjdPath.empty())
                 continue;
 
-            auto parsed = parseRLFile(rlPath.string());
+            auto parsed = parseRLFile(rlPath);
             if (!parsed)
                 continue;
 
@@ -1545,7 +1541,6 @@ static LRESULT CALLBACK ToolsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         g_assetFolder.clear();
         g_currentGJDFile.clear();
         g_vdxChunks.clear();
-        g_currentVDXFile.clear();
         g_playbackVDX = {};
         g_currentVDX = {};
         g_frameChunks.clear();
@@ -1959,246 +1954,202 @@ static void SwitchTab(int tabIndex)
     if (g_hTab) LayoutTools(GetParent(g_hTab));
 }
 
-/*
-===============================================================================
-Function: PopulateArchiveList - Load RL file and populate ListView
-===============================================================================
-*/
+static void ResetVDXInfo()
+{
+    for (int control : {5, 9, 12})
+        ListView_DeleteAllItems(g_vdxControls[control]);
+    for (int control : {2, 4, 11, 13})
+        SetWindowTextA(g_vdxControls[control], "");
+    g_vdxChunks.clear();
+    g_hasPalette = false;
+    g_bitmapData.clear();
+    g_bitmapWidth = g_bitmapHeight = 0;
+}
 
+static void ShowVDXInfo(const std::string& filename, std::vector<uint8_t> bytes,
+                        bool fromArchive)
+{
+    g_currentVDX = parseVDXFile(filename, std::move(bytes));
+    PrepareVDXPlayback(filename, g_currentVDX.rawView);
+    const VDXFile& vdx = g_currentVDX;
+    HWND hList0x20 = g_vdxControls[5];
+    HWND hList0x25 = g_vdxControls[9];
+    HWND hList0x80 = g_vdxControls[12];
+    // Display the semantically decoded VDX header.
+    char headerInfo[256];
+    snprintf(headerInfo, sizeof(headerInfo),
+        "Identifier: 0x%04X   Unknown: {0x%02X, 0x%02X, 0x%02X, 0x%02X}   FPS: %u",
+        vdx.identifier,
+        vdx.unknown[0], vdx.unknown[1], vdx.unknown[2],
+        vdx.unknown[3], static_cast<unsigned>(vdx.frameRate));
+    SetWindowTextA(g_vdxControls[2], headerInfo);
 
-/*
-===============================================================================
-Function: PopulateVDXInfoList - Load VDX and show header + chunk info
-===============================================================================
-*/
+    int count0x20 = 0, count0x25 = 0, count0x80 = 0;
+    bool foundBitmapHeader = false;
+    int bitmapWidth = 0, bitmapHeight = 0, colorDepth = 0;
+    size_t totalAudioBytes = 0;
+
+    size_t currentOffset = 8;  // VDX header is 8 bytes
+    for (size_t idx = 0; idx < vdx.chunks.size(); ++idx) {
+        const auto& chunk = vdx.chunks[idx];
+        VDXChunkData data;
+        data.index = static_cast<int>(idx);
+        data.chunkType = chunk.chunkType;
+        data.offset = currentOffset;
+        data.size = chunk.dataSize;
+        data.lzssCompressed = vdxChunkIsCompressed(chunk);
+
+        // VDX chunk header is 8 bytes
+        currentOffset += 8 + chunk.dataSize;
+
+        g_vdxChunks.push_back(data);
+
+        // Determine which ListView to add to
+        HWND targetList = nullptr;
+        int* targetCount = nullptr;
+
+        if (chunk.chunkType == 0x20) {
+            targetList = hList0x20;
+            targetCount = &count0x20;
+
+            if (!foundBitmapHeader && !chunk.data.empty()) {
+                std::vector<uint8_t> decoded;
+                std::span<const uint8_t> still = chunk.data;
+                if (vdxChunkIsCompressed(chunk)) {
+                    auto result = lzssDecompressChecked(still, chunk.lengthMask, chunk.lengthBits);
+                    if (result) {
+                        decoded = std::move(*result);
+                        still = decoded;
+                    } else {
+                        still = {};
+                    }
+                }
+                std::array<RGBColor, 256> palette{};
+                if (readStillPalette(still, palette)) {
+                    colorDepth = readLittleEndian16(still.subspan(4));
+                    bitmapWidth = readLittleEndian16(still) * 4;
+                    bitmapHeight = readLittleEndian16(still.subspan(2)) * 4;
+                    for (size_t i = 0; i < palette.size(); ++i) {
+                        const auto [r, g, b] = palette[i];
+                        g_palette[i * 3] = r;
+                        g_palette[i * 3 + 1] = g;
+                        g_palette[i * 3 + 2] = b;
+                    }
+                    foundBitmapHeader = g_hasPalette = true;
+                }
+            }
+        } else if (chunk.chunkType == 0x25 || chunk.chunkType == 0x00) {
+            // 0x25 = delta, 0x00 = duplicate previous
+            targetList = hList0x25;
+            targetCount = &count0x25;
+        } else if (chunk.chunkType == 0x80) {
+            targetList = hList0x80;
+            targetCount = &count0x80;
+            totalAudioBytes += chunk.dataSize;
+        }
+
+        if (targetList && targetCount) {
+            int itemIdx = *targetCount;
+
+            // Add to ListView - Index column (column 0 for all)
+            std::wstring wIndex = std::to_wstring(idx);
+            LVITEMW lvi = {};
+            lvi.mask = LVIF_TEXT | LVIF_PARAM;
+            lvi.iItem = itemIdx;
+            lvi.lParam = static_cast<LPARAM>(idx);
+            lvi.pszText = const_cast<LPWSTR>(wIndex.c_str());
+            ListView_InsertItem(targetList, &lvi);
+
+            std::wstring wOffset = FormatOffset(data.offset);
+            std::wstring wSize = FormatSize(data.size);
+
+            if (targetList == hList0x20) {
+                // 0x20 columns: #, Offset, Size, LZSS
+                ListView_SetItemText(targetList, itemIdx, 1, const_cast<LPWSTR>(wOffset.c_str()));
+                ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wSize.c_str()));
+                ListView_SetItemText(targetList, itemIdx, 3, data.lzssCompressed ? (LPWSTR)L"\u2713" : (LPWSTR)L"");
+            }
+            else if (targetList == hList0x25) {
+                // 0x25/0x00 columns: #, Type, Size, LZSS (4 columns)
+                wchar_t typeHex[16];
+                swprintf(typeHex, 16, L"0x%02X", chunk.chunkType);
+                ListView_SetItemText(targetList, itemIdx, 1, typeHex);
+                ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wSize.c_str()));
+                ListView_SetItemText(targetList, itemIdx, 3, data.lzssCompressed ? (LPWSTR)L"\u2713" : (LPWSTR)L"");
+            }
+            else if (targetList == hList0x80) {
+                // 0x80 columns: #, Offset, Size, Duration (4 columns)
+                double chunkDuration = static_cast<double>(data.size) / 22050.0;
+                wchar_t durationStr[32];
+                swprintf(durationStr, 32, L"%.2fs", chunkDuration);
+                ListView_SetItemText(targetList, itemIdx, 1, const_cast<LPWSTR>(wOffset.c_str()));
+                ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wSize.c_str()));
+                ListView_SetItemText(targetList, itemIdx, 3, durationStr);
+            }
+
+            (*targetCount)++;
+        }
+
+    }
+
+    // Display 0x20 bitmap info
+    if (foundBitmapHeader) {
+        char bitmapInfo[256];
+        snprintf(bitmapInfo, sizeof(bitmapInfo),
+            "Dimensions: %d x %d   Color Depth: %d-bit",
+            bitmapWidth, bitmapHeight, colorDepth);
+        SetWindowTextA(g_vdxControls[4], bitmapInfo);
+
+        // Redraw palette and bitmap
+        if (g_vdxControls[7]) {
+            InvalidateRect(g_vdxControls[7], nullptr, TRUE);
+        }
+        if (g_vdxControls[15]) {
+            InvalidateRect(g_vdxControls[15], nullptr, TRUE);
+        }
+    }
+
+    // Display 0x80 audio info
+    if (count0x80 > 0) {
+        double duration = static_cast<double>(totalAudioBytes) / 22050.0;
+        char audioInfo[256];
+        snprintf(audioInfo, sizeof(audioInfo),
+            "22,050 Hz / 8-bit / Mono   Total: %.2fs",
+            duration);
+        SetWindowTextA(g_vdxControls[11], audioInfo);
+    }
+
+    char status[256];
+    snprintf(status, sizeof(status),
+        "Loaded %zu chunks%s: %d bitmap, %d delta/dup, %d audio",
+        vdx.chunks.size(), fromArchive ? " from archive" : "", count0x20, count0x25, count0x80);
+    SetWindowTextA(g_vdxControls[13], status);
+    ShowVDXPlaybackFrame();
+}
+
 static void PopulateVDXInfoList(const std::string& filename)
 {
     if (!SaveVDXMaskProject()) return;
-    // New control indices:
-    // [5]=0x20 list, [9]=0x25 list, [12]=0x80 list
-    HWND hList0x20 = g_vdxControls[5];   // 0x20 Bitmap ListView
-    HWND hList0x25 = g_vdxControls[9];   // 0x25 Delta / 0x00 Duplicate ListView
-    HWND hList0x80 = g_vdxControls[12];  // 0x80 Audio ListView
-    
-    ListView_DeleteAllItems(hList0x20);
-    ListView_DeleteAllItems(hList0x25);
-    ListView_DeleteAllItems(hList0x80);
-    g_vdxChunks.clear();
-    g_currentVDXFile = filename;
-    g_hasPalette = false;
-    memset(g_palette, 0, sizeof(g_palette));
-    g_bitmapData.clear();
-    g_bitmapWidth = 0;
-    g_bitmapHeight = 0;
-    
-    // Clear info texts
-    SetWindowTextA(g_vdxControls[2], "");   // VDX header info
-    SetWindowTextA(g_vdxControls[4], "");   // 0x20 info
-    SetWindowTextA(g_vdxControls[11], "");  // 0x80 info
-    SetWindowTextA(g_vdxControls[13], "");  // Status
-    
+    ResetVDXInfo();
     try {
         std::ifstream file(filename, std::ios::binary);
-        if (!file) {
-            SetWindowTextA(g_vdxControls[13], "Error: Cannot open file.");
-            return;
-        }
-        
+        if (!file)
+            throw std::runtime_error("Cannot open file.");
         file.seekg(0, std::ios::end);
-        size_t fileSize = static_cast<size_t>(file.tellg());
-        file.seekg(0, std::ios::beg);
-        
-        std::vector<uint8_t> buffer(fileSize);
-        file.read(reinterpret_cast<char*>(buffer.data()), fileSize);
-        file.close();
-        
-        // Parse VDX and store for delta processing
-        g_currentVDX = parseVDXFile(filename, buffer);
-        PrepareVDXPlayback(filename, buffer);
-        VDXFile& vdx = g_currentVDX;
-        
-        // Display the semantically decoded VDX header.
-        char headerInfo[256];
-        snprintf(headerInfo, sizeof(headerInfo),
-            "Identifier: 0x%04X   Unknown: {0x%02X, 0x%02X, 0x%02X, 0x%02X}   FPS: %u",
-            vdx.identifier,
-            vdx.unknown[0], vdx.unknown[1], vdx.unknown[2],
-            vdx.unknown[3], static_cast<unsigned>(vdx.frameRate));
-        SetWindowTextA(g_vdxControls[2], headerInfo);
-        
-        // Track counts for each type
-        int count0x20 = 0, count0x25 = 0, count0x80 = 0;
-        bool foundBitmapHeader = false;
-        int bitmapWidth = 0, bitmapHeight = 0, colorDepth = 0;
-        size_t totalAudioBytes = 0;
-        
-        int idx = 0;
-        size_t currentOffset = 8;  // VDX header is 8 bytes
-        for (const auto& chunk : vdx.chunks) {
-            VDXChunkData data;
-            data.index = idx;
-            data.chunkType = chunk.chunkType;
-            data.offset = currentOffset;
-            data.size = chunk.dataSize;
-            data.lzssCompressed = vdxChunkIsCompressed(chunk);
-            
-            // VDX chunk header is 8 bytes
-            currentOffset += 8 + chunk.dataSize;
-            
-            g_vdxChunks.push_back(data);
-            
-            // Determine which ListView to add to
-            HWND targetList = nullptr;
-            int* targetCount = nullptr;
-            
-            if (chunk.chunkType == 0x20) {
-                targetList = hList0x20;
-                targetCount = &count0x20;
-                
-                // Extract bitmap header from first 0x20 chunk
-                // Data may be LZSS compressed - decompress first if needed
-                if (!foundBitmapHeader && chunk.data.size() > 0) {
-                    std::vector<uint8_t> decompData;
-                    std::span<const uint8_t> dataToRead;
-                    
-                    if (vdxChunkIsCompressed(chunk)) {
-                        // LZSS compressed - decompress
-                        decompData.resize(chunk.dataSize * 20);
-                        size_t decompSize = lzssDecompress(chunk.data, decompData, chunk.lengthMask, chunk.lengthBits);
-                        decompData.resize(decompSize);
-                        dataToRead = std::span<const uint8_t>(decompData);
-                    } else {
-                        dataToRead = chunk.data;
-                    }
-                    
-                    if (dataToRead.size() >= 6 + 768) {
-                        foundBitmapHeader = true;
-                        uint16_t numXTiles = dataToRead[0] | (dataToRead[1] << 8);
-                        uint16_t numYTiles = dataToRead[2] | (dataToRead[3] << 8);
-                        colorDepth = dataToRead[4] | (dataToRead[5] << 8);
-                        bitmapWidth = numXTiles * 4;
-                        bitmapHeight = numYTiles * 4;
-                        
-                        // Copy palette (raw 8-bit RGB values)
-                        memcpy(g_palette, dataToRead.data() + 6, 768);
-                        g_hasPalette = true;
-                        
-                        // Build palette for delta processing
-                        for (int i = 0; i < 256; i++) {
-                            g_currentPalette[i] = {g_palette[i*3], g_palette[i*3+1], g_palette[i*3+2]};
-                        }
-                        // Save base palette (never modified)
-                        
-                        // Decode the full bitmap using getBitmapData
-                        g_bitmapWidth = bitmapWidth;
-                        g_bitmapHeight = bitmapHeight;
-                        g_bitmapData.resize(static_cast<size_t>(bitmapWidth) * bitmapHeight * 3);
-                        getBitmapData(dataToRead, g_currentPalette, g_bitmapData);
-                    }
-                }
-            } else if (chunk.chunkType == 0x25 || chunk.chunkType == 0x00) {
-                // 0x25 = delta, 0x00 = duplicate previous
-                targetList = hList0x25;
-                targetCount = &count0x25;
-                
-
-            } else if (chunk.chunkType == 0x80) {
-                targetList = hList0x80;
-                targetCount = &count0x80;
-                totalAudioBytes += chunk.dataSize;
-            }
-            
-            if (targetList && targetCount) {
-                int itemIdx = *targetCount;
-                
-                // Add to ListView - Index column (column 0 for all)
-                std::wstring wIndex = std::to_wstring(idx);
-                LVITEMW lvi = {};
-                lvi.mask = LVIF_TEXT | LVIF_PARAM;
-                lvi.iItem = itemIdx;
-                lvi.lParam = static_cast<LPARAM>(idx);
-                lvi.pszText = const_cast<LPWSTR>(wIndex.c_str());
-                ListView_InsertItem(targetList, &lvi);
-                
-                std::wstring wOffset = FormatOffset(data.offset);
-                std::wstring wSize = FormatSize(data.size);
-                
-                if (targetList == hList0x20) {
-                    // 0x20 columns: #, Offset, Size, LZSS
-                    ListView_SetItemText(targetList, itemIdx, 1, const_cast<LPWSTR>(wOffset.c_str()));
-                    ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wSize.c_str()));
-                    ListView_SetItemText(targetList, itemIdx, 3, data.lzssCompressed ? (LPWSTR)L"\u2713" : (LPWSTR)L"");
-                }
-                else if (targetList == hList0x25) {
-                    // 0x25/0x00 columns: #, Type, Size, LZSS (4 columns)
-                    wchar_t typeHex[16];
-                    swprintf(typeHex, 16, L"0x%02X", chunk.chunkType);
-                    ListView_SetItemText(targetList, itemIdx, 1, typeHex);
-                    ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wSize.c_str()));
-                    ListView_SetItemText(targetList, itemIdx, 3, data.lzssCompressed ? (LPWSTR)L"\u2713" : (LPWSTR)L"");
-                }
-                else if (targetList == hList0x80) {
-                    // 0x80 columns: #, Offset, Size, Duration (4 columns)
-                    double chunkDuration = static_cast<double>(data.size) / 22050.0;
-                    wchar_t durationStr[32];
-                    swprintf(durationStr, 32, L"%.2fs", chunkDuration);
-                    ListView_SetItemText(targetList, itemIdx, 1, const_cast<LPWSTR>(wOffset.c_str()));
-                    ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wSize.c_str()));
-                    ListView_SetItemText(targetList, itemIdx, 3, durationStr);
-                }
-                
-                (*targetCount)++;
-            }
-            
-            idx++;
-        }
-        
-        // Display 0x20 bitmap info
-        if (foundBitmapHeader) {
-            char bitmapInfo[256];
-            snprintf(bitmapInfo, sizeof(bitmapInfo),
-                "Dimensions: %d x %d   Color Depth: %d-bit",
-                bitmapWidth, bitmapHeight, colorDepth);
-            SetWindowTextA(g_vdxControls[4], bitmapInfo);
-            
-            // Redraw palette and bitmap
-            if (g_vdxControls[7]) {
-                InvalidateRect(g_vdxControls[7], nullptr, TRUE);
-            }
-            if (g_vdxControls[15]) {
-                InvalidateRect(g_vdxControls[15], nullptr, TRUE);
-            }
-        }
-        
-        // Display 0x80 audio info
-        if (count0x80 > 0) {
-            double duration = static_cast<double>(totalAudioBytes) / 22050.0;
-            char audioInfo[256];
-            snprintf(audioInfo, sizeof(audioInfo),
-                "22,050 Hz / 8-bit / Mono   Total: %.2fs",
-                duration);
-            SetWindowTextA(g_vdxControls[11], audioInfo);
-        }
-        
-        char status[256];
-        snprintf(status, sizeof(status), 
-            "Loaded %zu chunks: %d bitmap, %d delta/dup, %d audio",
-            vdx.chunks.size(), count0x20, count0x25, count0x80);
-        SetWindowTextA(g_vdxControls[13], status);
-        ShowVDXPlaybackFrame();
+        const auto size = file.tellg();
+        if (size < 0)
+            throw std::runtime_error("Cannot determine file size.");
+        file.seekg(0);
+        std::vector<uint8_t> bytes(static_cast<size_t>(size));
+        if (!file.read(reinterpret_cast<char*>(bytes.data()), size))
+            throw std::runtime_error("Cannot read file.");
+        ShowVDXInfo(filename, std::move(bytes), false);
     }
     catch (const std::exception& e) {
-        char error[512];
-        snprintf(error, sizeof(error), "Error: %s", e.what());
-        SetWindowTextA(g_vdxControls[13], error);
+        SetWindowTextA(g_vdxControls[13], (std::string("Error: ") + e.what()).c_str());
     }
 }
 
-/*
-===============================================================================
-Function: PopulateVDXFromArchive - Load VDX from GJD archive (in RAM)
-===============================================================================
-*/
 static void PopulateVDXFromArchive(const RLEntry& entry)
 {
     if (!SaveVDXMaskProject()) return;
@@ -2206,214 +2157,23 @@ static void PopulateVDXFromArchive(const RLEntry& entry)
         SetWindowTextA(g_vdxControls[13], "Error: No GJD file available.");
         return;
     }
-    
     try {
-        std::ifstream gjdFile(g_currentGJDFile, std::ios::binary);
-        if (!gjdFile) {
-            SetWindowTextA(g_vdxControls[13], "Error: Cannot open GJD file.");
-            return;
-        }
-        
-        // Seek to VDX position in GJD
-        gjdFile.seekg(static_cast<std::streamoff>(entry.offset));
-        
-        // Read VDX data
-        std::vector<uint8_t> buffer(entry.length);
-        gjdFile.read(reinterpret_cast<char*>(buffer.data()), entry.length);
-        gjdFile.close();
-        
-        // Update file path display
-        std::string displayName = g_currentGJDFile + " -> " + entry.filename;
+        std::ifstream file(g_currentGJDFile, std::ios::binary);
+        if (!file)
+            throw std::runtime_error("Cannot open GJD file.");
+        file.seekg(static_cast<std::streamoff>(entry.offset));
+        std::vector<uint8_t> bytes(entry.length);
+        if (!file.read(reinterpret_cast<char*>(bytes.data()), entry.length))
+            throw std::runtime_error("Cannot read archive entry.");
+        const std::string displayName = g_currentGJDFile + " -> " + entry.filename;
         SetWindowTextA(g_vdxControls[0], displayName.c_str());
-        
-        // Clear lists
-        HWND hList0x20 = g_vdxControls[5];
-        HWND hList0x25 = g_vdxControls[9];
-        HWND hList0x80 = g_vdxControls[12];
-        
-        ListView_DeleteAllItems(hList0x20);
-        ListView_DeleteAllItems(hList0x25);
-        ListView_DeleteAllItems(hList0x80);
-        g_vdxChunks.clear();
-        g_currentVDXFile = entry.filename;
-        g_hasPalette = false;
-        memset(g_palette, 0, sizeof(g_palette));
-        g_bitmapData.clear();
-        g_bitmapWidth = 0;
-        g_bitmapHeight = 0;
-        
-        // Clear info texts
-        SetWindowTextA(g_vdxControls[2], "");   // VDX header
-        SetWindowTextA(g_vdxControls[4], "");   // 0x20 info
-        SetWindowTextA(g_vdxControls[11], "");  // 0x80 info
-        
-        // Parse VDX and store for delta processing
-        g_currentVDX = parseVDXFile(entry.filename, buffer);
-        PrepareVDXPlayback(entry.filename, buffer);
-        VDXFile& vdx = g_currentVDX;
-        
-        // Display VDX Header
-        char headerInfo[256];
-        snprintf(headerInfo, sizeof(headerInfo),
-            "Identifier: 0x%04X   Unknown: {0x%02X, 0x%02X, 0x%02X, 0x%02X}   FPS: %u",
-            vdx.identifier,
-            vdx.unknown[0], vdx.unknown[1], vdx.unknown[2],
-            vdx.unknown[3], static_cast<unsigned>(vdx.frameRate));
-        SetWindowTextA(g_vdxControls[2], headerInfo);
-        
-        int count0x20 = 0, count0x25 = 0, count0x80 = 0;
-        bool foundBitmapHeader = false;
-        int bitmapWidth = 0, bitmapHeight = 0, colorDepth = 0;
-        size_t totalAudioBytes = 0;
-        
-        int idx = 0;
-        size_t currentOffset = 8;
-        for (const auto& chunk : vdx.chunks) {
-            VDXChunkData data;
-            data.index = idx;
-            data.chunkType = chunk.chunkType;
-            data.offset = currentOffset;
-            data.size = chunk.dataSize;
-            data.lzssCompressed = vdxChunkIsCompressed(chunk);
-            
-            currentOffset += 8 + chunk.dataSize;
-            g_vdxChunks.push_back(data);
-            
-            HWND targetList = nullptr;
-            int* targetCount = nullptr;
-            
-            if (chunk.chunkType == 0x20) {
-                targetList = hList0x20;
-                targetCount = &count0x20;
-                
-                if (!foundBitmapHeader && chunk.data.size() > 0) {
-                    std::vector<uint8_t> decompData;
-                    std::span<const uint8_t> dataToRead;
-                    
-                    if (vdxChunkIsCompressed(chunk)) {
-                        decompData.resize(chunk.dataSize * 20);
-                        size_t decompSize = lzssDecompress(chunk.data, decompData, chunk.lengthMask, chunk.lengthBits);
-                        decompData.resize(decompSize);
-                        dataToRead = std::span<const uint8_t>(decompData);
-                    } else {
-                        dataToRead = chunk.data;
-                    }
-                    
-                    if (dataToRead.size() >= 6 + 768) {
-                        foundBitmapHeader = true;
-                        uint16_t numXTiles = dataToRead[0] | (dataToRead[1] << 8);
-                        uint16_t numYTiles = dataToRead[2] | (dataToRead[3] << 8);
-                        colorDepth = dataToRead[4] | (dataToRead[5] << 8);
-                        bitmapWidth = numXTiles * 4;
-                        bitmapHeight = numYTiles * 4;
-                        
-                        // Copy palette (raw 8-bit RGB values)
-                        memcpy(g_palette, dataToRead.data() + 6, 768);
-                        g_hasPalette = true;
-                        
-                        // Build palette for delta processing
-                        for (int i = 0; i < 256; i++) {
-                            g_currentPalette[i] = {g_palette[i*3], g_palette[i*3+1], g_palette[i*3+2]};
-                        }
-                        // Save base palette (never modified)
-                        
-                        // Decode the full bitmap using getBitmapData
-                        g_bitmapWidth = bitmapWidth;
-                        g_bitmapHeight = bitmapHeight;
-                        g_bitmapData.resize(static_cast<size_t>(bitmapWidth) * bitmapHeight * 3);
-                        getBitmapData(dataToRead, g_currentPalette, g_bitmapData);
-                    }
-                }
-            } else if (chunk.chunkType == 0x25 || chunk.chunkType == 0x00) {
-                targetList = hList0x25;
-                targetCount = &count0x25;
-                
-
-            } else if (chunk.chunkType == 0x80) {
-                targetList = hList0x80;
-                targetCount = &count0x80;
-                totalAudioBytes += chunk.dataSize;
-            }
-            
-            if (targetList && targetCount) {
-                int itemIdx = *targetCount;
-                
-                std::wstring wIndex = std::to_wstring(idx);
-                LVITEMW lvi = {};
-                lvi.mask = LVIF_TEXT | LVIF_PARAM;
-                lvi.iItem = itemIdx;
-                lvi.lParam = static_cast<LPARAM>(idx);
-                lvi.pszText = const_cast<LPWSTR>(wIndex.c_str());
-                ListView_InsertItem(targetList, &lvi);
-                
-                std::wstring wOffset = FormatOffset(data.offset);
-                std::wstring wSize = FormatSize(data.size);
-                
-                if (targetList == hList0x20) {
-                    ListView_SetItemText(targetList, itemIdx, 1, const_cast<LPWSTR>(wOffset.c_str()));
-                    ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wSize.c_str()));
-                    ListView_SetItemText(targetList, itemIdx, 3, data.lzssCompressed ? (LPWSTR)L"\u2713" : (LPWSTR)L"");
-                }
-                else if (targetList == hList0x25) {
-                    // 0x25/0x00 columns: #, Type, Size, LZSS (4 columns)
-                    wchar_t typeHex[16];
-                    swprintf(typeHex, 16, L"0x%02X", chunk.chunkType);
-                    ListView_SetItemText(targetList, itemIdx, 1, typeHex);
-                    ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wSize.c_str()));
-                    ListView_SetItemText(targetList, itemIdx, 3, data.lzssCompressed ? (LPWSTR)L"\u2713" : (LPWSTR)L"");
-                }
-                else if (targetList == hList0x80) {
-                    // 0x80 columns: #, Offset, Size, Duration (4 columns)
-                    double chunkDuration = static_cast<double>(data.size) / 22050.0;
-                    wchar_t durationStr[32];
-                    swprintf(durationStr, 32, L"%.2fs", chunkDuration);
-                    ListView_SetItemText(targetList, itemIdx, 1, const_cast<LPWSTR>(wOffset.c_str()));
-                    ListView_SetItemText(targetList, itemIdx, 2, const_cast<LPWSTR>(wSize.c_str()));
-                    ListView_SetItemText(targetList, itemIdx, 3, durationStr);
-                }
-                
-                (*targetCount)++;
-            }
-            idx++;
-        }
-        
-        if (foundBitmapHeader) {
-            char bitmapInfo[256];
-            snprintf(bitmapInfo, sizeof(bitmapInfo),
-                "Dimensions: %d x %d   Color Depth: %d-bit",
-                bitmapWidth, bitmapHeight, colorDepth);
-            SetWindowTextA(g_vdxControls[4], bitmapInfo);
-            if (g_vdxControls[7]) InvalidateRect(g_vdxControls[7], nullptr, TRUE);
-            if (g_vdxControls[15]) InvalidateRect(g_vdxControls[15], nullptr, TRUE);
-        }
-        
-        if (count0x80 > 0) {
-            double duration = static_cast<double>(totalAudioBytes) / 22050.0;
-            char audioInfo[256];
-            snprintf(audioInfo, sizeof(audioInfo), "22,050 Hz / 8-bit / Mono   Total: %.2fs", duration);
-            SetWindowTextA(g_vdxControls[11], audioInfo);
-        }
-        
-        char status[256];
-        snprintf(status, sizeof(status), 
-            "Loaded %zu chunks from archive: %d bitmap, %d delta/dup, %d audio",
-            vdx.chunks.size(), count0x20, count0x25, count0x80);
-        SetWindowTextA(g_vdxControls[13], status);
-        ShowVDXPlaybackFrame();
+        ResetVDXInfo();
+        ShowVDXInfo(entry.filename, std::move(bytes), true);
     }
     catch (const std::exception& e) {
-        char error[512];
-        snprintf(error, sizeof(error), "Error: %s", e.what());
-        SetWindowTextA(g_vdxControls[13], error);
+        SetWindowTextA(g_vdxControls[13], (std::string("Error: ") + e.what()).c_str());
     }
 }
-
-/*
-===============================================================================
-Function: ArchiveListCompare - Sort callback for Archive ListView
-===============================================================================
-*/
-
 
 /*
 ===============================================================================

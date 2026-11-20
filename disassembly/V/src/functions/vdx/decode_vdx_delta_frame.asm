@@ -41,13 +41,13 @@ decode_vdx_delta_frame:
     %endif
     times 3 - ($ - %%insn_01061) db 0
     %%insn_01064:
-    mov [cs:0x2383],ah ; 01064 2E88268323
+    mov [cs:vdx_lzss_length_bits_immediate],ah ; 01064 2E88268323
     %if ($ - %%insn_01064) > 5
         %error "LONG_01064"
     %endif
     times 5 - ($ - %%insn_01064) db 0
     %%insn_01069:
-    mov [cs:0x2386],al ; 01069 2EA28623
+    mov [cs:vdx_lzss_length_mask_immediate],al ; 01069 2EA28623
     %if ($ - %%insn_01069) > 4
         %error "LONG_01069"
     %endif
@@ -85,7 +85,7 @@ decode_vdx_delta_frame:
     db 0x33, 0xF6 ; 0107C 33F6 | xor si,si | encoding preserved
     db 0x33, 0xFF ; 0107E 33FF | xor di,di | encoding preserved
     %%insn_01080:
-    call 0x236a ; 01080 E8E712
+    call decompress_vdx_lzss ; 01080 E8E712
     %if ($ - %%insn_01080) > 3
         %error "LONG_01080"
     %endif

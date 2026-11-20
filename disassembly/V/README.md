@@ -1,13 +1,13 @@
 # DOS `V.EXE` 1.30 permanent disassembly
 
 This is the canonical lossless NASM source project for the DOS GROOVIE Player
-1.30. It represents every byte of the unpacked MZ executable in source and
-rebuilds that executable byte-for-byte.
+1.30. The build reproduces both the unpacked MZ image and the retail LZEXE
+0.91-packed executable byte-for-byte.
 
-| Artifact | Size | SHA-256 |
+| Build output | Size | Canonical SHA-256 |
 |---|---:|---|
-| Original LZEXE 0.91-packed `V.EXE` | 23,425 bytes | `e01c3a49cede63ad409e67ce10fdb9f98c6f42600cdfd67124b0d03f1c001585` |
-| Canonical unpacked/rebuilt target | 102,136 bytes | `f2f7febb70b5008ee94e535b0224e918eeec4c71404c899c0d6b50f10c0816c4` |
+| `build/V130-rebuilt-unpacked.exe` | 102,136 bytes | `f2f7febb70b5008ee94e535b0224e918eeec4c71404c899c0d6b50f10c0816c4` |
+| `build/V130-rebuilt-packed.exe` | 23,425 bytes | `e01c3a49cede63ad409e67ce10fdb9f98c6f42600cdfd67124b0d03f1c001585` |
 
 Run:
 
@@ -15,18 +15,21 @@ Run:
 ./build.sh
 ```
 
-The build assembles [`src/main.asm`](src/main.asm), rejects executable-byte
-`incbin` directives, and verifies the canonical unpacked SHA-256. Only after
-that check passes does it deploy the rebuilt executable as the repository-local
-`../../T7G/V.EXE`. On the first deployment it preserves the packed retail
-player as `../../T7G/V.EXE.BAK`. The build does not access `/mnt/T7G`.
+The build rejects `incbin` in its assembly sources and verifies the unpacked
+SHA-256 immediately after assembling [`src/main.asm`](src/main.asm). It then
+assembles the [LZEXE stub](tools/lzexe91_stub.asm), compresses the verified
+image and relocation table with [the packer](tools/pack_lzexe.py), and verifies
+the packed SHA-256. The two checks gate publication of both build outputs.
+The packer and stub are adapted from Fabrice Bellard’s LZEXE 0.91 source.
+[Upstream source](https://bellard.org/lzexe/) · [License](tools/LICENSE.lzexe)
 
-Set `V_DISASSEMBLY_NO_DEPLOY=1` to perform the complete build and verification
+The build deploys the unpacked output to the repository-local `../../T7G/V.EXE`
+and preserves an existing retail player as `../../T7G/V.EXE.BAK` on first
+deployment. Set `V_DISASSEMBLY_NO_DEPLOY=1` to build and verify both outputs
 without deploying.
 
-NASM, ripgrep, and standard SHA-256 utilities are the only build requirements.
-The project does not need Python, Ghidra, an unpacker, the packed original, or
-any reverse-engineering tool.
+The build runs offline with NASM, Python 3.9+, ripgrep, and standard SHA-256
+utilities. The packed retail EXE serves as a hash reference.
 
 ## What “complete” means today
 

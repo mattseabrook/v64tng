@@ -201,7 +201,7 @@ bits 32
 %include "src/functions/runtime/strcmp_runtime.asm"
 %include "src/functions/runtime/crt_set_file_creation_mask.asm"
 %include "src/functions/unknown/0040d950_func_0040d950.asm"
-%include "src/functions/unknown/0040d9f0_func_0040d9f0.asm"
+%include "src/functions/runtime/crt_strrchr.asm"
 %include "src/functions/unknown/0040da18_func_0040da18.asm"
 %include "src/functions/unknown/0040da5a_func_0040da5a.asm"
 %include "src/functions/unknown/0040daee_func_0040daee.asm"
@@ -2380,7 +2380,7 @@ emit_file_data_0074_00cde9
 %if ($ - $$) != 0x00CDF0
     %error "layout drift at raw 00CDF0"
 %endif
-emit_func_0040d9f0_part_00
+emit_crt_strrchr_part_00
 
 ; raw 00CE17..00CE18 (explicit-data)
 %if ($ - $$) != 0x00CE17

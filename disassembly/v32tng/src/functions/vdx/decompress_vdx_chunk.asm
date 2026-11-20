@@ -62,7 +62,7 @@ decompress_vdx_chunk:
     %endif
     times 1 - ($ - %%insn_0040c0d2) db 0
     %%insn_0040c0d3:
-    call 0x408a80 ; 0040C0D3 E8A8C9FFFF
+    call decompress_vdx_lzss ; 0040C0D3 E8A8C9FFFF
     %if ($ - %%insn_0040c0d3) > 5
         %error "LONG_0040C0D3"
     %endif

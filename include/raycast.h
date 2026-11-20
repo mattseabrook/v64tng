@@ -35,6 +35,20 @@ struct RaycastPlayer
     float runSpeed;  // Running speed
 };
 
+// Shader constant layout shared by Vulkan and D3D11.
+struct RaycastConstants
+{
+    float playerX, playerY, playerAngle, playerFOV;
+    uint32_t screenWidth, screenHeight, mapWidth, mapHeight;
+    float visualScale, torchRange, falloffMul, fovMul;
+    uint32_t supersample;
+    float wallHeightUnits;
+    uint32_t measuredFPS;
+    float mapOverlayZoom;
+};
+
+RaycastConstants makeRaycastConstants(const TileMap &map, uint32_t width, uint32_t height);
+
 //
 // Utility for degrees to radians
 //

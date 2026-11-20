@@ -12,6 +12,7 @@
 #include <stdexcept>
 
 #include "vdx.h"
+#include "gjd.h"
 #include "rl.h"
 #include "lzss.h"
 #include "bitmap.h"
@@ -26,11 +27,6 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#else
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
 #endif
 
 namespace
@@ -41,43 +37,6 @@ constexpr uint32_t readLE32(const uint8_t *p)
 		   (static_cast<uint32_t>(p[1]) << 8) |
 		   (static_cast<uint32_t>(p[2]) << 16) |
 		   (static_cast<uint32_t>(p[3]) << 24);
-}
-
-bool readStillPalette(
-	std::span<const uint8_t> data,
-	std::span<RGBColor> palette,
-	std::span<const uint8_t> preservedEntries = {})
-{
-	if (data.size() < 6 || palette.size() < 256)
-		return false;
-	const uint16_t colourDepth = readLittleEndian16(data.subspan(4, 2));
-	if (colourDepth > 8)
-		return false;
-	const size_t colours = size_t{1} << colourDepth;
-	if (data.size() < 6 + colours * 3)
-		return false;
-	if (!preservedEntries.empty() && preservedEntries.size() < 256)
-		return false;
-	for (size_t i = 0; i < colours; ++i)
-		if (preservedEntries.empty() || !preservedEntries[i])
-			palette[i] = {data[6 + i * 3], data[7 + i * 3], data[8 + i * 3]};
-	return true;
-}
-
-void materializeIndexedFrame(
-	std::span<const uint8_t> indices,
-	std::span<const RGBColor> palette,
-	std::span<uint8_t> frame)
-{
-	if (palette.size() < 256 || frame.size() != indices.size() * 3)
-		return;
-	for (size_t pixel = 0; pixel < indices.size(); ++pixel)
-	{
-		const RGBColor colour = palette[indices[pixel]];
-		frame[pixel * 3] = colour.r;
-		frame[pixel * 3 + 1] = colour.g;
-		frame[pixel * 3 + 2] = colour.b;
-	}
 }
 
 void parseVDXChunksFromSpan(VDXFile &vdxFile, std::span<const uint8_t> rawSpan)
@@ -155,90 +114,6 @@ struct VDXPlayOwnerGuard
 	VDXPlayOwnerGuard(const VDXPlayOwnerGuard &) = delete;
 	VDXPlayOwnerGuard &operator=(const VDXPlayOwnerGuard &) = delete;
 };
-
-std::expected<std::pair<std::shared_ptr<const uint8_t>, size_t>, std::string> mapFileReadOnly(const std::string &path)
-{
-#ifdef _WIN32
-	HANDLE hFile = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
-							   OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-	if (hFile == INVALID_HANDLE_VALUE)
-	{
-		return std::unexpected("Failed to open GJD: " + path);
-	}
-
-	LARGE_INTEGER sizeLi{};
-	if (!GetFileSizeEx(hFile, &sizeLi) || sizeLi.QuadPart <= 0)
-	{
-		CloseHandle(hFile);
-		return std::unexpected("Failed to get GJD file size: " + path);
-	}
-	const size_t fileSize = static_cast<size_t>(sizeLi.QuadPart);
-
-	HANDLE hMapFile = CreateFileMapping(hFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
-	if (hMapFile == nullptr)
-	{
-		CloseHandle(hFile);
-		return std::unexpected("Failed to map GJD file: " + path);
-	}
-
-	const uint8_t *fileData = static_cast<const uint8_t *>(MapViewOfFile(hMapFile, FILE_MAP_READ, 0, 0, 0));
-	if (fileData == nullptr)
-	{
-		CloseHandle(hMapFile);
-		CloseHandle(hFile);
-		return std::unexpected("Failed to map GJD view: " + path);
-	}
-
-	std::shared_ptr<const uint8_t> owner(fileData, [hMapFile, hFile](const uint8_t *p)
-										 {
-											 if (p)
-											 {
-												 UnmapViewOfFile(p);
-											 }
-											 if (hMapFile)
-											 {
-												 CloseHandle(hMapFile);
-											 }
-											 if (hFile != INVALID_HANDLE_VALUE)
-											 {
-												 CloseHandle(hFile);
-											 } });
-	return std::pair{std::move(owner), fileSize};
-#else
-	const int fd = open(path.c_str(), O_RDONLY);
-	if (fd == -1)
-	{
-		return std::unexpected("Failed to open GJD: " + path);
-	}
-
-	struct stat st {};
-	if (fstat(fd, &st) != 0 || st.st_size <= 0)
-	{
-		close(fd);
-		return std::unexpected("Failed to get GJD file size: " + path);
-	}
-	const size_t fileSize = static_cast<size_t>(st.st_size);
-
-	const uint8_t *fileData = static_cast<const uint8_t *>(mmap(nullptr, fileSize, PROT_READ, MAP_PRIVATE, fd, 0));
-	if (fileData == MAP_FAILED)
-	{
-		close(fd);
-		return std::unexpected("Failed to map GJD file: " + path);
-	}
-
-	std::shared_ptr<const uint8_t> owner(fileData, [fileSize, fd](const uint8_t *p)
-										 {
-											 if (p && p != MAP_FAILED)
-											 {
-												 munmap(const_cast<uint8_t *>(p), fileSize);
-											 }
-											 if (fd != -1)
-											 {
-												 close(fd);
-											 } });
-	return std::pair{std::move(owner), fileSize};
-#endif
-}
 
 struct StreamingVDXDecoder
 {

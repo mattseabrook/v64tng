@@ -479,7 +479,7 @@ static void createRaycastPipeline()
 		VkPushConstantRange pcRange{};
 		pcRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 		pcRange.offset = 0;
-		pcRange.size = sizeof(float) * 16;  // Match shader layout
+		pcRange.size = sizeof(RaycastConstants);
 		
 		VkPipelineLayoutCreateInfo plInfo{};
 		plInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -1151,57 +1151,8 @@ void renderFrameRaycastVkGPU()
 	updateFogOfWar();
 	
 	const auto& tileMap = *state.raycast.map;
-	const RaycastPlayer& player = state.raycast.player;
-	
-	// Prepare push constants
-	struct RaycastConstants
-	{
-		float playerX;
-		float playerY;
-		float playerAngle;
-		float playerFOV;
-		uint32_t screenWidth;
-		uint32_t screenHeight;
-		uint32_t mapWidth;
-		uint32_t mapHeight;
-		float visualScale;
-		float torchRange;
-		float falloffMul;
-		float fovMul;
-		uint32_t supersample;
-		float wallHeightUnits; // vertical scale of mortar/world vs width
-		float measuredFPS;
-		float mapOverlayZoom;  // 0.0 = overlay off, >0 = zoom level
-	};
-	
-	RaycastConstants constants{};
-	constants.playerX = player.x;
-	constants.playerY = player.y;
-	constants.playerAngle = player.angle;
-	constants.playerFOV = player.fov;
-	constants.screenWidth = vkCtx.textureWidth;
-	constants.screenHeight = vkCtx.textureHeight;
-	constants.mapWidth = static_cast<uint32_t>(tileMap[0].size());
-	constants.mapHeight = static_cast<uint32_t>(tileMap.size());
-	constants.visualScale = config.contains("raycastScale") ? config["raycastScale"].get<float>() : 3.0f;
-	float baseTorchRange = 6.0f;
-	constants.torchRange = baseTorchRange;
-	constants.falloffMul = config.contains("raycastFalloffMul") ? config["raycastFalloffMul"].get<float>() : 0.85f;
-	constants.fovMul = config.contains("raycastFovMul") ? config["raycastFovMul"].get<float>() : 1.0f;
-	constants.supersample = std::clamp(config.contains("raycastSupersample") ? config["raycastSupersample"].get<uint32_t>() : 1u, 1u, 8u);
-	const uint64_t pixelCount =
-		static_cast<uint64_t>(std::max(0, state.ui.width)) *
-		static_cast<uint64_t>(std::max(0, state.ui.height));
-	if (pixelCount >= kPixelCount1080p)
-		constants.supersample = std::min(constants.supersample, 1u);
-	else if (pixelCount >= kPixelCount720p)
-		constants.supersample = std::min(constants.supersample, 2u);
-	// Vertical scale: 1 wall unit per 1024px (horizontal anisotropy handled in content/shader)
-	constants.wallHeightUnits = 1.0f;
-	constants.measuredFPS = static_cast<float>(std::clamp(
-		static_cast<int>(std::lround(state.frameTiming.measuredFPS)), 0, 999));
-	constants.mapOverlayZoom = state.raycast.showMapOverlay ? state.raycast.mapOverlayZoom : 0.0f;
-	
+	const auto constants = makeRaycastConstants(tileMap, vkCtx.textureWidth, vkCtx.textureHeight);
+
 	// Present frame with compute shader execution
 	if (!beginVulkanFrame()) return;
 	uint32_t frame = vkCtx.currentFrame;

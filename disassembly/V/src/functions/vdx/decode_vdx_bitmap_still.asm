@@ -65,13 +65,13 @@ decode_vdx_bitmap_still:
     %endif
     times 3 - ($ - %%insn_0059a) db 0
     %%insn_0059d:
-    mov [cs:0x2383],ah ; 0059D 2E88268323
+    mov [cs:vdx_lzss_length_bits_immediate],ah ; 0059D 2E88268323
     %if ($ - %%insn_0059d) > 5
         %error "LONG_0059D"
     %endif
     times 5 - ($ - %%insn_0059d) db 0
     %%insn_005a2:
-    mov [cs:0x2386],al ; 005A2 2EA28623
+    mov [cs:vdx_lzss_length_mask_immediate],al ; 005A2 2EA28623
     %if ($ - %%insn_005a2) > 4
         %error "LONG_005A2"
     %endif
@@ -109,7 +109,7 @@ decode_vdx_bitmap_still:
     db 0x33, 0xF6 ; 005B5 33F6 | xor si,si | encoding preserved
     db 0x33, 0xFF ; 005B7 33FF | xor di,di | encoding preserved
     %%insn_005b9:
-    call 0x236a ; 005B9 E8AE1D
+    call decompress_vdx_lzss ; 005B9 E8AE1D
     %if ($ - %%insn_005b9) > 3
         %error "LONG_005B9"
     %endif

@@ -1,206 +1,169 @@
-// delta.cpp
-
-#include <vector>
-#include <span>
-#include <cstdint>
-#include <algorithm>
-
-#include "bitmap.h"
 #include "delta.h"
 
-/*
-===============================================================================
-Function Name: getDeltaBitmapData
+#include <algorithm>
 
-Description:
-	- Convert LZSS Decompressed data to an 8-bit RGB raw bitmap data structure.
-	This function takes a 0x25 chunk type (which contains delta bitmap data)
-	and constructs a new complete image/frame from the delta bitmap data.
+namespace {
 
-Parameters:
-	- buffer: Decompressed chunk data
-	- palette: The palette data as 8-bit RGB raw bitmap data
-	- frameBuffer: The 0x20 static bitmap as 8-bit RGB raw bitmap data
-	- width: The width of the bitmap
-
-Return:
-	- void (modifies palette and frameBuffer in place)
-===============================================================================
-*/
-
-bool getDeltaBitmapDataChecked(
-	std::span<const uint8_t> buffer,
-	std::span<RGBColor> palette,
-	std::span<uint8_t> frameBuffer,
-	int width,
-	std::span<uint8_t> indexBuffer,
-	std::span<const uint8_t> foregroundMask,
-	std::span<uint8_t> writtenPixels)
+template<class WritePixel>
+bool decodeDelta(std::span<const uint8_t> data, std::span<RGBColor> palette,
+                 size_t width, size_t height, bool strict, bool requireFinalRow,
+                 WritePixel writePixel)
 {
-	if (buffer.size() < 2 || palette.size() < 256 || width <= 0 ||
-		frameBuffer.size() % (static_cast<size_t>(width) * 3) != 0)
-		return false;
-	if (!indexBuffer.empty() && indexBuffer.size() != frameBuffer.size() / 3)
-		return false;
-	if (!foregroundMask.empty() &&
-		foregroundMask.size() != frameBuffer.size() / 3)
-		return false;
-	if (!writtenPixels.empty() && writtenPixels.size() != frameBuffer.size() / 3)
-		return false;
-	std::fill(writtenPixels.begin(), writtenPixels.end(), 0);
-	std::span<uint8_t> deltaFrame = frameBuffer;
+    if (data.size() < 2 || palette.size() < 256)
+        return false;
 
-	const uint16_t localPaletteSize = readLittleEndian16(buffer);
-	size_t paletteColorIndex = 0;
+    const size_t paletteSize = readLittleEndian16(data);
+    if (paletteSize > data.size() - 2)
+        return false;
+    if (paletteSize)
+    {
+        constexpr size_t mapSize = 32;
+        if (paletteSize < mapSize)
+            return false;
+        size_t color = 2 + mapSize;
+        const size_t end = 2 + paletteSize;
+        for (size_t group = 0; group < 16; ++group)
+        {
+            const auto mask = readLittleEndian16(data.subspan(2 + group * 2));
+            for (size_t bit = 0; bit < 16; ++bit)
+            {
+                if (!(mask & (0x8000u >> bit)))
+                    continue;
+                if (end - color < 3)
+                    return false;
+                palette[group * 16 + bit] = {data[color], data[color + 1], data[color + 2]};
+                color += 3;
+            }
+        }
+        if (strict && color != end)
+            return false;
+    }
 
-	if (localPaletteSize > 0)
-	{
-		for (size_t paletteGroup = 0; paletteGroup < 16 && (paletteGroup * 2 + 3) < buffer.size(); ++paletteGroup)
-		{
-			const uint16_t paletteMap = readLittleEndian16(buffer.subspan(paletteGroup * 2 + 2));
-			for (int colorBit = 0; colorBit < 16; ++colorBit)
-			{
-				if (paletteMap & (0x8000 >> colorBit))
-				{
-					const size_t idx = 34 + paletteColorIndex;
-					if (idx + 2 >= buffer.size())
-						break;
-					palette[paletteGroup * 16 + colorBit] = {buffer[idx], buffer[idx + 1], buffer[idx + 2]};
-					paletteColorIndex += 3;
-				}
-			}
-		}
-	}
+    data = data.subspan(2 + paletteSize);
+    size_t x = 0, y = 0;
+    const auto writeTile = [&](auto indexAt) {
+        if (strict && (x >= width || y >= height))
+            return false;
+        // The runtime follows the native linear destination cursor.
+        // The indexed tool also rejects tiles that cross the declared geometry.
+        for (size_t i = 0; i < 16; ++i)
+        {
+            const size_t row = y + i / 4;
+            if (row >= height)
+                break;
+            const size_t column = x + i % 4;
+            if (column < (height - row) * width)
+                writePixel(row * width + column, indexAt(i));
+        }
+        x += 4;
+        return true;
+    };
+    const auto writeMap = [&](uint16_t map, uint8_t one, uint8_t zero) {
+        return writeTile([&](size_t i) { return (map & (0x8000u >> i)) ? one : zero; });
+    };
 
-	int xPos = 0, yPos = 0;
-	auto updatePixel = [&](int x, int y, uint8_t paletteIndex)
-	{
-		if (x < 0 || y < 0)
-			return;
-		const size_t pixelIndex = (y * width + x) * 3;
-		if (pixelIndex + 2 < deltaFrame.size())
-		{
-			const size_t pixel = pixelIndex / 3;
-			// GRV video flag 7 composites delta writes through the foreground
-			// matte. FF in the matte protects the background; FF in the delta
-			// selects the matte pixel instead of writing FF to the background.
-			if (!foregroundMask.empty())
-			{
-				if (foregroundMask[pixel] == 0xff)
-					return;
-				if (paletteIndex == 0xff)
-					paletteIndex = foregroundMask[pixel];
-			}
-			if (!writtenPixels.empty())
-				writtenPixels[pixel] = 255;
-			const auto &color = palette[paletteIndex];
-			deltaFrame[pixelIndex] = color.r;
-			deltaFrame[pixelIndex + 1] = color.g;
-			deltaFrame[pixelIndex + 2] = color.b;
-			if (!indexBuffer.empty())
-				indexBuffer[pixel] = paletteIndex;
-		}
-	};
+    while (!data.empty())
+    {
+        const uint8_t opcode = data.front();
+        data = data.subspan(1);
+        if (opcode < 0x60)
+        {
+            if (data.size() < 2 || !writeMap(vdxTileMap(opcode), data[0], data[1]))
+                return false;
+            data = data.subspan(2);
+        }
+        else if (opcode == 0x60)
+        {
+            if (data.size() < 16 || !writeTile([&](size_t i) { return data[i]; }))
+                return false;
+            data = data.subspan(16);
+        }
+        else if (opcode == 0x61)
+        {
+            if (strict && y >= height)
+                return false;
+            x = 0;
+            y += 4;
+        }
+        else if (opcode <= 0x6b)
+        {
+            x += (opcode - 0x62) * 4;
+            if (strict && (x > width || y >= height))
+                return false;
+        }
+        else if (opcode <= 0x7f)
+        {
+            const bool repeat = opcode <= 0x75;
+            const int count = opcode - (repeat ? 0x6b : 0x75);
+            const size_t colors = repeat ? 1 : count;
+            if (data.size() < colors)
+                return false;
+            for (int i = 0; i < count; ++i)
+            {
+                const auto color = data[repeat ? 0 : i];
+                if (!writeMap(0, color, color))
+                    return false;
+            }
+            data = data.subspan(colors);
+        }
+        else
+        {
+            if (data.size() < 3 ||
+                !writeMap(opcode | (uint16_t(data[0]) << 8), data[1], data[2]))
+                return false;
+            data = data.subspan(3);
+        }
+    }
 
-	for (size_t bufferIndex = localPaletteSize + 2; bufferIndex < buffer.size();)
-	{
-		const uint8_t opcode = buffer[bufferIndex++];
-
-		switch (opcode)
-		{
-		case 0x00 ... 0x5F:
-		{
-			if (buffer.size() - bufferIndex < 2)
-				return false;
-			const uint16_t mapValue = readLittleEndian16({MapField.data() + (opcode * 2), 2});
-			const uint8_t color1 = buffer[bufferIndex++], color0 = buffer[bufferIndex++];
-			for (int i = 0; i < 16; ++i)
-			{
-				updatePixel(xPos + (i % 4), yPos + (i / 4),
-					(mapValue & (0x8000 >> i)) ? color1 : color0);
-			}
-			xPos += 4;
-			break;
-		}
-		case 0x60:
-		{
-			if (buffer.size() - bufferIndex < 16)
-				return false;
-			for (int i = 0; i < 16; ++i)
-			{
-				updatePixel(xPos + (i % 4), yPos + (i / 4), buffer[bufferIndex++]);
-			}
-			xPos += 4;
-			break;
-		}
-		case 0x61:
-		{
-			yPos += 4;
-			xPos = 0;
-			break;
-		}
-		case 0x62 ... 0x6B:
-		{
-			xPos += (opcode - 0x62) * 4;
-			break;
-		}
-		case 0x6C ... 0x75:
-		{
-			if (bufferIndex >= buffer.size())
-				return false;
-			const int repeatCount = opcode - 0x6B;
-			const uint8_t color = buffer[bufferIndex++];
-			for (int r = 0; r < repeatCount; ++r)
-			{
-				for (int i = 0; i < 16; ++i)
-				{
-					updatePixel(xPos + (i % 4), yPos + (i / 4), color);
-				}
-				xPos += 4;
-			}
-			break;
-		}
-		case 0x76 ... 0x7F:
-		{
-			const int colorCount = opcode - 0x75;
-			if (buffer.size() - bufferIndex < static_cast<size_t>(colorCount))
-				return false;
-			for (int i = 0; i < colorCount; ++i)
-			{
-				const uint8_t color = buffer[bufferIndex++];
-				for (int j = 0; j < 16; ++j)
-				{
-					updatePixel(xPos + (j % 4), yPos + (j / 4), color);
-				}
-				xPos += 4;
-			}
-			break;
-		}
-		default:
-		{
-			if (buffer.size() - (bufferIndex - 1) < 4)
-				return false;
-			const uint16_t mapValue = readLittleEndian16(buffer.subspan(bufferIndex - 1));
-			const uint8_t color1 = buffer[bufferIndex + 1];
-			const uint8_t color0 = buffer[bufferIndex + 2];
-			for (int i = 0; i < 16; ++i)
-			{
-				updatePixel(xPos + (i % 4), yPos + (i / 4), (mapValue & (0x8000 >> i)) ? color1 : color0);
-			}
-			xPos += 4;
-			bufferIndex += 3;
-			break;
-		}
-		}
-	}
-	return true;
+    // The DOS decoder uses row advances to detect the end of the picture.
+    return !requireFinalRow || (y == height && x == 0);
 }
 
-void getDeltaBitmapData(
-	std::span<const uint8_t> buffer,
-	std::span<RGBColor> palette,
-	std::span<uint8_t> frameBuffer,
-	int width)
+} // namespace
+
+bool getDeltaBitmapDataChecked(
+    std::span<const uint8_t> buffer, std::span<RGBColor> palette,
+    std::span<uint8_t> frameBuffer, int width, std::span<uint8_t> indexBuffer,
+    std::span<const uint8_t> foregroundMask, std::span<uint8_t> writtenPixels)
 {
-	(void)getDeltaBitmapDataChecked(buffer, palette, frameBuffer, width, {}, {});
+    if (width <= 0 || frameBuffer.size() % (size_t(width) * 3) != 0)
+        return false;
+    const size_t pixels = frameBuffer.size() / 3;
+    if ((!indexBuffer.empty() && indexBuffer.size() != pixels) ||
+        (!foregroundMask.empty() && foregroundMask.size() != pixels) ||
+        (!writtenPixels.empty() && writtenPixels.size() != pixels))
+        return false;
+    std::fill(writtenPixels.begin(), writtenPixels.end(), 0);
+
+    return decodeDelta(buffer, palette, width, pixels / width, false, false,
+        [&](size_t pixel, uint8_t index) {
+            // GRV video flag 7 composites delta writes through the foreground matte.
+            if (!foregroundMask.empty())
+            {
+                const auto matte = foregroundMask[pixel];
+                if (matte == 0xff)
+                    return;
+                if (index == 0xff)
+                    index = matte;
+            }
+            if (!writtenPixels.empty())
+                writtenPixels[pixel] = 255;
+            if (!indexBuffer.empty())
+                indexBuffer[pixel] = index;
+            const auto &color = palette[index];
+            frameBuffer[pixel * 3] = color.r;
+            frameBuffer[pixel * 3 + 1] = color.g;
+            frameBuffer[pixel * 3 + 2] = color.b;
+        });
+}
+
+bool decodeIndexedVdxDelta(std::span<const uint8_t> data, std::span<RGBColor> palette,
+                           std::span<uint8_t> frame, int width, int height,
+                           bool requireFinalRow)
+{
+    if (width <= 0 || height <= 0 || width % 4 || height % 4 ||
+        frame.size() != size_t(width) * height)
+        return false;
+    return decodeDelta(data, palette, width, height, true, requireFinalRow,
+        [&](size_t pixel, uint8_t index) { frame[pixel] = index; });
 }

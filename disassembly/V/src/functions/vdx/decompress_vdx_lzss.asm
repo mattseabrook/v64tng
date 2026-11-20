@@ -1,6 +1,9 @@
 ; Linear entry 0236A (1000:236a)
 ; Ghidra working symbol: FUN_1000_236a
 ; Verified parameterized VDX LZSS decoder: LSB-first flags, zero-word terminator, length=(token&mask)+3, and overlapping output-distance copies.
+; DS:SI points to the compressed payload and ES:DI to the output.
+; The still, delta and media-stream callers patch the two named immediate
+; bytes with chunk header bytes 7 (shift count) and 6 (length mask).
 ; Generated losslessly; edit names/comments only after preserving build identity.
 
 %macro emit_decompress_vdx_lzss_part_00 0
@@ -24,6 +27,7 @@ decompress_vdx_lzss:
         %error "LONG_0236D"
     %endif
     times 2 - ($ - %%insn_0236d) db 0
+    %%next_flag:
     %%insn_0236f:
     shr dx,1 ; 0236F D1EA
     %if ($ - %%insn_0236f) > 2
@@ -31,7 +35,7 @@ decompress_vdx_lzss:
     %endif
     times 2 - ($ - %%insn_0236f) db 0
     %%insn_02371:
-    jnc short 0x237a ; 02371 7307
+    jnc short %%back_reference ; 02371 7307
     %if ($ - %%insn_02371) > 2
         %error "LONG_02371"
     %endif
@@ -44,17 +48,18 @@ decompress_vdx_lzss:
     times 1 - ($ - %%insn_02373) db 0
     db 0x22, 0xF6 ; 02374 22F6 | and dh,dh | encoding preserved
     %%insn_02376:
-    jnz short 0x236f ; 02376 75F7
+    jnz short %%next_flag ; 02376 75F7
     %if ($ - %%insn_02376) > 2
         %error "LONG_02376"
     %endif
     times 2 - ($ - %%insn_02376) db 0
     %%insn_02378:
-    jmp short 0x236a ; 02378 EBF0
+    jmp short decompress_vdx_lzss ; 02378 EBF0
     %if ($ - %%insn_02378) > 2
         %error "LONG_02378"
     %endif
     times 2 - ($ - %%insn_02378) db 0
+    %%back_reference:
     %%insn_0237a:
     lodsw ; 0237A AD
     %if ($ - %%insn_0237a) > 1
@@ -63,19 +68,21 @@ decompress_vdx_lzss:
     times 1 - ($ - %%insn_0237a) db 0
     db 0x23, 0xC0 ; 0237B 23C0 | and ax,ax | encoding preserved
     %%insn_0237d:
-    jz short 0x23a2 ; 0237D 7423
+    jz short %%finished ; 0237D 7423
     %if ($ - %%insn_0237d) > 2
         %error "LONG_0237D"
     %endif
     times 2 - ($ - %%insn_0237d) db 0
     db 0x8A, 0xC8 ; 0237F 8AC8 | mov cl,al | encoding preserved
     %%insn_02381:
+vdx_lzss_length_bits_immediate equ %%insn_02381 + 2
     shr ax,byte 0x0 ; 02381 C1E800
     %if ($ - %%insn_02381) > 3
         %error "LONG_02381"
     %endif
     times 3 - ($ - %%insn_02381) db 0
     %%insn_02384:
+vdx_lzss_length_mask_immediate equ %%insn_02384 + 2
     and cx,0x0 ; 02384 83E100
     %if ($ - %%insn_02384) > 3
         %error "LONG_02384"
@@ -123,17 +130,18 @@ decompress_vdx_lzss:
     times 2 - ($ - %%insn_0239a) db 0
     db 0x22, 0xF6 ; 0239C 22F6 | and dh,dh | encoding preserved
     %%insn_0239e:
-    jnz short 0x236f ; 0239E 75CF
+    jnz short %%next_flag ; 0239E 75CF
     %if ($ - %%insn_0239e) > 2
         %error "LONG_0239E"
     %endif
     times 2 - ($ - %%insn_0239e) db 0
     %%insn_023a0:
-    jmp short 0x236a ; 023A0 EBC8
+    jmp short decompress_vdx_lzss ; 023A0 EBC8
     %if ($ - %%insn_023a0) > 2
         %error "LONG_023A0"
     %endif
     times 2 - ($ - %%insn_023a0) db 0
+    %%finished:
     db 0x33, 0xED ; 023A2 33ED | xor bp,bp | encoding preserved
     %%insn_023a4:
     ret ; 023A4 C3

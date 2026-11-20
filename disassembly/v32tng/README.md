@@ -33,8 +33,8 @@ The project has complete mechanical source coverage:
 This is not yet complete semantic recovery. Ghidra's function ownership is
 provisional and does not reveal the original Visual C++ object-module layout.
 Some explicit data may later prove to be code, jump tables, inline constants,
-or alignment. 174 entries currently have verified semantic roles; the
-other 162 retain neutral address-based names.
+or alignment. 175 entries currently have verified semantic roles; the
+other 161 retain neutral address-based names.
 
 Exact coverage and the complete function address map are maintained later in
 this README. This file is the public, monolithic research record for the
@@ -348,8 +348,8 @@ understanding.
 | Function-body instructions decoded | 25,181 |
 | Instructions requiring exact `db` encoding fallback | 1,992 |
 | Bytes in encoding fallbacks | 4,159 |
-| Verified semantic function roles | 174 |
-| Unidentified/provisionally bounded functions | 162 |
+| Verified semantic function roles | 175 |
+| Unidentified/provisionally bounded functions | 161 |
 | Non-function PE file bytes | 63,737 |
 
 All headers, section padding, code gaps, `.rdata`, `.data`, imports, resources,
@@ -564,7 +564,7 @@ Owned ranges are inclusive PE virtual-address ranges.
 | `0040D8A0` | verified-role | `strcmp_runtime` | `_strcmp` | `0040D8A0–0040D8E2`<br>`0040D8E4–0040D8E9`<br>`0040D8EC–0040D923` | [`src/functions/runtime/strcmp_runtime.asm`](src/functions/runtime/strcmp_runtime.asm) |
 | `0040D930` | verified-role | `crt_set_file_creation_mask` | `FUN_0040d930` | `0040D930–0040D945` | [`src/functions/runtime/crt_set_file_creation_mask.asm`](src/functions/runtime/crt_set_file_creation_mask.asm) |
 | `0040D950` | unidentified | `func_0040d950` | `FUN_0040d950` | `0040D950–0040D9E8` | [`src/functions/unknown/0040d950_func_0040d950.asm`](src/functions/unknown/0040d950_func_0040d950.asm) |
-| `0040D9F0` | unidentified | `func_0040d9f0` | `_strrchr` | `0040D9F0–0040DA16` | [`src/functions/unknown/0040d9f0_func_0040d9f0.asm`](src/functions/unknown/0040d9f0_func_0040d9f0.asm) |
+| `0040D9F0` | verified-role | `crt_strrchr` | `_strrchr` | `0040D9F0–0040DA16` | [`src/functions/runtime/crt_strrchr.asm`](src/functions/runtime/crt_strrchr.asm) |
 | `0040DA18` | unidentified | `func_0040da18` | `__global_unwind2` | `0040DA18–0040DA37` | [`src/functions/unknown/0040da18_func_0040da18.asm`](src/functions/unknown/0040da18_func_0040da18.asm) |
 | `0040DA5A` | unidentified | `func_0040da5a` | `__local_unwind2` | `0040DA5A–0040DAC1` | [`src/functions/unknown/0040da5a_func_0040da5a.asm`](src/functions/unknown/0040da5a_func_0040da5a.asm) |
 | `0040DAEE` | unidentified | `func_0040daee` | `FUN_0040daee` | `0040DAEE–0040DB05` | [`src/functions/unknown/0040daee_func_0040daee.asm`](src/functions/unknown/0040daee_func_0040daee.asm) |
@@ -798,9 +798,9 @@ The evidence manifest includes decoded address/opcode/instruction sequences for 
 
 ## Current cross-platform recovery status
 
-The original inventory now has 174/336 verified roles (51.8%), with 162
-neutral entries remaining. The address map above includes the four newly
-named Windows routines: `initialize_ccc_color_and_mask_tables` at `0040BFF4`,
+The tracked inventory now has 175/336 verified roles (52.1%), with 161
+neutral entries remaining. The latest addition is `crt_strrchr` at
+`0040D9F0`. The address map also records four earlier Windows identifications: `initialize_ccc_color_and_mask_tables` at `0040BFF4`,
 `clear_key_input_queue` at `004069A0`, `has_queued_key_input` at `004069C7`,
 and `combine_two_grv_random_words` at `00406D16`.
 
@@ -809,8 +809,8 @@ original Mac `InitCCCTable`; mask rows differ by an eight-byte half swap.
 The 4096 valid keyboard-index pairs and original random-generator state
 transitions were checked. Existing PCM, CD-selection and timer routines
 were also cross-checked against DOS, preserving platform differences.
-These results add identified Windows roles; DOS's 261/261 entry-role milestone
-does not automatically identify unrelated Windows code.
+DOS has roles for all 283 tracked entries. The Windows-specific CRT and
+platform code needs its own evidence.
 
 The canonical PE still rebuilds byte for byte. Across the current DOS,
 Windows and Mac suites, 10,630 isolated machine-code cases pass, with

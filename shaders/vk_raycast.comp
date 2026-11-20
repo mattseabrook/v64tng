@@ -34,7 +34,7 @@ layout(push_constant) uniform RaycastConstants {
     float fovMul;            // FOV adjustment multiplier
     uint supersample;        // Supersampling count
     float wallHeightUnits;   // Wall height in world units relative to width
-    float measuredFPS;
+    uint measuredFPS;
     float mapOverlayZoom;    // 0.0 = overlay off, >0 = zoom level
 } pc;
 
@@ -566,7 +566,7 @@ vec3 applyFpsOverlay(vec3 sceneColor, uvec2 pixel)
         0x7b6fu, 0x749au, 0x73e7u, 0x79e7u, 0x49edu,
         0x79cfu, 0x7bcfu, 0x4927u, 0x7befu, 0x79efu,
         0x12cfu, 0x12ebu, 0x79cfu);
-    uint fps = min(uint(max(pc.measuredFPS, 0.0)), 999u);
+    uint fps = min(pc.measuredFPS, 999u);
     uint scale = pc.screenWidth >= 1200u ? 3u : 2u;
     uint advance = 4u * scale;
     uint textWidth = 7u * advance - scale;

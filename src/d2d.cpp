@@ -359,7 +359,7 @@ static void initializeRaycastGPUPipeline()
         // Create constant buffer for raycast parameters
         // Must match the cbuffer layout in the shader (16 float/uint fields)
         D3D11_BUFFER_DESC cbDesc = {};
-        cbDesc.ByteWidth = sizeof(float) * 16;  // Aligned to 16-byte boundaries
+        cbDesc.ByteWidth = sizeof(RaycastConstants);  // Aligned to 16-byte boundaries
         cbDesc.Usage = D3D11_USAGE_DYNAMIC;
         cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
         cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
@@ -1133,62 +1133,11 @@ void renderFrameRaycastGPU()
     updateFogOfWar();
     
     const auto& tileMap = *state.raycast.map;
-    const RaycastPlayer& player = state.raycast.player;
-    
-    // Update tile map texture if needed
+
     updateRaycastTileMap(tileMap);
-    // Update edge offset lookup SRV
     updateRaycastEdgeOffsets(tileMap);
-    
-    // Prepare constant buffer data
-    struct RaycastConstants
-    {
-        float playerX;
-        float playerY;
-        float playerAngle;
-        float playerFOV;
-        uint32_t screenWidth;
-        uint32_t screenHeight;
-        uint32_t mapWidth;
-        uint32_t mapHeight;
-        float visualScale;
-        float torchRange;
-        float falloffMul;
-        float fovMul;
-        uint32_t supersample;
-        float wallHeightUnits; // vertical scale of mortar/world vs width
-        uint32_t measuredFPS;
-        float mapOverlayZoom;  // 0.0 = overlay off, >0 = zoom level
-    };
-    
-    RaycastConstants constants{};
-    constants.playerX = player.x;
-    constants.playerY = player.y;
-    constants.playerAngle = player.angle;
-    constants.playerFOV = player.fov;
-    constants.screenWidth = state.ui.width;
-    constants.screenHeight = state.ui.height;
-    constants.mapWidth = static_cast<uint32_t>(tileMap[0].size());
-    constants.mapHeight = static_cast<uint32_t>(tileMap.size());
-    constants.visualScale = config.contains("raycastScale") ? config["raycastScale"].get<float>() : 3.0f;
-    float baseTorchRange = 6.0f;
-    constants.torchRange = baseTorchRange;
-    constants.falloffMul = config.contains("raycastFalloffMul") ? config["raycastFalloffMul"].get<float>() : 0.85f;
-    constants.fovMul = config.contains("raycastFovMul") ? config["raycastFovMul"].get<float>() : 1.0f;
-    constants.supersample = std::clamp(config.contains("raycastSupersample") ? config["raycastSupersample"].get<uint32_t>() : 1u, 1u, 8u);
-    const uint64_t pixelCount =
-        static_cast<uint64_t>(std::max(0, state.ui.width)) *
-        static_cast<uint64_t>(std::max(0, state.ui.height));
-    if (pixelCount >= kPixelCount1080p)
-        constants.supersample = std::min(constants.supersample, 1u);
-    else if (pixelCount >= kPixelCount720p)
-        constants.supersample = std::min(constants.supersample, 2u);
-    // Vertical scale: 1 wall unit per 1024px (horizontal anisotropy handled in content/shader)
-    constants.wallHeightUnits = 1.0f;
-    constants.measuredFPS = static_cast<uint32_t>(std::clamp(
-        static_cast<int>(std::lround(state.frameTiming.measuredFPS)), 0, 999));
-    constants.mapOverlayZoom = state.raycast.showMapOverlay ? state.raycast.mapOverlayZoom : 0.0f;
-    
+    const auto constants = makeRaycastConstants(tileMap, state.ui.width, state.ui.height);
+
     // Update constant buffer
     D3D11_MAPPED_SUBRESOURCE mapped;
     HRESULT hr = d2dCtx.d3dContext->Map(d2dCtx.raycastConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);

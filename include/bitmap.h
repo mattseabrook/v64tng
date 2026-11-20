@@ -3,28 +3,9 @@
 #ifndef BITMAP_H
 #define BITMAP_H
 
-#include <vector>
-#include <tuple>
 #include <cstdint>
-#include <string_view>
 #include <span>
 
-/*
-===============================================================================
-
-    7th Guest - Bitmap
-
-    This header file also contains an RGBColor structure that is used to
-    represent an 8-bit RGB color. As well as the readLittleEndian16 function
-    that reads a 16-bit little-endian value from a byte array, used by both
-    the getBitmapData and getDeltaBitmapData functions in delta.cpp
-
-===============================================================================
-*/
-
-//
-// RGBColor
-//
 struct RGBColor
 {
     uint8_t r, g, b;
@@ -35,24 +16,24 @@ struct RGBColor
     }
 };
 
-//
-// readLittleEndian16
-//
 constexpr uint16_t readLittleEndian16(std::span<const uint8_t> data)
 {
     return data[0] | (data[1] << 8);
 }
 
-//=============================================================================
+void materializeIndexedFrame(std::span<const uint8_t> indices,
+                             std::span<const RGBColor> palette,
+                             std::span<uint8_t> frame);
 
-// Function prototypes
+bool readStillPalette(std::span<const uint8_t> data, std::span<RGBColor> palette,
+                      std::span<const uint8_t> preservedEntries = {});
+
+// RGB output may be empty when the caller supplies an index buffer.
 bool getBitmapDataChecked(
     std::span<const uint8_t> chunkData,
     std::span<RGBColor> palette,
     std::span<uint8_t> outputFrame,
     std::span<uint8_t> outputIndices = {},
     std::span<const uint8_t> preservedPaletteEntries = {});
-void getBitmapData(std::span<const uint8_t> chunkData, std::span<RGBColor> palette, std::span<uint8_t> outputFrame);
-std::vector<uint8_t> packBitmapData(std::span<const uint8_t> rawImageData, std::span<const RGBColor> palette, int width, int height);
 
 #endif // BITMAP_H

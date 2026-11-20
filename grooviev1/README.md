@@ -496,7 +496,7 @@ extraction and repacking; the character map is checked against the table.
   model and validates every compressed payload by decoding it before writing.
   An indexed first-byte match search preserves historical token selection while
   avoiding scans over unrelated bytes. Extraction also supports references into
-  the original decoder's zero-initialized history; decoded chunks are capped at
+  zero-filled history before the start of output. Decoded chunks are capped at
   16 MiB and truncated compressed streams fail clearly.
 - The 192-byte VDX tile-map table is copied byte-for-byte from two independent
   decoder locations: DOS `V.EXE` load offset `015DBEh` (`DS:D48Eh`) and Win32

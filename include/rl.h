@@ -5,18 +5,8 @@
 
 #include <vector>
 #include <string>
+#include <filesystem>
 #include <expected>
-
-/*
-===============================================================================
-
-    7th Guest - RL Parser
-
-    This header file contains the function prototype for parsing an RL file
-    to get the VDX file locations.
-
-===============================================================================
-*/
 
 struct RLEntry {
     std::string filename;
@@ -24,7 +14,8 @@ struct RLEntry {
     size_t length;
 };
 
-// Function Prototypes
-std::expected<std::vector<RLEntry>, std::string> parseRLFile(std::string_view rlFilename);
+// Playback trims legacy space padding. Archive tools retain the original field.
+std::expected<std::vector<RLEntry>, std::string> parseRLFile(
+    const std::filesystem::path &rlFilename, bool trimSpacePadding = true);
 
 #endif // RL_H

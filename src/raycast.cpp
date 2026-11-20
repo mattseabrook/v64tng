@@ -719,6 +719,41 @@ void renderChunk(const TileMap &tileMap,
     }
 }
 
+static int limitSupersample(int count, int width, int height)
+{
+    const uint64_t pixels = uint64_t(std::max(0, width)) * uint64_t(std::max(0, height));
+    if (pixels >= kPixelCount1080p)
+        return 1;
+    if (pixels >= kPixelCount720p)
+        return std::min(count, 2);
+    return count;
+}
+
+RaycastConstants makeRaycastConstants(const TileMap &map, uint32_t width, uint32_t height)
+{
+    const auto &player = state.raycast.player;
+    const auto supersample = std::clamp(config.contains("raycastSupersample")
+        ? config["raycastSupersample"].get<uint32_t>() : 1u, 1u, 8u);
+    return {
+        .playerX = player.x,
+        .playerY = player.y,
+        .playerAngle = player.angle,
+        .playerFOV = player.fov,
+        .screenWidth = width,
+        .screenHeight = height,
+        .mapWidth = static_cast<uint32_t>(map.front().size()),
+        .mapHeight = static_cast<uint32_t>(map.size()),
+        .visualScale = config.contains("raycastScale") ? config["raycastScale"].get<float>() : 3.0f,
+        .torchRange = 6.0f,
+        .falloffMul = config.contains("raycastFalloffMul") ? config["raycastFalloffMul"].get<float>() : 0.85f,
+        .fovMul = config.contains("raycastFovMul") ? config["raycastFovMul"].get<float>() : 1.0f,
+        .supersample = static_cast<uint32_t>(limitSupersample(supersample, state.ui.width, state.ui.height)),
+        .wallHeightUnits = 1.0f,
+        .measuredFPS = static_cast<uint32_t>(std::clamp(std::lround(state.frameTiming.measuredFPS), 0l, 999l)),
+        .mapOverlayZoom = state.raycast.showMapOverlay ? state.raycast.mapOverlayZoom : 0.0f
+    };
+}
+
 // Main raycast rendering function
 void renderRaycastView(const TileMap &tileMap,
                        const RaycastPlayer &p,
@@ -733,14 +768,7 @@ void renderRaycastView(const TileMap &tileMap,
     // Update fog of war for the CPU render path
     updateFogOfWar();
     
-    int ss = g_rayConfig.supersample;
-    const uint64_t pixelCount =
-        static_cast<uint64_t>(std::max(0, w)) *
-        static_cast<uint64_t>(std::max(0, h));
-    if (pixelCount >= kPixelCount1080p)
-        ss = std::min(ss, 1);
-    else if (pixelCount >= kPixelCount720p)
-        ss = std::min(ss, 2);
+    const int ss = limitSupersample(g_rayConfig.supersample, w, h);
     const unsigned int hwThreads = std::max(1u, std::thread::hardware_concurrency());
     const int nThreads = std::min(static_cast<int>(hwThreads), std::max(1, w));
     const int chunk = (w + nThreads - 1) / nThreads;

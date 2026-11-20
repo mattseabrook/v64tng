@@ -1,6 +1,6 @@
 # v64tng
 
-Current release: **1.0.20261115.1**
+Current release: **1.0.20261120.6**
 
 [![v64tng build](https://img.shields.io/badge/v64tng%20build-passing-2ea44f?logo=github)](build.sh)
 
@@ -14,12 +14,12 @@ Current release: **1.0.20261115.1**
 
 ## Semantic Disassembly Progress
 
-Current source inventory: DOS **283/283 (100.0% entry-role coverage)**, Windows **174/336 (51.8%)**, and Mac **55/80 (68.8%)** jump-table entries, with 207 verified Mac records including internal routines. The DOS total includes all 22 entries recovered beyond the analyzer seed, including indirect bank handlers, interrupts and callbacks. Newly discovered entries will be added to the denominator. Entry-role coverage does not establish complete code/data ownership, original symbols, external-driver internals, or full gameplay correctness. All executable source changes preserve the canonical artifact hashes.
+Current source inventory: DOS **283/283 (100.0% entry-role coverage)**, Windows **175/336 (52.1%)**, and Mac **55/80 (68.8%)** jump-table entries, with 207 verified Mac records including internal routines. The DOS total includes all 22 entries recovered beyond the analyzer seed, including indirect bank handlers, interrupts and callbacks. Newly discovered entries will be added to the denominator. Entry-role coverage does not establish complete code/data ownership, original symbols, external-driver internals, or full gameplay correctness. All executable source changes preserve the canonical artifact hashes.
 
 | Original executable                       | Verified semantic roles | Provisional roles remaining | Verified entry-role coverage |      Lossless source-byte coverage |
 | ----------------------------------------- | ----------------------: | --------------------------: | --------------------: | ---------------------------------: |
 | [`V.EXE` 1.30](disassembly/V)             | 283 / 283 | 0 | **100.0%** | 101,624 / 101,624 bytes (**100%**) |
-| [`v32tng.exe` 1.02b1](disassembly/v32tng) | 174 / 336 | 162 | **51.8%** | 144,896 / 144,896 bytes (**100%**) |
+| [`v32tng.exe` 1.02b1](disassembly/v32tng) | 175 / 336 | 161 | **52.1%** | 144,896 / 144,896 bytes (**100%**) |
 | [`T7GMac` 1.0 (Classic Mac)](disassembly/T7GMac) | 55 / 80 table-backed entries | 25 | 68.8% role coverage | 1,830,912 / 1,830,912 bytes (**100%; byte-identical**) |
 
 The DOS inventory includes recovered interrupt/callback entries and grows when
@@ -337,9 +337,10 @@ browser runtime, scripting language or separately distributed helper is needed.
 
 `v64tng.exe` is one native Windows x64 console executable built with Clang/MSVC.
 CLI commands retain normal stdin/stdout/stderr, shell waiting, redirection and
-exit codes. The `!` command starts the existing Win32/Vulkan GUI in the same
-process after flushing output and calling `FreeConsole()`. A shared terminal
-remains available to its shell; the shell may wait until the game exits.
+exit codes. The `!` command starts the Win32/Vulkan GUI in the same process
+after detaching from the console. It sends console-bound output to `NUL` and
+preserves output redirected to files or pipes. A shared terminal remains
+available to its shell, which may wait until the game exits.
 
 Run the examples below in Windows CMD. In PowerShell, prefix a local executable
 with `.\` (`.\v64tng.exe -r DR.RL`); in Windows Git Bash use `./v64tng.exe`.
@@ -2072,7 +2073,7 @@ The converter skips directly to the EVNT chunk, which contains the musical event
 - All delta times must be scaled proportionally when converting
 
 **Delta Time Representation:**
-- **XMI**: Uses `0x7F` bytes to represent delays of 127 ticks, which can be chained (e.g., `0x7F 0x7F 0x20` = 127 + 127 + 32 = 286 ticks)
+- **XMI**: Adds consecutive delay bytes below `0x80`. The next byte at or above `0x80` is the event status, so `7F FF 2F 00` encodes a 127-tick delay followed by the end-of-track event.
 - **MIDI**: Uses variable-length quantity (VLQ) encoding where the MSB indicates continuation
 
 #### Conversion Algorithm
@@ -2083,7 +2084,7 @@ The conversion process operates in two passes:
 
 The decoder maintains a priority queue of pending Note Off events sorted by delta time:
 
-1. **Read Delta Times**: Parse XMI delta format (handle `0x7F` chaining)
+1. **Read Delta Times**: Sum XMI delay bytes up to the next event status
 2. **Process Pending Note Offs**: Before each new event, emit any Note Off events whose delta time has expired
 3. **Parse MIDI Event Types**:
    - `0x90` (Note On): Extract note, velocity, and **duration**, schedule a Note Off event
@@ -2555,8 +2556,7 @@ The toolkit's current match search indexes previous occurrences of each first
 byte, retaining nearest-first tie breaking. A 128 KiB high-entropy benchmark
 produced identical tokens while reducing compression time from about 172 ms
 to 3 ms on this host. This microbenchmark is not a whole-video encode speed
-claim. Its extractor now supports the original decoder's zero-initialized
-history references before the start of emitted output.
+claim. Its extractor now supplies zero bytes for references before the start of emitted output.
 
 Cursor/ROB compression uses a separate nibble-layout codec: distance is the
 low byte plus the upper nibble of the high byte, while length is the lower
@@ -2606,23 +2606,10 @@ output-relative copy. Its return value is the decoded byte count.
 
 ### v64tng implementation
 
-[`src/lzss.cpp`](src/lzss.cpp) represents the same history using an explicit
-circular buffer:
-
-```text
-historySize = 1 << (16 - lengthBits)
-lookahead   = 1 << lengthBits
-historyPos  = historySize - lookahead
-```
-
-For valid retail streams, reading from
-`(historyPos - distance) & (historySize - 1)` and writing each emitted byte
-back into that ring is equivalent to the originals' overlapping
-`output - distance` copy. The representation differs, not the token format.
-The checked v64tng entry point additionally validates the bit count, detects
-truncated literals and references, enforces an output limit, and requires a
-zero terminator. These checks intentionally define safe failure behavior that
-the fixed-buffer originals did not provide.
+[`src/lzss.cpp`](src/lzss.cpp) serves both v64tng and Groovie. It copies from
+the output at the decoded distance, one byte at a time so matches can overlap.
+The decoder supplies zero bytes before the start of output, validates the bit
+count, bounds the decoded size, and requires a complete zero-word terminator.
 
 There is a separate DOS decoder at `0230Fh` with a fixed four-bit token split,
 used by cursor data. It is not the VDX decoder and must not be used as evidence
@@ -2770,17 +2757,17 @@ faithful VDX encoder.
 
 The permanent disassembly projects now begin at:
 
-- [`disassembly/V`](disassembly/V): DOS version 1.30. It unpacks
-  deterministically from the hashed LZEXE original. Its complete lossless NASM
-  tree represents the MZ header, relocations, all analyzer-owned instructions,
-  and every remaining data byte without `incbin`, then verifies byte-identical
-  unpacked MZ output. The current inventory contains 283 verified descriptive function roles,
-  including recovered interrupt/callback entries; boundaries remain provisional.
+- [`disassembly/V`](disassembly/V): DOS version 1.30. The lossless NASM tree
+  represents the MZ header, relocations, instructions, and data without
+  `incbin`. The build verifies the unpacked MZ SHA-256 before reproducing and
+  verifying the retail LZEXE 0.91-packed EXE. The inventory records 283
+  verified function roles, including recovered interrupt and callback entries.
 - [`disassembly/v32tng`](disassembly/v32tng): Windows player 1.02b1. Its loose
   VDX open/magic path, game/VDX command dispatch, `SETUPEXEC` handling, and
   `WinMain` message loop retain verified names inside a complete lossless NASM
   tree. All 144,896 PE bytes and 336 provisional function entries are explicit
-  source with no `incbin`; 174 roles are verified and 162 remain address-based.
+  source with no `incbin`. The inventory records 175 verified roles and 161
+  address-based entries.
   The project rebuilds into a byte-identical PE.
 
 - [`disassembly/T7GMac`](disassembly/T7GMac): Classic Macintosh player 1.0,

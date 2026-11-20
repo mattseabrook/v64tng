@@ -327,8 +327,8 @@ if [[ "$resource_needs_compile" == true ]]; then
         log_output "$res_log"
         echo -e "${COLOR_GREEN}${EMOJI_SUCCESS} Resource compiled${COLOR_RESET}"
     else
-        log_output "$res_log"
         cat "$res_log"
+        log_output "$res_log"
         echo -e "${COLOR_RED}${EMOJI_FAILED} ERROR: Resource compilation failed${COLOR_RESET}"
         exit 1
     fi
@@ -397,9 +397,6 @@ embed_shader_source() {
     if [[ "$regen" == true ]]; then
         echo -e "${COLOR_CYAN}${EMOJI_WRENCH} Embedding shader source: $shader_name...${COLOR_RESET}"
         
-        # Read shader file and escape for C string
-        local escaped_content=$(cat "$shader_src" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | awk '{printf "%s\\n", $0}')
-        
         # Generate header
         cat > "$header_out" << EOF
 // Auto-generated embedded shader source: $shader_name
@@ -418,16 +415,6 @@ EOF
     fi
 }
 
-# Helper function to compile D3D11 HLSL to CSO (compiled shader object) header
-compile_d3d11_shader() {
-    local shader_src="$1"
-    local header_out="$2"
-    local var_name="$3"
-    
-    # For D3D11, we embed the source code since we compile at runtime with D3DCompile
-    embed_shader_source "$shader_src" "$header_out" "$var_name"
-}
-
 # Compile Vulkan shaders to SPIR-V (binary embedded)
 compile_vulkan_shader \
     "shaders/vk_rgb_to_bgra.comp" \
@@ -440,12 +427,12 @@ compile_vulkan_shader \
     "$BUILD_DIR/vk_raycast_spv.h"
 
 # Embed D3D11 shader sources (compiled at runtime, but source is in exe)
-compile_d3d11_shader \
+embed_shader_source \
     "shaders/d3d11_rgb_to_bgra.hlsl" \
     "$BUILD_DIR/d3d11_rgb_to_bgra.h" \
     "g_d3d11_rgb_to_bgra_hlsl"
 
-compile_d3d11_shader \
+embed_shader_source \
     "shaders/d3d11_raycast.hlsl" \
     "$BUILD_DIR/d3d11_raycast.h" \
     "g_d3d11_raycast_hlsl"
@@ -589,13 +576,12 @@ fi
 # invalidate cached objects too. version.h is handled by update_build_version,
 # which touches its direct consumers; excluding it avoids a full rebuild solely
 # for the release stamp on every build.
-mapfile -t project_headers < <(rg --files include -g '*.h' -g '*.hpp' -g '!version.h')
+mapfile -t project_headers < <(rg --files include src -g '*.h' -g '*.hpp' -g '*.inl' -g '!version.h')
 
 # Function to check if compilation is needed
 needs_compile() {
     local src="$1"
     local obj="$2"
-    local dep_file="$BUILD_DIR/$(basename "${src%.cpp}").d"
     
     # Object doesn't exist
     [[ ! -f "$obj" ]] && return 0
@@ -613,16 +599,6 @@ needs_compile() {
     while IFS= read -r generated_header; do
         [[ "$BUILD_DIR/$generated_header" -nt "$obj" ]] && return 0
     done < <(sed -nE 's@^#include "\.\./build/([^"]+)".*@\1@p' "$src")
-    
-    # Check dependencies
-    if [[ -f "$dep_file" ]]; then
-        while read -r dep; do
-            # Skip the target part and empty lines
-            dep=$(echo "$dep" | sed 's/^[^:]*:\s*//' | tr ' ' '\n' | head -1)
-            [[ -z "$dep" ]] && continue
-            [[ "$dep" -nt "$obj" ]] && return 0
-        done < "$dep_file"
-    fi
     
     # Object file has zero size
     [[ ! -s "$obj" ]] && return 0

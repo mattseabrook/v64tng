@@ -4,22 +4,9 @@
 #define DELTA_H
 
 #include <array>
-#include <vector>
 #include <span>
 
 #include "bitmap.h"
-
-/*
-===============================================================================
-
-	7th Guest - Delta Bitmap Frames
-
-	The logic to process delta bitmap frames, meaning the subsequentially
-	stored LZSS compressed bitmaps only contain data for the individual pixels
-	that are different from the previous bitmap frame.
-
-===============================================================================
-*/
 
 // Canonical table: DOS V.EXE DS:D48E and Win32 v32tng.exe VA 0041A088.
 // The two independently compiled decoder tables are byte-for-byte identical.
@@ -38,9 +25,11 @@ inline constexpr std::array<uint8_t, 192> MapField = {
 	0xcf, 0x44, 0xd9, 0x4c, 0x99, 0x4c, 0x55, 0x55, 0x3f, 0x60, 0x77, 0x60, 0x37, 0x62, 0xc9, 0x64,
 	0xcd, 0x64, 0xd9, 0x6c, 0xef, 0x70, 0x00, 0x0f, 0xf0, 0x00, 0x00, 0x00, 0x44, 0x44, 0x22, 0x22};
 
-//=============================================================================
+constexpr uint16_t vdxTileMap(uint8_t opcode)
+{
+    return readLittleEndian16(std::span(MapField).subspan(size_t(opcode) * 2, 2));
+}
 
-// Function prototypes
 bool getDeltaBitmapDataChecked(
     std::span<const uint8_t> buffer,
     std::span<RGBColor> palette,
@@ -49,10 +38,8 @@ bool getDeltaBitmapDataChecked(
     std::span<uint8_t> indexBuffer = {},
     std::span<const uint8_t> foregroundMask = {},
     std::span<uint8_t> writtenPixels = {});
-void getDeltaBitmapData(
-    std::span<const uint8_t> buffer,
-    std::span<RGBColor> palette,
-    std::span<uint8_t> frameBuffer,
-    int width);
+bool decodeIndexedVdxDelta(std::span<const uint8_t> data, std::span<RGBColor> palette,
+                           std::span<uint8_t> frame, int width, int height,
+                           bool requireFinalRow = false);
 
 #endif // DELTA_H

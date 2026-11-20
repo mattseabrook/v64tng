@@ -64,7 +64,7 @@ Parameters:
 */
 void GJDInfo(const std::string_view &filename)
 {
-	auto result = parseRLFile(filename.data());
+	auto result = parseRLFile(std::filesystem::path(filename));
 	if (!result)
 	{
 		throw std::runtime_error(result.error());

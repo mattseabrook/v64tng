@@ -1,15 +1,23 @@
 #ifndef GRV_H
 #define GRV_H
 
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
 #include "grv_hotspot.h"
+
+// GRV resource references store the archive in the upper six bits.
+inline constexpr std::array<std::string_view, 21> grvArchives{
+    "AT", "B", "CH", "D", "DR", "FH", "GA", "HDISK", "HTBD", "INTRO", "JHEK",
+    "K", "LA", "LI", "MB", "MC", "MU", "N", "P", "XMI", "GAMWAV"
+};
 
 struct GrvHotspot
 {
