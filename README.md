@@ -1,5 +1,3 @@
-# v64tng
-
 Current release: **1.0.20261120.6**
 
 [![v64tng build](https://img.shields.io/badge/v64tng%20build-passing-2ea44f?logo=github)](build.sh)
@@ -8,76 +6,38 @@ Current release: **1.0.20261120.6**
 
 [![v32tng.exe NASM rebuild](https://img.shields.io/badge/v32tng.exe%20NASM%20rebuild-passing-2ea44f?logo=nasm)](disassembly/v32tng)
 
-[![T7GMac reconstruction](https://img.shields.io/badge/T7GMac%20reconstruction-byte--identical-2ea44f)](disassembly/T7GMac)
+`v64tng.exe` is a Windows x86_64 executable that is a modern, bare metal re-creation of the complete 7th Guest game engine from scratch. It is written in C++23 and uses `VULKAN` or `DirectX` for graphics, `WASAPI` for PCM and software-synthesized audio, `WinMM` for General MIDI output, and `Win32` for input handling. The game engine is designed to work placed into the original game directory (*regardless of where you purchased it/what version you have*), and it is required to be used with the original game data files.
 
-`v64tng.exe` is a Windows x86_64 executable that is an attempt at re-creating the complete 7th Guest game engine from scratch. It is written in C++23 and uses Vulkan or DirectX for graphics, WASAPI for PCM and software-synthesized audio, WinMM for General MIDI output, and Win32 input handling. The game engine is designed to work placed into the original game directory (*regardless of where you purchased it/what version you have*), and it is required to be used with the original game data files.
+## **Dev & Modding Wiki** → [The 7th Guest Developer Wiki](wiki/index.html)
 
-## Semantic Disassembly Progress
-
-Current source inventory: DOS **283/283 (100.0% entry-role coverage)**, Windows **175/336 (52.1%)**, and Mac **55/80 (68.8%)** jump-table entries, with 207 verified Mac records including internal routines. The DOS total includes all 22 entries recovered beyond the analyzer seed, including indirect bank handlers, interrupts and callbacks. Newly discovered entries will be added to the denominator. Entry-role coverage does not establish complete code/data ownership, original symbols, external-driver internals, or full gameplay correctness. All executable source changes preserve the canonical artifact hashes.
-
-| Original executable                       | Verified semantic roles | Provisional roles remaining | Verified entry-role coverage |      Lossless source-byte coverage |
-| ----------------------------------------- | ----------------------: | --------------------------: | --------------------: | ---------------------------------: |
-| [`V.EXE` 1.30](disassembly/V)             | 283 / 283 | 0 | **100.0%** | 101,624 / 101,624 bytes (**100%**) |
-| [`v32tng.exe` 1.02b1](disassembly/v32tng) | 175 / 336 | 161 | **52.1%** | 144,896 / 144,896 bytes (**100%**) |
-| [`T7GMac` 1.0 (Classic Mac)](disassembly/T7GMac) | 55 / 80 table-backed entries | 25 | 68.8% role coverage | 1,830,912 / 1,830,912 bytes (**100%; byte-identical**) |
-
-The DOS inventory includes recovered interrupt/callback entries and grows when
-new entries are found. The current data pass identifies cursor pointer tables, palette/stream state,
-XMS descriptors and control pointer, embedded DIGPAK command/state data, cache
-controls and 200 entries, microscope fields, and the encoded empty-save caption.
-Seventeen additional video-bank/probe entries are now included in DOS coverage. Data is organized by subsystem; mixed regions and
-unproven gap ownership remain explicitly unresolved.
-
-v64tng defaults to recovered DOS logical hotspot geometry and cursor values
-(`grvHotspotPolicy: "dos"`), feeding the existing responsive window-coordinate
-transform. `"windows"` retains the previous logical geometry independently of
-save format and `grvMicroscopePolicy`.
-Window sizing, coordinate scaling, the intentional 640×320 crop without the
-original top/bottom bars, and the top-bar shortcut remain in place. Original logical hotspot accuracy and modern responsive scaling are separate
-steps; recovery does not override the presentation choices. Full gameplay and
-platform equivalence remain human review work.
-
-The [grooviev1 modding guide](grooviev1/README.md) documents media, archives,
-fonts, Mac resources and the new shared-decoder GRV listing/assembly commands.
-Auxiliary automated test harnesses have been removed at the maintainer's
-request. Each original disassembly retains one `build.sh` containing its
-canonical byte-identity gate. Builds are permitted; engine/toolkit testing is
-performed by the maintainer.
-
----
+## **Support/Bug Submissions/Feature Requests/Discussion** → [Stauf's Board](https://discord.gg/rfKSGJKRX)
 
 **Quick Navigation:**
 
-- **Developer wiki catalogue** → [The 7th Guest Developer Wiki](wiki/index.html)
-
 - **Want to play the new version?** → [Running the Game](#running-the-game)
+- **Make your own VDX file?** → [grooviev1 Tools](grooviev1/README.md)
 - **Building `v64tng.exe` source?** → [Quick Start Guide](#quick-start-guide)
-- **Build `V.EXE` from source** → [DOS `V.EXE` 1.30 NASM project](disassembly/V)
-- **Build `v32tng.exe` from source** → [Win32 `v32tng.exe` 1.02b1 NASM project](disassembly/v32tng)
-- **Mac disassembly and reconstruction** → [Classic Mac `T7GMac` source project](disassembly/T7GMac)
-- **CD-i disassembly and reconstruction** → [Philips CD-i source project](disassembly/cdi_t7g)
+- **Build MS-DOS `V.EXE` from source** → [DOS `V.EXE` 1.30 NASM project](disassembly/V)
+- **Build Windows 9x `v32tng.exe` from source** → [Win32 `v32tng.exe` 1.02b1 NASM project](disassembly/v32tng)
 
 ---
 
 **Table-of-Contents**
-- [v64tng](#v64tng)
-  - [Semantic Disassembly Progress](#semantic-disassembly-progress)
 - [Disclaimer](#disclaimer)
 - [Usage](#usage)
   - [Running the Game](#running-the-game)
-    - [GitHub and updates](#github-and-updates)
     - [Win32 Asset Browser and GRV Editor](#win32-asset-browser-and-grv-editor)
+    - [GitHub and updates](#github-and-updates)
   - [Command Line Utilities](#command-line-utilities)
     - [Equivalent command spellings](#equivalent-command-spellings)
     - [Command overview](#command-overview)
-    - [Starting the GUI](#starting-the-gui-)
-    - [Cursor extraction](#cursor-extraction--c)
-    - [VDX archive extraction](#vdx-archive-extraction--g)
-    - [Archive index listing](#archive-index-listing--r)
-    - [VDX/GJD inspection](#vdxgjd-inspection--v)
-    - [Frame, audio and video export](#frame-audio-and-video-export--p)
-    - [MIDI conversion/playback](#midi-conversionplayback--x)
+    - [Starting the GUI: `!`](#starting-the-gui-)
+    - [Cursor extraction: `-c`](#cursor-extraction--c)
+    - [VDX archive extraction: `-g`](#vdx-archive-extraction--g)
+    - [Archive index listing: `-r`](#archive-index-listing--r)
+    - [VDX/GJD inspection: `-v`](#vdxgjd-inspection--v)
+    - [Frame, audio and video export: `-p`](#frame-audio-and-video-export--p)
+    - [MIDI conversion/playback: `-x`](#midi-conversionplayback--x)
     - [Companion toolkit](#companion-toolkit)
 - [Game Engine Architecture](#game-engine-architecture)
   - [RL](#rl)
@@ -351,15 +311,15 @@ The Windows engine executable is not a native Linux/macOS application.
 Each dash-prefixed command accepts its short code or descriptive name with
 **one or two dashes**. All four spellings select the same existing operation:
 
-| Operation | Four equivalent spellings |
-| --- | --- |
-| Help/overview | `-h`, `--h`, `-help`, `--help` |
-| Cursor extraction | `-c`, `--c`, `-cursor`, `--cursor` |
-| GJD extraction | `-g`, `--g`, `-gjd`, `--gjd` |
-| RL listing | `-r`, `--r`, `-rl`, `--rl` |
-| VDX/GJD inspection | `-v`, `--v`, `-vdx`, `--vdx` |
-| PNG/frame export | `-p`, `--p`, `-png`, `--png` |
-| XMI conversion/playback | `-x`, `--x`, `-xmi`, `--xmi` |
+| Operation               | Four equivalent spellings          |
+| ----------------------- | ---------------------------------- |
+| Help/overview           | `-h`, `--h`, `-help`, `--help`     |
+| Cursor extraction       | `-c`, `--c`, `-cursor`, `--cursor` |
+| GJD extraction          | `-g`, `--g`, `-gjd`, `--gjd`       |
+| RL listing              | `-r`, `--r`, `-rl`, `--rl`         |
+| VDX/GJD inspection      | `-v`, `--v`, `-vdx`, `--vdx`       |
+| PNG/frame export        | `-p`, `--p`, `-png`, `--png`       |
+| XMI conversion/playback | `-x`, `--x`, `-xmi`, `--xmi`       |
 
 For example, these four invocations all list `DR.RL`:
 
@@ -387,12 +347,12 @@ values, so they are not rewritten as command names.
 Existing bare export/music action words remain valid. Their prefixed forms
 are also accepted **in the action's position after the input**:
 
-| Position | Existing word | Four additional spellings |
-| --- | --- | --- |
-| After `-p FILE` | `raw` | `-r`, `--r`, `-raw`, `--raw` |
-| After `-p FILE` | `video` | `-v`, `--v`, `-video`, `--video` |
-| After `-x SONG` | `extract` | `-e`, `--e`, `-extract`, `--extract` |
-| After `-x SONG` | `play` | `-p`, `--p`, `-play`, `--play` |
+| Position        | Existing word | Four additional spellings            |
+| --------------- | ------------- | ------------------------------------ |
+| After `-p FILE` | `raw`         | `-r`, `--r`, `-raw`, `--raw`         |
+| After `-p FILE` | `video`       | `-v`, `--v`, `-video`, `--video`     |
+| After `-x SONG` | `extract`     | `-e`, `--e`, `-extract`, `--extract` |
+| After `-x SONG` | `play`        | `-p`, `--p`, `-play`, `--play`       |
 
 Thus `v64tng.exe --png clip.vdx --raw` means RAW frame export, while
 `v64tng.exe --rl ROOM.RL` means RL listing. Context determines the action;
@@ -401,16 +361,16 @@ spellings display the overall usage overview.
 
 ### Command overview
 
-| Command | Behavior |
-| --- | --- |
-| No arguments | Open the launcher/settings window. |
-| `!` | Detach the console and start the game directly. |
-| `-c ROB.GJD` | Export retail cursor animations as PNG sequences. |
-| `-g FILE.RL` | Extract VDX payloads from the matching GJD. |
-| `-r FILE.RL` | List RL records, names, offsets and lengths. |
+| Command                        | Behavior                                                                          |
+| ------------------------------ | --------------------------------------------------------------------------------- |
+| No arguments                   | Open the launcher/settings window.                                                |
+| `!`                            | Detach the console and start the game directly.                                   |
+| `-c ROB.GJD`                   | Export retail cursor animations as PNG sequences.                                 |
+| `-g FILE.RL`                   | Extract VDX payloads from the matching GJD.                                       |
+| `-r FILE.RL`                   | List RL records, names, offsets and lengths.                                      |
 | `-v FILE.VDX` or `-v FILE.GJD` | Inspect a standalone VDX or each indexed VDX in a GJD using the matching RL file. |
-| `-p FILE.VDX [raw\|video]` | Export frames, separate WAV audio and optionally a silent MKV. |
-| `-x SONG [extract\|play]` | Convert archived XMI to MIDI, or play it. |
+| `-p FILE.VDX [raw\|video]`     | Export frames, separate WAV audio and optionally a silent MKV.                    |
+| `-x SONG [extract\|play]`      | Convert archived XMI to MIDI, or play it.                                         |
 
 Quote paths containing spaces. Relative file paths use the working directory;
 commands accepting a file do not silently search the executable's directory.
@@ -486,10 +446,10 @@ headers are decoded before their values are displayed.
 The four equivalent spellings are `-v`, `--v`, `-vdx` and `--vdx`. The file
 argument selects the operation by its case-insensitive extension:
 
-| File argument | Operation |
-| --- | --- |
-| `FILE.VDX` | Inspect the standalone VDX. |
-| `FILE.GJD` | Inspect every indexed VDX using the matching `FILE.RL` beside the archive; skip non-VDX resources. |
+| File argument | Operation                                                                                          |
+| ------------- | -------------------------------------------------------------------------------------------------- |
+| `FILE.VDX`    | Inspect the standalone VDX.                                                                        |
+| `FILE.GJD`    | Inspect every indexed VDX using the matching `FILE.RL` beside the archive; skip non-VDX resources. |
 
 Other extensions report an error. GJD input is not treated as a single raw
 chunk stream. Archive-range, file/header and chunk-boundary failures are
@@ -507,11 +467,11 @@ v64tng.exe -p "C:\My Game\f_1bc.vdx" video
 Output is the adjacent `f_1bc/` directory. Frames are complete composited
 images named `f_1bc_0001`, `f_1bc_0002`, etc., at the decoded media dimensions.
 
-| Mode | Frame output | Audio/video output |
-| --- | --- | --- |
-| No extra option | PNG; indexed pixels/palettes retained when available. | Audio, if present, is saved separately as `f_1bc.wav`. |
-| `raw` | Headerless RGB24 `.raw` pixels; use the VDX geometry to interpret them. | The same separate WAV. |
-| `video` | The normal PNG sequence. | FFmpeg creates a **silent** `f_1bc.mkv`; audio remains in the separate WAV. Looping ffplay previews the MKV until closed. |
+| Mode            | Frame output                                                            | Audio/video output                                                                                                        |
+| --------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| No extra option | PNG; indexed pixels/palettes retained when available.                   | Audio, if present, is saved separately as `f_1bc.wav`.                                                                    |
+| `raw`           | Headerless RGB24 `.raw` pixels; use the VDX geometry to interpret them. | The same separate WAV.                                                                                                    |
+| `video`         | The normal PNG sequence.                                                | FFmpeg creates a **silent** `f_1bc.mkv`; audio remains in the separate WAV. Looping ffplay previews the MKV until closed. |
 
 Video mode requires both `ffmpeg` and `ffplay` on PATH. It uses the VDX header
 frame rate, falling back to 15 FPS when the header contains zero, and starts
@@ -1245,11 +1205,11 @@ include the opcode byte; `V` sizes are shown as short/long where useful.
 | `0B` | `INPUTLOOPSTART`        | —                                                     |        1 | Begins an input/hotspot declaration loop and captures current input. DOS/Win/ScummVM.                                                                                                                                                                                              |
 | `0C` | `KEYACTION`             | `U8 key, A16 target`                                  |        4 | Branches to `target` when the captured keyboard byte equals `key`. DOS/Win/ScummVM.                                                                                                                                                                                                |
 | `0D` | `HOTSPOT_RECT`          | `U16 left, top, right, bottom, A16 target, U8 cursor` |       12 | Declares an explicit clickable rectangle. DOS/Win/ScummVM.                                                                                                                                                                                                                         |
-| `0E` | `HOTSPOT_LEFT`          | `A16 target`                                          |        3 | Declares the built-in left navigation region. DOS 1.30 uses inclusive `(0,80)–(63,399)` with cursor 2. |
-| `0F` | `HOTSPOT_RIGHT`         | `A16 target`                                          |        3 | Declares the built-in right navigation region. DOS 1.30 uses inclusive `(576,80)–(639,399)` with cursor 1. |
-| `10` | `HOTSPOT_CENTER`        | `A16 target`                                          |        3 | Declares the center navigation region. DOS 1.30 uses inclusive `(156,80)–(483,399)` with cursor 3. |
-| `11` | `HOTSPOT_CENTER_2`      | `A16 target`                                          |        3 | Shares the center geometry of `10h`; DOS 1.30 selects cursor 0 rather than cursor 3. |
-| `12` | `HOTSPOT_CURRENT`       | `A16 target`                                          |        3 | DOS 1.30 tests inclusive `(0,80)–(639,399)` with cursor 0 through the shared rectangle hit test. |
+| `0E` | `HOTSPOT_LEFT`          | `A16 target`                                          |        3 | Declares the built-in left navigation region. DOS 1.30 uses inclusive `(0,80)–(63,399)` with cursor 2.                                                                                                                                                                             |
+| `0F` | `HOTSPOT_RIGHT`         | `A16 target`                                          |        3 | Declares the built-in right navigation region. DOS 1.30 uses inclusive `(576,80)–(639,399)` with cursor 1.                                                                                                                                                                         |
+| `10` | `HOTSPOT_CENTER`        | `A16 target`                                          |        3 | Declares the center navigation region. DOS 1.30 uses inclusive `(156,80)–(483,399)` with cursor 3.                                                                                                                                                                                 |
+| `11` | `HOTSPOT_CENTER_2`      | `A16 target`                                          |        3 | Shares the center geometry of `10h`; DOS 1.30 selects cursor 0 rather than cursor 3.                                                                                                                                                                                               |
+| `12` | `HOTSPOT_CURRENT`       | `A16 target`                                          |        3 | DOS 1.30 tests inclusive `(0,80)–(639,399)` with cursor 0 through the shared rectangle hit test.                                                                                                                                                                                   |
 | `13` | `INPUTLOOPEND`          | —                                                     |        1 | Resolves persistent hotspots, loops to `0x0B`, updates the cursor, and waits when no action fired.                                                                                                                                                                                 |
 | `14` | `RANDOM`                | `V dst, U8 max`                                       |      3/4 | Stores a bounded pseudo-random byte in `variables[dst]`. ScummVM models DOS T7G as inclusive `0..max`; Windows appears to use modulo `max`, producing `0..max-1`.                                                                                                                  |
 | `15` | `JMP`                   | `A16 target`                                          |        3 | Unconditional absolute jump in the current file.                                                                                                                                                                                                                                   |
@@ -1315,7 +1275,7 @@ include the opcode byte; `V` sizes are shown as short/long where useful.
 | `47` | `RESOURCE_CONTEXT_RESTORE`  | —                                          |        1 | DOS synchronizes/reopens the selected resource archive; Win and ScummVM treat it as NOP.                                                                                                                                                                                                                                             |
 | `48` | `SET_VDX_RATE_OVERRIDE`     | `U8 rate`                                  |        2 | DOS overrides the frame interval read from VDX header offset 6 when nonzero. Win/ScummVM consume it as NOP.                                                                                                                                                                                                                          |
 | `49` | `PALETTE_MERGE_ONCE`        | —                                          |        1 | DOS enables a one-shot palette-preservation/merge path for the next still frame, then clears it. Win/ScummVM treat it as NOP.                                                                                                                                                                                                        |
-| `4A` | `PCM_DRIVER_PARAM` | `U16 value`                                |        3 | DOS forwards a changed value through command 81h using the type-2 PCM driver handle. The exact external-driver meaning remains unresolved. Win/ScummVM consume it as NOP. |
+| `4A` | `PCM_DRIVER_PARAM`          | `U16 value`                                |        3 | DOS forwards a changed value through command 81h using the type-2 PCM driver handle. The exact external-driver meaning remains unresolved. Win/ScummVM consume it as NOP.                                                                                                                                                            |
 | `4B` | `SET_VIDEO_MODE`            | `U8 mode`                                  |        2 | DOS: zero re-enters the detected SVGA path; nonzero selects BIOS mode `0x13`. Win/ScummVM consume the byte as NOP.                                                                                                                                                                                                                   |
 | `4C` | `GETCD`                     | —                                          |        1 | Writes media availability to variable `0x106`. DOS values: 0=both `B.GJD` and `AT.GJD`, 1=B, 2=AT, 3=neither.                                                                                                                                                                                                                        |
 | `4D` | `PLAYCD`                    | `U8 track/mode`                            |        2 | Stops MIDI and starts the requested CD/Redbook selection. v64tng maps original audio track 2 to modern `track1.ogg`, track 3 to `track2.ogg`, and so on. Like v32tng, `62h` waits for selection 2 to finish naturally but stops the later selection 3 immediately. An active Ogg track selects the native 100 ms silent-VDX cadence. |
@@ -1561,11 +1521,11 @@ native save bytes. V and v32tng continue to use their original save payloads.
 
 The known non-inert gaps are intentionally visible:
 
-| Opcode(s)                        | Missing native subsystem                                                                                |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `40h`                            | Video-origin presentation state                                                                         |
-| `4Dh`, `4Eh`                     | CD-audio selection and background-music delay                                                           |
-| `4Fh`–`59h` except hotspot `53h` | Later/reserved Windows and Groovie-v2 extension state                                                   |
+| Opcode(s)                        | Missing native subsystem                              |
+| -------------------------------- | ----------------------------------------------------- |
+| `40h`                            | Video-origin presentation state                       |
+| `4Dh`, `4Eh`                     | CD-audio selection and background-music delay         |
+| `4Fh`–`59h` except hotspot `53h` | Later/reserved Windows and Groovie-v2 extension state |
 
 A safe reader rejects any operand crossing EOF, malformed encoded values,
 unterminated strings, call-stack overflow/underflow, indirect-index underflow,
@@ -3300,16 +3260,16 @@ provide your own game installation to run it.
 Stable dependency versions are maintained in
 [`scripts/dependency_versions.sh`](scripts/dependency_versions.sh):
 
-| Dependency | Version | Role |
-| --- | --- | --- |
-| Vulkan SDK release headers/import definition | 1.4.363.0 | Windows Vulkan API and loader linkage |
-| zlib | 1.4 | PNG compression/decompression |
-| libpng | 1.6.59 | PNG import/export |
-| libADLMIDI | 1.6.2.1 | OPL MIDI synthesis |
-| libogg | 1.3.6 | Ogg container parsing |
-| libvorbis | 1.3.7 | Vorbis music decoding |
-| nlohmann/json | 3.12.0 | Vendored configuration/metadata handling |
-| TinySoundFont | 0.9 | Vendored SoundFont synthesis |
+| Dependency                                   | Version   | Role                                     |
+| -------------------------------------------- | --------- | ---------------------------------------- |
+| Vulkan SDK release headers/import definition | 1.4.363.0 | Windows Vulkan API and loader linkage    |
+| zlib                                         | 1.4       | PNG compression/decompression            |
+| libpng                                       | 1.6.59    | PNG import/export                        |
+| libADLMIDI                                   | 1.6.2.1   | OPL MIDI synthesis                       |
+| libogg                                       | 1.3.6     | Ogg container parsing                    |
+| libvorbis                                    | 1.3.7     | Vorbis music decoding                    |
+| nlohmann/json                                | 3.12.0    | Vendored configuration/metadata handling |
+| TinySoundFont                                | 0.9       | Vendored SoundFont synthesis             |
 
 [`build_windows_libs.sh`](build_windows_libs.sh) rebuilds the five external
 Windows libraries. It supports `all`, `zlib`, `libpng`, `libogg`, `vorbis`,
@@ -3344,17 +3304,17 @@ See [Vulkan resource and synchronization design](docs/VULKAN_RENDERER.md).
 
 Optional environment settings:
 
-| Setting | Purpose |
-| --- | --- |
-| `V64TNG_DEPS_CACHE` | Dependency source/tool cache root. |
-| `WINSDK_BASE` | Microsoft SDK/CRT installation root. |
-| `MSVC_INCLUDE` | MSVC C++ include directory; defaults to the detected CRT includes. |
-| `V64TNG_MSVC_INCLUDE` | Override the separate `/opt/msvc/include` selection on existing hosts. |
-| `WINDOWS_LIBS_DIR` | Installation prefix for the five Windows static libraries. |
-| `WINDOWS_LIBS_BUILD_DIR` | Source/build directory used by the static-library builder. |
-| `VULKAN_DIR` | Vulkan headers and Windows import-library root (`Include/`, `Lib/`). |
-| `GLSLC` | Native Linux shader compiler executable. |
-| `V64TNG_JOBS` | Number of parallel compiler jobs. |
+| Setting                  | Purpose                                                                |
+| ------------------------ | ---------------------------------------------------------------------- |
+| `V64TNG_DEPS_CACHE`      | Dependency source/tool cache root.                                     |
+| `WINSDK_BASE`            | Microsoft SDK/CRT installation root.                                   |
+| `MSVC_INCLUDE`           | MSVC C++ include directory; defaults to the detected CRT includes.     |
+| `V64TNG_MSVC_INCLUDE`    | Override the separate `/opt/msvc/include` selection on existing hosts. |
+| `WINDOWS_LIBS_DIR`       | Installation prefix for the five Windows static libraries.             |
+| `WINDOWS_LIBS_BUILD_DIR` | Source/build directory used by the static-library builder.             |
+| `VULKAN_DIR`             | Vulkan headers and Windows import-library root (`Include/`, `Lib/`).   |
+| `GLSLC`                  | Native Linux shader compiler executable.                               |
+| `V64TNG_JOBS`            | Number of parallel compiler jobs.                                      |
 
 Every successful link is followed by deployment to the fixed `/mnt/T7G`
 directory. Deployment is always enabled; there is no environment switch or
