@@ -8,7 +8,7 @@ Current release: **1.0.20261120.6**
 
 `v64tng.exe` is a Windows x86_64 executable that is a modern, bare metal re-creation of the complete 7th Guest game engine from scratch. It is written in C++23 and uses `VULKAN` or `DirectX` for graphics, `WASAPI` for PCM and software-synthesized audio, `WinMM` for General MIDI output, and `Win32` for input handling. The game engine is designed to work placed into the original game directory (*regardless of where you purchased it/what version you have*), and it is required to be used with the original game data files.
 
-## **Dev & Modding Wiki** → [The 7th Guest Developer Wiki](wiki/index.html)
+## **Dev & Modding Wiki** → [The 7th Guest Developer Wiki](https://t7g.dev/)
 
 ## **Support/Bug Submissions/Feature Requests/Discussion** → [Stauf's Board](https://discord.gg/rfKSGJKRX)
 
